@@ -4,17 +4,19 @@
 ;;; Based on Rosenthal by Hilton Chain
 ;;; Modified and adapted for the jeans channel by brokenshine <xchai404@gmail.com>
 
-
-(define-module (jeans))
+(define-module (jeans)
+  )
 
 (eval-when (eval load compile)
-  (begin
-    (define %public-modules
-      '((gnu)
-        (guix utils)
-        (jeans packages fonts)))
+           (begin
+             (define %public-modules
+               '((gnu)
+                 (guix utils)
+                 (jeans packages fonts)
+                 (jeans packages java)))
 
-    (for-each (let ((i (module-public-interface (current-module))))
-                (lambda (m)
-                  (module-use! i (resolve-interface m))))
-              %public-modules)))
+             (for-each (let ((i (module-public-interface (current-module))))
+                         (lambda (m)
+                           (module-use! i
+                                        (resolve-interface m))))
+                       %public-modules)))
