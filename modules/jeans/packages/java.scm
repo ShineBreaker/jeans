@@ -73,5 +73,3 @@ GPLv2 with Classpath Exception.")
 
 ;; Alias for default Zulu (currently 21)
 (define-public zulu zulu21)
-
-zulu25
