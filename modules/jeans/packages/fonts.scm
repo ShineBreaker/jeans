@@ -1,0 +1,50 @@
+(define-module (gnu packages fonts)
+  #:use-module (ice-9 regex)
+  #:use-module (guix utils)
+  #:use-module ((guix licenses) #:prefix license:)
+  #:use-module (guix packages)
+  #:use-module (guix download)
+  #:use-module (guix gexp)
+  #:use-module (guix git-download)
+  #:use-module (guix build-system font)
+  #:use-module (guix build-system gnu)
+  #:use-module (guix build-system meson)
+  #:use-module (guix build-system trivial)
+  #:use-module (guix build-system copy)
+  #:use-module (gnu packages)
+  #:use-module (gnu packages c)
+  #:use-module (gnu packages base)
+  #:use-module (gnu packages bash)
+  #:use-module (gnu packages compression)
+  #:use-module (gnu packages fontutils)
+  #:use-module (gnu packages gd)
+  #:use-module (gnu packages gettext)
+  #:use-module (gnu packages glib)
+  #:use-module (gnu packages gtk)
+  #:use-module (gnu packages perl)
+  #:use-module (gnu packages pkg-config)
+  #:use-module (gnu packages python)
+  #:use-module (gnu packages python-compression)
+  #:use-module (gnu packages python-xyz)
+  #:use-module (gnu packages sdl)
+  #:use-module (gnu packages xorg))
+
+(define-public font-maple-font-nf-cn
+  (package
+    (name "font-maple-font-nf-cn")
+    (version "7.9")
+    (source (origin
+              (method url-fetch)
+              (uri (string-append
+                    "https://github.com/subframe7536/maple-font/releases/download/v"
+                    version "/MapleMono-NF-CN-unhinted.zip"))
+              (sha256
+               (base32
+                "1b3wbgd9gngwv61ybinwxkpmyam2b7fdxxmfzvgiah6g68lm525b"))))
+    (build-system font-build-system)
+    (home-page "https://font.subf.dev/")
+    (synopsis "Maple Mono is an open source monospace font focused on smoothing your coding flow.")
+    (description
+     "Maple Mono: Open source monospace font with round corner, ligatures and Nerd-Font icons for IDE and terminal, fine-grained customization options.")
+    (license license:silofl1.1)
+    (properties '((upstream-name . "MapleMono-NF-CN-unhinted")))))
