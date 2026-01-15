@@ -47,7 +47,7 @@
         (revision "0"))
     (package
       (inherit (specification->package "starship"))   ; 或直接写 (@@ (gnu packages rust-apps) starship)
-      (name "starship-latest ")
+      (name "starship-latest")
       (version (git-version "1.24.2" revision commit))
       (source
        (origin
@@ -58,11 +58,9 @@
          (file-name (git-file-name name version))
          (sha256
           (base32
-           "1yvppkbz0s6ms1hcahla93995bajg2rvxyfzg7baqssz5n12gvnb"))))
+           "1n10ayllgsds9nsmn8v3c6xb0g70ijpwllgb82rmi2glvmjc9pgq"))))
       ;; 以下字段通常保持原样，除非真的构建失败再改
       (build-system cargo-build-system)
       ;; ... 保留原有的 arguments、inputs、native-inputs 等
       ;; 如果要覆盖某部分，可以在这里写 (arguments #~(...)) 来覆盖
       )))
-
-starship-git
