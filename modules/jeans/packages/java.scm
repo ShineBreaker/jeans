@@ -114,28 +114,30 @@ HASH: The sha256 hash of tarball"
                                 (symlink target link))))
                           (find-files linux-include ".*"))))
 
-            ;; Patch ELF files to set correct rpath
+            ;; Patch ELF files to set correct rpath with search paths for libraries
             (for-each (lambda (so-file)
-                        (system (string-append patchelf
-                                               " --set-rpath "
-                                               jdk-dir
+                        (invoke patchelf "--set-rpath"
+                                (string-append jdk-dir
                                                "/lib:"
                                                jdk-dir
-                                               "/lib/server "
-                                               so-file)))
+                                               "/lib/server:"
+                                               jdk-dir
+                                               "/lib/jli") so-file))
                       (find-files (string-append jdk-dir "/lib") "\\.so$"))
 
             (for-each (lambda (bin-file)
-                        (system (string-append patchelf
-                                               " --set-rpath "
-                                               jdk-dir
-                                               "/lib:"
-                                               jdk-dir
-                                               "/lib/server "
-                                               bin-file)))
+                        (when (not (string=? (basename bin-file)
+                                             "jspawnhelper"))
+                          (invoke patchelf "--set-rpath"
+                                  (string-append jdk-dir
+                                                 "/lib:"
+                                                 jdk-dir
+                                                 "/lib/server:"
+                                                 jdk-dir
+                                                 "/lib/jli") bin-file)))
                       (find-files (string-append jdk-dir "/bin") ".*"))
 
-            ;; Create wrapper scripts for binaries
+            ;; Create symlinks for binaries instead of wrapper scripts
             (mkdir-p (string-append out "/bin"))
             (for-each (lambda (bin-file)
                         (let* ((bin-name (basename bin-file))
@@ -143,18 +145,7 @@ HASH: The sha256 hash of tarball"
                                                             bin-name)))
                           ;; Skip wrapping jspawnhelper as it's executed by JVM
                           (when (not (string=? bin-name "jspawnhelper"))
-                            (call-with-output-file wrapper-path
-                              (lambda (port)
-                                (display (string-append "#!"
-                                                        bash
-                                                        "\n"
-                                                        "export JAVA_HOME=\""
-                                                        jdk-dir
-                                                        "\"\n"
-                                                        "exec \""
-                                                        bin-file
-                                                        "\" \"$@\"\n") port)))
-                            (chmod wrapper-path #o755))))
+                            (symlink bin-file wrapper-path))))
                       (find-files bin-dir ".*"))
 
             ;; Create setup-hook for JAVA_HOME
@@ -163,7 +154,11 @@ HASH: The sha256 hash of tarball"
               (call-with-output-file hook-file
                 (lambda (port)
                   (display (string-append "export JAVA_HOME=\"" jdk-dir "\"\n")
-                           port))))))))
+                           port))))
+
+            ;; Create symlink for standard location
+            (let ((std-jdk-dir (string-append out "/lib/jvm/java")))
+              (symlink jdk-dir std-jdk-dir))))))
     (native-inputs (list bash
                          patchelf
                          tar
