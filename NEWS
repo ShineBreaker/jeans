@@ -6,3 +6,4 @@
   (commit "ce5d8177d39f2ffacf45aa9e8b631048bd263a3b")
   (title (zh "zulu的打包脚本更新了一点"))
   (body (zh "我让ai参考了一下nixpkgs那边的打包脚本，所以增加了一点复杂度。具体的效果有待测试")))
+ )
