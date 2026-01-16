@@ -45,19 +45,27 @@ HASH: The sha256 hash of the tarball"
     (build-system copy-build-system)
     (arguments
      `(#:install-plan '(("." "lib/jvm/zulu"))
-       #:validate-runpath? #f))
+       #:validate-runpath? #f
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'install 'make-executable
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((jvm (string-append (assoc-ref outputs "out") "/lib/jvm/zulu"))
+                    (bin (string-append jvm "/bin")))
+               ;; Make binary files executable
+               (for-each (lambda (file)
+                           (chmod file #o755))
+                         (find-files bin ".*"))))))))
     (native-inputs (list bash-minimal))
     (inputs (list alsa-lib
                   fontconfig
                   freetype
-                  gcc
                   libx11
                   libxext
                   libxi
                   libxrender
                   libxtst
                   libxxf86vm
-                  patchelf
                   zlib))
     (home-page "https://www.azul.com/products/zulu/")
     (synopsis "Azul Zulu - OpenJDK distribution")
@@ -83,5 +91,3 @@ GPLv2 with Classpath Exception.")
 
 (define-public zulu-bin
   zulu21-bin)
-
-zulu25-bin
