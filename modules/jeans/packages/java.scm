@@ -114,30 +114,21 @@ HASH: The sha256 hash of tarball"
                                 (symlink target link))))
                           (find-files linux-include ".*"))))
 
-            ;; Patch ELF files to set correct rpath with search paths for libraries
-            (for-each (lambda (so-file)
-                        (invoke patchelf "--set-rpath"
-                                (string-append jdk-dir
-                                               "/lib:"
-                                               jdk-dir
-                                               "/lib/server:"
-                                               jdk-dir
-                                               "/lib/jli") so-file))
-                      (find-files (string-append jdk-dir "/lib") "\\.so$"))
+            ;; Patch ELF files to set correct rpath for JDK internal libraries only
+            (let* ((rpath (string-append jdk-dir "/lib:"
+                                          jdk-dir "/lib/server:"
+                                          jdk-dir "/lib/jli")))
+              (for-each (lambda (so-file)
+                          (invoke patchelf "--set-rpath" rpath so-file))
+                        (find-files (string-append jdk-dir "/lib") "\\.so$"))
 
-            (for-each (lambda (bin-file)
-                        (when (not (string=? (basename bin-file)
-                                             "jspawnhelper"))
-                          (invoke patchelf "--set-rpath"
-                                  (string-append jdk-dir
-                                                 "/lib:"
-                                                 jdk-dir
-                                                 "/lib/server:"
-                                                 jdk-dir
-                                                 "/lib/jli") bin-file)))
-                      (find-files (string-append jdk-dir "/bin") ".*"))
+              (for-each (lambda (bin-file)
+                          (when (not (string=? (basename bin-file)
+                                               "jspawnhelper"))
+                            (invoke patchelf "--set-rpath" rpath bin-file)))
+                        (find-files (string-append jdk-dir "/bin") ".*")))
 
-            ;; Create symlinks for binaries instead of wrapper scripts
+            ;; Create symlinks for binaries in out/bin
             (mkdir-p (string-append out "/bin"))
             (for-each (lambda (bin-file)
                         (let* ((bin-name (basename bin-file))
@@ -169,6 +160,7 @@ HASH: The sha256 hash of tarball"
                   fontconfig
                   freetype
                   gcc
+                  glibc
                   libx11
                   libxext
                   libxi
@@ -218,3 +210,5 @@ GPLv2 with Classpath Exception.")
 
 (define-public zulu-bin
   zulu21-bin)
+
+zulu25-bin
