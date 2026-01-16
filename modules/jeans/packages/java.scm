@@ -6,25 +6,32 @@
   #:use-module (guix download)
   #:use-module (guix gexp)
   #:use-module (guix build-system copy)
+  #:use-module (guix build-system trivial)
   #:use-module ((guix licenses)
                 #:prefix license:)
   #:use-module (gnu packages)
+  #:use-module (gnu packages base)
   #:use-module (gnu packages bash)
   #:use-module (gnu packages compression)
+  #:use-module (gnu packages cups)
   #:use-module (gnu packages elf)
   #:use-module (gnu packages fontutils)
   #:use-module (gnu packages gcc)
+  #:use-module (gnu packages glib)
+  #:use-module (gnu packages gtk)
   #:use-module (gnu packages java)
   #:use-module (gnu packages linux)
+  #:use-module (gnu packages wget)
+  #:use-module (gnu packages web)
   #:use-module (gnu packages xorg)
   #:use-module ((guix build utils)
                 #:select (find-files)))
 
 (define* (make-zulu-package zulu-name zulu-version jdk-version hash)
-  "Create a Zulu JDK package for the given versions.
+  "Create a Zulu JDK package for given versions.
 ZULU-VERSION: The Azul Zulu version (e.g., \"21.0.5\")
 JDK-VERSION: The JDK version (e.g., \"21\")
-HASH: The sha256 hash of the tarball"
+HASH: The sha256 hash of tarball"
   (package
     (name zulu-name)
     (version zulu-version)
@@ -42,11 +49,127 @@ HASH: The sha256 hash of the tarball"
                    (for-each delete-file
                              (find-files "." "\\.exe$")) #t))))
     (supported-systems '("x86_64-linux"))
-    (build-system copy-build-system)
+    (build-system trivial-build-system)
     (arguments
-     `(#:install-plan '(("." "lib/jvm/zulu"))
-       #:validate-runpath? #f))
-    (native-inputs (list bash-minimal))
+     (list
+      #:modules '((guix build utils))
+      #:builder
+      #~(begin
+          (use-modules (guix build utils))
+
+          (let* ((source (assoc-ref %build-inputs "source"))
+                 (tar (string-append (assoc-ref %build-inputs "tar")
+                                     "/bin/tar"))
+                 (zstd (string-append (assoc-ref %build-inputs "zstd")
+                                      "/bin/zstd"))
+                 (wget (string-append (assoc-ref %build-inputs "wget")
+                                      "/bin/wget"))
+                 (unzip (string-append (assoc-ref %build-inputs "unzip")
+                                       "/bin/unzip"))
+                 (out (assoc-ref %outputs "out"))
+                 (jdk-dir (string-append out "/lib/jvm/zulu"))
+                 (bin-dir (string-append jdk-dir "/bin"))
+                 (lib-dir (string-append jdk-dir "/lib"))
+                 (include-dir (string-append jdk-dir "/include"))
+                 (security-dir (string-append lib-dir "/security"))
+                 (patchelf (string-append (assoc-ref %build-inputs "patchelf")
+                                          "/bin/patchelf"))
+                 (bash (assoc-ref %build-inputs "bash")))
+            
+            ;; Unpack and install
+            (mkdir-p jdk-dir)
+            (invoke tar
+                    "--use-compress-program"
+                    zstd
+                    "-xf"
+                    source
+                    "-C"
+                    jdk-dir
+                    "--strip-components=1")
+
+            ;; Download and install JCE policies (optional, skip if download fails)
+            (let ((jce-url
+                   "https://web.archive.org/web/20211126120343/http://cdn.azul.com/zcek/bin/ZuluJCEPolicies.zip")
+                  (jce-zip "/tmp/zulu-jce-policies.zip"))
+              (when (zero? (system* wget "-q" "-O" jce-zip jce-url))
+                (mkdir-p "/tmp/zulu-jce")
+                (system* unzip "-q" jce-zip "-d" "/tmp/zulu-jce")
+                (for-each (lambda (file)
+                            (copy-file file
+                                       (string-append security-dir "/" file)))
+                          (find-files "/tmp/zulu-jce/ZuluJCEPolicies"
+                                      "\\.jar$"))))
+
+            ;; Create JNI header symlink (optional, skip if directory doesn't exist)
+            (let ((linux-include (string-append include-dir "/linux")))
+              (when (and (directory-exists? linux-include)
+                         (file-exists? (string-append linux-include
+                                                      "/jni_md.h")))
+                (for-each (lambda (file)
+                            (let ((target (string-append linux-include "/"
+                                                         file))
+                                  (link (string-append include-dir "/" file)))
+                              (when (and (file-exists? target)
+                                         (not (file-exists? link)))
+                                (symlink target link))))
+                          (find-files linux-include ".*"))))
+
+            ;; Patch ELF files to set correct rpath
+            (for-each (lambda (so-file)
+                        (system (string-append patchelf
+                                               " --set-rpath "
+                                               jdk-dir
+                                               "/lib:"
+                                               jdk-dir
+                                               "/lib/server "
+                                               so-file)))
+                      (find-files (string-append jdk-dir "/lib") "\\.so$"))
+
+            (for-each (lambda (bin-file)
+                        (system (string-append patchelf
+                                               " --set-rpath "
+                                               jdk-dir
+                                               "/lib:"
+                                               jdk-dir
+                                               "/lib/server "
+                                               bin-file)))
+                      (find-files (string-append jdk-dir "/bin") ".*"))
+
+            ;; Create wrapper scripts for binaries
+            (mkdir-p (string-append out "/bin"))
+            (for-each (lambda (bin-file)
+                        (let* ((bin-name (basename bin-file))
+                               (wrapper-path (string-append out "/bin/"
+                                                            bin-name)))
+                          ;; Skip wrapping jspawnhelper as it's executed by JVM
+                          (when (not (string=? bin-name "jspawnhelper"))
+                            (call-with-output-file wrapper-path
+                              (lambda (port)
+                                (display (string-append "#!"
+                                                        bash
+                                                        "\n"
+                                                        "export JAVA_HOME=\""
+                                                        jdk-dir
+                                                        "\"\n"
+                                                        "exec \""
+                                                        bin-file
+                                                        "\" \"$@\"\n") port)))
+                            (chmod wrapper-path #o755))))
+                      (find-files bin-dir ".*"))
+
+            ;; Create setup-hook for JAVA_HOME
+            (let ((hook-file (string-append out "/etc/profile.d/zulu.sh")))
+              (mkdir-p (dirname hook-file))
+              (call-with-output-file hook-file
+                (lambda (port)
+                  (display (string-append "export JAVA_HOME=\"" jdk-dir "\"\n")
+                           port))))))))
+    (native-inputs (list bash
+                         patchelf
+                         tar
+                         unzip
+                         wget
+                         zstd))
     (inputs (list alsa-lib
                   fontconfig
                   freetype
@@ -57,8 +180,26 @@ HASH: The sha256 hash of the tarball"
                   libxrender
                   libxtst
                   libxxf86vm
-                  patchelf
-                  zlib))
+                  zlib
+                  cups
+                  cairo
+                  glib
+                  gtk+))
+    (propagated-inputs (list alsa-lib
+                             fontconfig
+                             freetype
+                             gcc
+                             libx11
+                             libxext
+                             libxi
+                             libxrender
+                             libxtst
+                             libxxf86vm
+                             zlib
+                             cups
+                             cairo
+                             glib
+                             gtk+))
     (home-page "https://www.azul.com/products/zulu/")
     (synopsis "Azul Zulu - OpenJDK distribution")
     (description
@@ -80,8 +221,5 @@ GPLv2 with Classpath Exception.")
   (make-zulu-package "zulu8-bin" "8.90.0.19" "8.0.472"
                      "1pg2f1xr2jrdi7wbi6kwqhkhd64lngg0ryqi6iaw56l2ffkkz7kg"))
 
-;; Alias for default Zulu (currently 21)
 (define-public zulu-bin
   zulu21-bin)
-
-zulu8-bin
