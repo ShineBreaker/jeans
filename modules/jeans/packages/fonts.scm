@@ -83,6 +83,3 @@
      "MiSans is a font family for Xiaomi HyperOS, introduced in 2021 with MIUI 13.
 A precursor, Mi Lanting, was launched with MIUI 8 in 2016. MiSans Global debuted in 2023.")
     (license (license:nonfree "file://LICENSE"))))
-
-
-font-misans
