@@ -71,7 +71,31 @@
       #:modules '((guix build utils))
       #:builder
       #~(begin
-          (use-modules (guix build utils))
+          (use-modules (guix build utils)
+                       (srfi srfi-1))
+
+          ;; 获取输入包路径
+          (define alsa-lib-input #$(this-package-input "alsa-lib"))
+          (define at-spi2-core-input #$(this-package-input "at-spi2-core"))
+          (define cairo-input #$(this-package-input "cairo"))
+          (define cups-input #$(this-package-input "cups"))
+          (define dbus-input #$(this-package-input "dbus"))
+          (define expat-input #$(this-package-input "expat"))
+          (define glib-input #$(this-package-input "glib"))
+          (define gtk+-input #$(this-package-input "gtk+"))
+          (define mesa-input #$(this-package-input "mesa"))
+          (define libdrm-input #$(this-package-input "libdrm"))
+          (define libxkbcommon-input #$(this-package-input "libxkbcommon"))
+          (define nspr-input #$(this-package-input "nspr"))
+          (define nss-input #$(this-package-input "nss"))
+          (define pango-input #$(this-package-input "pango"))
+          (define libx11-input #$(this-package-input "libx11"))
+          (define libxcomposite-input #$(this-package-input "libxcomposite"))
+          (define libxdamage-input #$(this-package-input "libxdamage"))
+          (define libxext-input #$(this-package-input "libxext"))
+          (define libxfixes-input #$(this-package-input "libxfixes"))
+          (define libxrandr-input #$(this-package-input "libxrandr"))
+          (define libxcb-input #$(this-package-input "libxcb"))
 
           ;; 解压deb包 (deb实际上是ar归档)
           (invoke (search-input-file %build-inputs "bin/ar") "-x"
@@ -114,36 +138,32 @@
 
           ;; 使用patchelf修复二进制文件的rpath
           (let* ((binary (string-append #$output "/opt/sparkle/sparkle"))
-                 (rpath (string-join (map (lambda (input)
-                                            (string-append (assoc-ref
-                                                            %build-inputs
-                                                            input) "/lib"))
-                                          (list "alsa-lib"
-                                                "at-spi2-core"
-                                                "cairo"
-                                                "cups"
-                                                "dbus"
-                                                "expat"
-                                                "glib"
-                                                "gtk+"
-                                                "mesa"
-                                                "libdrm"
-                                                "libxkbcommon"
-                                                "nspr"
-                                                "nss"
-                                                "pango"
-                                                "libx11"
-                                                "libxcomposite"
-                                                "libxdamage"
-                                                "libxext"
-                                                "libxfixes"
-                                                "libxrandr"
-                                                "libxcb")) ":")))
+                 (lib-dirs (list (string-append alsa-lib-input "/lib")
+                                 (string-append at-spi2-core-input "/lib")
+                                 (string-append cairo-input "/lib")
+                                 (string-append cups-input "/lib")
+                                 (string-append dbus-input "/lib")
+                                 (string-append expat-input "/lib")
+                                 (string-append glib-input "/lib")
+                                 (string-append gtk+-input "/lib")
+                                 (string-append mesa-input "/lib")
+                                 (string-append libdrm-input "/lib")
+                                 (string-append libxkbcommon-input "/lib")
+                                 (string-append nspr-input "/lib")
+                                 (string-append nss-input "/lib")
+                                 (string-append pango-input "/lib")
+                                 (string-append libx11-input "/lib")
+                                 (string-append libxcomposite-input "/lib")
+                                 (string-append libxdamage-input "/lib")
+                                 (string-append libxext-input "/lib")
+                                 (string-append libxfixes-input "/lib")
+                                 (string-append libxrandr-input "/lib")
+                                 (string-append libxcb-input "/lib")
+                                 (string-append #$output "/opt/sparkle")))
+                 (rpath (string-join lib-dirs ":")))
+            ;; 设置rpath（直接覆盖原有的）
             (invoke (search-input-file %build-inputs "bin/patchelf")
-                    "--set-rpath" rpath binary)
-            ;; 添加缺失的库
-            (invoke (search-input-file %build-inputs "bin/patchelf")
-                    "--add-needed" "libGL.so.1" binary)))))
+                    "--set-rpath" rpath binary)))))
     (home-page "https://github.com/xishang0128/sparkle")
     (synopsis "Another Mihomo GUI")
     (description
