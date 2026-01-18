@@ -12,8 +12,7 @@
              (define %public-modules
                '((gnu)
                  (guix utils)
-                 (jeans packages fonts)
-                 (jeans packages java)))
+                 (jeans packages fonts)))
 
              (for-each (let ((i (module-public-interface (current-module))))
                          (lambda (m)
