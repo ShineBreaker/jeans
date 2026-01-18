@@ -1,5 +1,5 @@
 (define-module (jeans packages networking)
-  #:use-module (guix packages)
+   #:use-module (guix packages)
   #:use-module (guix download)
   #:use-module (guix gexp)
   #:use-module (guix build-system copy)
@@ -74,37 +74,38 @@
       #:builder
       #~(begin
           (use-modules (guix build utils))
-          
+
           ;; 解压deb包 (deb实际上是ar归档)
           (invoke (search-input-file %build-inputs "bin/ar") "-x" #$(package-source this-package))
           ;; 使用xz解压data.tar.xz
           (invoke (search-input-file %build-inputs "bin/xz") "-d" "data.tar.xz")
           ;; 解压数据部分
           (invoke (search-input-file %build-inputs "bin/tar") "-xf" "data.tar" "-C" ".")
-          
+
           ;; 创建输出目录
           (mkdir-p (string-append #$output "/bin"))
           (mkdir-p (string-append #$output "/opt"))
           (mkdir-p (string-append #$output "/share"))
-          
+
           ;; 复制opt目录
           (copy-recursively "opt" (string-append #$output "/opt"))
-          
+
           ;; 复制share目录
           (copy-recursively "usr/share" (string-append #$output "/share"))
-          
-          ;; 设置可执行权限
-          (chmod (string-append #$output "/opt/sparkle/resources/files/sysproxy")
-                 #o755)
-          
+
+          ;; 设置可执行权限（如果文件存在）
+          (let ((sysproxy (string-append #$output "/opt/sparkle/resources/files/sparkle-service")))
+            (when (file-exists? sparkle-service)
+              (chmod sysproxy #o755)))
+
           ;; 修改desktop文件
           (substitute* (string-append #$output "/share/applications/sparkle.desktop")
             (("/opt/sparkle/sparkle") "sparkle"))
-          
+
           ;; 创建符号链接
           (symlink (string-append #$output "/opt/sparkle/sparkle")
                    (string-append #$output "/bin/sparkle"))
-          
+
           ;; 使用patchelf修复二进制文件的rpath
           (let* ((binary (string-append #$output "/opt/sparkle/sparkle"))
                  (rpath (string-join
