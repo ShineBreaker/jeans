@@ -35,12 +35,7 @@ HASH: The sha256 hash of the tarball"
                            "-ca-jdk" jdk-version "-linux_x64.tar.gz"))
        (sha256
         (base32 hash))
-       (modules '((guix build utils)))
-       (snippet '(begin
-                   (for-each delete-file
-                             (find-files "." "\\.dll$"))
-                   (for-each delete-file
-                             (find-files "." "\\.exe$")) #t))))
+       (modules '((guix build utils)))))
     (supported-systems '("x86_64-linux"))
     (build-system copy-build-system)
     (arguments
@@ -80,6 +75,5 @@ GPLv2 with Classpath Exception.")
   (make-zulu-package "zulu8-bin" "8.90.0.19" "8.0.472"
                      "1pg2f1xr2jrdi7wbi6kwqhkhd64lngg0ryqi6iaw56l2ffkkz7kg"))
 
-;; Alias for default Zulu (currently 21)
 (define-public zulu-bin
   zulu21-bin)
