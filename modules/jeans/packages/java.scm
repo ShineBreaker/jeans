@@ -71,6 +71,10 @@ GPLv2 with Classpath Exception.")
   (make-zulu-package "zulu21-bin" "21.46.19" "21.0.9"
                      "1f4kbkvxa199qf3g2p96z7qbs03a0sakais9qbqhzb172jri1s37"))
 
+(define-public zulu17-bin
+  (make-zulu-package "zulu17-bin" "17.62.17" "17.0.17"
+                     "1hbjak1dnmsng81w039a7ks0z0zn6r4sh0h4qvskbp4m7vbvxjqx"))
+
 (define-public zulu8-bin
   (make-zulu-package "zulu8-bin" "8.90.0.19" "8.0.472"
                      "1pg2f1xr2jrdi7wbi6kwqhkhd64lngg0ryqi6iaw56l2ffkkz7kg"))
