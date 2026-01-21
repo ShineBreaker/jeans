@@ -12,6 +12,7 @@
              (define %public-modules
                '((gnu)
                  (guix utils)
+                 (jeans packages desktop)
                  (jeans packages fonts)
                  (jeans packages java)))
 
