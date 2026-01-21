@@ -41,7 +41,8 @@
            python-platformdirs
            python-pillow
            python-imageio
-           python-imageio-ffmpeg))
+           python-imageio-ffmpeg
+           gtk+))
     (native-inputs
      (list python-setuptools-scm))
     (home-page "https://github.com/anufrievroman/waypaper")
@@ -54,3 +55,5 @@ support for various wallpaper backends including swaybg, swww, hyprpaper, and fe
 Note: python-screeninfo is not currently available in Guix, but is an optional
 dependency for multi-monitor support.")
     (license license:gpl3)))
+
+waypaper
