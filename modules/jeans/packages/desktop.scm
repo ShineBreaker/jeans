@@ -19,9 +19,9 @@
   #:use-module (gnu packages xorg)
   #:use-module (gnu packages pkg-config))
 
-(define-public waypaper-fix
+(define-public waypaper
   (package
-    (name "waypaper-fix")
+    (name "waypaper")
     (version "2.7")
     (source (origin
               (method url-fetch)
