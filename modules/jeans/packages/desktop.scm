@@ -11,15 +11,17 @@
   #:use-module (gnu packages glib)
   #:use-module (gnu packages gtk)
   #:use-module (gnu packages image)
+  #:use-module (gnu packages networking)
   #:use-module (gnu packages video)
   #:use-module (gnu packages python)
   #:use-module (gnu packages python-build)
   #:use-module (gnu packages python-xyz)
-  #:use-module (gnu packages xorg))
+  #:use-module (gnu packages xorg)
+  #:use-module (gnu packages pkg-config))
 
-(define-public waypaper
+(define-public waypaper-fix
   (package
-    (name "waypaper")
+    (name "waypaper-fix")
     (version "2.7")
     (source (origin
               (method url-fetch)
@@ -35,25 +37,28 @@
       #:tests? #f
       #:phases
       #~(modify-phases %standard-phases
-          (delete 'sanity-check))))
+          (delete 'sanity-check)
+          (add-after 'install 'wrap-gi-typelib
+            (lambda* (#:key inputs outputs #:allow-other-keys)
+              (let ((out (assoc-ref outputs "out"))
+                    (gi-path (getenv "GI_TYPELIB_PATH")))
+                (wrap-program (string-append out "/bin/waypaper")
+                  `("GI_TYPELIB_PATH" ":" prefix (,gi-path)))))))))
+    (native-inputs
+     (list python-setuptools-scm
+           pkg-config
+           gobject-introspection))
     (propagated-inputs
-     (list python-pygobject
+     (list gtk+
+           python-pygobject
            python-platformdirs
            python-pillow
            python-imageio
            python-imageio-ffmpeg
-           gtk+))
-    (native-inputs
-     (list python-setuptools-scm))
+           socat))
     (home-page "https://github.com/anufrievroman/waypaper")
     (synopsis "GUI wallpaper manager for Wayland and Xorg Linux systems")
     (description
      "Waypaper is a simple GUI wallpaper manager for Linux, supporting both Wayland
-and Xorg.  It provides a graphical interface to manage and set wallpapers with
-support for various wallpaper backends including swaybg, swww, hyprpaper, and feh.
-
-Note: python-screeninfo is not currently available in Guix, but is an optional
-dependency for multi-monitor support.")
+and Xorg.")
     (license license:gpl3)))
-
-waypaper
