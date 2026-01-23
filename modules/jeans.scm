@@ -14,7 +14,8 @@
                  (guix utils)
                  (jeans packages desktop)
                  (jeans packages fonts)
-                 (jeans packages java)))
+                 (jeans packages java)
+                 (jeans packages theme)))
 
              (for-each (let ((i (module-public-interface (current-module))))
                          (lambda (m)
