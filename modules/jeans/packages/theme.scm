@@ -26,9 +26,9 @@
   #:use-module (gnu packages qt)
   #:use-module (gnu packages web))
 
-(define-public Vimix-gtk-themes
+(define-public vimix-gtk-themes
   (package
-    (name "Vimix-gtk-themes")
+    (name "vimix-gtk-themes")
     (version "2025-06-20")
     (source
      (origin
@@ -78,14 +78,16 @@
      "Vimix is a flat Material Design theme for GTK 3,
       GTK 2 and Gnome-Shell which supports GTK 3 and GTK 2 based desktop
       environments like Gnome, Unity, Budgie, Pantheon, XFCE, Mate, etc.")
-    (license (list license:gpl3 ;According to COPYING.
-                   license:lgpl2.1 ;Some style sheets.
+    (license (list ;According to COPYING.
+                   license:gpl3
+                   ;Some style sheets.
+                   license:lgpl2.1
+                   ; Some icons
                    license:cc-by-sa4.0))))
- ; Some icons
 
-(define-public Vimix-kvantum-themes
+(define-public vimix-kvantum-themes
   (package
-    (name "Vimix-kvantum-themes")
+    (name "vimix-kvantum-themes")
     (version "2021-09-05")
     (source
      (origin
@@ -98,11 +100,42 @@
         (base32 "03gs4hxnwkvyxg6wmhlilvc3srdq7vhvsyhrmz5d36ad3n4ar8pm"))))
     (build-system copy-build-system)
     (arguments
-     `(#:install-plan '(("Kvantum/" "share/Kvantum/"))))
+     `(#:install-plan '(("Kvantum" "share/Kvantum"))
+       #:phases (modify-phases %standard-phases
+                  (delete 'build))))
     (inputs (list kvantum))
     (home-page "https://github.com/vinceliuice/Vimix-gtk-themes")
     (synopsis "Build from Vimix kde.")
     (description
      "Vimix kde is a flat Design theme for KDE Plasma desktop.
-      But KDE is isn't usable in Guix so i just packed kvantum themes.")
+      This package provides only the Kvantum themes, as full
+      KDE support is not available in Guix.")
+    (license (list license:gpl3 license:lgpl2.1 license:cc-by-sa4.0))))
+
+(define-public orchis-kvantum-themes
+  (package
+    (name "orchis-kvantum-themes")
+    (version "2025-10-18")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/vinceliuice/Orchis-kde")
+             (commit "b2a96919eee40264e79db402b915f926436100ad")))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32
+         "0jn0n8187nn1d1j2w3qj32nd3zvr2v2d2qzv8lvxhdfpp5b41vcq")))) ; ← 这里需要替换成正确的 hash
+    (build-system copy-build-system)
+    (arguments
+     `(#:install-plan '(("Kvantum" "share/Kvantum"))
+       #:phases (modify-phases %standard-phases
+                  (delete 'build))))
+    (inputs (list kvantum))
+    (home-page "https://github.com/vinceliuice/Orchis-kde")
+    (synopsis "Orchis Kvantum themes for KDE Plasma")
+    (description
+     "Orchis is a Material Design theme for KDE Plasma desktop.
+      This package provides only the Kvantum themes, as full
+      KDE support is not available in Guix.")
     (license (list license:gpl3 license:lgpl2.1 license:cc-by-sa4.0))))
