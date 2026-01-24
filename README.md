@@ -13,7 +13,7 @@
 
 ```
 
-# jeans -- Just Enough AI-geNerated Slop.
+# jeans -- Just Enough AI-geNerated Slops.
 
 ### A Self-Using Guix Channel target to some cutting-edge softwares and some close-source software. 
 
