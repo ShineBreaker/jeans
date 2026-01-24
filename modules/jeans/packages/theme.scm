@@ -106,5 +106,3 @@
      "Vimix kde is a flat Design theme for KDE Plasma desktop.
       But KDE is isn't usable in Guix so i just packed kvantum themes.")
     (license (list license:gpl3 license:lgpl2.1 license:cc-by-sa4.0))))
-
-Vimix-kvantum-themes
