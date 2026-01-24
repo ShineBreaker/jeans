@@ -15,6 +15,7 @@
                  (jeans packages desktop)
                  (jeans packages fonts)
                  (jeans packages java)
+                 (jeans packages linux)
                  (jeans packages theme)))
 
              (for-each (let ((i (module-public-interface (current-module))))
