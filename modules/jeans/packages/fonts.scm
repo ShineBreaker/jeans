@@ -1,3 +1,7 @@
+;;; SPDX-FileCopyrightText: 2026 BrokenShine <xchai404@gmail.com>
+;;;
+;;; SPDX-License-Identifier: GPL-3.0-only
+
 (define-module (jeans packages fonts)
   #:use-module (ice-9 regex)
   #:use-module (guix utils)

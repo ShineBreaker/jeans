@@ -1,5 +1,6 @@
-;;; GNU Guix --- Functional package management for GNU
-;;; Copyright © 2025 brokenshine <xchai404@gmail.com>
+;;; SPDX-FileCopyrightText: 2026 BrokenShine <xchai404@gmail.com>
+;;;
+;;; SPDX-License-Identifier: GPL-3.0-only
 
 (define-module (jeans packages java)
   #:use-module (guix packages)

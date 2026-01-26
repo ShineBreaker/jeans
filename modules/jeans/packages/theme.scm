@@ -1,3 +1,7 @@
+;;; SPDX-FileCopyrightText: 2026 BrokenShine <xchai404@gmail.com>
+;;;
+;;; SPDX-License-Identifier: GPL-3.0-only
+
 (define-module (jeans packages theme)
   #:use-module (guix build-system trivial)
   #:use-module (guix build-system gnu)
@@ -125,7 +129,7 @@
        (file-name (git-file-name name version))
        (sha256
         (base32
-         "0jn0n8187nn1d1j2w3qj32nd3zvr2v2d2qzv8lvxhdfpp5b41vcq")))) ; ← 这里需要替换成正确的 hash
+         "0jn0n8187nn1d1j2w3qj32nd3zvr2v2d2qzv8lvxhdfpp5b41vcq"))))
     (build-system copy-build-system)
     (arguments
      `(#:install-plan '(("Kvantum" "share/Kvantum"))

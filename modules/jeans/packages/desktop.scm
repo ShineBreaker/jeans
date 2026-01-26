@@ -1,3 +1,7 @@
+;;; SPDX-FileCopyrightText: 2026 BrokenShine <xchai404@gmail.com>
+;;;
+;;; SPDX-License-Identifier: GPL-3.0-only
+
 (define-module (jeans packages desktop)
   #:use-module ((guix licenses) #:prefix license:)
   #:use-module (guix packages)
