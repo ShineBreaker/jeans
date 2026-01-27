@@ -1,3 +1,4 @@
+;;; SPDX-FileCopyrightText: 2024, 2025 Murilo <murilo@disroot.org>
 ;;; SPDX-FileCopyrightText: 2026 BrokenShine <xchai404@gmail.com>
 ;;;
 ;;; SPDX-License-Identifier: GPL-3.0-only
