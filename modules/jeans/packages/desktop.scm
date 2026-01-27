@@ -256,27 +256,34 @@ and Xorg.")
                         #:startup-w-m-class "zen-alpha"))))
                 (add-after 'install-desktop 'install-icons
                   (lambda _
-                    (let* ((icon-source (string-append #$output "/lib/zen/browser/chrome/icons/default"))
-                           (icon-target (string-append #$output "/share/icons/hicolor")))
-                      ;; Check if icon directory exists
+                    (let* ((out #$output)
+                           (icon-source (string-append out
+                                                       "/lib/zen/browser/chrome/icons/default"))
+                           (icon-target (string-append out
+                                                       "/share/icons/hicolor"))
+                           (icons '(("16"  . "16x16")
+                                    ("32"  . "32x32")
+                                    ("48"  . "48x48")
+                                    ("64"  . "64x64")
+                                    ("128" . "128x128"))))
                       (when (file-exists? icon-source)
-                        ;; Create target directories for different icon sizes
                         (for-each
-                          (lambda (size)
-                            (let* ((target-dir (string-append icon-target "/" size "/apps"))
-                                   (icon-file (string-append icon-source "/default" size ".png")))
+                          (lambda (entry)
+                            (let* ((file-size (car entry))
+                                   (dir-size  (cdr entry))
+                                   (icon-file (string-append icon-source
+                                                             "/default"
+                                                             file-size
+                                                             ".png"))
+                                   (target-dir (string-append icon-target
+                                                              "/"
+                                                              dir-size
+                                                              "/apps")))
                               (when (file-exists? icon-file)
                                 (mkdir-p target-dir)
-                                (install-file icon-file target-dir
-                                              #:rename "zen.png"))))
-                          '("48x48" "64x64" "128x128" "256x256"))
-                        ;; Also try to copy the default icon if it exists
-                        (let* ((default-icon (string-append icon-source "/default.png"))
-                               (fallback-dir (string-append icon-target "/48x48/apps")))
-                          (when (file-exists? default-icon)
-                            (mkdir-p fallback-dir)
-                            (install-file default-icon fallback-dir
-                                          #:rename "zen.png"))))))))))
+                                (copy-file icon-file
+                                           (string-append target-dir "/zen.png")))))
+                          icons))))))))
     (native-inputs (list patchelf))
     (inputs (list alsa-lib
                   eudev
@@ -299,5 +306,3 @@ tracking you!")
 We care about your experience, not your data.")
     (properties `((upstream-name . "zen")))
     (license (list license:mpl2.0))))
-
-zen-browser-bin
