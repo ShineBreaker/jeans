@@ -13,7 +13,6 @@
                  (jeans packages desktop)
                  (jeans packages fonts)
                  (jeans packages games)
-                 (jeans packages java)
                  (jeans packages linux)
                  (jeans packages theme)))
 
