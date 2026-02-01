@@ -102,7 +102,7 @@ and Xorg.")
 (define-public zen-browser-bin
   (package
     (name "zen-browser-bin")
-    (version "1.18.1b")
+    (version "1.18.3b")
     (source
      (origin
        (method url-fetch)
