@@ -92,7 +92,7 @@
 (define-public osu-lazer-tachyon-bin
   (package
     (name "osu-lazer-tachyon-bin")
-    (version "2026.124.0-tachyon")
+    (version "2026.130.0-tachyon")
     (source
       (origin
         (method url-fetch)
