@@ -110,7 +110,7 @@ and Xorg.")
              "https://github.com/zen-browser/desktop/releases/download/"
              version "/zen.linux-x86_64.tar.xz"))
        (sha256
-        (base32 "0g0xqgqs1mjfzq659rfziwm7kdhf55zby1p5bm8s3mbmn9g6djih"))))
+        (base32 "0mk4973w4axyjln6frv0k76jjanjwaah0qrh0wsp0qqrnjbhi42j"))))
     (build-system copy-build-system)
     (arguments
      (list

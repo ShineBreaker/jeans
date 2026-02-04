@@ -101,7 +101,7 @@
                          version
                          "/osu.AppImage"))
         (sha256
-          (base32 "00sshvmn8bx9hkw4y9h68kzsbr0g8f75143lhigil9gv1mq59ddz"))))
+          (base32 "1q5jh2j6zppp76vfbynir1fvppfiqsa6rrgs3yrxhgv31sxifd9b"))))
     (build-system copy-build-system)
     (arguments
       (list #:install-plan
@@ -207,3 +207,5 @@ Currently known by and released under the release codename lazer. As in
 sharper than cutting-edge.")
     (properties '((upstream-name  . "osu")))
     (license license:expat)))
+
+osu-lazer-tachyon-bin
