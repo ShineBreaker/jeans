@@ -30,6 +30,60 @@
   #:use-module (gnu packages qt)
   #:use-module (gnu packages web))
 
+;; (base32 "0000000000000000000000000000000000000000000000000000")
+; for test.
+
+(define-public colloid-gtk-theme
+  (package
+    (name "colloid-gtk-theme")
+    (version "2025-07-31")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/vinceliuice/Colloid-gtk-theme")
+             (commit version)))
+       (file-name (git-file-name name version))
+       (sha256
+
+        (base32 "1hv8wrylnwmq1mgz5bv012np4rsr4537smihv2plx4j0w1wxp5fj"))
+       (modules '((guix build utils)))
+       (snippet
+        '(for-each (lambda (file)
+                     (let ((css (string-append (substring file 0 (- (string-length file) 5)) ".css")))
+                       (when (file-exists? css)
+                         (delete-file css))))
+                   (find-files "." "\\.scss$")))))
+    (build-system gnu-build-system)
+    (arguments
+     `(#:configure-flags (list "--dest"
+                               (string-append (assoc-ref %outputs "out")
+                                              "/share/themes") "--theme" "all")
+       #:tests? #f ;no tests
+       #:phases (modify-phases %standard-phases
+                  (delete 'bootstrap)
+                  (delete 'configure)
+                  (delete 'build)
+                  (replace 'install
+                    (lambda* (#:key configure-flags #:allow-other-keys)
+                      (mkdir-p (cadr (or (member "--dest" configure-flags)
+                                         (member "-d" configure-flags))))
+                      (apply invoke "./install.sh" configure-flags))))))
+    (inputs (list gtk-engines))
+    (native-inputs (list ;("coreutils" ,coreutils)
+                         gtk+ sassc))
+    (home-page "https://github.com/vinceliuice/Colloid-gtk-theme")
+    (synopsis
+     "Colloid gtk theme for linux.")
+    (description
+     "Colloid gtk theme for linux.")
+    (license (list ;According to COPYING.
+                   license:gpl3
+                   ;Some style sheets.
+                   license:lgpl2.1
+                   ; Some icons
+                   license:cc-by-sa4.0))))
+
 (define-public vimix-gtk-themes
   (package
     (name "vimix-gtk-themes")
@@ -116,9 +170,9 @@
       KDE support is not available in Guix.")
     (license (list license:gpl3 license:lgpl2.1 license:cc-by-sa4.0))))
 
-(define-public orchis-kvantum-themes
+(define-public orchis-kde-themes
   (package
-    (name "orchis-kvantum-themes")
+    (name "orchis-kde-themes")
     (version "2025-10-18")
     (source
      (origin
@@ -132,7 +186,46 @@
          "0jn0n8187nn1d1j2w3qj32nd3zvr2v2d2qzv8lvxhdfpp5b41vcq"))))
     (build-system copy-build-system)
     (arguments
-     `(#:install-plan '(("Kvantum" "share/Kvantum"))
+     `(#:install-plan '(
+       ("aurorae" "share/aurorae/themes")
+       ("color-schemes" "share/color-schemes")
+       ("Kvantum" "share/Kvantum")
+       ("plasma/desktoptheme" "share/plasma/desktoptheme")
+       ("plasma/look-and-feel" "share/plasma/look-and-feel")
+       ("wallpapers" "share/wallpapers"))
+       #:phases (modify-phases %standard-phases
+                  (delete 'build))))
+    (inputs (list kvantum))
+    (home-page "https://github.com/vinceliuice/Orchis-kde")
+    (synopsis "Orchis Kvantum themes for KDE Plasma")
+    (description
+     "Orchis is a Material Design theme for KDE Plasma desktop.
+      This package provides only the Kvantum themes, as full
+      KDE support is not available in Guix.")
+    (license (list license:gpl3 license:lgpl2.1 license:cc-by-sa4.0))))
+
+(define-public colloid-kde-themes
+  (package
+    (name "colloid-kde-themes")
+    (version "2025-07-06")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/vinceliuice/Colloid-kde")
+             (commit "b768904d10ba9fcb95abfb59538eab100b1fed1e")))
+       (file-name (git-file-name name version))
+       (sha256
+         (base32 "0c4nhc9nh8mb17iyi5vzqd4r3365sqggzxwyhyiqvlqgfcgblrh9"))))
+    (build-system copy-build-system)
+    (arguments
+     `(#:install-plan '(
+       ("aurorae" "share/aurorae/themes")
+       ("color-schemes" "share/color-schemes")
+       ("Kvantum" "share/Kvantum")
+       ("plasma/desktoptheme" "share/plasma/desktoptheme")
+       ("plasma/look-and-feel" "share/plasma/look-and-feel")
+       ("wallpapers" "share/wallpapers"))
        #:phases (modify-phases %standard-phases
                   (delete 'build))))
     (inputs (list kvantum))
