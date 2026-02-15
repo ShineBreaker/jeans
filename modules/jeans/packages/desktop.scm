@@ -102,7 +102,7 @@ and Xorg.")
 (define-public zen-browser-bin
   (package
     (name "zen-browser-bin")
-    (version "1.18.3b")
+    (version "1.18.7b")
     (source
      (origin
        (method url-fetch)
@@ -110,7 +110,7 @@ and Xorg.")
              "https://github.com/zen-browser/desktop/releases/download/"
              version "/zen.linux-x86_64.tar.xz"))
        (sha256
-        (base32 "0mk4973w4axyjln6frv0k76jjanjwaah0qrh0wsp0qqrnjbhi42j"))))
+        (base32 "094q16jldp2g35q3j67y5ikhdrfi8l95x62vvf04ajb51r85g0z5"))))
     (build-system copy-build-system)
     (arguments
      (list
@@ -313,3 +313,5 @@ tracking you!")
 We care about your experience, not your data.")
     (properties `((upstream-name . "zen")))
     (license (list license:mpl2.0))))
+
+    zen-browser-bin
