@@ -90,7 +90,7 @@ A precursor, Mi Lanting, was launched with MIUI 8 in 2016. MiSans Global debuted
 
 (define-public font-nerd-symbols
   (package
-    (name "NerdFontsSymbolsOnly")
+    (name "font-nerd-symbols")
     (version "3.4.0")
     (source
       (origin
