@@ -313,5 +313,3 @@ tracking you!")
 We care about your experience, not your data.")
     (properties `((upstream-name . "zen")))
     (license (list license:mpl2.0))))
-
-    zen-browser-bin

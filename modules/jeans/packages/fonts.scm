@@ -87,3 +87,23 @@
      "MiSans is a font family for Xiaomi HyperOS, introduced in 2021 with MIUI 13.
 A precursor, Mi Lanting, was launched with MIUI 8 in 2016. MiSans Global debuted in 2023.")
     (license (license:nonfree "file://LICENSE"))))
+
+(define-public font-nerd-symbols
+  (package
+    (name "NerdFontsSymbolsOnly")
+    (version "3.4.0")
+    (source
+      (origin
+        (method url-fetch/zipbomb)
+        (uri (string-append "https://github.com/ryanoasis/nerd-fonts"
+                            "/releases/download/" "v" version "/NerdFontsSymbolsOnly.zip"))
+        (sha256
+          (base32 "0iscas5bvb8bgk5pcls95nfwjl7yi23q05mili43dzl0p427jqcf"))))
+    (build-system font-build-system)
+    (home-page "https://github.com/ryanoasis/nerd-fonts")
+    (synopsis "Iconic font aggregator")
+    (description "Nerd Fonts is a project that patches developer targeted fonts
+with a high number of glyphs (icons). Specifically to add a high number of extra
+glyphs from popular 'iconic fonts' such as Font Awesome, Devicons, Octicons,
+and others.")
+    (license license:silofl1.1)))

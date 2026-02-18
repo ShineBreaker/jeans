@@ -207,5 +207,3 @@ Currently known by and released under the release codename lazer. As in
 sharper than cutting-edge.")
     (properties '((upstream-name  . "osu")))
     (license license:expat)))
-
-osu-lazer-tachyon-bin
