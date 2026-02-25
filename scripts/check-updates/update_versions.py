@@ -323,8 +323,7 @@ def main():
     if updated_packages > 0:
         print()
         print("⚠️  注意: 已将base32设置为占位符值")
-        print("   请运行 'guix hash -x <url>' 或类似命令获取正确的hash")
-        print("   并手动替换base32值")
+        print("   请手动替换base32值")
 
     return 0
 
