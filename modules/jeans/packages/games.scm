@@ -48,7 +48,7 @@
   #:use-module (guix packages)
   #:use-module (guix utils))
 
-(define opentabletdriver-udev-rules
+(define-public opentabletdriver-udev-rules
   (package
     (name "opentabletdriver-udev-rules")
     (version "0.6.6.2")
