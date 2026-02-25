@@ -13,8 +13,6 @@
                  (jeans packages desktop)
                  (jeans packages fonts)
                  (jeans packages games)
-                 (jeans packages linux)
-                 (jeans packages terminals)
                  (jeans packages theme)))
 
              (for-each (let ((i (module-public-interface (current-module))))
