@@ -92,7 +92,7 @@
 (define-public osu-lazer-tachyon-bin
   (package
     (name "osu-lazer-tachyon-bin")
-    (version "2026.209.0-tachyon")
+    (version "2026.226.0-tachyon")
     (source
       (origin
         (method url-fetch)
@@ -101,7 +101,7 @@
                          version
                          "/osu.AppImage"))
         (sha256
-          (base32 "0i6ir1f7xv600qlbh3s4117ln4346hwdzzzyc0aaj3b0qqrsdksa"))))
+          (base32 "0hmczhd4680wpbakyhzdp771kmhwv2w5dhmzgy36gb4s3kgblhag"))))
     (build-system copy-build-system)
     (arguments
       (list #:install-plan
