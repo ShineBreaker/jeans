@@ -13,7 +13,8 @@
                  (jeans packages desktop)
                  (jeans packages fonts)
                  (jeans packages games)
-                 (jeans packages theme)))
+                 (jeans packages theme)
+                 (jeans packages winapps)))
 
              (for-each (let ((i (module-public-interface (current-module))))
                          (lambda (m)
