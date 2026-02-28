@@ -63,7 +63,7 @@
                 (call-with-output-file (string-append bin "/xfreerdp3")
                   (lambda (port)
                     (format port "#!~a/bin/bash~%exec ~a/bin/xfreerdp \"$@\"~%"
-                            #$bash #$freerdp)))
+                            #$bash #$freerdp-3)))
                 (chmod (string-append bin "/xfreerdp3") #o755))))
           (add-after 'install 'wrap-programs
             (lambda _
@@ -76,14 +76,14 @@
                      `("PATH" ":" prefix
                        ,(list bin ; 将刚才创建的 xfreerdp3 加入 PATH
                               (string-append #$bash "/bin")
-                              (string-append #$freerdp "/bin")
+                              (string-append #$freerdp-3 "/bin")
                               (string-append #$libnotify "/bin")
                               (string-append #$dialog "/bin")
                               (string-append #$netcat-openbsd "/bin")
                               (string-append #$iproute "/bin")))))
                  '("winapps" "winapps-setup"))))))))
     (inputs
-     (list bash freerdp dialog libnotify netcat-openbsd iproute))
+     (list bash freerdp-3 dialog libnotify netcat-openbsd iproute))
     (home-page "https://github.com/winapps-org/winapps")
     (synopsis "Run Windows applications on GNU/Linux")
     (description "Run Windows applications (including Microsoft 365 and Adobe Creative Cloud) on GNU/Linux with KDE, GNOME or XFCE, integrated seamlessly as if they were native to the OS. Wayland is currently unsupported.")
