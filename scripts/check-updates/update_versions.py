@@ -26,24 +26,16 @@ CONFIG_FILE = Path(__file__).parent / "config.json"
 def load_config(config_path: Path) -> Dict:
     """加载配置文件"""
     try:
-        with open(config_path, 'r', encoding='utf-8') as f:
+        with open(config_path, "r", encoding="utf-8") as f:
             return json.load(f)
     except FileNotFoundError:
         print(f"⚠️  配置文件不存在: {config_path}")
         print("   使用默认配置")
-        return {
-            "check_pre_release": [],
-            "skip_packages": [],
-            "notes": {}
-        }
+        return {"check_pre_release": [], "skip_packages": [], "notes": {}}
     except json.JSONDecodeError as e:
         print(f"⚠️  配置文件格式错误: {e}")
         print("   使用默认配置")
-        return {
-            "check_pre_release": [],
-            "skip_packages": [],
-            "notes": {}
-        }
+        return {"check_pre_release": [], "skip_packages": [], "notes": {}}
 
 
 def find_scm_files(directory: Path) -> List[Path]:
@@ -67,7 +59,9 @@ def extract_github_repo(url: str) -> Optional[str]:
     return None
 
 
-def get_latest_github_release(repo: str, include_pre_release: bool = False) -> Optional[str]:
+def get_latest_github_release(
+    repo: str, include_pre_release: bool = False
+) -> Optional[str]:
     """获取GitHub仓库的最新release版本
 
     Args:
@@ -123,7 +117,7 @@ def parse_package_definitions(content: str, file_path: Path) -> List[Dict]:
     # 这个正则表达式需要匹配从 (define-public name 到下一个 define-public 或文件结尾
 
     # 首先找到所有 define-public 的位置
-    pattern = r'\(define-public\s+(\S+)'
+    pattern = r"\(define-public\s+(\S+)"
     matches = list(re.finditer(pattern, content))
 
     for i, match in enumerate(matches):
@@ -159,19 +153,21 @@ def parse_package_definitions(content: str, file_path: Path) -> List[Dict]:
         base32 = base32_match.group(1) if base32_match else None
 
         # 提取下载方法
-        method_match = re.search(r'\(method\s+(\S+)', package_content)
+        method_match = re.search(r"\(method\s+(\S+)", package_content)
         method = method_match.group(1) if method_match else None
 
-        packages.append({
-            "name": package_name,
-            "version": version,
-            "url": url,
-            "base32": base32,
-            "method": method,
-            "content": package_content,
-            "start_pos": start_pos,
-            "end_pos": end_pos
-        })
+        packages.append(
+            {
+                "name": package_name,
+                "version": version,
+                "url": url,
+                "base32": base32,
+                "method": method,
+                "content": package_content,
+                "start_pos": start_pos,
+                "end_pos": end_pos,
+            }
+        )
 
     return packages
 
@@ -179,8 +175,8 @@ def parse_package_definitions(content: str, file_path: Path) -> List[Dict]:
 def compare_versions(current_version: str, new_version: str) -> bool:
     """比较两个版本，返回是否需要更新"""
     # 移除版本号前面的'v'前缀
-    current = current_version.lstrip('v')
-    new = new_version.lstrip('v')
+    current = current_version.lstrip("v")
+    new = new_version.lstrip("v")
 
     # 简单的字符串比较（对于语义化版本，可以改进）
     return current != new
@@ -189,7 +185,7 @@ def compare_versions(current_version: str, new_version: str) -> bool:
 def update_package_in_file(file_path: Path, package: Dict, new_version: str) -> bool:
     """更新文件中的包版本和base32"""
     try:
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(file_path, "r", encoding="utf-8") as f:
             content = f.read()
 
         # 更新version
@@ -203,7 +199,7 @@ def update_package_in_file(file_path: Path, package: Dict, new_version: str) -> 
             new_base32_str = f'(base32 "{NEW_BASE32}")'
             content = re.sub(old_base32_pattern, new_base32_str, content)
 
-        with open(file_path, 'w', encoding='utf-8') as f:
+        with open(file_path, "w", encoding="utf-8") as f:
             f.write(content)
 
         return True
@@ -249,7 +245,7 @@ def main():
         print(f"📄 处理文件: {scm_file.relative_to(PACKAGES_DIR.parent)}")
 
         try:
-            with open(scm_file, 'r', encoding='utf-8') as f:
+            with open(scm_file, "r", encoding="utf-8") as f:
                 content = f.read()
         except Exception as e:
             print(f"  ❌ 无法读取文件: {e}")
@@ -260,7 +256,7 @@ def main():
 
         for package in packages:
             total_packages += 1
-            package_name = package['name']
+            package_name = package["name"]
 
             print(f"\n  📦 包名: {package_name}")
             print(f"     当前版本: {package['version']}")
@@ -271,14 +267,14 @@ def main():
                 skipped_packages += 1
                 continue
 
-            if not package['url']:
+            if not package["url"]:
                 print(f"     ⚠️  无法提取URL，跳过")
                 continue
 
             print(f"     URL: {package['url']}")
 
             # 提取GitHub仓库
-            github_repo = extract_github_repo(package['url'])
+            github_repo = extract_github_repo(package["url"])
 
             if github_repo:
                 print(f"     GitHub仓库: {github_repo}")
@@ -289,13 +285,15 @@ def main():
                     print(f"     🔍 包含pre-release检查")
 
                 # 获取最新release
-                latest_release = get_latest_github_release(github_repo, include_pre_release)
+                latest_release = get_latest_github_release(
+                    github_repo, include_pre_release
+                )
 
                 if latest_release:
                     print(f"     最新release: {latest_release}")
 
                     # 比较版本
-                    if compare_versions(package['version'], latest_release):
+                    if compare_versions(package["version"], latest_release):
                         print(f"     ✅ 发现新版本: {latest_release}")
 
                         # 更新文件
