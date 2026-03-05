@@ -3,7 +3,8 @@
     "osu-lazer-tachyon-bin"
   ],
   "skip_packages": [
-    "colloid-kde-themes"
+    "colloid-kde-themes",
+    "winapps"
   ],
   "notes": {
     "check_pre_release": "这个列表中的包会检查包括pre-release在内的所有版本",
