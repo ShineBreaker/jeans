@@ -16,22 +16,21 @@
 (define-public winapps
   (package
     (name "winapps")
-    (version "0-unstable-2026-02-14")
+    (version "0-unstable-2026-03-01")
     (source
      (origin
        (method git-fetch)
        (uri (git-reference
              (url "https://github.com/winapps-org/winapps")
-             ;; 如果你在打包本地文件，可以改用 local-file
-             (commit "860710bb26e5afb040dd83b312a5a7afeee2d0bb"))) ; 请填入具体的 commit ID
+             (commit "07d7fa4ec139d00434cf03444b2c031540b9871d"))) ; 请填入具体的 commit ID
        (file-name (git-file-name name version))
-       (sha256 (base32 "0hvh5n6i5fhdrkbm399nad4hll6z0aalwwmyyc9wpwc21s1pqlsf"))
+       (sha256 (base32 "0nfb0rpcslkffsdbgybs4f13mbdl6bj76v72i159wxdz5wxhhyps"))
        ;; 引入你提供的 setup.patch
        (patches (list (local-file "WinApps.patch")))))
     (build-system gnu-build-system)
     (arguments
      (list
-      #:tests? #f ; 该项目没有自动测试环节
+      #:tests? #f
       #:modules '((guix build gnu-build-system)
                   (guix build utils))
       #:phases
@@ -40,15 +39,12 @@
           (delete 'build)
           (add-after 'unpack 'patch-paths
             (lambda _
-              ;; 替代 Nix 的 substituteAllInPlace [cite: 6]
               (substitute* '("bin/winapps" "setup.sh")
                 (("@out@") #$output))
-              ;; 修复 bash 路径 (类似 patchShebangs [cite: 6])
               (substitute* "install/inquirer.sh"
                 (("#!/bin/bash") (string-append "#!" #$bash "/bin/bash")))))
           (replace 'install
             (lambda _
-              ;; 对应 Nix 的 installPhase [cite: 7]
               (let ((bin (string-append #$output "/bin"))
                     (src (string-append #$output "/src")))
                 (mkdir-p bin)
@@ -59,7 +55,6 @@
                 (chmod (string-append bin "/winapps") #o755)
                 (chmod (string-append bin "/winapps-setup") #o755)
 
-                ;; 替代 Nix 中的 writeShellScriptBin "xfreerdp3"
                 (call-with-output-file (string-append bin "/xfreerdp3")
                   (lambda (port)
                     (format port "#!~a/bin/bash~%exec ~a/bin/xfreerdp \"$@\"~%"
@@ -70,11 +65,10 @@
               (let ((bin (string-append #$output "/bin")))
                 (for-each
                  (lambda (prog)
-                   ;; 对应 Nix 的 wrapProgram [cite: 8]
                    (wrap-program (string-append bin "/" prog)
                      `("LIBVIRT_DEFAULT_URI" = ("qemu:///system"))
                      `("PATH" ":" prefix
-                       ,(list bin ; 将刚才创建的 xfreerdp3 加入 PATH
+                       ,(list bin
                               (string-append #$bash "/bin")
                               (string-append #$freerdp-3 "/bin")
                               (string-append #$libnotify "/bin")
