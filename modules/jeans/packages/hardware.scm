@@ -10,6 +10,7 @@
   #:use-module (gnu packages gcc)
   #:use-module (gnu packages gtk)
   #:use-module (gnu packages linux)
+  #:use-module (gnu packages web)
   #:use-module (gnu packages xorg)
   #:use-module (nongnu packages dotnet)
   #:use-module (guix build utils)
