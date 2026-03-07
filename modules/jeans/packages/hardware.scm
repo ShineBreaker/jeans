@@ -14,7 +14,9 @@
   #:use-module (nongnu packages dotnet)
   #:use-module (guix build utils)
   #:use-module (guix build-system copy)
+  #:use-module (guix build-system gnu)
   #:use-module (guix download)
+  #:use-module (guix git-download)
   #:use-module (guix gexp)
   #:use-module (guix packages))
 
@@ -159,3 +161,6 @@
      "OpenTabletDriver is an open source, cross-platform, user-mode tablet driver.
 It supports many different tablets and provides a GUI for configuration.")
     (license license:lgpl3+)))
+
+;; Keep the historical package name for channel users.
+(define-public opentabletdriver opentabletdriver-bin)
