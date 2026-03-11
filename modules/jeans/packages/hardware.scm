@@ -8,6 +8,8 @@
   #:use-module (gnu packages bash)
   #:use-module (gnu packages elf)
   #:use-module (gnu packages gcc)
+  #:use-module (gnu packages glib)
+  #:use-module (gnu packages gnome)
   #:use-module (gnu packages gtk)
   #:use-module (gnu packages linux)
   #:use-module (gnu packages web)
@@ -83,7 +85,13 @@
       #~'(("usr/local/lib/opentabletdriver" "lib/opentabletdriver")
           ("usr/local/share/pixmaps/otd.png" "share/pixmaps/otd.png")
           ("etc/udev/rules.d/70-opentabletdriver.rules"
-           "lib/udev/rules.d/70-opentabletdriver.rules"))
+           "lib/udev/rules.d/70-opentabletdriver.rules")
+          ("usr/local/lib/modules-load.d/opentabletdriver.conf"
+           "lib/modules-load.d/opentabletdriver.conf")
+          ("usr/local/lib/modprobe.d/99-opentabletdriver.conf"
+           "lib/modprobe.d/99-opentabletdriver.conf")
+          ("usr/local/share/libinput/30-vendor-opentabletdriver.quirks"
+           "share/libinput/30-vendor-opentabletdriver.quirks"))
       #:phases
       #~(modify-phases %standard-phases
           (add-after 'install 'install-bin
@@ -94,6 +102,7 @@
                      (dynamic-linker (search-input-file inputs "/lib/ld-linux-x86-64.so.2"))
                      (gcc-lib (dirname (search-input-file inputs "/lib/libstdc++.so.6")))
                      (gtk-lib (string-append (assoc-ref inputs "gtk+") "/lib"))
+                     (glib-lib (string-append (assoc-ref inputs "glib") "/lib"))
                      (dotnet-root (string-append (assoc-ref inputs "dotnet")
                                                  "/share/dotnet")))
                 (mkdir-p bin)
@@ -102,9 +111,7 @@
                   (lambda (port)
                     (display (string-append "#!" (assoc-ref inputs "bash-minimal")
                                             "/bin/sh\n"
-                                            "ln -sf " dynamic-linker " /tmp/ld-linux-x86-64.so.2\n"
                                             "export DOTNET_ROOT=" dotnet-root "\n"
-                                            "export LD_LIBRARY_PATH=" gcc-lib ":" gtk-lib ":${LD_LIBRARY_PATH:-}\n"
                                             "exec " lib "/OpenTabletDriver.Console \"$@\"\n")
                              port)))
                 (chmod (string-append bin "/otd") #o555)
@@ -113,9 +120,7 @@
                   (lambda (port)
                     (display (string-append "#!" (assoc-ref inputs "bash-minimal")
                                             "/bin/sh\n"
-                                            "ln -sf " dynamic-linker " /tmp/ld-linux-x86-64.so.2\n"
                                             "export DOTNET_ROOT=" dotnet-root "\n"
-                                            "export LD_LIBRARY_PATH=" gcc-lib ":" gtk-lib ":${LD_LIBRARY_PATH:-}\n"
                                             "exec " lib "/OpenTabletDriver.Daemon \"$@\"\n")
                              port)))
                 (chmod (string-append bin "/otd-daemon") #o555)
@@ -124,20 +129,25 @@
                   (lambda (port)
                     (display (string-append "#!" (assoc-ref inputs "bash-minimal")
                                             "/bin/sh\n"
-                                            "ln -sf " dynamic-linker " /tmp/ld-linux-x86-64.so.2\n"
                                             "export DOTNET_ROOT=" dotnet-root "\n"
-                                            "export LD_LIBRARY_PATH=" gcc-lib ":" gtk-lib ":${LD_LIBRARY_PATH:-}\n"
                                             "exec " lib "/OpenTabletDriver.UX.Gtk \"$@\"\n")
                              port)))
                 (chmod (string-append bin "/otd-gui") #o555))))
           (add-after 'install-bin 'patch-interpreter
-            (lambda* (#:key outputs #:allow-other-keys)
+            (lambda* (#:key inputs outputs #:allow-other-keys)
               (let* ((out (assoc-ref outputs "out"))
-                     (lib (string-append out "/lib/opentabletdriver")))
+                     (lib (string-append out "/lib/opentabletdriver"))
+                     (dynamic-linker (search-input-file inputs "/lib/ld-linux-x86-64.so.2"))
+                     (gcc-lib (dirname (search-input-file inputs "/lib/libstdc++.so.6")))
+                     (gtk-lib (string-append (assoc-ref inputs "gtk+") "/lib"))
+                     (glib-lib (string-append (assoc-ref inputs "glib") "/lib"))
+                     (libnotify-lib (string-append (assoc-ref inputs "libnotify") "/lib"))
+                     (rpath (string-join (list gcc-lib gtk-lib glib-lib libnotify-lib) ":")))
                 (for-each
                  (lambda (file)
                    (invoke "patchelf"
-                           "--set-interpreter" "/tmp/ld-linux-x86-64.so.2"
+                           "--set-interpreter" dynamic-linker
+                           "--set-rpath" rpath
                            (string-append lib "/" file)))
                  '("OpenTabletDriver.Console"
                    "OpenTabletDriver.Daemon"
@@ -154,13 +164,28 @@
                                          #:icon "otd"
                                          #:categories '("HardwareSettings" "Settings" "GTK")
                                          #:startup-w-m-class "OpenTabletDriver.UX")))))))
-    (inputs (list bash-minimal dotnet gtk+ `(,gcc "lib")))
+    (inputs (list bash-minimal dotnet glib gtk+ libnotify `(,gcc "lib")))
     (native-inputs (list patchelf))
     (home-page "https://opentabletdriver.net")
     (synopsis "Open source, cross-platform, user-mode tablet driver")
     (description
      "OpenTabletDriver is an open source, cross-platform, user-mode tablet driver.
-It supports many different tablets and provides a GUI for configuration.")
+It supports many different tablets and provides a GUI for configuration.
+
+To enable device detection, add to your system configuration:
+
+@code{
+(use-modules (jeans services hardware))
+
+(operating-system
+  ...
+  (services
+    (cons* (opentabletdriver-service)
+           %desktop-services))
+  (kernel-arguments '(\"modprobe.blacklist=wacom,hid_uclogic\")))
+}
+
+Then reconfigure your system and replug your tablet device.")
     (license license:lgpl3+)))
 
 ;; Keep the historical package name for channel users.
