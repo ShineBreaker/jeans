@@ -142,7 +142,8 @@
                      (gtk-lib (string-append (assoc-ref inputs "gtk+") "/lib"))
                      (glib-lib (string-append (assoc-ref inputs "glib") "/lib"))
                      (libnotify-lib (string-append (assoc-ref inputs "libnotify") "/lib"))
-                     (rpath (string-join (list gcc-lib gtk-lib glib-lib libnotify-lib) ":")))
+                     (libevdev-lib (string-append (assoc-ref inputs "libevdev") "/lib"))
+                     (rpath (string-join (list gcc-lib gtk-lib glib-lib libnotify-lib libevdev-lib) ":")))
                 (for-each
                  (lambda (file)
                    (invoke "patchelf"
@@ -164,7 +165,7 @@
                                          #:icon "otd"
                                          #:categories '("HardwareSettings" "Settings" "GTK")
                                          #:startup-w-m-class "OpenTabletDriver.UX")))))))
-    (inputs (list bash-minimal dotnet glib gtk+ libnotify `(,gcc "lib")))
+    (inputs (list bash-minimal dotnet glib gtk+ libevdev libnotify `(,gcc "lib")))
     (native-inputs (list patchelf))
     (home-page "https://opentabletdriver.net")
     (synopsis "Open source, cross-platform, user-mode tablet driver")
