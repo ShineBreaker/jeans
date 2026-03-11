@@ -4,6 +4,7 @@
 
 (define-module (jeans services hardware)
   #:use-module (gnu services)
+  #:use-module (gnu services base)
   #:use-module (gnu services linux)
   #:use-module (guix gexp)
   #:use-module (guix records)
