@@ -15,7 +15,9 @@
                  (jeans packages games)
                  (jeans packages hardware)
                  (jeans packages theme)
-                 (jeans packages winapps)))
+                 (jeans packages winapps)
+
+                 (jeans services hardware)))
 
              (for-each (let ((i (module-public-interface (current-module))))
                          (lambda (m)
