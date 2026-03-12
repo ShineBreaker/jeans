@@ -18,7 +18,7 @@
   opentabletdriver-configuration make-opentabletdriver-configuration
   opentabletdriver-configuration?
   (package opentabletdriver-configuration-package
-           (default opentabletdriver-bin)))
+           (default opentabletdriver-udev-rules)))
 
 (define opentabletdriver-service-type
   (service-type
@@ -33,7 +33,7 @@
                                '("uinput")))))
    (default-value (opentabletdriver-configuration))))
 
-(define* (opentabletdriver-service #:key (package opentabletdriver-bin))
+(define* (opentabletdriver-service #:key (package opentabletdriver-udev-rules))
   "Return a service that sets up OpenTabletDriver with udev rules and kernel modules."
   (service opentabletdriver-service-type
            (opentabletdriver-configuration

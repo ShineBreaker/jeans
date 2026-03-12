@@ -17,8 +17,7 @@
                  (jeans packages theme)
                  (jeans packages winapps)
 
-                 (jeans services hardware)
-                 (jeans home services hardware)))
+                 (jeans services hardware)))
 
              (for-each (let ((i (module-public-interface (current-module))))
                          (lambda (m)
