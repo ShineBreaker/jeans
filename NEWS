@@ -19,4 +19,10 @@
   (title (zh "移除了部分包"))
   (body (zh "由于一些包已经进入了其他仓库，以及我个人无法构造成功，所以直接进行了移除操作，包括rtkit.")))
 
-)
+ ;2026-02-25
+  (entry
+   (commit "07a4bab6df16c0e5dc7abac6a2453202d1b22879")
+   (title (zh "移除了opentabletdriver-bin"))
+   (body (zh "我实在没办法让这个成功运行起来，所以直接放弃了......
+     但是保留了services，所以假如你需要使用otd的话，请直接在flatpak上安装，
+     然后应用上本频道提供的services."))))
