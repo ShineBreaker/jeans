@@ -9,6 +9,7 @@ import os
 import re
 import requests
 import json
+import subprocess
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 import time
@@ -136,17 +137,9 @@ def parse_package_definitions(content: str, file_path: Path) -> List[Dict]:
         version_match = re.search(r'\(version\s+"([^"]+)"', package_content)
         version = version_match.group(1) if version_match else None
 
-        # 提取URI
-        uri_match = re.search(r'\(uri\s+(?:\([^)]+\)|"(?:[^"]*)")', package_content)
-        if uri_match:
-            uri_text = uri_match.group(0)
-            # 从uri中提取URL
-            url_match = re.search(r'"([^"]+github\.com[^"]+)"', uri_text)
-            if not url_match:
-                url_match = re.search(r'"([^"]+gitlab\.com[^"]+)"', uri_text)
-            url = url_match.group(1) if url_match else None
-        else:
-            url = None
+        # 提取完整的 URI 表达式
+        uri_match = re.search(r'\(uri\s+(.+?)\)\s*\(sha256', package_content, re.DOTALL)
+        uri_expr = uri_match.group(1).strip() if uri_match else None
 
         # 提取base32
         base32_match = re.search(r'\(base32\s+"([^"]+)"', package_content)
@@ -160,7 +153,7 @@ def parse_package_definitions(content: str, file_path: Path) -> List[Dict]:
             {
                 "name": package_name,
                 "version": version,
-                "url": url,
+                "uri_expr": uri_expr,
                 "base32": base32,
                 "method": method,
                 "content": package_content,
@@ -182,7 +175,66 @@ def compare_versions(current_version: str, new_version: str) -> bool:
     return current != new
 
 
-def update_package_in_file(file_path: Path, package: Dict, new_version: str) -> bool:
+def construct_download_url_from_uri(uri_expr: str, version: str) -> Optional[str]:
+    """从 uri 表达式构造完整的下载 URL
+
+    解析类似 (string-append "https://..." version "/file.tar.gz") 的表达式
+    将 version 变量替换为实际版本号
+    """
+    # 提取所有字符串字面量和 version 变量
+    # 匹配 "string" 或 version 关键字
+    tokens = re.findall(r'"([^"]+)"|(?:^|\s)(version)(?:\s|$|\))', uri_expr)
+
+    url_parts = []
+    for token in tokens:
+        if token[0]:  # 字符串字面量
+            url_parts.append(token[0])
+        elif token[1] == 'version':  # version 变量
+            url_parts.append(version)
+
+    if url_parts:
+        return ''.join(url_parts)
+    return None
+
+
+def get_base32_from_guix_download(url: str) -> Optional[str]:
+    """使用 guix download 获取文件的 base32 值"""
+    try:
+        print(f"     🔽 正在下载并计算 base32...")
+        result = subprocess.run(
+            ["guix", "download", url],
+            capture_output=True,
+            text=True,
+            timeout=120
+        )
+
+        if result.returncode == 0:
+            # guix download 输出格式：
+            # /gnu/store/xxx-filename
+            # 0abc...xyz (base32 hash)
+            output = result.stdout
+            base32_match = re.search(r'^([0-9a-z]{52})$', output, re.MULTILINE)
+            if base32_match:
+                return base32_match.group(1)
+
+            print(f"     ⚠️  无法从输出中提取 base32")
+            return None
+        else:
+            print(f"     ⚠️  guix download 失败: {result.stderr.strip()}")
+            return None
+
+    except subprocess.TimeoutExpired:
+        print(f"     ⚠️  guix download 超时")
+        return None
+    except FileNotFoundError:
+        print(f"     ⚠️  未找到 guix 命令，请确保已安装 Guix")
+        return None
+    except Exception as e:
+        print(f"     ⚠️  执行 guix download 出错: {e}")
+        return None
+
+
+def update_package_in_file(file_path: Path, package: Dict, new_version: str, new_base32: str) -> bool:
     """更新文件中的包版本和base32"""
     try:
         with open(file_path, "r", encoding="utf-8") as f:
@@ -196,7 +248,7 @@ def update_package_in_file(file_path: Path, package: Dict, new_version: str) -> 
         # 更新base32
         if package["base32"]:
             old_base32_pattern = rf'\(base32\s+"{re.escape(package["base32"])}"\)'
-            new_base32_str = f'(base32 "{NEW_BASE32}")'
+            new_base32_str = f'(base32 "{new_base32}")'
             content = re.sub(old_base32_pattern, new_base32_str, content)
 
         with open(file_path, "w", encoding="utf-8") as f:
@@ -267,14 +319,22 @@ def main():
                 skipped_packages += 1
                 continue
 
-            if not package["url"]:
-                print(f"     ⚠️  无法提取URL，跳过")
+            if not package["uri_expr"]:
+                print(f"     ⚠️  无法提取 URI，跳过")
                 continue
 
-            print(f"     URL: {package['url']}")
+            print(f"     URI: {package['uri_expr'][:80]}...")
+
+            # 从 uri 表达式构造当前版本的 URL 用于提取仓库信息
+            current_url = construct_download_url_from_uri(
+                package["uri_expr"], package["version"]
+            )
+            if not current_url:
+                print(f"     ⚠️  无法构造 URL，跳过")
+                continue
 
             # 提取GitHub仓库
-            github_repo = extract_github_repo(package["url"])
+            github_repo = extract_github_repo(current_url)
 
             if github_repo:
                 print(f"     GitHub仓库: {github_repo}")
@@ -296,8 +356,28 @@ def main():
                     if compare_versions(package["version"], latest_release):
                         print(f"     ✅ 发现新版本: {latest_release}")
 
+                        # 从 uri 表达式构造新版本的下载 URL
+                        download_url = construct_download_url_from_uri(
+                            package["uri_expr"], latest_release
+                        )
+
+                        if not download_url:
+                            print(f"     ⚠️  无法构造下载 URL，跳过")
+                            continue
+
+                        print(f"     下载 URL: {download_url}")
+
+                        # 获取真实的 base32
+                        new_base32 = get_base32_from_guix_download(download_url)
+
+                        if new_base32:
+                            print(f"     ✓ 计算得到 base32: {new_base32}")
+                        else:
+                            print(f"     ⚠️  使用占位符 base32")
+                            new_base32 = NEW_BASE32
+
                         # 更新文件
-                        if update_package_in_file(scm_file, package, latest_release):
+                        if update_package_in_file(scm_file, package, latest_release, new_base32):
                             print(f"     ✓ 已更新: {package_name}")
                             updated_packages += 1
                         else:
