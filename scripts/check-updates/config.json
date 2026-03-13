@@ -1,7 +1,5 @@
 {
-  "check_pre_release": [
-    "osu-lazer-tachyon-bin"
-  ],
+  "check_pre_release": [],
   "skip_packages": [
     "colloid-kde-themes",
     "winapps"

@@ -50,10 +50,10 @@
   #:use-module (jeans packages hardware))
 
 
-(define-public osu-lazer-tachyon-bin
+(define-public osu-lazer-bin
   (package
-    (name "osu-lazer-tachyon-bin")
-    (version "2026.307.0-tachyon")
+    (name "osu-lazer-bin")
+    (version "2026.305.0-lazer")
     (source
       (origin
         (method url-fetch)
@@ -62,7 +62,7 @@
                          version
                          "/osu.AppImage"))
         (sha256
-          (base32 "08rw1p15l9shm5fydshfjkabp3d1151f3za6bpakaq2sm8n7hh1d"))))
+          (base32 "1a038wz51x98q2ljwl2bllb9abcz06gdb3sd3ysml8ab5qykfckb"))))
     (build-system copy-build-system)
     (arguments
       (list #:install-plan
