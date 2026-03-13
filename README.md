@@ -96,12 +96,11 @@ or using the channel prefix:
 guix install jeans:zen-browser-bin
 ```
 
-Adding udev rules:
+## How to use OpenTabletDriver
 
-```scheme
-(udev-rules-service 'opentabletdriver
-                    opentabletdriver-udev-rules)
-```
+- add `opentabletdriver-service-type` to your configuration
+- install OpenTabletDriver in flatpak
+- disable hid-uclogic & wacom kernel modules
 
 ## Development
 
