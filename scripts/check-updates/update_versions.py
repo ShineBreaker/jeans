@@ -138,7 +138,7 @@ def parse_package_definitions(content: str, file_path: Path) -> List[Dict]:
         version = version_match.group(1) if version_match else None
 
         # 提取完整的 URI 表达式
-        uri_match = re.search(r'\(uri\s+(.+?)\)\s*\(sha256', package_content, re.DOTALL)
+        uri_match = re.search(r"\(uri\s+(.+?)\)\s*\(sha256", package_content, re.DOTALL)
         uri_expr = uri_match.group(1).strip() if uri_match else None
 
         # 提取base32
@@ -189,11 +189,11 @@ def construct_download_url_from_uri(uri_expr: str, version: str) -> Optional[str
     for token in tokens:
         if token[0]:  # 字符串字面量
             url_parts.append(token[0])
-        elif token[1] == 'version':  # version 变量
+        elif token[1] == "version":  # version 变量
             url_parts.append(version)
 
     if url_parts:
-        return ''.join(url_parts)
+        return "".join(url_parts)
     return None
 
 
@@ -202,10 +202,7 @@ def get_base32_from_guix_download(url: str) -> Optional[str]:
     try:
         print(f"     🔽 正在下载并计算 base32...")
         result = subprocess.run(
-            ["guix", "download", url],
-            capture_output=True,
-            text=True,
-            timeout=120
+            ["guix", "download", url], capture_output=True, text=True, timeout=120
         )
 
         if result.returncode == 0:
@@ -213,7 +210,7 @@ def get_base32_from_guix_download(url: str) -> Optional[str]:
             # /gnu/store/xxx-filename
             # 0abc...xyz (base32 hash)
             output = result.stdout
-            base32_match = re.search(r'^([0-9a-z]{52})$', output, re.MULTILINE)
+            base32_match = re.search(r"^([0-9a-z]{52})$", output, re.MULTILINE)
             if base32_match:
                 return base32_match.group(1)
 
@@ -234,7 +231,9 @@ def get_base32_from_guix_download(url: str) -> Optional[str]:
         return None
 
 
-def update_package_in_file(file_path: Path, package: Dict, new_version: str, new_base32: str) -> bool:
+def update_package_in_file(
+    file_path: Path, package: Dict, new_version: str, new_base32: str
+) -> bool:
     """更新文件中的包版本和base32"""
     try:
         with open(file_path, "r", encoding="utf-8") as f:
@@ -377,7 +376,9 @@ def main():
                             new_base32 = NEW_BASE32
 
                         # 更新文件
-                        if update_package_in_file(scm_file, package, latest_release, new_base32):
+                        if update_package_in_file(
+                            scm_file, package, latest_release, new_base32
+                        ):
                             print(f"     ✓ 已更新: {package_name}")
                             updated_packages += 1
                         else:
@@ -397,11 +398,6 @@ def main():
     print(f"✓ 保持最新: {total_packages - updated_packages - skipped_packages} 个包")
     print(f"⏭️  已跳过: {skipped_packages} 个包")
     print("=" * 60)
-
-    if updated_packages > 0:
-        print()
-        print("⚠️  注意: 已将base32设置为占位符值")
-        print("   请手动替换base32值")
 
     return 0
 
