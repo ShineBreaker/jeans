@@ -37,6 +37,12 @@ adding the following line to your channel:
 
 ## Available Packages
 
+### (jeans packages ai)
+
+| Package    | Description                   |
+| ---------- | ----------------------------- |
+| `opencode` | The open source coding agent. |
+
 ### (jeans packages desktop)
 
 | Package           | Description                                                                        |
@@ -46,17 +52,15 @@ adding the following line to your channel:
 
 ### (jeans packages games)
 
-| Package                 | Description                                             |
-| ----------------------- | ------------------------------------------------------- |
-| `osu-lazer-tachyon-bin` | osu!lazer - A free-to-win rhythm game (Tachyon release) |
+| Package         | Description                           |
+| --------------- | ------------------------------------- |
+| `osu-lazer-bin` | osu!lazer - A free-to-win rhythm game |
 
 ### (jeans packages hardware)
 
-| Package                       | Description                                                            |
-| ----------------------------- | ---------------------------------------------------------------------- |
-| `opentabletdriver-bin`        | Open source, cross-platform, user-mode tablet driver (prebuilt binary) |
-| `opentabletdriver-udev-rules` | UDev rules for OpenTabletDriver                                        |
-| `opentabletdriver`            | Alias for `opentabletdriver-bin`                                       |
+| Package                       | Description                     |
+| ----------------------------- | ------------------------------- |
+| `opentabletdriver-udev-rules` | UDev rules for OpenTabletDriver |
 
 ### (jeans packages fonts)
 

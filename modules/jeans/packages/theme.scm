@@ -191,8 +191,7 @@
        ("color-schemes" "share/color-schemes")
        ("Kvantum" "share/Kvantum")
        ("plasma/desktoptheme" "share/plasma/desktoptheme")
-       ("plasma/look-and-feel" "share/plasma/look-and-feel")
-       ("wallpapers" "share/wallpapers"))
+       ("plasma/look-and-feel" "share/plasma/look-and-feel"))
        #:phases (modify-phases %standard-phases
                   (delete 'build))))
     (inputs (list kvantum))
