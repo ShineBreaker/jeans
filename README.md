@@ -37,12 +37,6 @@ adding the following line to your channel:
 
 ## Available Packages
 
-### (jeans packages ai)
-
-| Package    | Description                   |
-| ---------- | ----------------------------- |
-| `opencode` | The open source coding agent. |
-
 ### (jeans packages desktop)
 
 | Package           | Description                                                                        |

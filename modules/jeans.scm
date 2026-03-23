@@ -10,7 +10,6 @@
              (define %public-modules
                '((gnu)
                  (guix utils)
-                 (jeans packages ai)
                  (jeans packages desktop)
                  (jeans packages fonts)
                  (jeans packages games)
