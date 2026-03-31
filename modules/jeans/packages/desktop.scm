@@ -60,7 +60,7 @@
 (define-public waypaper
   (package
     (name "waypaper")
-    (version "2.7")
+    (version "2.8")
     (source
      (origin
        (method url-fetch)
@@ -68,7 +68,7 @@
              "https://github.com/anufrievroman/waypaper/archive/refs/tags/"
              version ".tar.gz"))
        (sha256
-        (base32 "18yxsic5pfxf3cxn5l5cmi72566qq5v74baa7fnc9g2kgm9m3czm"))))
+        (base32 "0jb8884ibylk9n8dzcm7zm9pxgz6v42gyhynpba704asv4gvx6kd"))))
     (build-system python-build-system)
     (arguments
      (list
@@ -102,7 +102,7 @@ and Xorg.")
 (define-public zen-browser-bin
   (package
     (name "zen-browser-bin")
-    (version "1.19.3b")
+    (version "1.19.5b")
     (source
      (origin
        (method url-fetch)
@@ -110,7 +110,7 @@ and Xorg.")
              "https://github.com/zen-browser/desktop/releases/download/"
              version "/zen.linux-x86_64.tar.xz"))
        (sha256
-        (base32 "148cnsg2ic0pdri8d0pz6wjcw16p17addf9p5pbfq8mjrzpfl0rv"))))
+        (base32 "10fb2270sv0j8g5a48vr8pwxr1dncdbmqvrn22diy46kln385w42"))))
     (build-system copy-build-system)
     (arguments
      (list

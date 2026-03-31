@@ -82,7 +82,9 @@
      (list bash freerdp-3 dialog libnotify netcat-openbsd iproute))
     (home-page "https://github.com/winapps-org/winapps")
     (synopsis "Run Windows applications on GNU/Linux")
-    (description "Run Windows applications (including Microsoft 365 and Adobe Creative Cloud) on GNU/Linux with KDE, GNOME or XFCE, integrated seamlessly as if they were native to the OS. Wayland is currently unsupported.")
+    (description "Run Windows applications (including Microsoft 365
+     and Adobe Creative Cloud) on GNU/Linux with KDE, GNOME or XFCE,
+     integrated seamlessly as if they were native to the OS.")
     (license license:agpl3+)))
 
 (define-public jdtls-bin
@@ -110,25 +112,30 @@
             (delete 'build)
             (replace 'unpack
               (lambda _
-                (invoke "tar" "xzf" #$source)))
+                (let ((srcdir (string-append "jdtls-" #$version)))
+                  (mkdir srcdir)
+                  (with-directory-excursion srcdir
+                    (invoke "tar" "xzf" #$source))
+                  (chdir srcdir))))
             (replace 'install
               (lambda _
                 (let ((share (string-append #$output "/share/jdtls")))
                   (mkdir-p share)
-                  (copy-recursively "." share)
-                  ;; Create wrapper script
+                  (for-each
+                    (lambda (dir)
+                      (when (file-exists? dir)
+                        (copy-recursively dir (string-append share "/" dir))))
+                    '("bin" "plugins" "features"
+                      "config_linux" "config_ss_linux"))
+                  (chmod (string-append share "/bin/jdtls") #o755)
+                  (wrap-program (string-append share "/bin/jdtls")
+                    `("PATH" ":" prefix
+                      ,(list (string-append #$openjdk "/bin")
+                             (string-append #$python "/bin")))
+                    `("JAVA_HOME" = (,(string-append #$openjdk))))
                   (mkdir-p (string-append #$output "/bin"))
-                  (call-with-output-file (string-append #$output "/bin/jdtls")
-                    (lambda (port)
-                      (format port "#!~a/bin/bash~%exec ~a/bin/python3 ~a/bin/jdtls.py \"$@\"~%"
-                              #$bash #$python share)))
-                  (chmod (string-append #$output "/bin/jdtls") #o755))))
-            (add-after 'install 'wrap-program
-              (lambda _
-                (wrap-program (string-append #$output "/bin/jdtls")
-                  `("PATH" ":" prefix
-                    ,(list (string-append #$openjdk "/bin")))
-                  `("JAVA_HOME" = (,(string-append #$openjdk)))))))))
+                  (symlink (string-append share "/bin/jdtls")
+                           (string-append #$output "/bin/jdtls"))))))))
     (inputs (list openjdk python bash))
     (synopsis "Java language server")
     (description "The Eclipse JDT Language Server is a Java language specific implementation of

@@ -74,11 +74,12 @@ adding the following line to your channel:
 | `orchis-kde-themes`    | Orchis Kvantum themes for KDE Plasma (includes aurorae, color-schemes, wallpapers)  |
 | `colloid-kde-themes`   | Colloid Kvantum themes for KDE Plasma (includes aurorae, color-schemes, wallpapers) |
 
-### (jeans packages winapps)
+### (jeans packages tools)
 
-| Package   | Description                                                                                  |
-| --------- | -------------------------------------------------------------------------------------------- |
-| `winapps` | Run Windows applications on GNU/Linux seamlessly (Microsoft 365, Adobe Creative Cloud, etc.) |
+| Package     | Description                                                                                  |
+| ----------- | -------------------------------------------------------------------------------------------- |
+| `jdtls-bin` | Java language server                                                                         |
+| `winapps`   | Run Windows applications on GNU/Linux seamlessly (Microsoft 365, Adobe Creative Cloud, etc.) |
 
 ## Usage Examples
 
