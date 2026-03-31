@@ -15,7 +15,7 @@
                  (jeans packages games)
                  (jeans packages hardware)
                  (jeans packages theme)
-                 (jeans packages winapps)
+                 (jeans packages tools)
 
                  (jeans services hardware)))
 
