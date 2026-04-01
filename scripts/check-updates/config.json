@@ -1,9 +1,6 @@
 {
   "check_pre_release": [],
-  "skip_packages": [
-    "colloid-kde-themes",
-    "winapps"
-  ],
+  "skip_packages": [],
   "notes": {
     "check_pre_release": "这个列表中的包会检查包括pre-release在内的所有版本",
     "skip_packages": "这个列表中的包会被跳过更新检查",
