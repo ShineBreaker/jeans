@@ -14,6 +14,7 @@
                  (jeans packages fonts)
                  (jeans packages games)
                  (jeans packages hardware)
+                 (jeans packages terminals)
                  (jeans packages theme)
                  (jeans packages tools)
 

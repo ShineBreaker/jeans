@@ -81,6 +81,12 @@ adding the following line to your channel:
 | `jdtls-bin` | Java language server                                                                         |
 | `winapps`   | Run Windows applications on GNU/Linux seamlessly (Microsoft 365, Adobe Creative Cloud, etc.) |
 
+### (jeans packages terminals)
+
+| Package      | Description                                                              |
+| ------------ | ------------------------------------------------------------------------ |
+| `kitty-full` | Fast, feature-rich, GPU-based terminal emulator. (with kitten utilities) |
+
 ## Usage Examples
 
 Install a package:
