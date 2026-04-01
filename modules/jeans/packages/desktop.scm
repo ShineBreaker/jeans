@@ -57,6 +57,25 @@
   #:use-module ((guix licenses)
                 #:prefix license:))
 
+(define-public python-screeninfo
+  (package
+    (name "python-screeninfo")
+    (version "0.8.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "screeninfo" version))
+       (sha256
+        (base32 "1l9frlckb9zbwx5kngxv5byi353jyfmpskcy38m40d3yrimhg0wr"))))
+    (build-system python-build-system)
+    (arguments (list #:tests? #f))
+    (home-page "https://github.com/rr-/screeninfo")
+    (synopsis "Fetch location and size of physical screens")
+    (description
+     "Screeninfo is a Python package to fetch the location and size of
+physical screens in multi-monitor setups.")
+    (license license:expat)))
+
 (define-public waypaper
   (package
     (name "waypaper")
@@ -91,6 +110,7 @@
                              python-pillow
                              python-imageio
                              python-imageio-ffmpeg
+                             python-screeninfo
                              socat))
     (home-page "https://github.com/anufrievroman/waypaper")
     (synopsis "GUI wallpaper manager for Wayland and Xorg Linux systems")
