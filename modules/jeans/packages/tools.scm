@@ -28,7 +28,7 @@
              (commit "d5ea5d5a0b8ef28decb1f21e10b8290757e00693")))
        (file-name (git-file-name name version))
        (sha256 (base32 "1640mqdvarqfyv646p6qrfiskggjwz6l8m0mask93xhnis1vi1ra"))
-       (patches (list (local-file "WinApps.patch")))))
+       (patches (list (local-file "../patches/WinApps.patch")))))
     (build-system gnu-build-system)
     (arguments
      (list
