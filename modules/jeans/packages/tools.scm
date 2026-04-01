@@ -19,15 +19,15 @@
 (define-public winapps
   (package
     (name "winapps")
-    (version "0-unstable-2026-03-01")
+    (version "0-unstable-2026-03-16")
     (source
      (origin
        (method git-fetch)
        (uri (git-reference
              (url "https://github.com/winapps-org/winapps")
-             (commit "07d7fa4ec139d00434cf03444b2c031540b9871d")))
+             (commit "d5ea5d5a0b8ef28decb1f21e10b8290757e00693")))
        (file-name (git-file-name name version))
-       (sha256 (base32 "0nfb0rpcslkffsdbgybs4f13mbdl6bj76v72i159wxdz5wxhhyps"))
+       (sha256 (base32 "1640mqdvarqfyv646p6qrfiskggjwz6l8m0mask93xhnis1vi1ra"))
        (patches (list (local-file "WinApps.patch")))))
     (build-system gnu-build-system)
     (arguments
@@ -143,3 +143,5 @@ the Language Server Protocol and can be used with any editor that supports the
 protocol, to offer good support for the Java Language.")
     (home-page "https://github.com/eclipse/eclipse.jdt.ls")
     (license license:expat)))
+
+winapps
