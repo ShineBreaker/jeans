@@ -12,7 +12,6 @@ import json
 import subprocess
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
-import time
 
 # GitHub API配置
 GITHUB_API_URL = "https://api.github.com/repos"
@@ -58,6 +57,56 @@ def extract_github_repo(url: str) -> Optional[str]:
             return f"{match.group(1)}/{match.group(2)}"
 
     return None
+
+
+def extract_git_reference_url(uri_expr: str) -> Optional[str]:
+    """从git-reference表达式中提取URL"""
+    url_match = re.search(r'\(url\s+"([^"]+)"', uri_expr)
+    return url_match.group(1) if url_match else None
+
+
+def extract_commit_expr(uri_expr: str) -> Optional[str]:
+    """从git-reference中提取commit表达式，正确处理嵌套括号"""
+    start = uri_expr.find("(commit")
+    if start == -1:
+        return None
+    pos = start + len("(commit")
+    depth = 0
+    while pos < len(uri_expr):
+        if uri_expr[pos] == '(':
+            depth += 1
+        elif uri_expr[pos] == ')':
+            if depth == 0:
+                return uri_expr[start + len("(commit"):pos].strip()
+            depth -= 1
+        pos += 1
+    return None
+
+
+def is_version_ref(commit_expr: str) -> bool:
+    """判断commit表达式是否引用了version变量（可以自动更新）"""
+    if not commit_expr:
+        return False
+    # version 变量引用
+    if commit_expr == "version":
+        return True
+    # (string-append "v" version) 等包含 version 的表达式
+    if "version" in commit_expr and not commit_expr.startswith('"'):
+        return True
+    return False
+
+
+def format_commit_version(current_version: str, new_date: str) -> str:
+    """保留原版本号前缀，只替换日期部分
+
+    例: "0-unstable-2026-03-01" + "2026-03-16" -> "0-unstable-2026-03-16"
+        "2025-10-18" + "2025-11-01"            -> "2025-11-01"
+    """
+    match = re.match(r'^(.*?)(\d{4}-\d{2}-\d{2})$', current_version)
+    if match:
+        prefix = match.group(1)
+        return f"{prefix}{new_date}"
+    return new_date
 
 
 def get_latest_github_release(
@@ -110,6 +159,52 @@ def get_latest_github_release(
         return None
 
 
+def get_latest_github_tag(repo: str) -> Optional[str]:
+    """获取GitHub仓库的最新tag（当没有release时的备用方案）"""
+    headers = {}
+    if GITHUB_TOKEN:
+        headers["Authorization"] = f"token {GITHUB_TOKEN}"
+
+    try:
+        url = f"{GITHUB_API_URL}/{repo}/tags"
+        response = requests.get(url, headers=headers, timeout=10)
+        response.raise_for_status()
+        tags = response.json()
+        if tags:
+            return tags[0].get("name")
+        return None
+    except requests.exceptions.RequestException:
+        return None
+
+
+def get_latest_commit(repo: str) -> Optional[Tuple[str, str]]:
+    """获取GitHub仓库默认分支的最新commit
+
+    Returns:
+        (commit_sha, date_str) 或 None。date_str 格式为 YYYY-MM-DD。
+    """
+    headers = {}
+    if GITHUB_TOKEN:
+        headers["Authorization"] = f"token {GITHUB_TOKEN}"
+
+    try:
+        url = f"{GITHUB_API_URL}/{repo}/commits"
+        response = requests.get(url, headers=headers, timeout=10)
+        response.raise_for_status()
+        commits = response.json()
+        if not commits:
+            return None
+
+        latest = commits[0]
+        sha = latest["sha"]
+        # 优先用 committer date（实际提交时间）
+        date_str = latest["commit"]["committer"]["date"][:10]  # "2025-10-18T..."
+        return (sha, date_str)
+    except (requests.exceptions.RequestException, KeyError) as e:
+        print(f"     ⚠️  无法获取最新 commit: {e}")
+        return None
+
+
 def parse_package_definitions(content: str, file_path: Path) -> List[Dict]:
     """解析.scm文件中的包定义"""
     packages = []
@@ -149,6 +244,11 @@ def parse_package_definitions(content: str, file_path: Path) -> List[Dict]:
         method_match = re.search(r"\(method\s+(\S+)", package_content)
         method = method_match.group(1) if method_match else None
 
+        # 检测 git-reference
+        is_git = uri_expr is not None and "git-reference" in uri_expr
+        git_url = extract_git_reference_url(uri_expr) if is_git else None
+        commit_expr = extract_commit_expr(uri_expr) if is_git else None
+
         packages.append(
             {
                 "name": package_name,
@@ -156,6 +256,9 @@ def parse_package_definitions(content: str, file_path: Path) -> List[Dict]:
                 "uri_expr": uri_expr,
                 "base32": base32,
                 "method": method,
+                "is_git": is_git,
+                "git_url": git_url,
+                "commit_expr": commit_expr,
                 "content": package_content,
                 "start_pos": start_pos,
                 "end_pos": end_pos,
@@ -231,10 +334,24 @@ def get_base32_from_guix_download(url: str) -> Optional[str]:
         return None
 
 
+def get_base32_for_git(url: str, tag: str) -> Optional[str]:
+    """尝试获取git-fetch包的base32哈希值
+
+    git-fetch的hash计算与guix内部实现相关，无法从外部精确复现。
+    返回None，让调用方使用占位符hash，用户需通过 guix build 获取正确hash。
+    """
+    print(f"     ℹ️  git-fetch 包需要通过 guix build 获取正确 hash")
+    return None
+
+
 def update_package_in_file(
-    file_path: Path, package: Dict, new_version: str, new_base32: str
+    file_path: Path,
+    package: Dict,
+    new_version: str,
+    new_base32: str,
+    new_commit: str = None,
 ) -> bool:
-    """更新文件中的包版本和base32"""
+    """更新文件中的包版本、base32，以及可选的commit hash"""
     try:
         with open(file_path, "r", encoding="utf-8") as f:
             content = f.read()
@@ -243,6 +360,13 @@ def update_package_in_file(
         old_version_pattern = rf'\(version\s+"{re.escape(package["version"])}"\)'
         new_version_str = f'(version "{new_version}")'
         content = re.sub(old_version_pattern, new_version_str, content)
+
+        # 更新commit hash（用于固定commit的git-reference包）
+        if new_commit:
+            old_commit = package["commit_expr"].strip('"')
+            old_commit_pattern = rf'\(commit\s+"{re.escape(old_commit)}"\)'
+            new_commit_str = f'(commit "{new_commit}")'
+            content = re.sub(old_commit_pattern, new_commit_str, content)
 
         # 更新base32
         if package["base32"]:
@@ -322,73 +446,166 @@ def main():
                 print(f"     ⚠️  无法提取 URI，跳过")
                 continue
 
-            print(f"     URI: {package['uri_expr'][:80]}...")
+            # --- git-reference 包的处理 ---
+            if package["is_git"]:
+                git_url = package["git_url"]
+                if not git_url:
+                    print(f"     ⚠️  无法从 git-reference 提取 URL，跳过")
+                    continue
 
-            # 从 uri 表达式构造当前版本的 URL 用于提取仓库信息
-            current_url = construct_download_url_from_uri(
-                package["uri_expr"], package["version"]
-            )
-            if not current_url:
-                print(f"     ⚠️  无法构造 URL，跳过")
-                continue
+                print(f"     Git URL: {git_url}")
+                print(f"     Commit: {package['commit_expr']}")
 
-            # 提取GitHub仓库
-            github_repo = extract_github_repo(current_url)
+                github_repo = extract_github_repo(git_url)
+                if not github_repo:
+                    print(f"     ⚠️  不是GitHub仓库，跳过检查")
+                    continue
 
-            if github_repo:
                 print(f"     GitHub仓库: {github_repo}")
 
-                # 判断是否需要检查pre-release
                 include_pre_release = package_name in check_pre_release_packages
                 if include_pre_release:
                     print(f"     🔍 包含pre-release检查")
 
-                # 获取最新release
-                latest_release = get_latest_github_release(
-                    github_repo, include_pre_release
-                )
+                # --- commit 引用 version 变量：走 release/tag 流程 ---
+                if is_version_ref(package["commit_expr"]):
+                    latest_release = get_latest_github_release(
+                        github_repo, include_pre_release
+                    )
+                    if not latest_release:
+                        print(f"     ℹ️  无 release，尝试获取最新 tag...")
+                        latest_release = get_latest_github_tag(github_repo)
 
-                if latest_release:
-                    print(f"     最新release: {latest_release}")
+                    if latest_release:
+                        print(f"     最新版本: {latest_release}")
 
-                    # 比较版本
-                    if compare_versions(package["version"], latest_release):
-                        print(f"     ✅ 发现新版本: {latest_release}")
+                        if compare_versions(package["version"], latest_release):
+                            print(f"     ✅ 发现新版本: {latest_release}")
 
-                        # 从 uri 表达式构造新版本的下载 URL
-                        download_url = construct_download_url_from_uri(
-                            package["uri_expr"], latest_release
-                        )
+                            new_base32 = get_base32_for_git(git_url, latest_release)
+                            if new_base32:
+                                print(f"     ✓ 计算得到 base32: {new_base32}")
+                            else:
+                                print(f"     ⚠️  使用占位符 base32")
+                                new_base32 = NEW_BASE32
 
-                        if not download_url:
-                            print(f"     ⚠️  无法构造下载 URL，跳过")
-                            continue
-
-                        print(f"     下载 URL: {download_url}")
-
-                        # 获取真实的 base32
-                        new_base32 = get_base32_from_guix_download(download_url)
-
-                        if new_base32:
-                            print(f"     ✓ 计算得到 base32: {new_base32}")
+                            if update_package_in_file(
+                                scm_file, package, latest_release, new_base32
+                            ):
+                                print(f"     ✓ 已更新: {package_name}")
+                                updated_packages += 1
+                            else:
+                                print(f"     ❌ 更新失败")
                         else:
-                            print(f"     ⚠️  使用占位符 base32")
-                            new_base32 = NEW_BASE32
-
-                        # 更新文件
-                        if update_package_in_file(
-                            scm_file, package, latest_release, new_base32
-                        ):
-                            print(f"     ✓ 已更新: {package_name}")
-                            updated_packages += 1
-                        else:
-                            print(f"     ❌ 更新失败")
+                            print(f"     ✓ 版本已是最新")
                     else:
-                        print(f"     ✓ 版本已是最新")
+                        print(f"     ⚠️  无法获取最新版本信息")
+
+                # --- commit 是固定 hash：追踪最新 commit ---
                 else:
-                    print(f"     ⚠️  无法获取最新release信息")
+                    current_commit = package["commit_expr"].strip('"')
+                    print(f"     📌 固定 commit，追踪最新提交...")
+
+                    result = get_latest_commit(github_repo)
+                    if result:
+                        new_sha, new_date = result
+                        new_version = format_commit_version(
+                            package["version"], new_date
+                        )
+                        print(f"     最新 commit: {new_sha[:12]}... ({new_date})")
+
+                        if new_sha != current_commit:
+                            print(f"     ✅ 发现新提交")
+
+                            new_base32 = get_base32_for_git(git_url, new_sha)
+                            if new_base32:
+                                print(f"     ✓ 计算得到 base32: {new_base32}")
+                            else:
+                                print(f"     ⚠️  使用占位符 base32")
+                                new_base32 = NEW_BASE32
+
+                            if update_package_in_file(
+                                scm_file, package, new_version, new_base32,
+                                new_commit=new_sha,
+                            ):
+                                print(f"     ✓ 已更新: {package_name}")
+                                updated_packages += 1
+                            else:
+                                print(f"     ❌ 更新失败")
+                        else:
+                            print(f"     ✓ commit 已是最新")
+                    else:
+                        print(f"     ⚠️  无法获取最新 commit")
+
+            # --- url-fetch 包的处理 ---
             else:
-                print(f"     ⚠️  不是GitHub仓库，跳过检查")
+                print(f"     URI: {package['uri_expr'][:80]}...")
+
+                # 从 uri 表达式构造当前版本的 URL 用于提取仓库信息
+                current_url = construct_download_url_from_uri(
+                    package["uri_expr"], package["version"]
+                )
+                if not current_url:
+                    print(f"     ⚠️  无法构造 URL，跳过")
+                    continue
+
+                # 提取GitHub仓库
+                github_repo = extract_github_repo(current_url)
+
+                if github_repo:
+                    print(f"     GitHub仓库: {github_repo}")
+
+                    # 判断是否需要检查pre-release
+                    include_pre_release = package_name in check_pre_release_packages
+                    if include_pre_release:
+                        print(f"     🔍 包含pre-release检查")
+
+                    # 获取最新release
+                    latest_release = get_latest_github_release(
+                        github_repo, include_pre_release
+                    )
+
+                    if latest_release:
+                        print(f"     最新release: {latest_release}")
+
+                        # 比较版本
+                        if compare_versions(package["version"], latest_release):
+                            print(f"     ✅ 发现新版本: {latest_release}")
+
+                            # 从 uri 表达式构造新版本的下载 URL
+                            download_url = construct_download_url_from_uri(
+                                package["uri_expr"], latest_release
+                            )
+
+                            if not download_url:
+                                print(f"     ⚠️  无法构造下载 URL，跳过")
+                                continue
+
+                            print(f"     下载 URL: {download_url}")
+
+                            # 获取真实的 base32
+                            new_base32 = get_base32_from_guix_download(download_url)
+
+                            if new_base32:
+                                print(f"     ✓ 计算得到 base32: {new_base32}")
+                            else:
+                                print(f"     ⚠️  使用占位符 base32")
+                                new_base32 = NEW_BASE32
+
+                            # 更新文件
+                            if update_package_in_file(
+                                scm_file, package, latest_release, new_base32
+                            ):
+                                print(f"     ✓ 已更新: {package_name}")
+                                updated_packages += 1
+                            else:
+                                print(f"     ❌ 更新失败")
+                        else:
+                            print(f"     ✓ 版本已是最新")
+                    else:
+                        print(f"     ⚠️  无法获取最新release信息")
+                else:
+                    print(f"     ⚠️  不是GitHub仓库，跳过检查")
 
         print()
 
