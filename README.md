@@ -37,24 +37,17 @@ adding the following line to your channel:
 
 ## Available Packages
 
+### (jeans packages browser)
+
+| Package            | Description                                                                                |
+| ------------------ | ------------------------------------------------------------------------------------------ |
+| `librewolf-nongnu` | "Custom version of Firefox, focused on privacy, security and freedom. (revert guix patch)" |
+
 ### (jeans packages desktop)
 
-| Package           | Description                                                                        |
-| ----------------- | ---------------------------------------------------------------------------------- |
-| `zen-browser-bin` | Zen Browser - A privacy-focused, beautifully designed web browser based on Firefox |
-| `waypaper`        | GUI wallpaper manager for Wayland and Xorg Linux systems                           |
-
-### (jeans packages games)
-
-| Package         | Description                           |
-| --------------- | ------------------------------------- |
-| `osu-lazer-bin` | osu!lazer - A free-to-win rhythm game |
-
-### (jeans packages hardware)
-
-| Package                       | Description                     |
-| ----------------------------- | ------------------------------- |
-| `opentabletdriver-udev-rules` | UDev rules for OpenTabletDriver |
+| Package    | Description                                              |
+| ---------- | -------------------------------------------------------- |
+| `waypaper` | GUI wallpaper manager for Wayland and Xorg Linux systems |
 
 ### (jeans packages fonts)
 
@@ -63,6 +56,18 @@ adding the following line to your channel:
 | `font-maple-font-nf-cn` | Maple Mono - An open source monospace font with round corner, ligatures and Nerd-Font icons |
 | `font-misans`           | MiSans - A font family for Xiaomi HyperOS (non-free license)                                |
 | `font-nerd-symbols`     | Nerd Fonts Symbols Only - Iconic font aggregator                                            |
+
+### (jeans packages hardware)
+
+| Package                       | Description                     |
+| ----------------------------- | ------------------------------- |
+| `opentabletdriver-udev-rules` | UDev rules for OpenTabletDriver |
+
+### (jeans packages terminals)
+
+| Package      | Description                                                              |
+| ------------ | ------------------------------------------------------------------------ |
+| `kitty-full` | Fast, feature-rich, GPU-based terminal emulator. (with kitten utilities) |
 
 ### (jeans packages theme)
 
@@ -81,24 +86,18 @@ adding the following line to your channel:
 | `jdtls-bin` | Java language server                                                                         |
 | `winapps`   | Run Windows applications on GNU/Linux seamlessly (Microsoft 365, Adobe Creative Cloud, etc.) |
 
-### (jeans packages terminals)
-
-| Package      | Description                                                              |
-| ------------ | ------------------------------------------------------------------------ |
-| `kitty-full` | Fast, feature-rich, GPU-based terminal emulator. (with kitten utilities) |
-
 ## Usage Examples
 
 Install a package:
 
 ```bash
-guix install zen-browser-bin
+guix install librewolf-nongnu
 ```
 
 or using the channel prefix:
 
 ```bash
-guix install jeans:zen-browser-bin
+guix install jeans:librewolf-nongnu
 ```
 
 ## How to use OpenTabletDriver
@@ -109,14 +108,14 @@ guix install jeans:zen-browser-bin
 
 ## Development
 
-This repository includes a `justfile` for common tasks:
+This repository includes a `maak.scm` for common tasks:
 
 ```bash
 # Check for package updates
-just upgrade
+maak upgrade
 
 # Build a package
-just build zen-browser-bin
+maak build librewolf-nongnu
 ```
 
 ## License
