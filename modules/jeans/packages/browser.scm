@@ -17,7 +17,7 @@
   #:use-module (guix utils))
 
 ;;; 保留 LibreWolf 本体，仅修补其对 Mozilla 官方附加组件与语言包服务的限制。
-(define librewolf-nongnu
+(define-public librewolf-nongnu
   (package
    (inherit librewolf)
    (name "librewolf-nongnu")
