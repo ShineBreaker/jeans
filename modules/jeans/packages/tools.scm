@@ -1,5 +1,6 @@
 (define-module (jeans packages tools)
   #:use-module (guix packages)
+  #:use-module (guix build-system cargo)
   #:use-module (guix download)
   #:use-module (guix git-download)
   #:use-module (guix build-system copy)
@@ -10,11 +11,18 @@
   #:use-module (gnu packages python)
   #:use-module (gnu packages java)
   #:use-module (gnu packages rdesktop)
-  #:use-module (gnu packages gtk)      ; yad
+  #:use-module (gnu packages gtk)      ; yad, cairo, gdk-pixbuf
   #:use-module (gnu packages linux)    ; iproute
   #:use-module (gnu packages admin)    ; netcat-openbsd
-  #:use-module (gnu packages gnome)    ; libnotify
-  #:use-module (gnu packages ncurses)) ; dialog
+  #:use-module (gnu packages gnome)    ; libnotify, libsoup
+  #:use-module (gnu packages ncurses)  ; dialog
+  #:use-module (gnu packages elf)      ; patchelf
+  #:use-module (gnu packages webkit)   ; webkitgtk-for-gtk3
+  #:use-module (gnu packages base)     ; binutils (ar)
+  #:use-module (gnu packages glib)     ; glib
+  #:use-module (gnu packages freedesktop) ; libappindicator
+  #:use-module (gnu packages gcc)         ; gcc:lib
+  #:use-module (gnu packages rust))       ; rust
 
 (define-public winapps
   (package
@@ -144,4 +152,169 @@ protocol, to offer good support for the Java Language.")
     (home-page "https://github.com/eclipse/eclipse.jdt.ls")
     (license license:expat)))
 
-winapps
+;;; Motrix-Next: prebuilt binary download manager (Tauri/WebKitGTK app).
+;;;
+;;; The upstream .deb ships two ELF binaries:
+;;;   - motrix-next      (Tauri app, dynamically linked to webkit2gtk-4.1, gtk3, etc.)
+;;;   - motrixnext-aria2c (statically linked aria2 RPC helper)
+;;;
+;;; Because this is a prebuilt binary compiled on Ubuntu, we must:
+;;;   1. Use patchelf to set the ELF interpreter to Guix's ld-linux.
+;;;   2. Use patchelf to set RPATH so the binary finds all shared libs in the store.
+
+(define-public motrix-next-bin
+  (package
+    (name "motrix-next-bin")
+    (version "3.7.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://github.com/AnInsomniacy/motrix-next/releases/download/"
+             "v" version "/MotrixNext_" version "_amd64.deb"))
+       (sha256
+        (base32 "03s1n0hxr4ylkwxridpdhxh9gayzjpk2sbp41j0my7yzvxlzqw4a"))))
+    (build-system gnu-build-system)
+    (arguments
+     (list
+      #:tests? #f
+      #:modules '((guix build gnu-build-system)
+                  (guix build utils))
+      #:phases
+      #~(modify-phases %standard-phases
+          (delete 'configure)
+          (delete 'build)
+          (replace 'unpack
+            (lambda _
+              (let ((debdir (string-append "motrix-next-" #$version)))
+                (mkdir debdir)
+                (with-directory-excursion debdir
+                  (invoke "ar" "x" #$source)
+                  (invoke "tar" "xzf" "data.tar.gz"))
+                (chdir debdir))))
+          (replace 'install
+            (lambda* (#:key inputs #:allow-other-keys)
+              (let* ((out #$output)
+                     (bin (string-append out "/bin"))
+                     (lib-resource (string-append out "/lib/MotrixNext"))
+                     (lib-binaries (string-append lib-resource "/binaries"))
+                     (share (string-append out "/share"))
+                     (patchelf-bin
+                      (string-append (assoc-ref inputs "patchelf")
+                                     "/bin/patchelf"))
+                     (ldso (string-append (assoc-ref inputs "glibc")
+                                          "/lib/ld-linux-x86-64.so.2"))
+                     (rpath
+                      (string-join
+                       (map (lambda (pkg)
+                              (string-append (assoc-ref inputs pkg) "/lib"))
+                             '("webkitgtk-for-gtk3" "gtk+" "glib" "cairo"
+                               "gdk-pixbuf" "libsoup" "glibc" "gcc"
+                               "libappindicator"))
+                       ":")))
+                ;; Place the main ELF binary directly in bin/.  wrap-program
+                ;; will rename it to .motrix-next-real and create a wrapper
+                ;; script.  When the wrapper execs the real binary, /proc/self/exe
+                ;; points to bin/.motrix-next-real, so Tauri's resource_dir()
+                ;; computes:  exe_dir/../lib/<identifier>/
+                ;;           = bin/../lib/MotrixNext/
+                ;;           = lib/MotrixNext/          ✅
+                (mkdir-p bin)
+                (install-file "usr/bin/motrix-next" bin)
+
+                ;; Place the aria2c sidecar in bin/ as well.  Tauri sidecar
+                ;; resolution takes the basename of the externalBin entry and
+                ;; searches in the executable's directory (exe_dir = bin/).
+                (install-file "usr/bin/motrixnext-aria2c" bin)
+
+                ;; Install aria2.conf into lib/MotrixNext/binaries/.
+                ;; Tauri resolves BaseDirectory::Resource to resource_dir()
+                ;; (= lib/MotrixNext/), then appends "binaries/aria2.conf".
+                (mkdir-p lib-binaries)
+                (install-file "usr/lib/MotrixNext/binaries/aria2.conf"
+                              lib-binaries)
+
+                ;; Patch ELF interpreter and RPATH for motrix-next.
+                (invoke patchelf-bin "--set-interpreter" ldso
+                        (string-append bin "/motrix-next"))
+                (invoke patchelf-bin "--set-rpath" rpath
+                        (string-append bin "/motrix-next"))
+
+                ;; wrap-program renames the real binary to .motrix-next-real
+                ;; and creates a bash wrapper that sets env vars before exec.
+                (wrap-program (string-append bin "/motrix-next")
+                  `("XDG_DATA_DIRS" ":" prefix
+                    ,(list (string-append out "/share")
+                           (string-append #$gtk+ "/share")
+                           (string-append #$glib "/share")
+                           (string-append #$gdk-pixbuf "/share"))))
+
+                ;; Install desktop entry.
+                (mkdir-p (string-append share "/applications"))
+                (copy-file "usr/share/applications/MotrixNext.desktop"
+                           (string-append share "/applications/MotrixNext.desktop"))
+                (substitute* (string-append share "/applications/MotrixNext.desktop")
+                  (("Exec=motrix-next")
+                   (string-append "Exec=" bin "/motrix-next")))
+
+                ;; Install icons.
+                (for-each
+                 (lambda (size-dir)
+                   (let ((icon-src
+                          (string-append "usr/share/icons/hicolor/"
+                                         size-dir "/apps/motrix-next.png"))
+                         (icon-dst-dir
+                          (string-append share "/icons/hicolor/"
+                                         size-dir "/apps")))
+                     (when (file-exists? icon-src)
+                       (mkdir-p icon-dst-dir)
+                       (copy-file icon-src
+                                  (string-append icon-dst-dir
+                                                 "/motrix-next.png")))))
+                 '("32x32" "128x128" "256x256@2"))))))))
+     (native-inputs (list patchelf binutils))
+     (inputs
+      (list bash-minimal
+            glibc
+            `(,gcc "lib")
+            webkitgtk-for-gtk3
+            gtk+
+            glib
+            cairo
+            gdk-pixbuf
+            libsoup
+            libappindicator))
+    (home-page "https://github.com/AnInsomniacy/motrix-next")
+    (synopsis "Full-featured download manager")
+    (description "Motrix-Next is a full-featured download manager that supports
+downloading HTTP, FTP, BitTorrent, and Magnet links.  It is built with Tauri
+and uses aria2 as the download backend.  This package provides the prebuilt
+binary release.")
+     (license license:expat)))
+
+(define-public git-credential-keepassxc
+  (package
+    (name "git-credential-keepassxc")
+    (version "0.14.2")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "git-credential-keepassxc" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+        (sha256
+         (base32 "0mb3ms54is8jy8x441n4ki3if8ggkqjbdh5czahrgvxka0y482jv"))))
+    (build-system cargo-build-system)
+    (arguments
+     (list
+      #:rust rust-1.88
+      #:install-source? #f))
+    (inputs (cargo-inputs 'git-credential-keepassxc
+                          #:module
+                          '(jeans packages rust-crates)))
+    (home-page "https://github.com/Frederick888/git-credential-keepassxc")
+    (synopsis
+     "Use KeePassXC as a command-line credential store")
+    (description
+     "@code{git-credential-keepassxc} is a @code{git} credential helper that
+enables command-line applications to interact with @code{keepassxc} databases.")
+    (license license:gpl3+)))

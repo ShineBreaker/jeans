@@ -8,15 +8,17 @@
 (eval-when (eval load compile)
            (begin
              (define %public-modules
-               '((gnu)
-                 (guix utils)
-                 (jeans packages browser)
-                 (jeans packages desktop)
-                 (jeans packages fonts)
-                 (jeans packages hardware)
-                 (jeans packages terminals)
-                 (jeans packages theme)
-                 (jeans packages tools)
+                '((gnu)
+                  (guix utils)
+                  (jeans packages browser)
+                  (jeans packages desktop)
+                  (jeans packages fonts)
+                  (jeans packages games)
+                  (jeans packages hardware)
+                  (jeans packages rust-crates)
+                  (jeans packages terminals)
+                  (jeans packages theme)
+                  (jeans packages tools)
 
                  (jeans services hardware)))
 

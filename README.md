@@ -57,6 +57,13 @@ adding the following line to your channel:
 | `font-misans`           | MiSans - A font family for Xiaomi HyperOS (non-free license)                                |
 | `font-nerd-symbols`     | Nerd Fonts Symbols Only - Iconic font aggregator                                            |
 
+### (jeans packages games)
+
+| Package         | Description                                             |
+| --------------- | ------------------------------------------------------- |
+| `beatoraja-bin` | Cross-platform BMS rhythm game based on Java and libGDX |
+| `osu-lazer-bin` | rhythm is just a _click_ away!                          |
+
 ### (jeans packages hardware)
 
 | Package                       | Description                     |
@@ -81,10 +88,12 @@ adding the following line to your channel:
 
 ### (jeans packages tools)
 
-| Package     | Description                                                                                  |
-| ----------- | -------------------------------------------------------------------------------------------- |
-| `jdtls-bin` | Java language server                                                                         |
-| `winapps`   | Run Windows applications on GNU/Linux seamlessly (Microsoft 365, Adobe Creative Cloud, etc.) |
+| Package                    | Description                                                                                  |
+| -------------------------- | -------------------------------------------------------------------------------------------- |
+| `git-credential-keepassxc` | Use KeePassXC as a command-line credential store                                             |
+| `jdtls-bin`                | Java language server                                                                         |
+| `motrix-next-bin`          | Full-featured download manager                                                               |
+| `winapps`                  | Run Windows applications on GNU/Linux seamlessly (Microsoft 365, Adobe Creative Cloud, etc.) |
 
 ## Usage Examples
 
