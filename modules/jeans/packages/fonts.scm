@@ -119,7 +119,7 @@ and others.")
       (sha256
        (base32 "1ljpsdqzg2gm57l9qr93pbwvmcp8wwry2v9jm3889jlrv96f4gi1"))))
 		(build-system font-build-system)
-		(license licenses:expat)
+		(license license:expat)
 		(home-page "https://www.nerdfonts.com/")
 		(synopsis "Iconic font aggregator.")
 		(description "Nerd Fonts is a project that patches developer targeted
