@@ -101,17 +101,17 @@ for Linux x86_64, containing the JavaFX runtime libraries
 (JARs and native .so files).")
     (license (license:non-copyleft "file://legal/javafx.base/LICENSE"))))
 
-(define-public beatoraja-bin
+(define-public lr2oraja-endlessdream-bin
   (package
-    (name "beatoraja-bin")
-    (version "0.8.8")
+    (name "lr2oraja-endlessdream-bin")
+    (version "0.4.0")
     (source
      (origin
        (method url-fetch)
        (uri (string-append
-             "https://mocha-repository.info/download/beatoraja" version ".zip"))
+             "https://github.com/seraxis/lr2oraja-endlessdream/releases/download/v" version "/lr2oraja-0.8.8-endlessdream-linux-" version ".jar"))
        (sha256
-        (base32 "1lk2ip2khgy129gg82277xgii4nx4iz1hfqkz7904b092ww64ij9"))))
+        (base32 "13njyxgav869i4i0xrkk1iqgplvmp09dbx5ywz2m1hz1aniwq8sn"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -122,110 +122,108 @@ for Linux x86_64, containing the JavaFX runtime libraries
       #~(modify-phases %standard-phases
           (delete 'configure)
           (delete 'build)
-          (replace 'unpack
-            (lambda _
-              (invoke "unzip" #$source)))
+          (delete 'unpack)
           (replace 'install
             (lambda _
               (let* ((out #$output)
-                     (share (string-append out "/share/beatoraja"))
+                     (share (string-append out "/share/lr2oraja-endlessdream"))
                      (bin (string-append out "/bin"))
-                     (pkg-dir (string-append "beatoraja" #$version))
                      (jfx-lib (string-append #$openjfx17-sdk "/lib")))
+                ;; Install only the fork JAR.
                 (mkdir-p share)
-                (install-file (string-append pkg-dir "/beatoraja.jar") share)
-                (copy-recursively (string-append pkg-dir "/font")
-                                  (string-append share "/font"))
-                (copy-recursively (string-append pkg-dir "/ir")
-                                  (string-append share "/ir"))
+                (copy-file #$source (string-append share "/beatoraja.jar"))
                 (mkdir-p bin)
-                (let ((wrapper (string-append bin "/beatoraja")))
+                (let ((wrapper (string-append bin "/lr2oraja-endlessdream")))
                   (call-with-output-file wrapper
                     (lambda (port)
-                      (format port "#!~a/bin/bash~%"
-                                #$bash-minimal)
-                     (format port
-                       "mkdir -p \
-\"${XDG_DATA_HOME:-$HOME/.local/share}/beatoraja\" \
-|| exit 1~%")
-                     (format port
-                       "cd \
-\"${XDG_DATA_HOME:-$HOME/.local/share}/beatoraja\" \
-|| exit 1~%")
+                      (format port "#!~a/bin/bash~%" #$bash-minimal)
+                      (format port "DATA_DIR=\"${XDG_DATA_HOME:-$HOME/.local/share}/lr2oraja-endlessdream\"~%")
+                      ;; Ensure essential writable directories exist.
+                      (format port "mkdir -p \"$DATA_DIR/table\" \"$DATA_DIR/skin/default\" || exit 1~%")
+                      ;; The ImGui mod menu loads VL-Gothic-Regular.ttf from
+                      ;; skin/default/.  Symlink it from font/ when the user
+                      ;; has extracted the base distribution but hasn't placed
+                      ;; the font manually.
+                      (format port "if [ -f \"$DATA_DIR/font/VL-Gothic-Regular.ttf\" ] && [ ! -e \"$DATA_DIR/skin/default/VL-Gothic-Regular.ttf\" ]; then~%")
+                      (format port "  ln -sf \"$DATA_DIR/font/VL-Gothic-Regular.ttf\" \"$DATA_DIR/skin/default/VL-Gothic-Regular.ttf\"~%")
+                      (format port "fi~%")
+                      (format port "cd \"$DATA_DIR\" || exit 1~%")
                       (format port "exec ~a/bin/java \
 -Xms1g -Xmx4g \
 -Dsun.java2d.opengl=true \
 -Dawt.useSystemAAFontSettings=on \
 -Dswing.aatext=true \
 --module-path ~a \
---add-modules javafx.controls,javafx.fxml \
--jar ~a/share/beatoraja/beatoraja.jar \"$@\"~%"
+--add-modules javafx.controls,javafx.fxml,javafx.web \
+-jar ~a/share/lr2oraja-endlessdream/beatoraja.jar \"$@\"~%"
                               #$openjdk17 jfx-lib out)))
                   (chmod wrapper #o755))
                 ;; Desktop entry for application menu.
                 (let ((apps (string-append out "/share/applications")))
                   (mkdir-p apps)
                   (call-with-output-file
-                      (string-append apps "/beatoraja.desktop")
+                      (string-append apps "/lr2oraja-endlessdream.desktop")
                     (lambda (port)
-                      (format port
+                       (format port
                         "[Desktop Entry]~@
-                         Name=beatoraja~@
-                         Comment=Cross-platform BMS rhythm game~@
-                         Exec=~a/bin/beatoraja~@
-                         Icon=beatoraja~@
+                         Name=LR2oraja Endless Dream~@
+                         Comment=Community fork of beatoraja with QoL patches~@
+                         Exec=~a/bin/lr2oraja-endlessdream~@
                          Terminal=false~@
                          Type=Application~@
                          Categories=Game;ArcadeGame;~%"
-                          out)))))))
-           (add-after 'install 'wrap-beatoraja
-             (lambda _
-               (let ((wrapper
-                       (string-append #$output "/bin/beatoraja"))
-                     (jfx-lib
-                       (string-append #$openjfx17-sdk "/lib"))
-                     (lib-dirs
-                       (list (string-append #$gtk+ "/lib")
-                             (string-append #$gdk-pixbuf "/lib")
-                             (string-append #$glib "/lib")
-                             (string-append #$pango "/lib")
-                             (string-append #$cairo "/lib")
-                             (string-append #$freetype "/lib")
-                             (string-append #$fontconfig "/lib")
-                             (string-append #$libx11 "/lib")
-                             (string-append #$libxrandr "/lib")
-                             (string-append #$libxrender "/lib")
-                             (string-append #$libxtst "/lib")
-                             (string-append #$libxxf86vm "/lib")
-                             (string-append #$mesa "/lib")
-                             (string-append #$libffi "/lib")
-                             (string-append #$alsa-lib "/lib")
-                             (string-append #$gcc:lib "/lib"))))
-                 (wrap-program wrapper
-                   `("LD_LIBRARY_PATH" ":" prefix
-                     ,(cons jfx-lib lib-dirs))
-                   `("GDK_PIXBUF_MODULE_FILE" =
-                     (,(string-append
-                         #$gdk-pixbuf
-                         "/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache")))
-                    `("XDG_DATA_DIRS" ":" prefix
-                      (,(string-append #$output "/share")
-                       ,(string-append #$gdk-pixbuf "/share")
-                       ,(string-append #$gtk+ "/share"))))))))))
+                        out)))))))
+          (add-after 'install 'wrap-beatoraja
+            (lambda _
+              (let ((wrapper
+                      (string-append #$output "/bin/lr2oraja-endlessdream"))
+                    (jfx-lib
+                      (string-append #$openjfx17-sdk "/lib"))
+                    (lib-dirs
+                      (list (string-append #$gtk+ "/lib")
+                            (string-append #$gdk-pixbuf "/lib")
+                            (string-append #$glib "/lib")
+                            (string-append #$pango "/lib")
+                            (string-append #$cairo "/lib")
+                            (string-append #$freetype "/lib")
+                            (string-append #$fontconfig "/lib")
+                            (string-append #$libx11 "/lib")
+                            (string-append #$libxrandr "/lib")
+                            (string-append #$libxrender "/lib")
+                            (string-append #$libxtst "/lib")
+                            (string-append #$libxxf86vm "/lib")
+                            (string-append #$mesa "/lib")
+                            (string-append #$libffi "/lib")
+                            (string-append #$alsa-lib "/lib")
+                            (string-append #$gcc:lib "/lib"))))
+                (wrap-program wrapper
+                  `("LD_LIBRARY_PATH" ":" prefix
+                    ,(cons jfx-lib lib-dirs))
+                  `("GDK_PIXBUF_MODULE_FILE" =
+                    (,(string-append
+                        #$gdk-pixbuf
+                        "/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache")))
+                  `("XDG_DATA_DIRS" ":" prefix
+                    (,(string-append #$output "/share")
+                     ,(string-append #$gdk-pixbuf "/share")
+                     ,(string-append #$gtk+ "/share"))))))))))
     (inputs (list openjdk17 openjfx17-sdk bash-minimal
                   gtk+ gdk-pixbuf glib pango cairo freetype fontconfig
                   libx11 libxrandr libxrender libxtst libxxf86vm
-                    mesa libffi alsa-lib `(,gcc "lib")))
-    (native-inputs (list unzip))
-    (home-page "https://mocha-repository.info/")
-    (synopsis "Cross-platform BMS rhythm game based on Java and libGDX")
-    (description "beatoraja is a cross-platform rhythm game
-(BMS player) based on Java and libGDX.  It supports various
-BMS formats including bmson, offers multiple groove gauge types,
-long note modes, and real-time play speed control.  The game
-requires OpenGL 3.1+ and is recommended to run with
-Java 17 64-bit.")
-    (license license:gpl3)))
+                  mesa libffi alsa-lib `(,gcc "lib")))
+    (home-page "https://github.com/seraxis/lr2oraja-endlessdream")
+    (synopsis "Community fork of beatoraja BMS rhythm game with QoL improvements")
+    (description "LR2oraja Endless Dream is a community fork and drop-in
+replacement for beatoraja, a cross-platform BMS rhythm game based on
+Java and libGDX.  It integrates quality of life patches including an
+in-game song downloader, osu file support, built-in mod menu, improved
+graphics backends, and faster table processing.
+
+Users must extract the official beatoraja 0.8.8 distribution into
+@file{~/.local/share/lr2oraja-endlessdream/} so that the game can find
+fonts, IR jars, and other assets at runtime.  The game requires OpenGL
+3.1+ and Java 17.")
+    (license license:gpl3+)))
 
 (define-public osu-lazer-bin
   (package

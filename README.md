@@ -59,10 +59,10 @@ adding the following line to your channel:
 
 ### (jeans packages games)
 
-| Package         | Description                                             |
-| --------------- | ------------------------------------------------------- |
-| `beatoraja-bin` | Cross-platform BMS rhythm game based on Java and libGDX |
-| `osu-lazer-bin` | rhythm is just a _click_ away!                          |
+| Package                     | Description                                                       |
+| --------------------------- | ----------------------------------------------------------------- |
+| `lr2oraja-endlessdream-bin` | Community fork of beatoraja BMS rhythm game with QoL improvements |
+| `osu-lazer-bin`             | rhythm is just a _click_ away!                                    |
 
 ### (jeans packages hardware)
 
