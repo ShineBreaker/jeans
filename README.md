@@ -51,11 +51,12 @@ adding the following line to your channel:
 
 ### (jeans packages fonts)
 
-| Package                 | Description                                                                                 |
-| ----------------------- | ------------------------------------------------------------------------------------------- |
-| `font-maple-font-nf-cn` | Maple Mono - An open source monospace font with round corner, ligatures and Nerd-Font icons |
-| `font-misans`           | MiSans - A font family for Xiaomi HyperOS (non-free license)                                |
-| `font-nerd-symbols`     | Nerd Fonts Symbols Only - Iconic font aggregator                                            |
+| Package                  | Description                                                                                 |
+| ------------------------ | ------------------------------------------------------------------------------------------- |
+| `font-maple-font-nf-cn`  | Maple Mono - An open source monospace font with round corner, ligatures and Nerd-Font icons |
+| `font-misans`            | MiSans - A font family for Xiaomi HyperOS (non-free license)                                |
+| `font-nerd-symbols`      | Nerd Fonts Symbols Only - Iconic font aggregator                                            |
+| `font-nerd-font-iosevka` | Nerd Fonts Symbols Only - Iconic font aggregator                                            |
 
 ### (jeans packages games)
 

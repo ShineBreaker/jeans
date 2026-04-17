@@ -107,3 +107,22 @@ with a high number of glyphs (icons). Specifically to add a high number of extra
 glyphs from popular 'iconic fonts' such as Font Awesome, Devicons, Octicons,
 and others.")
     (license license:silofl1.1)))
+
+(define-public font-nerd-font-iosevka
+	(package
+		(name "font-nerd-font-iosevka")
+		(version "3.4.0")
+		(source
+     (origin
+      (method url-fetch)
+      (uri (string-append "https://github.com/ryanoasis/nerd-fonts/releases/download/v" version "/Iosevka.tar.xz"))
+      (sha256
+       (base32 "1ljpsdqzg2gm57l9qr93pbwvmcp8wwry2v9jm3889jlrv96f4gi1"))))
+		(build-system font-build-system)
+		(license licenses:expat)
+		(home-page "https://www.nerdfonts.com/")
+		(synopsis "Iconic font aggregator.")
+		(description "Nerd Fonts is a project that patches developer targeted
+fonts with a high number of glyphs (icons). Specifically to add a high number
+of extra glyphs from popular 'iconic fonts' such as Font Awesome, Devicons,
+Octicons, and others.")))
