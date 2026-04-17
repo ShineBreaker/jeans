@@ -1,5 +1,6 @@
 (define-module (maak)
   #:declarative? #t
+  #:use-module (ice-9 getopt-long)
   #:use-module (maak maak))
 
 ;; Project variables
@@ -21,8 +22,18 @@
 ;; Example: maak build my-package   =>  guix build --load-path=./modules my-package
 ;; Example: maak build pkg-a pkg-b  =>  guix build --load-path=./modules pkg-a pkg-b
 (define (build)
-  (let* ((cli-args (cdr (cdr (command-line))))
-         (args (string-join cli-args " ")))
-    (log-info "Building with guix...")
-    ($ (list (string-append "guix build --load-path=./modules " args))
-       #:verbose? #t)))
+  ;; (command-line) includes maak's internal flags (--resources, --tasks, --file, etc.).
+  ;; Use getopt-long to extract only the non-option positional arguments (package names).
+  (let* ((option-spec '((resources (value #t))
+                        (file (value #t))
+                        (list (value #f))
+                        (tasks (value #t))))
+         (options (getopt-long (command-line) option-spec))
+         (rest-args (option-ref options '() '()))
+         (args (string-join rest-args " ")))
+    (if (null? rest-args)
+        (log-error "No package name(s) provided. Usage: maak build <package> ...")
+        (begin
+          (log-info "Building with guix...")
+          ($ (list (string-append "guix build --load-path=./modules " args))
+             #:verbose? #t)))))
