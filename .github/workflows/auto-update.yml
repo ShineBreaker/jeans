@@ -27,7 +27,7 @@ jobs:
         run: |
           set -euo pipefail
           curl -fsSL https://guix.gnu.org/install.sh -o /tmp/install-guix.sh
-          yes "" | sudo -E bash /tmp/install-guix.sh
+          { yes "" 2>/dev/null || true; } | sudo -E bash /tmp/install-guix.sh
           if [ -f /var/guix/current/etc/profile ]; then
             . /var/guix/current/etc/profile
           fi
