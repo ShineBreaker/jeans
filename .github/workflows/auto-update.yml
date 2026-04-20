@@ -72,15 +72,60 @@ jobs:
             echo "has_changes=true" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Configure GPG signing
+        if: steps.changes.outputs.has_changes == 'true'
+        shell: bash
+        env:
+          CHANNEL_GPG_PRIVATE_KEY: ${{ secrets.CHANNEL_GPG_PRIVATE_KEY }}
+          CHANNEL_GPG_PASSPHRASE: ${{ secrets.CHANNEL_GPG_PASSPHRASE }}
+          CHANNEL_GIT_NAME: ${{ vars.CHANNEL_GIT_NAME }}
+          CHANNEL_GIT_EMAIL: ${{ vars.CHANNEL_GIT_EMAIL }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${CHANNEL_GPG_PRIVATE_KEY:-}" ]; then
+            echo "GitHub secret CHANNEL_GPG_PRIVATE_KEY is required" >&2
+            exit 1
+          fi
+
+          mkdir -p "$HOME/.gnupg"
+          chmod 700 "$HOME/.gnupg"
+          printf 'pinentry-mode loopback\n' > "$HOME/.gnupg/gpg.conf"
+          printf 'allow-loopback-pinentry\n' > "$HOME/.gnupg/gpg-agent.conf"
+
+          printf '%s\n' "$CHANNEL_GPG_PRIVATE_KEY" | gpg --batch --import
+
+          key_fpr="$(gpg --batch --with-colons --list-secret-keys | awk -F: '/^fpr:/ {print $10; exit}')"
+          if [ -z "$key_fpr" ]; then
+            echo "Unable to determine imported signing key fingerprint" >&2
+            exit 1
+          fi
+
+          cat > /tmp/gpg-loopback <<'EOF'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          if [ -n "${CHANNEL_GPG_PASSPHRASE:-}" ]; then
+            exec gpg --batch --pinentry-mode loopback --passphrase "$CHANNEL_GPG_PASSPHRASE" "$@"
+          fi
+          exec gpg --batch "$@"
+          EOF
+          chmod 700 /tmp/gpg-loopback
+
+          git config user.name "${CHANNEL_GIT_NAME:-BrokenShine}"
+          git config user.email "${CHANNEL_GIT_EMAIL:-102544159+ShineBreaker@users.noreply.github.com}"
+          git config user.signingkey "$key_fpr"
+          git config commit.gpgsign true
+          git config gpg.program /tmp/gpg-loopback
+
       - name: Commit updates
         if: steps.changes.outputs.has_changes == 'true'
         shell: bash
+        env:
+          CHANNEL_GPG_PASSPHRASE: ${{ secrets.CHANNEL_GPG_PASSPHRASE }}
         run: |
           set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add modules/
-          git commit -m "UPDATE: auto package update $(date -u +%Y-%m-%d)"
+          git commit -S -m "UPDATE: auto package update $(date -u +%Y-%m-%d)"
 
       - name: Push updates to GitHub
         if: steps.changes.outputs.has_changes == 'true'

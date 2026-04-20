@@ -42,18 +42,49 @@
 | --- | --- | --- |
 | `FORGEJO_TOKEN` | Secret | 从 GitHub Actions 推送到 Codeberg 镜像仓库 |
 | `FORGEJO_USERNAME` | Variable | HTTPS 推送到 Codeberg 时使用的用户名 |
+| `CHANNEL_GPG_PRIVATE_KEY` | Secret | 供自动更新 workflow 导入的 ASCII-armored GPG 私钥，必须对应 channel 已授权公钥 |
+| `CHANNEL_GPG_PASSPHRASE` | Secret | 如果私钥有口令则填写；无口令可留空 |
+| `CHANNEL_GIT_NAME` | Variable | 自动更新提交使用的 Git committer name |
+| `CHANNEL_GIT_EMAIL` | Variable | 自动更新提交使用的 Git committer email |
 
 说明：
 
 - `${{ secrets.GITHUB_TOKEN }}` 是 GitHub 内置 token，不需要你额外创建。
 - `auto-update.yml` 已经声明了 `contents: write` 和 `issues: write` 权限，用于回推更新和创建 GitHub Issue。
 - 当前 workflow 默认把 Codeberg 目标仓库写死为 `BrokenShine/jeans`。
+- `CHANNEL_GPG_PRIVATE_KEY` 对应的公钥必须已经存在于 `keyring` 分支，并且其 fingerprint 已写入 `.guix-authorizations`。
 
 ## 推荐工作流
 
 1. 所有代码修改、PR、Issue、自动更新都在 GitHub 上完成。
 2. GitHub 的 `main` 是唯一真源。
 3. Codeberg 只接受来自 GitHub Actions 的镜像同步，不再作为手动合并入口。
+
+## Guix Channel 鉴权注意事项
+
+Guix channel authentication 不认 “GitHub Verified” 这个概念，它只认：
+
+- 提交是否带 OpenPGP 签名
+- 签名公钥是否已经出现在 `keyring` 分支
+- 对应 fingerprint 是否已经被 `.guix-authorizations` 授权
+
+这意味着以下提交方式会破坏已认证 channel 的提交链：
+
+- GitHub UI 的 `Merge pull request`
+- GitHub UI 的 `Squash and merge`
+- GitHub UI 的 `Rebase and merge`
+- 未导入授权私钥的 GitHub Actions 自动提交
+
+原因是这些提交通常会由 GitHub 自己或其他未授权 key 重新生成提交对象；即使 GitHub 页面显示 `Verified`，Guix 也不会信任它。
+
+推荐做法：
+
+1. PR 在 GitHub 上审查即可。
+2. 真正写入 `main` 时，在本地获取 PR 内容。
+3. 使用你已经授权的 GPG key 执行 `git cherry-pick -S`、`git merge -S` 或重新提交。
+4. 再由本地 push 到 GitHub。
+
+`auto-update.yml` 现在已经支持通过 `CHANNEL_GPG_PRIVATE_KEY` 在 CI 中签名自动更新提交，但普通 PR 合并仍然不要依赖 GitHub UI 自动生成 merge commit。
 
 ## 更新脚本约定
 
