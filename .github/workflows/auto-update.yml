@@ -1,0 +1,105 @@
+name: Auto Update Packages
+
+on:
+  schedule:
+    - cron: "0 2 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: auto-update-github
+
+env:
+  FORGEJO_SERVER_URL: https://codeberg.org
+  FORGEJO_REPOSITORY: BrokenShine/jeans
+  FORGEJO_TARGET_BRANCH: main
+
+jobs:
+  auto-update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Guix
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes "" | sh <(curl -L https://guix.gnu.org/install.sh)
+          . /var/guix/current/etc/profile
+          guix --version
+
+      - name: Run auto-update script
+        id: updater
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FORGEJO_TOKEN: ${{ secrets.FORGEJO_TOKEN }}
+        run: |
+          set +e
+          . /var/guix/current/etc/profile
+          guix shell --manifest=scripts/check-updates/manifest.scm -- \
+            env CI=true \
+            GITHUB_TOKEN="$GITHUB_TOKEN" \
+            FORGEJO_TOKEN="$FORGEJO_TOKEN" \
+            FORGEJO_REPOSITORY="$FORGEJO_REPOSITORY" \
+            python3 scripts/check-updates/update_versions.py
+          status=$?
+          echo "exit_code=$status" >> "$GITHUB_OUTPUT"
+          if [ "$status" -gt 1 ]; then
+            exit "$status"
+          fi
+
+      - name: Detect changes
+        id: changes
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Commit updates
+        if: steps.changes.outputs.has_changes == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "Update Bot"
+          git config user.email "bot@codeberg.org"
+          git add modules/
+          git commit -m "UPDATE: auto package update $(date -u +%Y-%m-%d)"
+
+      - name: Push AGit pull request to Codeberg
+        if: steps.changes.outputs.has_changes == 'true'
+        shell: bash
+        env:
+          FORGEJO_TOKEN: ${{ secrets.FORGEJO_TOKEN }}
+          FORGEJO_USERNAME: ${{ vars.FORGEJO_USERNAME }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${FORGEJO_USERNAME:-}" ]; then
+            echo "GitHub variable FORGEJO_USERNAME is required" >&2
+            exit 1
+          fi
+
+          remote_url="https://${FORGEJO_USERNAME}:${FORGEJO_TOKEN}@${FORGEJO_SERVER_URL#https://}/${FORGEJO_REPOSITORY}.git"
+          git remote add codeberg "$remote_url"
+
+          today="$(date -u +%Y-%m-%d)"
+          topic="auto-update-${today}"
+          title="UPDATE: auto package update ${today}"
+
+          git push codeberg "HEAD:refs/for/${FORGEJO_TARGET_BRANCH}/${topic}" \
+            -o "title=${title}" \
+            -o "force-push=true"
+
+      - name: Upload report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: auto-update-report
+          path: scripts/check-updates/report.json
+          if-no-files-found: warn
