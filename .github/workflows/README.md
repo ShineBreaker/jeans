@@ -46,10 +46,10 @@
 
 在 GitHub 仓库设置中添加以下配置：
 
-| 名称 | 类型 | 用途 | 获取方式 |
-| --- | --- | --- | --- |
-| `FORGEJO_TOKEN` | Secret | 调用 Codeberg API 创建 Issue，并通过 HTTPS push 到 Codeberg | Codeberg → Settings → Applications → Create New Token，至少需要 `repo` 范围 |
-| `FORGEJO_USERNAME` | Variable | 作为 Git HTTPS push 时的用户名 | 你的 Codeberg 用户名，或用于推送的 bot 用户名 |
+| 名称               | 类型     | 用途                                                        | 获取方式                                                                    |
+| ------------------ | -------- | ----------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `FORGEJO_TOKEN`    | Secret   | 调用 Codeberg API 创建 Issue，并通过 HTTPS push 到 Codeberg | Codeberg → Settings → Applications → Create New Token，至少需要 `repo` 范围 |
+| `FORGEJO_USERNAME` | Variable | 作为 Git HTTPS push 时的用户名                              | 你的 Codeberg 用户名，或用于推送的 bot 用户名                               |
 
 说明：
 
@@ -93,9 +93,9 @@ git push
 
 在 Codeberg 仓库设置中添加以下加密 Secrets：
 
-| Secret 名称 | 用途 | 获取方式 |
-| --- | --- | --- |
-| `GITHUB_TOKEN` | GitHub API 认证，应对速率限制 | GitHub Settings → Developer settings → Personal access tokens |
+| Secret 名称     | 用途                                                     | 获取方式                                                                |
+| --------------- | -------------------------------------------------------- | ----------------------------------------------------------------------- |
+| `GITHUB_TOKEN`  | GitHub API 认证，应对速率限制                            | GitHub Settings → Developer settings → Personal access tokens           |
 | `FORGEJO_TOKEN` | Forgejo API 认证，供脚本创建 Issue 和 workflow push 代码 | Codeberg → Settings → Applications → Create New Token，需要 `repo` 范围 |
 
 ### 2. 确认 Runner 可用性

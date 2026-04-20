@@ -26,7 +26,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          yes "" | sh <(curl -L https://guix.gnu.org/install.sh)
+          yes "" | bash <(curl -L https://guix.gnu.org/install.sh)
           . /var/guix/current/etc/profile
           guix --version
 
