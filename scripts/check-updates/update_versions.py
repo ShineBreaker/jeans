@@ -924,7 +924,9 @@ def main():
 
                         if compare_versions(package["version"], latest_release):
                             print(f"     ✅ 发现新版本: {latest_release}")
-                            package_report["new_version"] = latest_release
+                            # Guix version 字段不含 v 前缀；去掉 tag 中的前导 v
+                            normalized_version = latest_release.lstrip("v")
+                            package_report["new_version"] = normalized_version
 
                             try:
                                 new_base32 = with_retry(
@@ -951,7 +953,7 @@ def main():
                                 continue
 
                             change = update_package_in_file(
-                                scm_file, package, latest_release, new_base32
+                                scm_file, package, normalized_version, new_base32
                             )
                             if change:
                                 pending_updates.append(change)
@@ -1106,11 +1108,13 @@ def main():
                         # 比较版本
                         if compare_versions(package["version"], latest_release):
                             print(f"     ✅ 发现新版本: {latest_release}")
-                            package_report["new_version"] = latest_release
+                            # Guix version 字段不含 v 前缀；去掉 tag 中的前导 v
+                            normalized_version = latest_release.lstrip("v")
+                            package_report["new_version"] = normalized_version
 
                             # 从 uri 表达式构造新版本的下载 URL
                             download_url = construct_download_url_from_uri(
-                                package["uri_expr"], latest_release
+                                package["uri_expr"], normalized_version
                             )
 
                             if not download_url:
@@ -1148,7 +1152,7 @@ def main():
 
                             # 更新文件
                             change = update_package_in_file(
-                                scm_file, package, latest_release, new_base32
+                                scm_file, package, normalized_version, new_base32
                             )
                             if change:
                                 pending_updates.append(change)
