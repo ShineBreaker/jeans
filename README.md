@@ -31,12 +31,7 @@ adding the following line to your channel:
   (channel
   (name 'jeans)
   (branch "main")
-  (url "https://github.com/ShineBreaker/jeans.git")
-  (introduction
-    (make-channel-introduction
-      "c99bf2e3f67d05b4bcb817037d96fa1340d2be23"
-      (openpgp-fingerprint
-        "6271 1D5E 9CCD EC69 07CA  DBF8 8637 1322 2257 1907"))))
+  (url "https://github.com/ShineBreaker/jeans.git"))
 ```
 
 If you prefer the mirror, `https://codeberg.org/BrokenShine/jeans.git` should track the same `main` branch.
