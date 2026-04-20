@@ -26,8 +26,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          yes "" | bash <(curl -L https://guix.gnu.org/install.sh)
-          . /var/guix/current/etc/profile
+          yes "" | sudo -E bash <(curl -L https://guix.gnu.org/install.sh)
+          if [ -f /var/guix/current/etc/profile ]; then
+            . /var/guix/current/etc/profile
+          fi
+          if [ -f "$HOME/.config/guix/current/etc/profile" ]; then
+            . "$HOME/.config/guix/current/etc/profile"
+          fi
           guix --version
 
       - name: Run auto-update script
@@ -38,7 +43,12 @@ jobs:
           FORGEJO_TOKEN: ${{ secrets.FORGEJO_TOKEN }}
         run: |
           set +e
-          . /var/guix/current/etc/profile
+          if [ -f /var/guix/current/etc/profile ]; then
+            . /var/guix/current/etc/profile
+          fi
+          if [ -f "$HOME/.config/guix/current/etc/profile" ]; then
+            . "$HOME/.config/guix/current/etc/profile"
+          fi
           guix shell --manifest=scripts/check-updates/manifest.scm -- \
             env CI=true \
             GITHUB_TOKEN="$GITHUB_TOKEN" \
