@@ -76,15 +76,20 @@ jobs:
         if: steps.changes.outputs.has_changes == 'true'
         shell: bash
         env:
-          CHANNEL_GPG_PRIVATE_KEY: ${{ secrets.CHANNEL_GPG_PRIVATE_KEY }}
-          CHANNEL_GPG_PASSPHRASE: ${{ secrets.CHANNEL_GPG_PASSPHRASE }}
-          CHANNEL_GIT_NAME: ${{ vars.CHANNEL_GIT_NAME }}
-          CHANNEL_GIT_EMAIL: ${{ vars.CHANNEL_GIT_EMAIL }}
+          WORKFLOW_GPG_PRIVATE_KEY: ${{ secrets.WORKFLOW_GPG_PRIVATE_KEY }}
+          WORKFLOW_GPG_PASSPHRASE: ${{ secrets.WORKFLOW_GPG_PASSPHRASE }}
+          WORKFLOW_GPG_FINGERPRINT: ${{ vars.WORKFLOW_GPG_FINGERPRINT }}
+          WORKFLOW_GIT_NAME: ${{ vars.WORKFLOW_GIT_NAME }}
+          WORKFLOW_GIT_EMAIL: ${{ vars.WORKFLOW_GIT_EMAIL }}
         run: |
           set -euo pipefail
 
-          if [ -z "${CHANNEL_GPG_PRIVATE_KEY:-}" ]; then
-            echo "GitHub secret CHANNEL_GPG_PRIVATE_KEY is required" >&2
+          if [ -z "${WORKFLOW_GPG_PRIVATE_KEY:-}" ]; then
+            echo "GitHub secret WORKFLOW_GPG_PRIVATE_KEY is required" >&2
+            exit 1
+          fi
+          if [ -z "${WORKFLOW_GPG_FINGERPRINT:-}" ]; then
+            echo "GitHub variable WORKFLOW_GPG_FINGERPRINT is required" >&2
             exit 1
           fi
 
@@ -93,26 +98,34 @@ jobs:
           printf 'pinentry-mode loopback\n' > "$HOME/.gnupg/gpg.conf"
           printf 'allow-loopback-pinentry\n' > "$HOME/.gnupg/gpg-agent.conf"
 
-          printf '%s\n' "$CHANNEL_GPG_PRIVATE_KEY" | gpg --batch --import
+          printf '%s\n' "$WORKFLOW_GPG_PRIVATE_KEY" | gpg --batch --import
 
           key_fpr="$(gpg --batch --with-colons --list-secret-keys | awk -F: '/^fpr:/ {print $10; exit}')"
           if [ -z "$key_fpr" ]; then
             echo "Unable to determine imported signing key fingerprint" >&2
             exit 1
           fi
+          expected_fpr="$(printf '%s' "$WORKFLOW_GPG_FINGERPRINT" | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]')"
+          actual_fpr="$(printf '%s' "$key_fpr" | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]')"
+          if [ "$actual_fpr" != "$expected_fpr" ]; then
+            echo "Imported GPG key fingerprint does not match WORKFLOW_GPG_FINGERPRINT" >&2
+            echo "expected: $expected_fpr" >&2
+            echo "actual:   $actual_fpr" >&2
+            exit 1
+          fi
 
           cat > /tmp/gpg-loopback <<'EOF'
           #!/usr/bin/env bash
           set -euo pipefail
-          if [ -n "${CHANNEL_GPG_PASSPHRASE:-}" ]; then
-            exec gpg --batch --pinentry-mode loopback --passphrase "$CHANNEL_GPG_PASSPHRASE" "$@"
+          if [ -n "${WORKFLOW_GPG_PASSPHRASE:-}" ]; then
+            exec gpg --batch --pinentry-mode loopback --passphrase "$WORKFLOW_GPG_PASSPHRASE" "$@"
           fi
           exec gpg --batch "$@"
           EOF
           chmod 700 /tmp/gpg-loopback
 
-          git config user.name "${CHANNEL_GIT_NAME:-BrokenShine}"
-          git config user.email "${CHANNEL_GIT_EMAIL:-102544159+ShineBreaker@users.noreply.github.com}"
+          git config user.name "${WORKFLOW_GIT_NAME:-jeans workflow bot}"
+          git config user.email "${WORKFLOW_GIT_EMAIL:-102544159+ShineBreaker@users.noreply.github.com}"
           git config user.signingkey "$key_fpr"
           git config commit.gpgsign true
           git config gpg.program /tmp/gpg-loopback
@@ -121,7 +134,7 @@ jobs:
         if: steps.changes.outputs.has_changes == 'true'
         shell: bash
         env:
-          CHANNEL_GPG_PASSPHRASE: ${{ secrets.CHANNEL_GPG_PASSPHRASE }}
+          WORKFLOW_GPG_PASSPHRASE: ${{ secrets.WORKFLOW_GPG_PASSPHRASE }}
         run: |
           set -euo pipefail
           git add modules/

@@ -42,17 +42,40 @@
 | --- | --- | --- |
 | `FORGEJO_TOKEN` | Secret | 从 GitHub Actions 推送到 Codeberg 镜像仓库 |
 | `FORGEJO_USERNAME` | Variable | HTTPS 推送到 Codeberg 时使用的用户名 |
-| `CHANNEL_GPG_PRIVATE_KEY` | Secret | 供自动更新 workflow 导入的 ASCII-armored GPG 私钥，必须对应 channel 已授权公钥 |
-| `CHANNEL_GPG_PASSPHRASE` | Secret | 如果私钥有口令则填写；无口令可留空 |
-| `CHANNEL_GIT_NAME` | Variable | 自动更新提交使用的 Git committer name |
-| `CHANNEL_GIT_EMAIL` | Variable | 自动更新提交使用的 Git committer email |
+| `WORKFLOW_GPG_PRIVATE_KEY` | Secret | 供自动更新 workflow 导入的 ASCII-armored GPG 私钥；建议专门为 CI 单独创建 |
+| `WORKFLOW_GPG_PASSPHRASE` | Secret | 如果 workflow 私钥有口令则填写；无口令可留空 |
+| `WORKFLOW_GPG_FINGERPRINT` | Variable | workflow 私钥的 fingerprint；CI 会校验导入的私钥是否就是这把 key |
+| `WORKFLOW_GIT_NAME` | Variable | 自动更新提交使用的 Git committer name |
+| `WORKFLOW_GIT_EMAIL` | Variable | 自动更新提交使用的 Git committer email |
 
 说明：
 
 - `${{ secrets.GITHUB_TOKEN }}` 是 GitHub 内置 token，不需要你额外创建。
 - `auto-update.yml` 已经声明了 `contents: write` 和 `issues: write` 权限，用于回推更新和创建 GitHub Issue。
 - 当前 workflow 默认把 Codeberg 目标仓库写死为 `BrokenShine/jeans`。
-- `CHANNEL_GPG_PRIVATE_KEY` 对应的公钥必须已经存在于 `keyring` 分支，并且其 fingerprint 已写入 `.guix-authorizations`。
+- `WORKFLOW_GPG_PRIVATE_KEY` 对应的公钥必须已经存在于 `keyring` 分支，并且其 fingerprint 已写入 `.guix-authorizations`。
+
+## 推荐的签名模型
+
+推荐把签名职责拆开：
+
+- 你自己日常开发继续使用个人 GPG key
+- GitHub Actions 自动更新使用单独的 workflow GPG key
+
+这样做的好处：
+
+- CI 泄漏风险和个人 key 隔离
+- 后续如果需要轮换 CI key，只改 `keyring`、`.guix-authorizations` 和 GitHub secrets
+- 一眼就能区分“人工提交”和“自动更新提交”
+
+建议的落地顺序：
+
+1. 生成一把新的 workflow 专用 OpenPGP key。
+2. 把它的公钥提交到 `keyring` 分支。
+3. 把它的 fingerprint 加进 `.guix-authorizations`。
+4. 等这两部分都已经进入受信历史后，再把私钥放进 GitHub secret `WORKFLOW_GPG_PRIVATE_KEY`。
+5. 在 GitHub variables 里配置 `WORKFLOW_GPG_FINGERPRINT`、`WORKFLOW_GIT_NAME`、`WORKFLOW_GIT_EMAIL`。
+6. 手动运行一次 `Auto Update Packages` 验证自动签名是否生效。
 
 ## 推荐工作流
 
@@ -84,7 +107,7 @@ Guix channel authentication 不认 “GitHub Verified” 这个概念，它只�
 3. 使用你已经授权的 GPG key 执行 `git cherry-pick -S`、`git merge -S` 或重新提交。
 4. 再由本地 push 到 GitHub。
 
-`auto-update.yml` 现在已经支持通过 `CHANNEL_GPG_PRIVATE_KEY` 在 CI 中签名自动更新提交，但普通 PR 合并仍然不要依赖 GitHub UI 自动生成 merge commit。
+`auto-update.yml` 现在已经支持通过 `WORKFLOW_GPG_PRIVATE_KEY` 在 CI 中签名自动更新提交，但普通 PR 合并仍然不要依赖 GitHub UI 自动生成 merge commit。
 
 ## 更新脚本约定
 
