@@ -9,9 +9,13 @@ import os
 import re
 import requests
 import json
+import time
 import subprocess
+import tempfile
+import shutil
+from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple, TypeVar
 
 # GitHub API配置
 GITHUB_API_URL = "https://api.github.com/repos"
@@ -21,21 +25,107 @@ GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN")  # 可选，用于提高API限制
 NEW_BASE32 = "0000000000000000000000000000000000000000000000000000"
 PACKAGES_DIR = Path(__file__).parent.parent.parent / "modules" / "jeans" / "packages"
 CONFIG_FILE = Path(__file__).parent / "config.json"
+REPORT_FILE = Path(__file__).parent / "report.json"
 
 
-def load_config(config_path: Path) -> Dict:
+class RetryableError(Exception):
+    """可重试的瞬时错误。"""
+
+
+T = TypeVar("T")
+LAST_RETRIES: Dict[str, int] = {}
+
+
+def is_retryable_http_error(error: requests.exceptions.HTTPError) -> bool:
+    """是否为可重试 HTTP 错误（5xx）。"""
+    status_code = error.response.status_code if error.response else None
+    return status_code is not None and 500 <= status_code <= 599
+
+
+def is_retryable_command_failure(text: str) -> bool:
+    """根据命令输出文本判断是否是可重试的网络/超时/5xx错误。"""
+    lower = text.lower()
+    retry_patterns = [
+        r"timeout",
+        r"timed out",
+        r"connection",
+        r"network",
+        r"temporar",
+        r"http\s*5\d\d",
+        r"status\s*5\d\d",
+        r"\b5\d\d\b",
+    ]
+    return any(re.search(pattern, lower) for pattern in retry_patterns)
+
+
+def with_retry(
+    func: Callable[..., T], *args: Any, max_retries: int = 2, base_delay: int = 5, **kwargs: Any
+) -> T:
+    """重试执行函数：重试网络错误/HTTP 5xx/超时，指数退避。"""
+    last_error: Optional[Exception] = None
+    retries = 0
+
+    for attempt in range(max_retries + 1):
+        try:
+            result = func(*args, **kwargs)
+            LAST_RETRIES[func.__name__] = retries
+            return result
+        except RetryableError as e:
+            last_error = e
+        except requests.exceptions.Timeout as e:
+            last_error = e
+        except requests.exceptions.ConnectionError as e:
+            last_error = e
+        except requests.exceptions.HTTPError as e:
+            if not is_retryable_http_error(e):
+                LAST_RETRIES[func.__name__] = retries
+                raise
+            last_error = e
+        except subprocess.TimeoutExpired as e:
+            last_error = e
+
+        if attempt < max_retries:
+            delay = base_delay ** (attempt + 1)
+            print(f"⏳ 重试 {attempt + 1}/{max_retries} (等待 {delay}s)...")
+            time.sleep(delay)
+            retries += 1
+            continue
+
+        LAST_RETRIES[func.__name__] = retries
+        raise last_error if last_error else RetryableError("未知错误")
+
+    LAST_RETRIES[func.__name__] = retries
+    raise RetryableError("未知错误")
+
+
+def load_config(config_path: Path) -> dict[str, Any]:
     """加载配置文件"""
     try:
         with open(config_path, "r", encoding="utf-8") as f:
-            return json.load(f)
+            config = json.load(f)
+            config.setdefault("check_pre_release", [])
+            config.setdefault("skip_packages", [])
+            config.setdefault("skip_files", [])
+            config.setdefault("notes", {})
+            return config
     except FileNotFoundError:
         print(f"⚠️  配置文件不存在: {config_path}")
         print("   使用默认配置")
-        return {"check_pre_release": [], "skip_packages": [], "notes": {}}
+        return {
+            "check_pre_release": [],
+            "skip_packages": [],
+            "skip_files": [],
+            "notes": {},
+        }
     except json.JSONDecodeError as e:
         print(f"⚠️  配置文件格式错误: {e}")
         print("   使用默认配置")
-        return {"check_pre_release": [], "skip_packages": [], "notes": {}}
+        return {
+            "check_pre_release": [],
+            "skip_packages": [],
+            "skip_files": [],
+            "notes": {},
+        }
 
 
 def find_scm_files(directory: Path) -> List[Path]:
@@ -129,6 +219,8 @@ def get_latest_github_release(
         # 首先尝试获取最新的稳定版release
         url = f"{GITHUB_API_URL}/{repo}/releases/latest"
         response = requests.get(url, headers=headers, timeout=10)
+        if 500 <= response.status_code <= 599:
+            raise RetryableError(f"GitHub API 服务器错误: {response.status_code}")
         response.raise_for_status()
         data = response.json()
         latest_release = data.get("tag_name")
@@ -139,6 +231,8 @@ def get_latest_github_release(
         # 如果需要检查pre-release，获取所有release并找到最新的（包括pre-release）
         url_all = f"{GITHUB_API_URL}/{repo}/releases"
         response_all = requests.get(url_all, headers=headers, timeout=10)
+        if 500 <= response_all.status_code <= 599:
+            raise RetryableError(f"GitHub API 服务器错误: {response_all.status_code}")
         response_all.raise_for_status()
         releases = response_all.json()
 
@@ -153,10 +247,17 @@ def get_latest_github_release(
             print(f"     ℹ️  最新版本是pre-release: {latest_all}")
 
         return latest_all
-
-    except requests.exceptions.RequestException as e:
+    except requests.exceptions.HTTPError as e:
+        if is_retryable_http_error(e):
+            raise
         print(f"  ⚠️  无法获取GitHub release: {e}")
         return None
+    except requests.exceptions.Timeout as e:
+        raise RetryableError(f"请求超时: {e}")
+    except requests.exceptions.ConnectionError as e:
+        raise RetryableError(f"网络连接错误: {e}")
+    except requests.exceptions.RequestException as e:
+        raise RetryableError(f"网络错误: {e}")
 
 
 def get_latest_github_tag(repo: str) -> Optional[str]:
@@ -168,13 +269,23 @@ def get_latest_github_tag(repo: str) -> Optional[str]:
     try:
         url = f"{GITHUB_API_URL}/{repo}/tags"
         response = requests.get(url, headers=headers, timeout=10)
+        if 500 <= response.status_code <= 599:
+            raise RetryableError(f"GitHub API 服务器错误: {response.status_code}")
         response.raise_for_status()
         tags = response.json()
         if tags:
             return tags[0].get("name")
         return None
-    except requests.exceptions.RequestException:
+    except requests.exceptions.HTTPError as e:
+        if is_retryable_http_error(e):
+            raise
         return None
+    except requests.exceptions.Timeout as e:
+        raise RetryableError(f"请求超时: {e}")
+    except requests.exceptions.ConnectionError as e:
+        raise RetryableError(f"网络连接错误: {e}")
+    except requests.exceptions.RequestException as e:
+        raise RetryableError(f"网络错误: {e}")
 
 
 def get_latest_commit(repo: str) -> Optional[Tuple[str, str]]:
@@ -190,6 +301,8 @@ def get_latest_commit(repo: str) -> Optional[Tuple[str, str]]:
     try:
         url = f"{GITHUB_API_URL}/{repo}/commits"
         response = requests.get(url, headers=headers, timeout=10)
+        if 500 <= response.status_code <= 599:
+            raise RetryableError(f"GitHub API 服务器错误: {response.status_code}")
         response.raise_for_status()
         commits = response.json()
         if not commits:
@@ -200,12 +313,23 @@ def get_latest_commit(repo: str) -> Optional[Tuple[str, str]]:
         # 优先用 committer date（实际提交时间）
         date_str = latest["commit"]["committer"]["date"][:10]  # "2025-10-18T..."
         return (sha, date_str)
-    except (requests.exceptions.RequestException, KeyError) as e:
+    except requests.exceptions.HTTPError as e:
+        if is_retryable_http_error(e):
+            raise
+        print(f"     ⚠️  无法获取最新 commit: {e}")
+        return None
+    except requests.exceptions.Timeout as e:
+        raise RetryableError(f"请求超时: {e}")
+    except requests.exceptions.ConnectionError as e:
+        raise RetryableError(f"网络连接错误: {e}")
+    except requests.exceptions.RequestException as e:
+        raise RetryableError(f"网络错误: {e}")
+    except KeyError as e:
         print(f"     ⚠️  无法获取最新 commit: {e}")
         return None
 
 
-def parse_package_definitions(content: str, file_path: Path) -> List[Dict]:
+def parse_package_definitions(content: str, _file_path: Path) -> list[dict[str, Any]]:
     """解析.scm文件中的包定义"""
     packages = []
 
@@ -246,8 +370,8 @@ def parse_package_definitions(content: str, file_path: Path) -> List[Dict]:
 
         # 检测 git-reference
         is_git = uri_expr is not None and "git-reference" in uri_expr
-        git_url = extract_git_reference_url(uri_expr) if is_git else None
-        commit_expr = extract_commit_expr(uri_expr) if is_git else None
+        git_url = extract_git_reference_url(uri_expr) if is_git and uri_expr else None
+        commit_expr = extract_commit_expr(uri_expr) if is_git and uri_expr else None
 
         packages.append(
             {
@@ -320,67 +444,254 @@ def get_base32_from_guix_download(url: str) -> Optional[str]:
             print(f"     ⚠️  无法从输出中提取 base32")
             return None
         else:
-            print(f"     ⚠️  guix download 失败: {result.stderr.strip()}")
+            err_text = (result.stderr or "").strip()
+            out_text = (result.stdout or "").strip()
+            full_text = f"{err_text}\n{out_text}".strip()
+            if is_retryable_command_failure(full_text):
+                raise RetryableError(f"guix download 失败: {err_text or out_text}")
+            print(f"     ⚠️  guix download 失败: {err_text}")
             return None
 
     except subprocess.TimeoutExpired:
-        print(f"     ⚠️  guix download 超时")
-        return None
+        raise RetryableError("guix download 超时")
     except FileNotFoundError:
         print(f"     ⚠️  未找到 guix 命令，请确保已安装 Guix")
         return None
+    except RetryableError:
+        raise
     except Exception as e:
         print(f"     ⚠️  执行 guix download 出错: {e}")
         return None
 
 
-def get_base32_for_git(url: str, tag: str) -> Optional[str]:
-    """尝试获取git-fetch包的base32哈希值
+def get_base32_for_git(url: str, ref: str) -> Optional[str]:
+    """通过 git clone + guix hash 计算 git-fetch 包的 base32 值"""
+    tmpdir = tempfile.mkdtemp(prefix="guix-git-hash-")
+    try:
+        print(f"     🔽 正在克隆源码并计算 base32...")
+        clone_result = subprocess.run(
+            ["git", "clone", "--depth=1", "-b", ref, url, tmpdir],
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
 
-    git-fetch的hash计算与guix内部实现相关，无法从外部精确复现。
-    返回None，让调用方使用占位符hash，用户需通过 guix build 获取正确hash。
-    """
-    print(f"     ℹ️  git-fetch 包需要通过 guix build 获取正确 hash")
-    return None
+        if clone_result.returncode != 0:
+            clone_err = clone_result.stderr.strip()
+            if is_retryable_command_failure(clone_err):
+                raise RetryableError(f"git clone 失败: {clone_err}")
+            print(f"     ⚠️  git clone 失败: {clone_err}")
+            return None
+
+        hash_result = subprocess.run(
+            ["guix", "hash", "-rx", tmpdir],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+
+        if hash_result.returncode != 0:
+            hash_err = hash_result.stderr.strip()
+            hash_out = hash_result.stdout.strip()
+            full_text = f"{hash_err}\n{hash_out}".strip()
+            if is_retryable_command_failure(full_text):
+                raise RetryableError(f"guix hash 失败: {hash_err or hash_out}")
+            print(f"     ⚠️  guix hash 失败: {hash_err}")
+            return None
+
+        base32 = hash_result.stdout.strip()
+        if re.fullmatch(r"[0-9a-z]{52}", base32):
+            return base32
+
+        print(f"     ⚠️  guix hash 输出异常: {base32}")
+        return None
+
+    except subprocess.TimeoutExpired as e:
+        cmd = " ".join(e.cmd) if isinstance(e.cmd, list) else str(e.cmd)
+        raise RetryableError(f"命令超时: {cmd}")
+    except FileNotFoundError as e:
+        print(f"     ⚠️  未找到命令: {e}")
+        return None
+    except RetryableError:
+        raise
+    except Exception as e:
+        print(f"     ⚠️  计算 git-fetch base32 出错: {e}")
+        return None
+    finally:
+        shutil.rmtree(tmpdir, ignore_errors=True)
 
 
 def update_package_in_file(
     file_path: Path,
-    package: Dict,
+    package: dict[str, Any],
     new_version: str,
     new_base32: str,
-    new_commit: str = None,
-) -> bool:
-    """更新文件中的包版本、base32，以及可选的commit hash"""
+    new_commit: Optional[str] = None,
+) -> Optional[Dict[str, Any]]:
+    """构建包更新描述（仅内存，不直接写文件）"""
     try:
-        with open(file_path, "r", encoding="utf-8") as f:
-            content = f.read()
+        return {
+            "file_path": file_path,
+            "package": package["name"],
+            "old_version": package["version"],
+            "new_version": new_version,
+            "new_base32": new_base32,
+            "new_commit": new_commit,
+            "content": package["content"],
+            "start_pos": package["start_pos"],
+            "end_pos": package["end_pos"],
+            "old_commit_expr": package.get("commit_expr"),
+            "old_base32": package.get("base32"),
+        }
+    except Exception as e:
+        print(f"  ❌ 更新文件失败: {e}")
+        return None
 
-        # 更新version
-        old_version_pattern = rf'\(version\s+"{re.escape(package["version"])}"\)'
-        new_version_str = f'(version "{new_version}")'
-        content = re.sub(old_version_pattern, new_version_str, content)
 
-        # 更新commit hash（用于固定commit的git-reference包）
-        if new_commit:
-            old_commit = package["commit_expr"].strip('"')
-            old_commit_pattern = rf'\(commit\s+"{re.escape(old_commit)}"\)'
-            new_commit_str = f'(commit "{new_commit}")'
-            content = re.sub(old_commit_pattern, new_commit_str, content)
+def apply_pending_updates(pending: List[Dict[str, Any]]) -> bool:
+    """应用所有待写入更新（按文件聚合，每个文件写入一次）"""
+    try:
+        pending_by_file: Dict[Path, List[Dict[str, Any]]] = {}
+        for change in pending:
+            file_path = change["file_path"]
+            pending_by_file.setdefault(file_path, []).append(change)
 
-        # 更新base32
-        if package["base32"]:
-            old_base32_pattern = rf'\(base32\s+"{re.escape(package["base32"])}"\)'
-            new_base32_str = f'(base32 "{new_base32}")'
-            content = re.sub(old_base32_pattern, new_base32_str, content)
+        for file_path, changes in pending_by_file.items():
+            with open(file_path, "r", encoding="utf-8") as f:
+                file_content = f.read()
 
-        with open(file_path, "w", encoding="utf-8") as f:
-            f.write(content)
+            # 逆序应用，避免后续替换影响前面区间索引
+            for change in sorted(changes, key=lambda c: c["start_pos"], reverse=True):
+                start_pos = change["start_pos"]
+                end_pos = change["end_pos"]
+                package_content = file_content[start_pos:end_pos]
+
+                old_version_pattern = rf'\(version\s+"{re.escape(change["old_version"])}"\)'
+                new_version_str = f'(version "{change["new_version"]}")'
+                package_content = re.sub(
+                    old_version_pattern, new_version_str, package_content, count=1
+                )
+
+                if change["new_commit"] and change.get("old_commit_expr"):
+                    old_commit = change["old_commit_expr"].strip('"')
+                    old_commit_pattern = rf'\(commit\s+"{re.escape(old_commit)}"\)'
+                    new_commit_str = f'(commit "{change["new_commit"]}")'
+                    package_content = re.sub(
+                        old_commit_pattern, new_commit_str, package_content, count=1
+                    )
+
+                if change.get("old_base32"):
+                    old_base32_pattern = (
+                        rf'\(base32\s+"{re.escape(change["old_base32"])}"\)'
+                    )
+                    new_base32_str = f'(base32 "{change["new_base32"]}")'
+                    package_content = re.sub(
+                        old_base32_pattern, new_base32_str, package_content, count=1
+                    )
+
+                file_content = (
+                    file_content[:start_pos] + package_content + file_content[end_pos:]
+                )
+
+            with open(file_path, "w", encoding="utf-8") as f:
+                f.write(file_content)
 
         return True
     except Exception as e:
-        print(f"  ❌ 更新文件失败: {e}")
+        print(f"  ❌ 批量写入失败: {e}")
         return False
+
+
+def _build_issue_body(failed_packages: List[Dict[str, Any]]) -> str:
+    """从失败包列表生成 Markdown 表格。"""
+    lines = [
+        "| 包名 | 旧版本 | 新版本 | 失败原因 |",
+        "| --- | --- | --- | --- |",
+    ]
+    for pkg in failed_packages:
+        name = pkg.get("name", "?")
+        old_v = pkg.get("old_version", "?")
+        new_v = pkg.get("new_version", "?")
+        error = pkg.get("error", "未知")
+        lines.append(f"| {name} | {old_v} | {new_v} | {error} |")
+    return "\n".join(lines)
+
+
+def _codeberg_issue_exists(title: str, api_base: str, headers: Dict[str, str]) -> bool:
+    """检查 Codeberg 是否已有同名 Issue（按日期去重）。"""
+    try:
+        resp = requests.get(
+            f"{api_base}/issues",
+            headers=headers,
+            params={"state": "open", "type": "issue", "limit": 50},
+            timeout=15,
+        )
+        resp.raise_for_status()
+        for issue in resp.json():
+            if issue.get("title", "") == title:
+                return True
+    except Exception as e:
+        print(f"     ⚠️  搜索已有 Issue 失败: {e}")
+    return False
+
+
+def _do_create_issue(
+    api_base: str, headers: Dict[str, str], title: str, body: str
+) -> requests.Response:
+    """实际执行 POST 创建 Issue（被 with_retry 包装）。"""
+    resp = requests.post(
+        f"{api_base}/issues",
+        headers=headers,
+        json={"title": title, "body": body},
+        timeout=15,
+    )
+    if 500 <= resp.status_code <= 599:
+        raise RetryableError(f"Codeberg API 服务器错误: {resp.status_code}")
+    resp.raise_for_status()
+    return resp
+
+
+def create_codeberg_issue(title: str, body: str, _config: dict[str, Any]) -> None:
+    """当处于 CI 环境且有失败包时，在 Codeberg 上创建 Issue。"""
+    if not os.environ.get("CI"):
+        print("ℹ️ 非 CI 环境，跳过 Issue 创建")
+        return
+
+    token = os.environ.get("FORGEJO_TOKEN")
+    repo = os.environ.get("FORGEJO_REPOSITORY") or os.environ.get("GITHUB_REPOSITORY")
+
+    if not token:
+        print("⚠️  FORGEJO_TOKEN 未设置，跳过 Issue 创建")
+        return
+    if not repo:
+        print("⚠️  FORGEJO_REPOSITORY / GITHUB_REPOSITORY 未设置，跳过 Issue 创建")
+        return
+
+    api_base = f"https://codeberg.org/api/v1/repos/{repo}"
+    headers = {
+        "Authorization": f"token {token}",
+        "Content-Type": "application/json",
+    }
+
+    # 去重：同日期标题已存在则跳过
+    if _codeberg_issue_exists(title, api_base, headers):
+        print(f"ℹ️ Issue 已存在，跳过创建: {title}")
+        return
+
+    try:
+        resp = with_retry(
+            _do_create_issue,
+            api_base,
+            headers,
+            title,
+            body,
+            max_retries=2,
+            base_delay=5,
+        )
+        issue_url = resp.json().get("html_url", "?")
+        print(f"✅ 已创建 Codeberg Issue: {issue_url}")
+    except Exception as e:
+        print(f"⚠️  创建 Codeberg Issue 失败: {e}")
 
 
 def main():
@@ -394,6 +705,7 @@ def main():
     config = load_config(CONFIG_FILE)
     check_pre_release_packages = set(config.get("check_pre_release", []))
     skip_packages = set(config.get("skip_packages", []))
+    skip_files = set(config.get("skip_files", []))
 
     print(f"📋 配置:")
     print(f"   检查pre-release的包: {', '.join(check_pre_release_packages) or '无'}")
@@ -402,12 +714,14 @@ def main():
 
     if not PACKAGES_DIR.exists():
         print(f"❌ 错误: 包目录不存在: {PACKAGES_DIR}")
-        return 1
+        return 2
 
     scm_files = find_scm_files(PACKAGES_DIR)
     if not scm_files:
         print(f"⚠️  未找到.scm文件: {PACKAGES_DIR}")
-        return 1
+        return 2
+
+    scm_files = [scm_file for scm_file in scm_files if scm_file.name not in skip_files]
 
     print(f"📁 找到 {len(scm_files)} 个.scm文件")
     print()
@@ -415,6 +729,20 @@ def main():
     total_packages = 0
     updated_packages = 0
     skipped_packages = 0
+    failed_packages = 0
+    uptodate_packages = 0
+    has_updates = False
+    has_errors = False
+    pending_updates: List[Dict[str, Any]] = []
+    report: Dict[str, Any] = {
+        "timestamp": datetime.now().isoformat(timespec="seconds"),
+        "total": 0,
+        "updated": 0,
+        "failed": 0,
+        "skipped": 0,
+        "uptodate": 0,
+        "packages": [],
+    }
 
     for scm_file in scm_files:
         print(f"📄 处理文件: {scm_file.relative_to(PACKAGES_DIR.parent)}")
@@ -424,6 +752,7 @@ def main():
                 content = f.read()
         except Exception as e:
             print(f"  ❌ 无法读取文件: {e}")
+            has_errors = True
             continue
 
         packages = parse_package_definitions(content, scm_file)
@@ -432,6 +761,32 @@ def main():
         for package in packages:
             total_packages += 1
             package_name = package["name"]
+            package_report: Dict[str, Any] = {
+                "name": package_name,
+                "file": str(scm_file.relative_to(PACKAGES_DIR.parent)),
+                "old_version": package["version"],
+                "new_version": package["version"],
+                "status": "uptodate",
+                "retries": 0,
+            }
+
+            def add_retries(func_name: str) -> None:
+                package_report["retries"] = int(package_report.get("retries", 0)) + int(
+                    LAST_RETRIES.get(func_name, 0)
+                )
+
+            def finalize_package_report() -> None:
+                nonlocal updated_packages, skipped_packages, failed_packages, uptodate_packages
+                status = package_report["status"]
+                if status == "updated":
+                    updated_packages += 1
+                elif status == "skipped":
+                    skipped_packages += 1
+                elif status == "failed":
+                    failed_packages += 1
+                else:
+                    uptodate_packages += 1
+                report["packages"].append(package_report)
 
             print(f"\n  📦 包名: {package_name}")
             print(f"     当前版本: {package['version']}")
@@ -439,11 +794,15 @@ def main():
             # 检查是否在跳过列表中
             if package_name in skip_packages:
                 print(f"     ⏭️  在跳过列表中，已跳过")
-                skipped_packages += 1
+                package_report["status"] = "skipped"
+                finalize_package_report()
                 continue
 
             if not package["uri_expr"]:
                 print(f"     ⚠️  无法提取 URI，跳过")
+                package_report["status"] = "skipped"
+                package_report["error"] = "无法提取 URI"
+                finalize_package_report()
                 continue
 
             # --- git-reference 包的处理 ---
@@ -451,6 +810,9 @@ def main():
                 git_url = package["git_url"]
                 if not git_url:
                     print(f"     ⚠️  无法从 git-reference 提取 URL，跳过")
+                    package_report["status"] = "skipped"
+                    package_report["error"] = "无法从 git-reference 提取 URL"
+                    finalize_package_report()
                     continue
 
                 print(f"     Git URL: {git_url}")
@@ -459,6 +821,9 @@ def main():
                 github_repo = extract_github_repo(git_url)
                 if not github_repo:
                     print(f"     ⚠️  不是GitHub仓库，跳过检查")
+                    package_report["status"] = "skipped"
+                    package_report["error"] = "不是 GitHub 仓库"
+                    finalize_package_report()
                     continue
 
                 print(f"     GitHub仓库: {github_repo}")
@@ -469,73 +834,177 @@ def main():
 
                 # --- commit 引用 version 变量：走 release/tag 流程 ---
                 if is_version_ref(package["commit_expr"]):
-                    latest_release = get_latest_github_release(
-                        github_repo, include_pre_release
-                    )
+                    try:
+                        latest_release = with_retry(
+                            get_latest_github_release,
+                            github_repo,
+                            include_pre_release,
+                            max_retries=2,
+                            base_delay=5,
+                        )
+                        add_retries("get_latest_github_release")
+                    except Exception as e:
+                        print(f"     ⚠️  无法获取最新版本信息: {e}")
+                        has_errors = True
+                        package_report["status"] = "failed"
+                        package_report["error"] = f"无法获取最新版本信息: {e}"
+                        finalize_package_report()
+                        continue
+
                     if not latest_release:
                         print(f"     ℹ️  无 release，尝试获取最新 tag...")
-                        latest_release = get_latest_github_tag(github_repo)
+                        try:
+                            latest_release = with_retry(
+                                get_latest_github_tag,
+                                github_repo,
+                                max_retries=2,
+                                base_delay=5,
+                            )
+                            add_retries("get_latest_github_tag")
+                        except Exception as e:
+                            print(f"     ⚠️  无法获取最新 tag: {e}")
+                            has_errors = True
+                            package_report["status"] = "failed"
+                            package_report["error"] = f"无法获取最新 tag: {e}"
+                            finalize_package_report()
+                            continue
 
                     if latest_release:
                         print(f"     最新版本: {latest_release}")
 
                         if compare_versions(package["version"], latest_release):
                             print(f"     ✅ 发现新版本: {latest_release}")
+                            package_report["new_version"] = latest_release
 
-                            new_base32 = get_base32_for_git(git_url, latest_release)
-                            if new_base32:
+                            try:
+                                new_base32 = with_retry(
+                                    get_base32_for_git,
+                                    git_url,
+                                    latest_release,
+                                    max_retries=2,
+                                    base_delay=5,
+                                )
+                                add_retries("get_base32_for_git")
+                            except Exception as e:
+                                new_base32 = None
+                                add_retries("get_base32_for_git")
+                                package_report["error"] = f"无法计算 hash: {e}"
+
+                            if new_base32 and re.fullmatch(r"[0-9a-z]{52}", new_base32) and not re.fullmatch(r"0{52}", new_base32):
                                 print(f"     ✓ 计算得到 base32: {new_base32}")
                             else:
-                                print(f"     ⚠️  使用占位符 base32")
-                                new_base32 = NEW_BASE32
+                                print(f"     ❌ 无法计算 git-fetch base32，已标记为失败并跳过更新")
+                                has_errors = True
+                                package_report["status"] = "failed"
+                                package_report["error"] = "无法计算 hash"
+                                finalize_package_report()
+                                continue
 
-                            if update_package_in_file(
+                            change = update_package_in_file(
                                 scm_file, package, latest_release, new_base32
-                            ):
+                            )
+                            if change:
+                                pending_updates.append(change)
                                 print(f"     ✓ 已更新: {package_name}")
-                                updated_packages += 1
+                                has_updates = True
+                                package_report["status"] = "updated"
                             else:
                                 print(f"     ❌ 更新失败")
+                                has_errors = True
+                                package_report["status"] = "failed"
+                                package_report["error"] = "更新文件失败"
                         else:
                             print(f"     ✓ 版本已是最新")
+                            package_report["status"] = "uptodate"
                     else:
                         print(f"     ⚠️  无法获取最新版本信息")
+                        package_report["status"] = "failed"
+                        package_report["error"] = "无法获取最新版本信息"
+                        has_errors = True
+
+                    finalize_package_report()
 
                 # --- commit 是固定 hash：追踪最新 commit ---
                 else:
                     current_commit = package["commit_expr"].strip('"')
                     print(f"     📌 固定 commit，追踪最新提交...")
 
-                    result = get_latest_commit(github_repo)
+                    try:
+                        result = with_retry(
+                            get_latest_commit,
+                            github_repo,
+                            max_retries=2,
+                            base_delay=5,
+                        )
+                        add_retries("get_latest_commit")
+                    except Exception as e:
+                        result = None
+                        print(f"     ⚠️  无法获取最新 commit: {e}")
+                        package_report["status"] = "failed"
+                        package_report["error"] = f"无法获取最新 commit: {e}"
+                        has_errors = True
+                        finalize_package_report()
+                        continue
+
                     if result:
                         new_sha, new_date = result
                         new_version = format_commit_version(
                             package["version"], new_date
                         )
+                        package_report["new_version"] = new_version
                         print(f"     最新 commit: {new_sha[:12]}... ({new_date})")
 
                         if new_sha != current_commit:
                             print(f"     ✅ 发现新提交")
 
-                            new_base32 = get_base32_for_git(git_url, new_sha)
-                            if new_base32:
+                            try:
+                                new_base32 = with_retry(
+                                    get_base32_for_git,
+                                    git_url,
+                                    new_sha,
+                                    max_retries=2,
+                                    base_delay=5,
+                                )
+                                add_retries("get_base32_for_git")
+                            except Exception as e:
+                                new_base32 = None
+                                add_retries("get_base32_for_git")
+                                package_report["error"] = f"无法计算 hash: {e}"
+
+                            if new_base32 and re.fullmatch(r"[0-9a-z]{52}", new_base32) and not re.fullmatch(r"0{52}", new_base32):
                                 print(f"     ✓ 计算得到 base32: {new_base32}")
                             else:
-                                print(f"     ⚠️  使用占位符 base32")
-                                new_base32 = NEW_BASE32
+                                print(f"     ❌ 无法计算 git-fetch base32，已标记为失败并跳过更新")
+                                has_errors = True
+                                package_report["status"] = "failed"
+                                package_report["error"] = "无法计算 hash"
+                                finalize_package_report()
+                                continue
 
-                            if update_package_in_file(
+                            change = update_package_in_file(
                                 scm_file, package, new_version, new_base32,
                                 new_commit=new_sha,
-                            ):
+                            )
+                            if change:
+                                pending_updates.append(change)
                                 print(f"     ✓ 已更新: {package_name}")
-                                updated_packages += 1
+                                has_updates = True
+                                package_report["status"] = "updated"
                             else:
                                 print(f"     ❌ 更新失败")
+                                has_errors = True
+                                package_report["status"] = "failed"
+                                package_report["error"] = "更新文件失败"
                         else:
                             print(f"     ✓ commit 已是最新")
+                            package_report["status"] = "uptodate"
                     else:
                         print(f"     ⚠️  无法获取最新 commit")
+                        package_report["status"] = "failed"
+                        package_report["error"] = "无法获取最新 commit"
+                        has_errors = True
+
+                    finalize_package_report()
 
             # --- url-fetch 包的处理 ---
             else:
@@ -547,6 +1016,9 @@ def main():
                 )
                 if not current_url:
                     print(f"     ⚠️  无法构造 URL，跳过")
+                    package_report["status"] = "skipped"
+                    package_report["error"] = "无法构造 URL"
+                    finalize_package_report()
                     continue
 
                 # 提取GitHub仓库
@@ -561,9 +1033,22 @@ def main():
                         print(f"     🔍 包含pre-release检查")
 
                     # 获取最新release
-                    latest_release = get_latest_github_release(
-                        github_repo, include_pre_release
-                    )
+                    try:
+                        latest_release = with_retry(
+                            get_latest_github_release,
+                            github_repo,
+                            include_pre_release,
+                            max_retries=2,
+                            base_delay=5,
+                        )
+                        add_retries("get_latest_github_release")
+                    except Exception as e:
+                        latest_release = None
+                        package_report["status"] = "failed"
+                        package_report["error"] = f"无法获取最新release信息: {e}"
+                        has_errors = True
+                        finalize_package_report()
+                        continue
 
                     if latest_release:
                         print(f"     最新release: {latest_release}")
@@ -571,6 +1056,7 @@ def main():
                         # 比较版本
                         if compare_versions(package["version"], latest_release):
                             print(f"     ✅ 发现新版本: {latest_release}")
+                            package_report["new_version"] = latest_release
 
                             # 从 uri 表达式构造新版本的下载 URL
                             download_url = construct_download_url_from_uri(
@@ -579,43 +1065,103 @@ def main():
 
                             if not download_url:
                                 print(f"     ⚠️  无法构造下载 URL，跳过")
+                                package_report["status"] = "skipped"
+                                package_report["error"] = "无法构造下载 URL"
+                                finalize_package_report()
                                 continue
 
                             print(f"     下载 URL: {download_url}")
 
                             # 获取真实的 base32
-                            new_base32 = get_base32_from_guix_download(download_url)
+                            try:
+                                new_base32 = with_retry(
+                                    get_base32_from_guix_download,
+                                    download_url,
+                                    max_retries=2,
+                                    base_delay=5,
+                                )
+                                add_retries("get_base32_from_guix_download")
+                            except Exception as e:
+                                new_base32 = None
+                                add_retries("get_base32_from_guix_download")
+                                package_report["error"] = f"计算 base32 失败: {e}"
 
-                            if new_base32:
+                            if new_base32 and re.fullmatch(r"[0-9a-z]{52}", new_base32) and not re.fullmatch(r"0{52}", new_base32):
                                 print(f"     ✓ 计算得到 base32: {new_base32}")
                             else:
-                                print(f"     ⚠️  使用占位符 base32")
-                                new_base32 = NEW_BASE32
+                                print(f"     ❌ 无法计算 url-fetch base32，已标记为失败并跳过更新")
+                                has_errors = True
+                                package_report["status"] = "failed"
+                                package_report["error"] = "无法计算 hash"
+                                finalize_package_report()
+                                continue
 
                             # 更新文件
-                            if update_package_in_file(
+                            change = update_package_in_file(
                                 scm_file, package, latest_release, new_base32
-                            ):
+                            )
+                            if change:
+                                pending_updates.append(change)
                                 print(f"     ✓ 已更新: {package_name}")
-                                updated_packages += 1
+                                has_updates = True
+                                package_report["status"] = "updated"
                             else:
                                 print(f"     ❌ 更新失败")
+                                has_errors = True
+                                package_report["status"] = "failed"
+                                package_report["error"] = "更新文件失败"
                         else:
                             print(f"     ✓ 版本已是最新")
+                            package_report["status"] = "uptodate"
                     else:
                         print(f"     ⚠️  无法获取最新release信息")
+                        package_report["status"] = "failed"
+                        package_report["error"] = "无法获取最新release信息"
+                        has_errors = True
                 else:
                     print(f"     ⚠️  不是GitHub仓库，跳过检查")
+                    package_report["status"] = "skipped"
+                    package_report["error"] = "不是 GitHub 仓库"
+
+                finalize_package_report()
 
         print()
 
     print("=" * 60)
     print(f"📊 总计: {total_packages} 个包")
     print(f"🔄 已更新: {updated_packages} 个包")
-    print(f"✓ 保持最新: {total_packages - updated_packages - skipped_packages} 个包")
+    print(f"✓ 保持最新: {uptodate_packages} 个包")
     print(f"⏭️  已跳过: {skipped_packages} 个包")
     print("=" * 60)
 
+    if pending_updates and not apply_pending_updates(pending_updates):
+        has_errors = True
+
+    report["total"] = total_packages
+    report["updated"] = updated_packages
+    report["failed"] = failed_packages
+    report["skipped"] = skipped_packages
+    report["uptodate"] = uptodate_packages
+
+    try:
+        with open(REPORT_FILE, "w", encoding="utf-8") as f:
+            json.dump(report, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f"⚠️  写入 report.json 失败: {e}")
+        has_errors = True
+
+    if failed_packages > 0:
+        failed_list = [p for p in report["packages"] if p["status"] == "failed"]
+        today = datetime.now().strftime("%Y-%m-%d")
+        issue_title = f"🔄 自动更新报告 — {today} — {failed_packages} 个失败"
+        issue_body = _build_issue_body(failed_list)
+        print()
+        create_codeberg_issue(issue_title, issue_body, config)
+
+    if has_errors:
+        return 2
+    if has_updates:
+        return 1
     return 0
 
 

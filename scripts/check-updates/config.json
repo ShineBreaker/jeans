@@ -1,9 +1,11 @@
 {
   "check_pre_release": [],
   "skip_packages": [],
+  "skip_files": ["rust-crates.scm"],
   "notes": {
     "check_pre_release": "这个列表中的包会检查包括pre-release在内的所有版本",
     "skip_packages": "这个列表中的包会被跳过更新检查",
+    "skip_files": "这个列表中的文件不会被检查或更新。rust-crates.scm 由 guix import crate 管理，禁止手动编辑",
     "示例配置": "在数组中添加或删除包名来自定义行为"
   }
 }
