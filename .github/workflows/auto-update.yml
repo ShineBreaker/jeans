@@ -6,12 +6,15 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: auto-update-github
+  group: auto-update
+
+permissions:
+  contents: write
+  issues: write
 
 env:
   FORGEJO_SERVER_URL: https://codeberg.org
   FORGEJO_REPOSITORY: BrokenShine/jeans
-  FORGEJO_TARGET_BRANCH: main
 
 jobs:
   auto-update:
@@ -41,7 +44,6 @@ jobs:
         shell: bash
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          FORGEJO_TOKEN: ${{ secrets.FORGEJO_TOKEN }}
         run: |
           set +e
           if [ -f /var/guix/current/etc/profile ]; then
@@ -53,8 +55,6 @@ jobs:
           guix shell --manifest=scripts/check-updates/manifest.scm -- \
             env CI=true \
             GITHUB_TOKEN="$GITHUB_TOKEN" \
-            FORGEJO_TOKEN="$FORGEJO_TOKEN" \
-            FORGEJO_REPOSITORY="$FORGEJO_REPOSITORY" \
             python3 scripts/check-updates/update_versions.py
           status=$?
           echo "exit_code=$status" >> "$GITHUB_OUTPUT"
@@ -77,12 +77,19 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          git config user.name "Update Bot"
-          git config user.email "bot@codeberg.org"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add modules/
           git commit -m "UPDATE: auto package update $(date -u +%Y-%m-%d)"
 
-      - name: Push AGit pull request to Codeberg
+      - name: Push updates to GitHub
+        if: steps.changes.outputs.has_changes == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git push origin "HEAD:${{ github.ref_name }}"
+
+      - name: Mirror updated branch to Codeberg
         if: steps.changes.outputs.has_changes == 'true'
         shell: bash
         env:
@@ -91,6 +98,10 @@ jobs:
         run: |
           set -euo pipefail
 
+          if [ -z "${FORGEJO_TOKEN:-}" ]; then
+            echo "GitHub secret FORGEJO_TOKEN is required" >&2
+            exit 1
+          fi
           if [ -z "${FORGEJO_USERNAME:-}" ]; then
             echo "GitHub variable FORGEJO_USERNAME is required" >&2
             exit 1
@@ -98,14 +109,7 @@ jobs:
 
           remote_url="https://${FORGEJO_USERNAME}:${FORGEJO_TOKEN}@${FORGEJO_SERVER_URL#https://}/${FORGEJO_REPOSITORY}.git"
           git remote add codeberg "$remote_url"
-
-          today="$(date -u +%Y-%m-%d)"
-          topic="auto-update-${today}"
-          title="UPDATE: auto package update ${today}"
-
-          git push codeberg "HEAD:refs/for/${FORGEJO_TARGET_BRANCH}/${topic}" \
-            -o "title=${title}" \
-            -o "force-push=true"
+          git push --force codeberg "HEAD:refs/heads/${{ github.ref_name }}"
 
       - name: Upload report artifact
         if: always()

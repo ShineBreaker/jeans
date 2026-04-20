@@ -1,7 +1,7 @@
 (channel
   (version 0)
   (name jeans)
-  (url "https://codeberg.org/BrokenShine/jeans.git")
+  (url "https://github.com/ShineBreaker/jeans.git")
   (directory "modules")
   (keyring-reference "keyring")
   (news-file "NEWS")

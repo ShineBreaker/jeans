@@ -2,7 +2,7 @@
 
 ## What This Repo Is
 
-A personal [Guix channel](https://guix.gnu.org/manual/en/html_node/Channels.html) named **jeans** (Just Enough AI-geNerated Slops). It packages cutting-edge and close-source software for GNU Guix, with AI assistance. Hosted at `https://codeberg.org/BrokenShine/jeans.git` on the `main` branch.
+A personal [Guix channel](https://guix.gnu.org/manual/en/html_node/Channels.html) named **jeans** (Just Enough AI-geNerated Slops). It packages cutting-edge and close-source software for GNU Guix, with AI assistance. Hosted at `https://github.com/ShineBreaker/jeans.git` on the `main` branch, with Codeberg mirroring from GitHub.
 
 The channel depends on [nonguix](https://gitlab.com/nonguix/nonguix) (declared in `.guix-channel`).
 

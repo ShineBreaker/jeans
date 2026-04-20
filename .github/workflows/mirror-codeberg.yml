@@ -1,0 +1,44 @@
+name: Mirror GitHub to Codeberg
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  FORGEJO_SERVER_URL: https://codeberg.org
+  FORGEJO_REPOSITORY: BrokenShine/jeans
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Push branch to Codeberg mirror
+        shell: bash
+        env:
+          FORGEJO_TOKEN: ${{ secrets.FORGEJO_TOKEN }}
+          FORGEJO_USERNAME: ${{ vars.FORGEJO_USERNAME }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${FORGEJO_TOKEN:-}" ]; then
+            echo "GitHub secret FORGEJO_TOKEN is required" >&2
+            exit 1
+          fi
+          if [ -z "${FORGEJO_USERNAME:-}" ]; then
+            echo "GitHub variable FORGEJO_USERNAME is required" >&2
+            exit 1
+          fi
+
+          remote_url="https://${FORGEJO_USERNAME}:${FORGEJO_TOKEN}@${FORGEJO_SERVER_URL#https://}/${FORGEJO_REPOSITORY}.git"
+          git remote add codeberg "$remote_url"
+          git push --force codeberg "HEAD:refs/heads/${{ github.ref_name }}"

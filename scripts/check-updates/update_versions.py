@@ -617,13 +617,15 @@ def _build_issue_body(failed_packages: List[Dict[str, Any]]) -> str:
     return "\n".join(lines)
 
 
-def _codeberg_issue_exists(title: str, api_base: str, headers: Dict[str, str]) -> bool:
-    """检查 Codeberg 是否已有同名 Issue（按日期去重）。"""
+def _issue_exists(
+    issues_url: str, title: str, headers: Dict[str, str], params: Optional[Dict[str, Any]] = None
+) -> bool:
+    """检查是否已有同名 open Issue（按日期去重）。"""
     try:
         resp = requests.get(
-            f"{api_base}/issues",
+            issues_url,
             headers=headers,
-            params={"state": "open", "type": "issue", "limit": 50},
+            params=params or {},
             timeout=15,
         )
         resp.raise_for_status()
@@ -636,27 +638,62 @@ def _codeberg_issue_exists(title: str, api_base: str, headers: Dict[str, str]) -
 
 
 def _do_create_issue(
-    api_base: str, headers: Dict[str, str], title: str, body: str
+    issues_url: str, headers: Dict[str, str], title: str, body: str
 ) -> requests.Response:
     """实际执行 POST 创建 Issue（被 with_retry 包装）。"""
     resp = requests.post(
-        f"{api_base}/issues",
+        issues_url,
         headers=headers,
         json={"title": title, "body": body},
         timeout=15,
     )
     if 500 <= resp.status_code <= 599:
-        raise RetryableError(f"Codeberg API 服务器错误: {resp.status_code}")
+        raise RetryableError(f"Issue API 服务器错误: {resp.status_code}")
     resp.raise_for_status()
     return resp
 
 
-def create_codeberg_issue(title: str, body: str, _config: dict[str, Any]) -> None:
-    """当处于 CI 环境且有失败包时，在 Codeberg 上创建 Issue。"""
-    if not os.environ.get("CI"):
-        print("ℹ️ 非 CI 环境，跳过 Issue 创建")
+def create_github_issue(title: str, body: str) -> None:
+    """当处于 GitHub CI 环境时，在 GitHub 上创建 Issue。"""
+    token = os.environ.get("GITHUB_TOKEN")
+    repo = os.environ.get("GITHUB_REPOSITORY")
+
+    if not token:
+        print("⚠️  GITHUB_TOKEN 未设置，跳过 GitHub Issue 创建")
+        return
+    if not repo:
+        print("⚠️  GITHUB_REPOSITORY 未设置，跳过 GitHub Issue 创建")
         return
 
+    issues_url = f"https://api.github.com/repos/{repo}/issues"
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+    }
+
+    if _issue_exists(issues_url, title, headers, params={"state": "open", "per_page": 50}):
+        print(f"ℹ️ GitHub Issue 已存在，跳过创建: {title}")
+        return
+
+    try:
+        resp = with_retry(
+            _do_create_issue,
+            issues_url,
+            headers,
+            title,
+            body,
+            max_retries=2,
+            base_delay=5,
+        )
+        issue_url = resp.json().get("html_url", "?")
+        print(f"✅ 已创建 GitHub Issue: {issue_url}")
+    except Exception as e:
+        print(f"⚠️  创建 GitHub Issue 失败: {e}")
+
+
+def create_codeberg_issue(title: str, body: str) -> None:
+    """当处于 Forgejo CI 环境时，在 Codeberg 上创建 Issue。"""
     token = os.environ.get("FORGEJO_TOKEN")
     repo = os.environ.get("FORGEJO_REPOSITORY") or os.environ.get("GITHUB_REPOSITORY")
 
@@ -667,21 +704,21 @@ def create_codeberg_issue(title: str, body: str, _config: dict[str, Any]) -> Non
         print("⚠️  FORGEJO_REPOSITORY / GITHUB_REPOSITORY 未设置，跳过 Issue 创建")
         return
 
-    api_base = f"https://codeberg.org/api/v1/repos/{repo}"
+    issues_url = f"https://codeberg.org/api/v1/repos/{repo}/issues"
     headers = {
         "Authorization": f"token {token}",
         "Content-Type": "application/json",
     }
 
     # 去重：同日期标题已存在则跳过
-    if _codeberg_issue_exists(title, api_base, headers):
+    if _issue_exists(issues_url, title, headers, params={"state": "open", "type": "issue", "limit": 50}):
         print(f"ℹ️ Issue 已存在，跳过创建: {title}")
         return
 
     try:
         resp = with_retry(
             _do_create_issue,
-            api_base,
+            issues_url,
             headers,
             title,
             body,
@@ -692,6 +729,19 @@ def create_codeberg_issue(title: str, body: str, _config: dict[str, Any]) -> Non
         print(f"✅ 已创建 Codeberg Issue: {issue_url}")
     except Exception as e:
         print(f"⚠️  创建 Codeberg Issue 失败: {e}")
+
+
+def create_ci_issue(title: str, body: str, _config: dict[str, Any]) -> None:
+    """根据当前 CI 平台创建失败报告 Issue。"""
+    if not os.environ.get("CI"):
+        print("ℹ️ 非 CI 环境，跳过 Issue 创建")
+        return
+
+    if os.environ.get("GITHUB_ACTIONS"):
+        create_github_issue(title, body)
+        return
+
+    create_codeberg_issue(title, body)
 
 
 def main():
@@ -1156,7 +1206,7 @@ def main():
         issue_title = f"🔄 自动更新报告 — {today} — {failed_packages} 个失败"
         issue_body = _build_issue_body(failed_list)
         print()
-        create_codeberg_issue(issue_title, issue_body, config)
+        create_ci_issue(issue_title, issue_body, config)
 
     if has_errors:
         return 2
