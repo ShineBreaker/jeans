@@ -16,7 +16,9 @@
 - 检查 GitHub 上游版本
 - 计算新的 hash
 - 运行 `scripts/check-updates/update_versions.py`
-- 发现变更后直接 commit 并 push 回 GitHub 的当前分支
+- 对本次更新到的非 `-bin` 包执行 `guix build -L modules <package>`
+- 构建失败时自动创建 GitHub Issue，并阻止这次更新进入 `main`
+- 构建通过后才会 commit 并 push 回 GitHub 的当前分支
 - 在更新脚本出现失败包时，自动创建 GitHub Issue
 - 如果本次运行产生了新 commit，会顺手把同一提交镜像到 Codeberg
 
@@ -119,6 +121,25 @@ Guix channel authentication 不认 “GitHub Verified” 这个概念，它只�
 
 `auto-update.yml` 已经兼容这个约定，不会把“有更新”误判成失败。
 
+### 更新后构建测试
+
+`auto-update.yml` 会读取 `scripts/check-updates/report.json`，仅挑出：
+
+- 本次 `status == "updated"` 的包
+- 包名不以 `-bin` 结尾的包
+
+然后逐个执行：
+
+```bash
+guix build -L modules <package-name>
+```
+
+只要任意一个包构建失败：
+
+- workflow 会停止在 commit/push 之前
+- GitHub 上会创建一个去重后的 issue
+- 构建日志会写进 `scripts/check-updates/build-report.json` 并作为 artifact 上传
+
 ### 跳过文件配置
 
 某些 `.scm` 文件可以加入跳过列表，不进行检查。编辑 `scripts/check-updates/config.json`：
@@ -144,6 +165,7 @@ Guix channel authentication 不认 “GitHub Verified” 这个概念，它只�
 3. 手动运行 `Auto Update Packages`
 4. 检查 GitHub `main` 是否产生新的更新 commit
 5. 检查 Codeberg `main` 是否同步到相同提交
+6. 如果更新到了非 `-bin` 包，检查构建测试步骤是否通过
 
 ### 验证镜像同步
 

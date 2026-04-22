@@ -133,6 +133,25 @@ jobs:
           git config commit.gpgsign true
           git config gpg.program /tmp/gpg-loopback
 
+      - name: Build updated non-binary packages
+        if: steps.changes.outputs.has_changes == 'true'
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          if [ -f /var/guix/current/etc/profile ]; then
+            . /var/guix/current/etc/profile
+          fi
+          if [ -f "$HOME/.config/guix/current/etc/profile" ]; then
+            . "$HOME/.config/guix/current/etc/profile"
+          fi
+          guix shell --manifest=scripts/check-updates/manifest.scm -- \
+            env CI=true \
+            GITHUB_TOKEN="$GITHUB_TOKEN" \
+            python3 scripts/check-updates/test_updated_packages.py
+
       - name: Commit updates
         if: steps.changes.outputs.has_changes == 'true'
         shell: bash
@@ -177,5 +196,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: auto-update-report
-          path: scripts/check-updates/report.json
+          path: |
+            scripts/check-updates/report.json
+            scripts/check-updates/build-report.json
           if-no-files-found: warn
