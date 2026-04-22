@@ -93,10 +93,13 @@ jobs:
             exit 1
           fi
 
-          mkdir -p "$HOME/.gnupg"
-          chmod 700 "$HOME/.gnupg"
-          printf 'pinentry-mode loopback\n' > "$HOME/.gnupg/gpg.conf"
-          printf 'allow-loopback-pinentry\n' > "$HOME/.gnupg/gpg-agent.conf"
+          export GNUPGHOME="${RUNNER_TEMP:-/tmp}/jeans-workflow-gnupg"
+          rm -rf "$GNUPGHOME"
+          mkdir -p "$GNUPGHOME"
+          chmod 700 "$GNUPGHOME"
+          printf 'pinentry-mode loopback\n' > "$GNUPGHOME/gpg.conf"
+          printf 'allow-loopback-pinentry\n' > "$GNUPGHOME/gpg-agent.conf"
+          printf 'GNUPGHOME=%s\n' "$GNUPGHOME" >> "$GITHUB_ENV"
 
           printf '%s\n' "$WORKFLOW_GPG_PRIVATE_KEY" | gpg --batch --import
 
