@@ -165,7 +165,7 @@ protocol, to offer good support for the Java Language.")
 (define-public motrix-next-bin
   (package
     (name "motrix-next-bin")
-    (version "3.8.0")
+    (version "3.8.3")
     (source
      (origin
        (method url-fetch)
@@ -173,7 +173,7 @@ protocol, to offer good support for the Java Language.")
              "https://github.com/AnInsomniacy/motrix-next/releases/download/"
              "v" version "/MotrixNext_" version "_amd64.deb"))
        (sha256
-        (base32 "0ngjpxh4x9lbmwkwkjnlgq939bkcknsim51bvqzrz9j8xd9c4skl"))))
+        (base32 "0q93j6d1q71vd26laj6kfbzhgwbqdf41pqncz0pprl0bzidxpkrc"))))
     (build-system gnu-build-system)
     (arguments
      (list
