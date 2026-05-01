@@ -7,17 +7,8 @@
   #:use-module (gnu packages base)
   #:use-module (gnu packages bash)
   #:use-module (gnu packages elf)
-  #:use-module (gnu packages gcc)
-  #:use-module (gnu packages glib)
-  #:use-module (gnu packages gnome)
-  #:use-module (gnu packages gtk)
-  #:use-module (gnu packages libusb)
-  #:use-module (gnu packages linux)
   #:use-module (gnu packages web)
-  #:use-module (gnu packages xorg)
-  #:use-module (nongnu packages dotnet)
   #:use-module (guix build utils)
-  #:use-module (guix build-system copy)
   #:use-module (guix build-system gnu)
   #:use-module (guix download)
   #:use-module (guix git-download)
@@ -27,7 +18,7 @@
 (define-public opentabletdriver-udev-rules
   (package
     (name "opentabletdriver-udev-rules")
-    (version "0.6.6.2")
+    (version "0.6.7")
     (source
       (origin
         (method git-fetch)
@@ -36,7 +27,7 @@
                (commit (string-append "v" version))))
         (file-name (git-file-name name version))
         (sha256
-          (base32 "1r9q1qmhca5q90kwd80cqbajkdx5crsiafywjy5zhq5gswasis1r"))))
+          (base32 "0q3wc7zv7fadc0w7iihzysc0g4xwalv6mfmk0qwpzxnq73advgcc"))))
     (build-system gnu-build-system)
     (arguments
       (list #:modules '((guix build utils)
