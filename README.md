@@ -97,6 +97,7 @@ If you prefer the mirror, `https://codeberg.org/BrokenShine/jeans.git` should tr
 
 | Package                    | Description                                                                                  |
 | -------------------------- | -------------------------------------------------------------------------------------------- |
+| `cc-switch-bin`            | All-in-One assistant for Claude Code, Codex & Gemini CLI                                     |
 | `git-credential-keepassxc` | Use KeePassXC as a command-line credential store                                             |
 | `jdtls-bin`                | Java language server                                                                         |
 | `motrix-next-bin`          | Full-featured download manager                                                               |

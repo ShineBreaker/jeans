@@ -22,7 +22,9 @@
   #:use-module (gnu packages glib)     ; glib
   #:use-module (gnu packages freedesktop) ; libappindicator
   #:use-module (gnu packages gcc)         ; gcc:lib
-  #:use-module (gnu packages rust))       ; rust
+  #:use-module (gnu packages rust)        ; rust
+  #:use-module (gnu packages tls)          ; openssl
+  #:use-module (gnu packages compression)) ; xz
 
 (define-public winapps
   (package
@@ -289,6 +291,126 @@ protocol, to offer good support for the Java Language.")
     (description "Motrix-Next is a full-featured download manager that supports
 downloading HTTP, FTP, BitTorrent, and Magnet links.  It is built with Tauri
 and uses aria2 as the download backend.  This package provides the prebuilt
+binary release.")
+     (license license:expat)))
+
+;;; CC-Switch: prebuilt binary for AI coding assistant manager (Tauri/WebKitGTK).
+;;;
+;;; The upstream .deb ships one ELF binary:
+;;;   - cc-switch       (Tauri app, dynamically linked to webkit2gtk-4.1, gtk3, etc.)
+;;;
+;;; Because this is a prebuilt binary compiled on Ubuntu, we must:
+;;;   1. Use patchelf to set the ELF interpreter to Guix's ld-linux.
+;;;   2. Use patchelf to set RPATH so the binary finds all shared libs in the store.
+
+(define-public cc-switch-bin
+  (package
+    (name "cc-switch-bin")
+    (version "3.14.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://github.com/farion1231/cc-switch/releases/download/"
+             "v" version "/CC-Switch-v" version "-Linux-x86_64.deb"))
+       (sha256
+        (base32 "1xspizxz988ddnhr9pmpgp3yi33hq4pxk66y9a2hss000h6phzcp"))))
+    (build-system gnu-build-system)
+    (arguments
+     (list
+      #:tests? #f
+      #:modules '((guix build gnu-build-system)
+                  (guix build utils))
+      #:phases
+      #~(modify-phases %standard-phases
+          (delete 'configure)
+          (delete 'build)
+          (replace 'unpack
+            (lambda _
+              (let ((debdir (string-append "cc-switch-" #$version)))
+                (mkdir debdir)
+                (with-directory-excursion debdir
+                  (invoke "ar" "x" #$source)
+                  (invoke "tar" "xzf" "data.tar.gz"))
+                (chdir debdir))))
+          (replace 'install
+            (lambda* (#:key inputs #:allow-other-keys)
+              (let* ((out #$output)
+                     (bin (string-append out "/bin"))
+                     (share (string-append out "/share"))
+                     (patchelf-bin
+                      (string-append (assoc-ref inputs "patchelf")
+                                     "/bin/patchelf"))
+                     (ldso (string-append (assoc-ref inputs "glibc")
+                                          "/lib/ld-linux-x86-64.so.2"))
+                     (rpath
+                      (string-join
+                       (map (lambda (pkg)
+                              (string-append (assoc-ref inputs pkg) "/lib"))
+                            '("webkitgtk-for-gtk3" "gtk+" "glib" "cairo"
+                              "gdk-pixbuf" "libsoup" "openssl" "xz"
+                              "libappindicator" "glibc" "gcc"))
+                       ":")))
+                (mkdir-p bin)
+                (install-file "usr/bin/cc-switch" bin)
+
+                ;; Patch ELF interpreter and RPATH.
+                (invoke patchelf-bin "--set-interpreter" ldso
+                        (string-append bin "/cc-switch"))
+                (invoke patchelf-bin "--set-rpath" rpath
+                        (string-append bin "/cc-switch"))
+
+                ;; Wrap program to set XDG_DATA_DIRS.
+                (wrap-program (string-append bin "/cc-switch")
+                  `("XDG_DATA_DIRS" ":" prefix
+                    ,(list (string-append out "/share")
+                           (string-append #$gtk+ "/share")
+                           (string-append #$glib "/share")
+                           (string-append #$gdk-pixbuf "/share"))))
+
+                ;; Install desktop entry.
+                (mkdir-p (string-append share "/applications"))
+                (copy-file "usr/share/applications/CC Switch.desktop"
+                           (string-append share "/applications/CC Switch.desktop"))
+                (substitute* (string-append share "/applications/CC Switch.desktop")
+                  (("Exec=cc-switch")
+                   (string-append "Exec=" bin "/cc-switch")))
+
+                ;; Install icons.
+                (for-each
+                 (lambda (size-dir)
+                   (let ((icon-src
+                          (string-append "usr/share/icons/hicolor/"
+                                         size-dir "/apps/cc-switch.png"))
+                         (icon-dst-dir
+                          (string-append share "/icons/hicolor/"
+                                         size-dir "/apps")))
+                     (when (file-exists? icon-src)
+                       (mkdir-p icon-dst-dir)
+                       (copy-file icon-src
+                                  (string-append icon-dst-dir
+                                                 "/cc-switch.png")))))
+                 '("32x32" "128x128" "256x256@2"))))))))
+     (native-inputs (list patchelf binutils))
+     (inputs
+      (list bash-minimal
+            glibc
+            `(,gcc "lib")
+            webkitgtk-for-gtk3
+            gtk+
+            glib
+            cairo
+            gdk-pixbuf
+            libsoup
+            openssl
+            xz
+            libappindicator))
+     (home-page "https://github.com/farion1231/cc-switch")
+     (synopsis "All-in-One assistant for Claude Code, Codex & Gemini CLI")
+     (description "CC-Switch is a desktop application that provides an all-in-one
+management tool for AI coding assistants including Claude Code, Codex, and
+Gemini CLI.  It offers provider management, proxy configuration, session
+handling, and usage monitoring.  This package provides the prebuilt
 binary release.")
      (license license:expat)))
 
