@@ -51,9 +51,10 @@ If you prefer the mirror, `https://codeberg.org/BrokenShine/jeans.git` should tr
 
 ### (jeans packages desktop)
 
-| Package    | Description                                              |
-| ---------- | -------------------------------------------------------- |
-| `waypaper` | GUI wallpaper manager for Wayland and Xorg Linux systems |
+| Package           | Description                                                                 |
+| ----------------- | --------------------------------------------------------------------------- |
+| `waypaper`        | GUI wallpaper manager for Wayland and Xorg Linux systems                    |
+| `zen-browser-bin` | Experience tranquillity while browsing the web without people tracking you! |
 
 ### (jeans packages fonts)
 
