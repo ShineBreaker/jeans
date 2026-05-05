@@ -119,15 +119,15 @@ This package provides the prebuilt binary release.")
 (define-public winapps
   (package
     (name "winapps")
-    (version "0-unstable-2026-03-16")
+    (version "0-unstable-2026-05-04")
     (source
      (origin
        (method git-fetch)
        (uri (git-reference
              (url "https://github.com/winapps-org/winapps")
-             (commit "d5ea5d5a0b8ef28decb1f21e10b8290757e00693")))
+             (commit "bc8b7856761f3c3b0e5d52ed34b5544319e69675")))
        (file-name (git-file-name name version))
-       (sha256 (base32 "1640mqdvarqfyv646p6qrfiskggjwz6l8m0mask93xhnis1vi1ra"))
+       (sha256 (base32 "0vrxpk9wb6p3mqr0kgq318v3b1jm1hh71kslcc5wkz1isxv3vx45"))
        (patches (list (local-file "../patches/WinApps.patch")))))
     (build-system gnu-build-system)
     (arguments
