@@ -7,6 +7,7 @@
   #:use-module (guix build-system gnu)
   #:use-module (guix gexp)
   #:use-module ((guix licenses) #:prefix license:)
+  #:use-module ((nonguix licenses) #:prefix license:)
   #:use-module (gnu packages bash)
   #:use-module (gnu packages python)
   #:use-module (gnu packages java)
@@ -24,7 +25,96 @@
   #:use-module (gnu packages gcc)         ; gcc:lib
   #:use-module (gnu packages rust)        ; rust
   #:use-module (gnu packages tls)          ; openssl
-  #:use-module (gnu packages compression)) ; xz
+  #:use-module (gnu packages compression) ; xz
+  #:use-module (gnu packages version-control) ; git
+  #:use-module (gnu packages golang))         ; go
+
+;;; Crush: AI-powered coding assistant (Go TUI binary).
+;;;
+;;; The upstream .deb ships a single Go ELF binary:
+;;;   - crush        (dynamically linked, only needs glibc: libc, libdl, libpthread)
+;;;
+;;; Patch the ELF interpreter to Guix's ld-linux, then wrap with PATH
+;;; so crush can find git and other runtime tools.
+
+(define-public crush-bin
+  (package
+    (name "crush-bin")
+    (version "0.65.3")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://github.com/charmbracelet/crush/releases/download/"
+             "v" version "/crush_" version "_amd64.deb"))
+       (sha256
+        (base32 "0gl91w5yi5pvfv3dlj6xrri0q7qnl02jlx21c9i59xlfh2r2hs81"))))
+    (build-system gnu-build-system)
+    (arguments
+     (list
+      #:tests? #f
+      #:modules '((guix build gnu-build-system)
+                  (guix build utils))
+      #:phases
+      #~(modify-phases %standard-phases
+          (delete 'configure)
+          (delete 'build)
+          (replace 'unpack
+            (lambda _
+              (let ((debdir (string-append "crush-" #$version)))
+                (mkdir debdir)
+                (with-directory-excursion debdir
+                  (invoke "ar" "x" #$source)
+                  (invoke "tar" "xzf" "data.tar.gz"))
+                (chdir debdir))))
+          (replace 'install
+            (lambda* (#:key inputs #:allow-other-keys)
+              (let* ((out #$output)
+                     (bin (string-append out "/bin"))
+                     (share (string-append out "/share"))
+                     (patchelf-bin
+                      (string-append (assoc-ref inputs "patchelf")
+                                     "/bin/patchelf"))
+                     (ldso (string-append (assoc-ref inputs "glibc")
+                                          "/lib/ld-linux-x86-64.so.2")))
+                (mkdir-p bin)
+                (install-file "usr/bin/crush" bin)
+
+                (invoke patchelf-bin "--set-interpreter" ldso
+                        (string-append bin "/crush"))
+
+                (wrap-program (string-append bin "/crush")
+                  `("PATH" ":" prefix
+                    ,(list (string-append #$bash-minimal "/bin")
+                           (string-append #$coreutils "/bin")
+                           (string-append #$git "/bin")
+                           (string-append #$go "/bin"))))
+
+                (mkdir-p (string-append share "/bash-completion/completions"))
+                (copy-file "etc/bash_completion.d/crush"
+                           (string-append share "/bash-completion/completions/crush"))
+
+                (mkdir-p (string-append share "/fish/vendor_completions.d"))
+                (copy-file "usr/share/fish/vendor_completions.d/crush.fish"
+                           (string-append share "/fish/vendor_completions.d/crush.fish"))
+
+                (mkdir-p (string-append share "/zsh/site-functions"))
+                (copy-file "usr/share/zsh/site-functions/_crush"
+                           (string-append share "/zsh/site-functions/_crush"))
+
+                (mkdir-p (string-append share "/man/man1"))
+                (copy-file "usr/share/man/man1/crush.1.gz"
+                           (string-append share "/man/man1/crush.1.gz"))))))))
+    (native-inputs (list patchelf binutils))
+    (inputs
+     (list bash-minimal glibc git coreutils go))
+    (home-page "https://github.com/charmbracelet/crush")
+    (synopsis "AI-powered coding assistant for the CLI")
+    (description "Crush is an AI-powered coding assistant that runs in the terminal.
+It supports multiple LLM providers, MCP servers, LSP integration, and provides
+tools for file editing, shell command execution, web fetching, and more.
+This package provides the prebuilt binary release.")
+    (license (license:nonfree "https://github.com/charmbracelet/crush/blob/main/LICENSE.md"))))
 
 (define-public winapps
   (package

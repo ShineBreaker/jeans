@@ -45,9 +45,9 @@ If you prefer the mirror, `https://codeberg.org/BrokenShine/jeans.git` should tr
 
 ### (jeans packages browser)
 
-| Package            | Description                                                                                |
-| ------------------ | ------------------------------------------------------------------------------------------ |
-| `librewolf-nongnu` | "Custom version of Firefox, focused on privacy, security and freedom. (revert guix patch)" |
+| Package            | Description                                                                              |
+| ------------------ | ---------------------------------------------------------------------------------------- |
+| `librewolf-nongnu` | Custom version of Firefox, focused on privacy, security and freedom. (revert guix patch) |
 
 ### (jeans packages desktop)
 
@@ -99,6 +99,7 @@ If you prefer the mirror, `https://codeberg.org/BrokenShine/jeans.git` should tr
 | Package                    | Description                                                                                  |
 | -------------------------- | -------------------------------------------------------------------------------------------- |
 | `cc-switch-bin`            | All-in-One assistant for Claude Code, Codex & Gemini CLI                                     |
+| `crush-bin`                | AI-powered coding assistant for the CLI                                                      |
 | `git-credential-keepassxc` | Use KeePassXC as a command-line credential store                                             |
 | `jdtls-bin`                | Java language server                                                                         |
 | `motrix-next-bin`          | Full-featured download manager                                                               |
