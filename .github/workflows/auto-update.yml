@@ -2,7 +2,7 @@ name: Auto Update Packages
 
 on:
   schedule:
-    - cron: "0 2 * * 1"
+    - cron: "0 2 * * 2,4,6"
   workflow_dispatch:
 
 concurrency:
