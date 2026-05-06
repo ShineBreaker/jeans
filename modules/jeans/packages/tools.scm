@@ -1,4 +1,5 @@
 (define-module (jeans packages tools)
+  #:use-module (ice-9 match)
   #:use-module (guix packages)
   #:use-module (guix build-system cargo)
   #:use-module (guix download)
@@ -6,6 +7,7 @@
   #:use-module (guix build-system copy)
   #:use-module (guix build-system gnu)
   #:use-module (guix gexp)
+  #:use-module (gnu packages bootstrap)  ; glibc-dynamic-linker
   #:use-module ((guix licenses) #:prefix license:)
   #:use-module ((nonguix licenses) #:prefix license:)
   #:use-module (gnu packages bash)
@@ -530,3 +532,66 @@ binary release.")
      "@code{git-credential-keepassxc} is a @code{git} credential helper that
 enables command-line applications to interact with @code{keepassxc} databases.")
     (license license:gpl3+)))
+
+(define-public opencode-bin
+  (package
+    (name "opencode-bin")
+    (version "1.14.39")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://github.com/anomalyco/opencode/releases/download/"
+             "v" version "/opencode-linux-x64.tar.gz"))
+       (sha256
+        (base32 "0y5qa635a1hiw74f50ci4si9ja14l7cx629jyqlzxq57h55dljzk"))))
+    (build-system copy-build-system)
+    (arguments
+     (list
+      #:validate-runpath? #f
+      #:strip-binaries? #f
+      #:install-plan
+      #~'(("opencode" "libexec/opencode"))
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'unpack 'patch-proc-self-exe
+            (lambda _
+              ;; Replace /proc/self/exe with /proc/self/ex_ to force Bun
+              ;; to fall back to argv[0] for finding the embedded modules.
+              (invoke "sed" "-i" "s|/proc/self/exe|/proc/self/ex_|g"
+                      "opencode")))
+          (add-after 'install 'make-binary-executable
+            (lambda _
+              (chmod (string-append #$output "/libexec/opencode") #o555)))
+          (add-after 'make-binary-executable 'create-wrapper
+            (lambda* (#:key inputs #:allow-other-keys)
+              (let ((bin (string-append #$output "/bin"))
+                    (libexec (string-append #$output "/libexec/opencode"))
+                    (ld.so (string-append (assoc-ref inputs "glibc")
+                                          #$(glibc-dynamic-linker)))
+                    (lib-path (string-join (list (string-append (assoc-ref
+                                                                 inputs
+                                                                 "glibc")
+                                                                "/lib")
+                                                 (string-append (assoc-ref
+                                                                 inputs "gcc")
+                                                                "/lib")) ":")))
+                (mkdir-p bin)
+                (call-with-output-file (string-append bin "/opencode")
+                  (lambda (port)
+                    (format port
+                            "#!~a\nexec ~a --argv0 ~a --library-path ~a ~a \"$@\"\n"
+                            #$(file-append bash-minimal "/bin/sh")
+                            ld.so
+                            libexec
+                            lib-path
+                            libexec)))
+                (chmod (string-append bin "/opencode") #o755)))))))
+    (native-inputs (list sed))
+    (inputs (list bash-minimal glibc
+                  `(,gcc "lib")))
+    (home-page "https://opencode.ai")
+    (synopsis "The open source AI coding agent.")
+    (description "OpenCode is an open source agent that helps you
+ write code in your terminal.")
+    (license license:expat)))

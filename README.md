@@ -103,6 +103,7 @@ If you prefer the mirror, `https://codeberg.org/BrokenShine/jeans.git` should tr
 | `git-credential-keepassxc` | Use KeePassXC as a command-line credential store                                             |
 | `jdtls-bin`                | Java language server                                                                         |
 | `motrix-next-bin`          | Full-featured download manager                                                               |
+| `opencode-bin`             | The open source AI coding agent.                                                             |
 | `winapps`                  | Run Windows applications on GNU/Linux seamlessly (Microsoft 365, Adobe Creative Cloud, etc.) |
 
 ## Usage Examples
