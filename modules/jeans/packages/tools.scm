@@ -29,6 +29,13 @@
   #:use-module (gnu packages tls)          ; openssl
   #:use-module (gnu packages compression) ; xz
   #:use-module (gnu packages version-control) ; git
+  #:use-module (gnu packages audio)       ; alsa-lib
+  #:use-module (gnu packages curl)        ; curl
+  #:use-module (gnu packages fontutils)   ; fontconfig
+  #:use-module (gnu packages gl)          ; libglvnd, mesa
+  #:use-module (gnu packages xdisorg)     ; libxkbcommon
+  #:use-module (gnu packages xorg)        ; libx11, libxcb, libxcursor, libxi
+  #:use-module (gnu packages vulkan)      ; vulkan-loader
   #:use-module (gnu packages golang))         ; go
 
 ;;; Crush: AI-powered coding assistant (Go TUI binary).
@@ -595,3 +602,161 @@ enables command-line applications to interact with @code{keepassxc} databases.")
     (description "OpenCode is an open source agent that helps you
  write code in your terminal.")
     (license license:expat)))
+
+;;; Warp Terminal: prebuilt binary terminal emulator (Rust/GPU-accelerated).
+;;;
+;;; The upstream .deb ships one large ELF PIE binary:
+;;;   - warp   (dynamically linked to zlib, xz, alsa-lib, glibc, gcc:lib)
+;;;
+;;; Runtime dependencies loaded via dlopen:
+;;;   fontconfig, libEGL (libglvnd), libxkbcommon, vulkan-loader,
+;;;   wayland-client, libX11, libXcursor, libXi, libxcb
+;;;
+;;; Because this is a prebuilt binary compiled on Ubuntu, we must:
+;;;   1. Use patchelf to set the ELF interpreter to Guix's ld-linux.
+;;;   2. Use patchelf to set RPATH so the binary finds all shared libs in the store.
+;;;   3. Add libfontconfig.so.1 as an explicit needed library (nix does this too).
+
+(define-public warp-terminal-bin
+  (package
+    (name "warp-terminal-bin")
+    (version "0.2026.04.29.08.57.stable.01")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://releases.warp.dev/stable/"
+             "v0.2026.04.29.08.57.stable_01/"
+             "warp-terminal_0.2026.04.29.08.57.stable.01_amd64.deb"))
+       (sha256
+        (base32 "08q33327r7z2ls303shfnj66hnw711i2f5kxni6kb65gfyzcf12s"))))
+    (build-system gnu-build-system)
+    (arguments
+     (list
+      #:tests? #f
+      #:validate-runpath? #f
+      #:modules '((guix build gnu-build-system)
+                  (guix build utils))
+      #:phases
+      #~(modify-phases %standard-phases
+          (delete 'configure)
+          (delete 'build)
+          (replace 'unpack
+            (lambda _
+              (let ((debdir (string-append "warp-terminal-" #$version)))
+                (mkdir debdir)
+                (with-directory-excursion debdir
+                  (invoke "ar" "x" #$source)
+                  (invoke "tar" "xJf" "data.tar.xz"))
+                (chdir debdir))))
+          (replace 'install
+            (lambda _
+              (let* ((out #$output)
+                     (bin (string-append out "/bin"))
+                     (lib-dir (string-append out "/lib/warpdotdev/warp-terminal"))
+                     (share (string-append out "/share"))
+                     (rpath
+                      (string-join
+                       (list (string-append #$glibc "/lib")
+                             (string-append #$gcc:lib "/lib")
+                             (string-append #$zlib "/lib")
+                             (string-append #$xz "/lib")
+                             (string-append #$alsa-lib "/lib")
+                             (string-append #$fontconfig "/lib")
+                             (string-append #$libglvnd "/lib")
+                             (string-append #$libxkbcommon "/lib")
+                             (string-append #$vulkan-loader "/lib")
+                             (string-append #$wayland "/lib")
+                             (string-append #$libx11 "/lib")
+                             (string-append #$libxcb "/lib")
+                             (string-append #$libxcursor "/lib")
+                             (string-append #$libxi "/lib"))
+                       ":")))
+                (mkdir-p lib-dir)
+                (copy-recursively "opt/warpdotdev/warp-terminal" lib-dir)
+
+                (invoke #$(file-append patchelf "/bin/patchelf")
+                        "--set-interpreter"
+                        #$(file-append glibc "/lib/ld-linux-x86-64.so.2")
+                        (string-append lib-dir "/warp"))
+                (invoke #$(file-append patchelf "/bin/patchelf")
+                        "--set-rpath" rpath
+                        (string-append lib-dir "/warp"))
+                (invoke #$(file-append patchelf "/bin/patchelf")
+                        "--add-needed" "libfontconfig.so.1"
+                        (string-append lib-dir "/warp"))
+
+                (mkdir-p bin)
+                (call-with-output-file (string-append bin "/warp-terminal")
+                  (lambda (port)
+                    (format port "#!~a/bin/sh
+exec ~a/warp \"$@\"~%"
+                            #$bash-minimal
+                            lib-dir)))
+                (chmod (string-append bin "/warp-terminal") #o755)
+
+                (wrap-program (string-append bin "/warp-terminal")
+                  `("PATH" ":" prefix
+                    ,(list (string-append #$bash-minimal "/bin")
+                           (string-append #$coreutils "/bin")))
+                  `("LD_LIBRARY_PATH" ":" prefix
+                    ,(list (string-append #$libglvnd "/lib")
+                           (string-append #$vulkan-loader "/lib")
+                           (string-append #$wayland "/lib")
+                           (string-append #$libxkbcommon "/lib")
+                           (string-append #$libx11 "/lib")
+                           (string-append #$libxcb "/lib")
+                           (string-append #$libxcursor "/lib")
+                           (string-append #$libxi "/lib")
+                           (string-append #$fontconfig "/lib")))
+                  `("XDG_DATA_DIRS" ":" prefix
+                    ,(list share
+                           (string-append #$glib "/share"))))
+
+                (mkdir-p (string-append share "/applications"))
+                (copy-file "usr/share/applications/dev.warp.Warp.desktop"
+                           (string-append share "/applications/dev.warp.Warp.desktop"))
+                (substitute* (string-append share "/applications/dev.warp.Warp.desktop")
+                  (("Exec=warp-terminal")
+                   (string-append "Exec=" bin "/warp-terminal")))
+
+                (for-each
+                 (lambda (size-dir)
+                   (let ((icon-src
+                          (string-append "usr/share/icons/hicolor/"
+                                         size-dir "/apps/dev.warp.Warp.png"))
+                         (icon-dst-dir
+                          (string-append share "/icons/hicolor/"
+                                         size-dir "/apps")))
+                     (when (file-exists? icon-src)
+                       (mkdir-p icon-dst-dir)
+                       (copy-file icon-src
+                                  (string-append icon-dst-dir
+                                                 "/dev.warp.Warp.png")))))
+                 '("16x16" "32x32" "64x64" "128x128" "256x256" "512x512"))))))))
+    (native-inputs (list patchelf binutils))
+    (inputs
+     (list bash-minimal
+           glibc
+           `(,gcc "lib")
+           zlib
+           xz
+           alsa-lib
+           fontconfig
+           libglvnd
+           libxkbcommon
+           vulkan-loader
+           wayland
+           libx11
+           libxcb
+           libxcursor
+           libxi
+           coreutils
+           glib))
+    (home-page "https://www.warp.dev")
+    (synopsis "Rust-based terminal with AI and modern developer experience")
+    (description "Warp is a modern, GPU-accelerated terminal emulator built with
+Rust.  It features AI-assisted command suggestions, modern text editing
+capabilities, collaborative workflows, and a GPU-accelerated rendering engine.
+This package provides the prebuilt binary release.")
+    (license (list license:agpl3+ license:expat))))
