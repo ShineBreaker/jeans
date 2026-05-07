@@ -42,7 +42,7 @@
 (define-public crush-bin
   (package
     (name "crush-bin")
-    (version "0.65.3")
+    (version "0.66.0")
     (source
      (origin
        (method url-fetch)
@@ -50,7 +50,7 @@
              "https://github.com/charmbracelet/crush/releases/download/"
              "v" version "/crush_" version "_amd64.deb"))
        (sha256
-        (base32 "0gl91w5yi5pvfv3dlj6xrri0q7qnl02jlx21c9i59xlfh2r2hs81"))))
+        (base32 "1iplln0b1xdyk2ky7pazsjpi1r7hzn990p68wmma7rc0jxfpwxs6"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -259,7 +259,7 @@ protocol, to offer good support for the Java Language.")
 (define-public motrix-next-bin
   (package
     (name "motrix-next-bin")
-    (version "3.8.7")
+    (version "3.8.8")
     (source
      (origin
        (method url-fetch)
@@ -267,7 +267,7 @@ protocol, to offer good support for the Java Language.")
              "https://github.com/AnInsomniacy/motrix-next/releases/download/"
              "v" version "/MotrixNext_" version "_amd64.deb"))
        (sha256
-        (base32 "0mj9s8lvbj9dkyvrp58h8zii2xpvrv020bikl4z49ks5z736n7na"))))
+        (base32 "0l2fh95lfs5pzy49mdi16msaar2sci7qjh7gscvn3al3rci3gjmg"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -536,7 +536,7 @@ enables command-line applications to interact with @code{keepassxc} databases.")
 (define-public opencode-bin
   (package
     (name "opencode-bin")
-    (version "1.14.39")
+    (version "1.14.40")
     (source
      (origin
        (method url-fetch)
@@ -544,7 +544,7 @@ enables command-line applications to interact with @code{keepassxc} databases.")
              "https://github.com/anomalyco/opencode/releases/download/"
              "v" version "/opencode-linux-x64.tar.gz"))
        (sha256
-        (base32 "0y5qa635a1hiw74f50ci4si9ja14l7cx629jyqlzxq57h55dljzk"))))
+        (base32 "13cn8982lxj8ajzk9csgw3m900fbsaws05w15jsrig34p43lacfm"))))
     (build-system copy-build-system)
     (arguments
      (list
