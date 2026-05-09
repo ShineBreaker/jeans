@@ -99,6 +99,7 @@ If you prefer the mirror, `https://codeberg.org/BrokenShine/jeans.git` should tr
 
 | Package                    | Description                                                                                  |
 | -------------------------- | -------------------------------------------------------------------------------------------- |
+| `amber-pm`                 | Container-based package manager using fuse-overlayfs                                         |
 | `cc-switch-bin`            | All-in-One assistant for Claude Code, Codex & Gemini CLI                                     |
 | `crush-bin`                | AI-powered coding assistant for the CLI                                                      |
 | `git-credential-keepassxc` | Use KeePassXC as a command-line credential store                                             |

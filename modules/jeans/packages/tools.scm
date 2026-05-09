@@ -602,3 +602,152 @@ enables command-line applications to interact with @code{keepassxc} databases.")
     (description "OpenCode is an open source agent that helps you
  write code in your terminal.")
     (license license:expat)))
+
+;;; APM (Amber Package Manager): container-based package manager using
+;;; fuse-overlayfs and dpkg.  Installs shell scripts, helper binaries,
+;;; and the ace-env container rootfs tarball.
+;;;
+;;; APM requires a writable @file{/var/lib/apm} at runtime for storing
+;;; installed packages and overlayfs layers.  This directory must be
+;;; created and initialised by the user (or a system service) before
+;;; first use.  The Guix store copy under @file{share/apm/var-lib/}
+;;; serves as the read-only seed that the init script copies into
+;;; @file{/var/lib/apm}.
+
+(define-public amber-pm
+  (let ((commit "d5bb8f929cb92007c5a28f154aa4349368ac7b4d")
+        (revision "0"))
+    (package
+      (name "amber-pm")
+      (version (git-version "1.3.2" revision commit))
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://gitee.com/amber-ce/amber-pm")
+               (commit commit)))
+         (file-name (git-file-name name version))
+         (sha256
+          (base32 "14iajm64090qw7flzn0ncazzmyn27rnw6mmrlz3d230zf2iws5j4"))))
+      (build-system gnu-build-system)
+      (arguments
+       (list
+        #:tests? #f
+        #:modules '((guix build gnu-build-system)
+                    (guix build utils))
+        #:phases
+        #~(modify-phases %standard-phases
+            (delete 'configure)
+            (delete 'build)
+            (replace 'unpack
+              (lambda _
+                (copy-recursively #$source ".")))
+            (add-after 'unpack 'substitute-paths
+              (lambda _
+                (let ((version #$(package-version this-package)))
+                  (substitute* '("src/usr/libexec/apm/apm-main"
+                                 "src/DEBIAN/control"
+                                 "src/var/lib/apm/apm/files/feedback.sh")
+                    (("@VERSION@") version))
+                  (substitute* "src/usr/libexec/apm/apm-main"
+                    (("/usr/libexec/apm/apm-eggs")
+                     (string-append #$output "/libexec/apm/apm-eggs"))))))
+            (replace 'install
+              (lambda _
+                (let* ((out #$output)
+                       (bin (string-append out "/bin"))
+                       (libexec (string-append out "/libexec/apm"))
+                       (share (string-append out "/share/apm"))
+                       (varlib (string-append share "/var-lib")))
+                  (mkdir-p bin)
+                  (mkdir-p libexec)
+
+                  (install-file "src/usr/libexec/apm/apm-main" libexec)
+                  (install-file "src/usr/libexec/apm/apm-eggs" libexec)
+                  (chmod (string-append libexec "/apm-main") #o755)
+                  (chmod (string-append libexec "/apm-eggs") #o755)
+
+                  (symlink (string-append libexec "/apm-main")
+                           (string-append bin "/apm"))
+
+                  (for-each
+                   (lambda (script)
+                     (install-file (string-append "src/usr/bin/" script) bin)
+                     (chmod (string-append bin "/" script) #o755))
+                   '("amber-pm-app-launcher"
+                     "amber-pm-app-uninstaller"
+                     "amber-pm-configure-nvidia-host"
+                     "amber-pm-convert"
+                     "amber-pm-addons-maker"
+                     "amber-pm-desktop-fix"
+                     "amber-pm-dstore-patch"
+                     "amber-pm-upgrade-notifier"))
+
+                  (copy-recursively "src/var/lib/apm" varlib)
+
+                  (let ((completions (string-append out "/share/bash-completion/completions")))
+                    (mkdir-p completions)
+                    (install-file "src/usr/share/bash-completion/completions/apm"
+                                  completions))
+
+                  (let ((zsh-fns (string-append out "/share/zsh/site-functions")))
+                    (mkdir-p zsh-fns)
+                    (install-file "src/usr/share/zsh/site-functions/_apm" zsh-fns))
+
+                  (let ((icons (string-append out "/share/icons")))
+                    (mkdir-p icons)
+                    (install-file "src/usr/share/icons/apm.png" icons))
+
+                  (let ((init-script (string-append bin "/amber-pm-init")))
+                    (call-with-output-file init-script
+                      (lambda (port)
+                        (format port "#!~a/bin/bash
+set -euo pipefail
+
+APM_SEED=\"~a/share/apm/var-lib\"
+APM_TARGET=\"/var/lib/apm\"
+
+if [ \"$(id -u)\" -ne 0 ]; then
+  echo \"ERROR: amber-pm-init must be run as root\" >&2
+  exit 1
+fi
+
+if [ ! -d \"$APM_SEED\" ]; then
+  echo \"ERROR: seed directory $APM_SEED not found\" >&2
+  exit 1
+fi
+
+if [ -d \"$APM_TARGET/apm\" ] && [ -f \"$APM_TARGET/apm/files/ace-env.tar.xz\" ]; then
+  echo \"APM data already initialised at $APM_TARGET — skipping.\"
+  echo \"To reinitialise, remove $APM_TARGET and run again.\"
+  exit 0
+fi
+
+echo \"Initialising APM data from $APM_SEED -> $APM_TARGET ...\"
+mkdir -p \"$APM_TARGET\"
+cp -rv \"$APM_SEED/\"* \"$APM_TARGET/\"
+
+# ace-init expects to run inside the container; instead decompress here.
+if [ -f \"$APM_TARGET/apm/files/ace-env.tar.xz\" ] && [ ! -d \"$APM_TARGET/apm/files/ace-env\" ]; then
+  echo \"Decompressing ace-env.tar.xz ...\"
+  tar -xJf \"$APM_TARGET/apm/files/ace-env.tar.xz\" -C \"$APM_TARGET/apm/files/\"
+fi
+
+echo \"APM initialised.  You may now use the 'apm' command.\"
+"
+                                #$bash-minimal
+                                out)))
+                    (chmod init-script #o755))))))))
+      (inputs (list bash-minimal))
+      (home-page "https://gitee.com/amber-ce/amber-pm")
+      (synopsis "Container-based package manager using fuse-overlayfs")
+      (description "APM (Amber Package Manager) is a package manager that
+uses fuse-overlayfs, dpkg and AmberCE containers to run Debian-based
+applications in isolated environments.  It supports converting regular
+deb packages into APM format, managing container overlays, and
+providing desktop integration.
+
+APM requires a writable @file{/var/lib/apm} directory at runtime.
+The seed data is installed under @file{share/apm/var-lib/} in the Guix
+store and must be copied to @file{/var/lib/apm} before first use.")
+      (license license:agpl3+))))
