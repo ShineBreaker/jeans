@@ -80,9 +80,10 @@ If you prefer the mirror, `https://codeberg.org/BrokenShine/jeans.git` should tr
 
 ### (jeans packages terminals)
 
-| Package      | Description                                                              |
-| ------------ | ------------------------------------------------------------------------ |
-| `kitty-full` | Fast, feature-rich, GPU-based terminal emulator. (with kitten utilities) |
+| Package             | Description                                                              |
+| ------------------- | ------------------------------------------------------------------------ |
+| `kitty-full`        | Fast, feature-rich, GPU-based terminal emulator. (with kitten utilities) |
+| `warp-terminal-bin` | Rust-based terminal with AI and modern developer experience              |
 
 ### (jeans packages theme)
 
@@ -104,7 +105,6 @@ If you prefer the mirror, `https://codeberg.org/BrokenShine/jeans.git` should tr
 | `jdtls-bin`                | Java language server                                                                         |
 | `motrix-next-bin`          | Full-featured download manager                                                               |
 | `opencode-bin`             | The open source AI coding agent                                                              |
-| `warp-terminal-bin`        | Rust-based terminal with AI and modern developer experience                                  |
 | `winapps`                  | Run Windows applications on GNU/Linux seamlessly (Microsoft 365, Adobe Creative Cloud, etc.) |
 
 ## Usage Examples
