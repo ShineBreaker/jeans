@@ -330,8 +330,7 @@ and Xorg.")
                   pipewire
                   pulseaudio))
     (home-page "https://zen-browser.app/")
-    (synopsis "Experience tranquillity while browsing the web without people
-tracking you!")
+    (synopsis "Experience tranquillity while browsing the web without people tracking you!")
     (description
      "Beautifully designed, privacy-focused, and packed with features.
 We care about your experience, not your data.")
