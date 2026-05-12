@@ -403,10 +403,10 @@ This package includes both the @code{kitty} terminal emulator and the @code{kitt
 command-line utilities.")
     (license license:gpl3+)))
 
-    ;;; Warp Terminal: prebuilt binary terminal emulator (Rust/GPU-accelerated).
+    ;;; Warp OSS: prebuilt binary terminal emulator (Rust/GPU-accelerated).
     ;;;
     ;;; The upstream .deb ships one large ELF PIE binary:
-    ;;;   - warp   (dynamically linked to zlib, xz, alsa-lib, glibc, gcc:lib)
+    ;;;   - warp-oss   (dynamically linked to zlib, dbus, xz, alsa-lib, glibc, gcc:lib)
     ;;;
     ;;; Runtime dependencies loaded via dlopen:
     ;;;   fontconfig, libEGL (libglvnd), libxkbcommon, vulkan-loader,
@@ -417,19 +417,19 @@ command-line utilities.")
     ;;;   2. Use patchelf to set RPATH so the binary finds all shared libs in the store.
     ;;;   3. Add libfontconfig.so.1 as an explicit needed library (nix does this too).
 
-    (define-public warp-terminal-bin
+    (define-public warp-oss-bin
       (package
-        (name "warp-terminal-bin")
-        (version "0.2026.05.06.15.42.stable")
+        (name "warp-oss-bin")
+        (version "2026.05.10.preview")
         (source
          (origin
            (method url-fetch)
            (uri (string-append
-                 "https://releases.warp.dev/stable/"
-                 "v" version "_03/"
-                 "warp-terminal_" version ".03_amd64.deb"))
+                 "https://github.com/zerx-lab/warp/releases/download/"
+                 "v" version "/"
+                 "warp-terminal-oss_" version "_amd64.deb"))
            (sha256
-            (base32 "1sf6j49k7pr0zbilq20cb0p0zb1hicb0zd23xm8y0j8ypsy3wls8"))))
+            (base32 "0qyvmd5x69mpwnkgkjnnb4gcdzx50skw31cl8fzdvkiziv6hq1yk"))))
         (build-system gnu-build-system)
         (arguments
          (list
@@ -443,23 +443,24 @@ command-line utilities.")
               (delete 'build)
               (replace 'unpack
                 (lambda _
-                  (let ((debdir (string-append "warp-terminal-" #$version)))
+                  (let ((debdir (string-append "warp-terminal-oss-" #$version)))
                     (mkdir debdir)
                     (with-directory-excursion debdir
                       (invoke "ar" "x" #$source)
-                      (invoke "tar" "xJf" "data.tar.xz"))
+                      (invoke "tar" "--zstd" "-xf" "data.tar.zst"))
                     (chdir debdir))))
               (replace 'install
                 (lambda _
                   (let* ((out #$output)
                          (bin (string-append out "/bin"))
-                         (lib-dir (string-append out "/lib/warpdotdev/warp-terminal"))
+                         (lib-dir (string-append out "/lib/warpdotdev/warp-terminal-oss"))
                          (share (string-append out "/share"))
                          (rpath
                           (string-join
                            (list (string-append #$glibc "/lib")
                                  (string-append #$gcc:lib "/lib")
                                  (string-append #$zlib "/lib")
+                                 (string-append #$dbus "/lib")
                                  (string-append #$xz "/lib")
                                  (string-append #$alsa-lib "/lib")
                                  (string-append #$fontconfig "/lib")
@@ -473,29 +474,29 @@ command-line utilities.")
                                  (string-append #$libxi "/lib"))
                            ":")))
                     (mkdir-p lib-dir)
-                    (copy-recursively "opt/warpdotdev/warp-terminal" lib-dir)
+                    (copy-recursively "opt/warpdotdev/warp-terminal-oss" lib-dir)
 
                     (invoke #$(file-append patchelf "/bin/patchelf")
                             "--set-interpreter"
                             #$(file-append glibc "/lib/ld-linux-x86-64.so.2")
-                            (string-append lib-dir "/warp"))
+                            (string-append lib-dir "/warp-oss"))
                     (invoke #$(file-append patchelf "/bin/patchelf")
                             "--set-rpath" rpath
-                            (string-append lib-dir "/warp"))
+                            (string-append lib-dir "/warp-oss"))
                     (invoke #$(file-append patchelf "/bin/patchelf")
                             "--add-needed" "libfontconfig.so.1"
-                            (string-append lib-dir "/warp"))
+                            (string-append lib-dir "/warp-oss"))
 
                     (mkdir-p bin)
-                    (call-with-output-file (string-append bin "/warp-terminal")
+                    (call-with-output-file (string-append bin "/warp-terminal-oss")
                       (lambda (port)
                         (format port "#!~a/bin/sh
-    exec ~a/warp \"$@\"~%"
+    exec ~a/warp-oss \"$@\"~%"
                                 #$bash-minimal
                                 lib-dir)))
-                    (chmod (string-append bin "/warp-terminal") #o755)
+                    (chmod (string-append bin "/warp-terminal-oss") #o755)
 
-                    (wrap-program (string-append bin "/warp-terminal")
+                    (wrap-program (string-append bin "/warp-terminal-oss")
                       `("PATH" ":" prefix
                         ,(list (string-append #$bash-minimal "/bin")
                                (string-append #$coreutils "/bin")))
@@ -514,17 +515,17 @@ command-line utilities.")
                                (string-append #$glib "/share"))))
 
                     (mkdir-p (string-append share "/applications"))
-                    (copy-file "usr/share/applications/dev.warp.Warp.desktop"
-                               (string-append share "/applications/dev.warp.Warp.desktop"))
-                    (substitute* (string-append share "/applications/dev.warp.Warp.desktop")
-                      (("Exec=warp-terminal")
-                       (string-append "Exec=" bin "/warp-terminal")))
+                    (copy-file "usr/share/applications/dev.warp.OpenWarp.desktop"
+                               (string-append share "/applications/dev.warp.OpenWarp.desktop"))
+                    (substitute* (string-append share "/applications/dev.warp.OpenWarp.desktop")
+                      (("Exec=warp-terminal-oss")
+                       (string-append "Exec=" bin "/warp-terminal-oss")))
 
                     (for-each
                      (lambda (size-dir)
                        (let ((icon-src
                               (string-append "usr/share/icons/hicolor/"
-                                             size-dir "/apps/dev.warp.Warp.png"))
+                                             size-dir "/apps/dev.warp.OpenWarp.png"))
                              (icon-dst-dir
                               (string-append share "/icons/hicolor/"
                                              size-dir "/apps")))
@@ -532,14 +533,15 @@ command-line utilities.")
                            (mkdir-p icon-dst-dir)
                            (copy-file icon-src
                                       (string-append icon-dst-dir
-                                                     "/dev.warp.Warp.png")))))
+                                                     "/dev.warp.OpenWarp.png")))))
                      '("16x16" "32x32" "64x64" "128x128" "256x256" "512x512"))))))))
-        (native-inputs (list patchelf binutils))
+        (native-inputs (list patchelf binutils zstd))
         (inputs
          (list bash-minimal
                glibc
                `(,gcc "lib")
                zlib
+               dbus
                xz
                alsa-lib
                fontconfig
@@ -553,10 +555,10 @@ command-line utilities.")
                libxi
                coreutils
                glib))
-        (home-page "https://www.warp.dev")
-        (synopsis "Rust-based terminal with AI and modern developer experience")
-        (description "Warp is a modern, GPU-accelerated terminal emulator built with
+        (home-page "https://github.com/zerx-lab/warp")
+        (synopsis "Open-source Rust-based terminal with AI and modern developer experience")
+        (description "OpenWarp is a modern, GPU-accelerated terminal emulator built with
     Rust.  It features AI-assisted command suggestions, modern text editing
     capabilities, collaborative workflows, and a GPU-accelerated rendering engine.
-    This package provides the prebuilt binary release.")
+    This is the open-source fork published by zerx-lab.")
         (license (list license:agpl3+ license:expat))))

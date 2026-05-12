@@ -83,7 +83,7 @@ If you prefer the mirror, `https://codeberg.org/BrokenShine/jeans.git` should tr
 | Package             | Description                                                              |
 | ------------------- | ------------------------------------------------------------------------ |
 | `kitty-full`        | Fast, feature-rich, GPU-based terminal emulator. (with kitten utilities) |
-| `warp-terminal-bin` | Rust-based terminal with AI and modern developer experience              |
+| `warp-oss-bin` | Open-source Rust-based terminal with AI and modern developer experience |
 
 ### (jeans packages theme)
 
