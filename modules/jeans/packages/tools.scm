@@ -49,7 +49,7 @@
 (define-public crush-bin
   (package
     (name "crush-bin")
-    (version "0.66.1")
+    (version "0.67.0")
     (source
      (origin
        (method url-fetch)
@@ -57,7 +57,7 @@
              "https://github.com/charmbracelet/crush/releases/download/"
              "v" version "/crush_" version "_amd64.deb"))
        (sha256
-        (base32 "03yj2f0401in2psn82s0s2fg6mzgrb6m78mq9wbc5rzb2k0sc6b7"))))
+        (base32 "1czadxprscm9w24p6vxmv9cms6cg5dckn77q3ip88d83k697mkai"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -543,7 +543,7 @@ enables command-line applications to interact with @code{keepassxc} databases.")
 (define-public opencode-bin
   (package
     (name "opencode-bin")
-    (version "1.14.41")
+    (version "1.14.48")
     (source
      (origin
        (method url-fetch)
@@ -551,7 +551,7 @@ enables command-line applications to interact with @code{keepassxc} databases.")
              "https://github.com/anomalyco/opencode/releases/download/"
              "v" version "/opencode-linux-x64.tar.gz"))
        (sha256
-        (base32 "1i9xjs9v81b78v4crdv342b9f64da0pllj068pgx4yrs322kqzfj"))))
+        (base32 "10mggfk9pncvdw4b0c41cv3p9dsrxwmpw4s9wrxw3yaa0zg2aqfh"))))
     (build-system copy-build-system)
     (arguments
      (list
