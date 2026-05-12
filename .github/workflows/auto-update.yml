@@ -39,6 +39,39 @@ jobs:
           fi
           guix --version
 
+      - name: Add nonguix channel
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -f /var/guix/current/etc/profile ]; then
+            . /var/guix/current/etc/profile
+          fi
+          if [ -f "$HOME/.config/guix/current/etc/profile" ]; then
+            . "$HOME/.config/guix/current/etc/profile"
+          fi
+          mkdir -p ~/.config/guix
+          cat > ~/.config/guix/channels.scm <<'SCHEME'
+(cons (channel
+        (name nonguix)
+        (url "https://gitlab.com/nonguix/nonguix.git")
+        (branch "master")
+        (introduction
+         (channel-introduction (version 0)
+                               (commit
+                                "897c1a470da759236cc11798f4e0a5f7d4d59fbc")
+                               (signer
+                                "2A39 3FFF 68F4 EF7A 3D29  12AF 6F51 20A0 22FB B2D5"))))
+      %default-channels)
+SCHEME
+          guix pull --allow-downgrades --chunk-size=0 2>&1 | tail -5
+          if [ -f /var/guix/current/etc/profile ]; then
+            . /var/guix/current/etc/profile
+          fi
+          if [ -f "$HOME/.config/guix/current/etc/profile" ]; then
+            . "$HOME/.config/guix/current/etc/profile"
+          fi
+          guix describe
+
       - name: Run auto-update script
         id: updater
         shell: bash
