@@ -49,7 +49,7 @@ def summarize_output(stdout: str, stderr: str, limit_lines: int = 80, limit_char
 
 
 def build_package(package_name: str) -> Dict[str, Any]:
-    nonguix_path = "/tmp/nonguix/modules"
+    nonguix_path = "/tmp/nonguix"
     cmd = ["guix", "build", "-L", "modules", "-L", nonguix_path, package_name]
     result = subprocess.run(cmd, capture_output=True, text=True)
     output = summarize_output(result.stdout, result.stderr)
