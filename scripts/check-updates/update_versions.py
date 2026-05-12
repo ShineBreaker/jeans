@@ -469,12 +469,36 @@ def get_base32_for_git(url: str, ref: str) -> Optional[str]:
     tmpdir = tempfile.mkdtemp(prefix="guix-git-hash-")
     try:
         print(f"     🔽 正在克隆源码并计算 base32...")
-        clone_result = subprocess.run(
-            ["git", "clone", "--depth=1", "-b", ref, url, tmpdir],
-            capture_output=True,
-            text=True,
-            timeout=60,
-        )
+
+        is_sha = bool(re.fullmatch(r'[0-9a-f]{40}', ref))
+
+        if is_sha:
+            clone_result = subprocess.run(
+                ["git", "clone", "--filter=blob:none", url, tmpdir],
+                capture_output=True,
+                text=True,
+                timeout=120,
+            )
+            if clone_result.returncode == 0:
+                checkout_result = subprocess.run(
+                    ["git", "checkout", ref],
+                    cwd=tmpdir,
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                )
+                if checkout_result.returncode != 0:
+                    print(f"     ⚠️  git checkout {ref[:12]} 失败: "
+                          f"{checkout_result.stderr.strip()}")
+                    return None
+                shutil.rmtree(os.path.join(tmpdir, ".git"), ignore_errors=True)
+        else:
+            clone_result = subprocess.run(
+                ["git", "clone", "--depth=1", "-b", ref, url, tmpdir],
+                capture_output=True,
+                text=True,
+                timeout=60,
+            )
 
         if clone_result.returncode != 0:
             clone_err = clone_result.stderr.strip()
