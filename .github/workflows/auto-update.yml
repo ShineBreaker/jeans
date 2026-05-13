@@ -39,9 +39,20 @@ jobs:
           fi
           guix --version
 
-      - name: Clone nonguix
+      - name: Create minimal nonguix licenses module
         shell: bash
-        run: git clone --depth=1 https://gitlab.com/nonguix/nonguix.git /tmp/nonguix
+        run: |
+          mkdir -p /tmp/nonguix/nonguix
+          cat > /tmp/nonguix/nonguix/licenses.scm << 'EOF'
+          (define-module (nonguix licenses)
+            #:use-module (guix licenses)
+            #:export (nonfree undistributable))
+          (define license (@@ (guix licenses) license))
+          (define* (nonfree uri #:optional (comment ""))
+            (license "Nonfree" uri (string-append "This a nonfree license. Check the URI for details.  " comment)))
+          (define* (undistributable uri #:optional (comment ""))
+            (license "Nonfree Undistributable" uri (string-append "This a nonfree license. This package may NOT be redistributed in prebuilt form. Check the URI for details.  " comment)))
+          EOF
 
       - name: Run auto-update script
         id: updater
