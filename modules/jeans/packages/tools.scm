@@ -14,7 +14,7 @@
   #:use-module (gnu packages python)
   #:use-module (gnu packages java)
   #:use-module (gnu packages rdesktop)
-  #:use-module (gnu packages gtk)      ; yad, cairo, gdk-pixbuf
+  #:use-module (gnu packages gtk)      ; yad, cairo, gdk-pixbuf, pango, at-spi2-core
   #:use-module (gnu packages linux)    ; iproute
   #:use-module (gnu packages admin)    ; netcat-openbsd
   #:use-module (gnu packages gnome)    ; libnotify, libsoup
@@ -36,6 +36,9 @@
   #:use-module (gnu packages xdisorg)     ; libxkbcommon
   #:use-module (gnu packages xorg)        ; libx11, libxcb, libxcursor, libxi
   #:use-module (gnu packages vulkan)      ; vulkan-loader
+  #:use-module (gnu packages nss)          ; nss
+  #:use-module (gnu packages cups)         ; cups
+  #:use-module (gnu packages xml)          ; expat
   #:use-module (gnu packages golang))         ; go
 
 ;;; Crush: AI-powered coding assistant (Go TUI binary).
@@ -751,3 +754,164 @@ APM requires a writable @file{/var/lib/apm} directory at runtime.
 The seed data is installed under @file{share/apm/var-lib/} in the Guix
 store and must be copied to @file{/var/lib/apm} before first use.")
       (license license:agpl3+))))
+
+;;; Cherry Studio: prebuilt Electron AI assistant desktop app.
+;;;
+;;; The upstream .deb ships an Electron app under /opt/Cherry Studio/:
+;;;   - CherryStudio          (Electron main binary, dynamically linked)
+;;;   - chrome_crashpad_handler (Chromium crash handler)
+;;;   - *.so                   (bundled: libEGL, libGLESv2, libffmpeg, etc.)
+;;;   - resources/app.asar.unpacked/node_modules/  (native .node addons)
+;;;
+;;; Patch the ELF interpreter to Guix's ld-linux, set RPATH for system libs,
+;;; and wrap with LD_LIBRARY_PATH so native Node addons can resolve deps.
+
+(define-public cherry-studio-bin
+  (package
+    (name "cherry-studio-bin")
+    (version "1.9.5")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://github.com/CherryHQ/cherry-studio/releases/download/"
+             "v" version "/Cherry-Studio-" version "-amd64.deb"))
+       (sha256
+        (base32 "0bi7gmlkbgwl7ifmscsia24n3k8p7nnng5cgsr4icpcvy8a82ylp"))))
+    (build-system gnu-build-system)
+    (arguments
+     (list
+      #:tests? #f
+      #:validate-runpath? #f
+      #:modules '((guix build gnu-build-system)
+                  (guix build utils))
+      #:phases
+      #~(modify-phases %standard-phases
+          (delete 'configure)
+          (delete 'build)
+          (replace 'unpack
+            (lambda _
+              (let ((debdir (string-append "cherry-studio-" #$version)))
+                (mkdir debdir)
+                (with-directory-excursion debdir
+                  (invoke "ar" "x" #$source)
+                  (invoke "tar" "xJf" "data.tar.xz"))
+                (chdir debdir))))
+          (replace 'install
+            (lambda* (#:key inputs #:allow-other-keys)
+              (let* ((out #$output)
+                     (bin (string-append out "/bin"))
+                     (lib (string-append out "/lib/cherry-studio"))
+                     (share (string-append out "/share"))
+                     (patchelf-bin
+                      (string-append (assoc-ref inputs "patchelf")
+                                     "/bin/patchelf"))
+                     (ldso (string-append (assoc-ref inputs "glibc")
+                                          "/lib/ld-linux-x86-64.so.2"))
+                     (rpath
+                      (string-join
+                       (append
+                        (list "$ORIGIN" lib)
+                        (map (lambda (pkg)
+                               (string-append (assoc-ref inputs pkg) "/lib"))
+                             '("glibc" "gcc" "glib" "nss" "nspr" "at-spi2-core"
+                               "cups" "dbus" "cairo" "gtk+" "pango"
+                               "libx11" "libxcomposite" "libxdamage" "libxext"
+                               "libxfixes" "libxrandr" "mesa" "expat"
+                               "libxcb" "libxkbcommon" "eudev" "alsa-lib"))
+                        (list (string-append (assoc-ref inputs "nss") "/lib/nss")))
+                       ":")))
+                (mkdir-p lib)
+                (copy-recursively "opt/Cherry Studio" lib)
+
+                ;; Patch ELF interpreter and RPATH for main binary.
+                (invoke patchelf-bin "--set-interpreter" ldso
+                        (string-append lib "/CherryStudio"))
+                (invoke patchelf-bin "--set-rpath" rpath
+                        (string-append lib "/CherryStudio"))
+
+                ;; Patch crash handler.
+                (invoke patchelf-bin "--set-interpreter" ldso
+                        (string-append lib "/chrome_crashpad_handler"))
+
+                ;; Wrap program with LD_LIBRARY_PATH for native Node addons.
+                (wrap-program (string-append lib "/CherryStudio")
+                  `("LD_LIBRARY_PATH" ":" prefix
+                    ,(append
+                      (map (lambda (pkg)
+                             (string-append (assoc-ref inputs pkg) "/lib"))
+                           '("glibc" "gcc" "glib" "nss" "nspr" "at-spi2-core"
+                             "cups" "dbus" "cairo" "gtk+" "pango"
+                             "libx11" "libxcomposite" "libxdamage" "libxext"
+                             "libxfixes" "libxrandr" "mesa" "expat"
+                             "libxcb" "libxkbcommon" "eudev" "alsa-lib"))
+                      (list (string-append (assoc-ref inputs "nss") "/lib/nss"))))
+                  `("XDG_DATA_DIRS" ":" prefix
+                    ,(list (string-append out "/share")
+                           (string-append #$gtk+ "/share")
+                           (string-append #$glib "/share")
+                           (string-append #$gdk-pixbuf "/share"))))
+
+                ;; Create symlink in bin/.
+                (mkdir-p bin)
+                (symlink (string-append lib "/CherryStudio")
+                         (string-append bin "/cherry-studio"))
+
+                ;; Install desktop entry.
+                (mkdir-p (string-append share "/applications"))
+                (copy-file "usr/share/applications/CherryStudio.desktop"
+                           (string-append share "/applications/CherryStudio.desktop"))
+                (substitute* (string-append share "/applications/CherryStudio.desktop")
+                  (("Exec=.*CherryStudio.*")
+                   (string-append "Exec=" bin "/cherry-studio %U")))
+
+                ;; Install icons.
+                (for-each
+                 (lambda (size-dir)
+                   (let ((icon-src
+                          (string-append "usr/share/icons/hicolor/"
+                                         size-dir "/apps/CherryStudio.png"))
+                         (icon-dst-dir
+                          (string-append share "/icons/hicolor/"
+                                         size-dir "/apps")))
+                     (when (file-exists? icon-src)
+                       (mkdir-p icon-dst-dir)
+                       (copy-file icon-src
+                                  (string-append icon-dst-dir
+                                                 "/CherryStudio.png")))))
+                 '("16x16" "24x24" "32x32" "48x48" "64x64"
+                   "128x128" "256x256" "512x512" "1024x1024"))))))))
+    (native-inputs (list patchelf binutils))
+    (inputs
+     (list bash-minimal
+           glibc
+           `(,gcc "lib")
+           glib
+           nss
+           nspr
+           at-spi2-core
+           cups
+           dbus
+           cairo
+           gtk+
+           pango
+           libx11
+           libxcomposite
+           libxdamage
+           libxext
+           libxfixes
+           libxrandr
+           mesa
+           expat
+           libxcb
+           libxkbcommon
+           eudev
+           alsa-lib))
+    (home-page "https://github.com/CherryHQ/cherry-studio")
+    (synopsis "AI assistant desktop application")
+    (description "Cherry Studio is a desktop application that provides a powerful
+AI assistant with support for multiple LLM providers, MCP servers, knowledge base
+management, and conversation organization.  This package provides the prebuilt
+binary release.")
+    (license license:agpl3+)
+    (properties '((upstream-name . "cherry-studio")))))

@@ -80,10 +80,10 @@ If you prefer the mirror, `https://codeberg.org/BrokenShine/jeans.git` should tr
 
 ### (jeans packages terminals)
 
-| Package             | Description                                                              |
-| ------------------- | ------------------------------------------------------------------------ |
-| `kitty-full`        | Fast, feature-rich, GPU-based terminal emulator. (with kitten utilities) |
-| `warp-oss-bin` | Open-source Rust-based terminal with AI and modern developer experience |
+| Package        | Description                                                              |
+| -------------- | ------------------------------------------------------------------------ |
+| `kitty-full`   | Fast, feature-rich, GPU-based terminal emulator. (with kitten utilities) |
+| `warp-oss-bin` | Open-source Rust-based terminal with AI and modern developer experience  |
 
 ### (jeans packages theme)
 
@@ -101,6 +101,7 @@ If you prefer the mirror, `https://codeberg.org/BrokenShine/jeans.git` should tr
 | -------------------------- | -------------------------------------------------------------------------------------------- |
 | `amber-pm`                 | Container-based package manager using fuse-overlayfs                                         |
 | `cc-switch-bin`            | All-in-One assistant for Claude Code, Codex & Gemini CLI                                     |
+| `cherry-studio-bin`        | AI assistant desktop application                                                             |
 | `crush-bin`                | AI-powered coding assistant for the CLI                                                      |
 | `git-credential-keepassxc` | Use KeePassXC as a command-line credential store                                             |
 | `jdtls-bin`                | Java language server                                                                         |
