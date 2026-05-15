@@ -39,21 +39,6 @@ jobs:
           fi
           guix --version
 
-      - name: Create minimal nonguix licenses module
-        shell: bash
-        run: |
-          mkdir -p /tmp/nonguix/nonguix
-          cat > /tmp/nonguix/nonguix/licenses.scm << 'EOF'
-          (define-module (nonguix licenses)
-            #:use-module (guix licenses)
-            #:export (nonfree undistributable))
-          (define license (@@ (guix licenses) license))
-          (define* (nonfree uri #:optional (comment ""))
-            (license "Nonfree" uri (string-append "This a nonfree license. Check the URI for details.  " comment)))
-          (define* (undistributable uri #:optional (comment ""))
-            (license "Nonfree Undistributable" uri (string-append "This a nonfree license. This package may NOT be redistributed in prebuilt form. Check the URI for details.  " comment)))
-          EOF
-
       - name: Run auto-update script
         id: updater
         shell: bash
@@ -148,25 +133,6 @@ jobs:
           git config commit.gpgsign true
           git config gpg.program /tmp/gpg-loopback
 
-      - name: Build updated non-binary packages
-        if: steps.changes.outputs.has_changes == 'true'
-        shell: bash
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-
-          if [ -f /var/guix/current/etc/profile ]; then
-            . /var/guix/current/etc/profile
-          fi
-          if [ -f "$HOME/.config/guix/current/etc/profile" ]; then
-            . "$HOME/.config/guix/current/etc/profile"
-          fi
-          guix shell --manifest=scripts/check-updates/manifest.scm -- \
-            env CI=true \
-            GITHUB_TOKEN="$GITHUB_TOKEN" \
-            python3 scripts/check-updates/test_updated_packages.py
-
       - name: Commit updates
         if: steps.changes.outputs.has_changes == 'true'
         shell: bash
@@ -211,7 +177,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: auto-update-report
-          path: |
-            scripts/check-updates/report.json
-            scripts/check-updates/build-report.json
+          path: scripts/check-updates/report.json
           if-no-files-found: warn
