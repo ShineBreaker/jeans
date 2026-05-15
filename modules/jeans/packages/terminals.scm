@@ -420,7 +420,7 @@ command-line utilities.")
     (define-public warp-oss-bin
       (package
         (name "warp-oss-bin")
-        (version "2026.05.10.preview")
+        (version "2026.05.15.preview")
         (source
          (origin
            (method url-fetch)
@@ -429,7 +429,7 @@ command-line utilities.")
                  "v" version "/"
                  "warp-terminal-oss_" version "_amd64.deb"))
            (sha256
-            (base32 "0qyvmd5x69mpwnkgkjnnb4gcdzx50skw31cl8fzdvkiziv6hq1yk"))))
+            (base32 "1r9yjaw9wryg66381yhxlnqvb3acykcq3hry3mdd59hhiw23d6l4"))))
         (build-system gnu-build-system)
         (arguments
          (list
