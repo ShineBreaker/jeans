@@ -52,7 +52,7 @@
 (define-public crush-bin
   (package
     (name "crush-bin")
-    (version "0.67.0")
+    (version "0.69.1")
     (source
      (origin
        (method url-fetch)
@@ -60,7 +60,7 @@
              "https://github.com/charmbracelet/crush/releases/download/"
              "v" version "/crush_" version "_amd64.deb"))
        (sha256
-        (base32 "1czadxprscm9w24p6vxmv9cms6cg5dckn77q3ip88d83k697mkai"))))
+        (base32 "07fyl06m2548rpxhipw45kdw8k0ha14258qwyalmd8mklg8ckrbm"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -131,15 +131,15 @@ This package provides the prebuilt binary release.")
 (define-public winapps
   (package
     (name "winapps")
-    (version "0-unstable-2026-05-04")
+    (version "0-unstable-2026-05-15")
     (source
      (origin
        (method git-fetch)
        (uri (git-reference
              (url "https://github.com/winapps-org/winapps")
-             (commit "bc8b7856761f3c3b0e5d52ed34b5544319e69675")))
+             (commit "f82fe2da2ba76556ecc57efb17428c3bb74b8ca1")))
        (file-name (git-file-name name version))
-       (sha256 (base32 "0vrxpk9wb6p3mqr0kgq318v3b1jm1hh71kslcc5wkz1isxv3vx45"))
+       (sha256 (base32 "000jj08hgpl84r4r7kq2i6sf2hw73v4i7bskqkag5p937vg156k0"))
        (patches (list (local-file "../patches/WinApps.patch")))))
     (build-system gnu-build-system)
     (arguments
@@ -408,7 +408,7 @@ binary release.")
 (define-public cc-switch-bin
   (package
     (name "cc-switch-bin")
-    (version "3.14.1")
+    (version "3.15.0")
     (source
      (origin
        (method url-fetch)
@@ -416,7 +416,7 @@ binary release.")
              "https://github.com/farion1231/cc-switch/releases/download/"
              "v" version "/CC-Switch-v" version "-Linux-x86_64.deb"))
        (sha256
-        (base32 "1xspizxz988ddnhr9pmpgp3yi33hq4pxk66y9a2hss000h6phzcp"))))
+        (base32 "0apgdsg3frk9zm19fzfah7qd26rvymarxn63b6fj8sh4bcv4c9d5"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -546,7 +546,7 @@ enables command-line applications to interact with @code{keepassxc} databases.")
 (define-public opencode-bin
   (package
     (name "opencode-bin")
-    (version "1.14.48")
+    (version "1.15.0")
     (source
      (origin
        (method url-fetch)
@@ -554,7 +554,7 @@ enables command-line applications to interact with @code{keepassxc} databases.")
              "https://github.com/anomalyco/opencode/releases/download/"
              "v" version "/opencode-linux-x64.tar.gz"))
        (sha256
-        (base32 "10mggfk9pncvdw4b0c41cv3p9dsrxwmpw4s9wrxw3yaa0zg2aqfh"))))
+        (base32 "1d0n47zgn74rl9ig39qv6fbfj1lyng1w3192ww63pkwnknsvia6s"))))
     (build-system copy-build-system)
     (arguments
      (list
@@ -769,7 +769,7 @@ store and must be copied to @file{/var/lib/apm} before first use.")
 (define-public cherry-studio-bin
   (package
     (name "cherry-studio-bin")
-    (version "1.9.5")
+    (version "1.9.6")
     (source
      (origin
        (method url-fetch)
@@ -777,7 +777,7 @@ store and must be copied to @file{/var/lib/apm} before first use.")
              "https://github.com/CherryHQ/cherry-studio/releases/download/"
              "v" version "/Cherry-Studio-" version "-amd64.deb"))
        (sha256
-        (base32 "0bi7gmlkbgwl7ifmscsia24n3k8p7nnng5cgsr4icpcvy8a82ylp"))))
+        (base32 "09r0cjj61qln99zbvwwr49npxp9s9jfrs7gk5b9qmbz5p5pm9zfp"))))
     (build-system gnu-build-system)
     (arguments
      (list
