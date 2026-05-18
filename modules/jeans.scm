@@ -18,9 +18,10 @@
                   (jeans packages rust-crates)
                   (jeans packages terminals)
                   (jeans packages theme)
-                  (jeans packages tools)
+                  (jeans packages nix-ld)
 
-                 (jeans services hardware)))
+                 (jeans services hardware)
+                 (jeans services nix-ld)))
 
              (for-each (let ((i (module-public-interface (current-module))))
                          (lambda (m)

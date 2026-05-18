@@ -2581,6 +2581,58 @@
   (crate-source "zvariant_utils" "3.3.0"
                 "1sf5i71in36gc08jhak83pprnkam8gk936cqlq9hzx7q9sk26p7p"))
 
+(define rust-byteorder-1.5.0
+  (crate-source "byteorder" "1.5.0"
+                "0jzncxyf404mwqdbspihyzpkndfgda450l0893pz5xj685cg5l0z"))
+
+(define rust-cc-1.2.39
+  (crate-source "cc" "1.2.39"
+                "0py3546wz3k5qi6pbfz80jvg0g3qgzr21c7a1p5wjvscjm4l6dg1"))
+
+(define rust-embedded-io-0.6.1
+  (crate-source "embedded-io" "0.6.1"
+                "0v901xykajh3zffn6x4cnn4fhgfw3c8qpjwbsk6gai3gaccg3l7d"))
+
+(define rust-find-msvc-tools-0.1.2
+  (crate-source "find-msvc-tools" "0.1.2"
+                "0nbrhvk4m04hviiwbqp2jwcv9j2k70x0q2kcvfk51iygvaqp7v8w"))
+
+(define rust-goblin-0.10.1
+  (crate-source "goblin" "0.10.1"
+                "15mamcvgm1m6b870h0s3f8548348cwhx5hzg9zczzmrvsvghma6n"))
+
+(define rust-hash32-0.3.1
+  (crate-source "hash32" "0.3.1"
+                "01h68z8qi5gl9lnr17nz10lay8wjiidyjdyd60kqx8ibj090pmj7"))
+
+(define rust-heapless-0.9.1
+  (crate-source "heapless" "0.9.1"
+                "19ddqwmnhi08ia8wnkbqaim4glyg8sl32xfbpn7nhr4f6ddcvvdi"))
+
+(define rust-linux-raw-sys-0.11.0
+  (crate-source "linux-raw-sys" "0.11.0"
+                "0fghx0nn8nvbz5yzgizfcwd6ap2pislp68j8c1bwyr6sacxkq7fz"))
+
+(define rust-log-0.4.28
+  (crate-source "log" "0.4.28"
+                "0cklpzrpxafbaq1nyxarhnmcw9z3xcjrad3ch55mmr58xw2ha21l"))
+
+(define rust-plain-0.2.3
+  (crate-source "plain" "0.2.3"
+                "19n1xbxb4wa7w891268bzf6cbwq4qvdb86bik1z129qb0xnnnndl"))
+
+(define rust-scroll-0.13.0
+  (crate-source "scroll" "0.13.0"
+                "1pbs3vxhrxcvj9hbjw4hiijbqlz0lkfxc9351mv34hcb4ka7q9f1"))
+
+(define rust-shlex-1.3.0
+  (crate-source "shlex" "1.3.0"
+                "0r1y6bv26c1scpxvhg2cabimrmwgbp4p3wy6syj9n0c4s3q2znhg"))
+
+(define rust-stable-deref-trait-1.2.0
+  (crate-source "stable_deref_trait" "1.2.0"
+                "1lxjr8q2n534b2lhkxd6l6wcddzjvnksi58zv11f9y0jjmr15wd8"))
+
 
 (define ssss-separator 'end-of-crates)
 
@@ -2855,4 +2907,19 @@
                                                 rust-zmij-1.0.21
                                                 rust-zvariant-5.10.0
                                                 rust-zvariant-derive-5.10.0
-                                                rust-zvariant-utils-3.3.0)))
+                                                rust-zvariant-utils-3.3.0))
+
+                     (nix-ld =>
+                              (list rust-byteorder-1.5.0
+                                    rust-cc-1.2.39
+                                    rust-embedded-io-0.6.1
+                                    rust-find-msvc-tools-0.1.2
+                                    rust-goblin-0.10.1
+                                    rust-hash32-0.3.1
+                                    rust-heapless-0.9.1
+                                    rust-linux-raw-sys-0.11.0
+                                    rust-log-0.4.28
+                                    rust-plain-0.2.3
+                                    rust-scroll-0.13.0
+                                    rust-shlex-1.3.0
+                                    rust-stable-deref-trait-1.2.0)))
