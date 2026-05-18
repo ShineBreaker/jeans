@@ -20,6 +20,11 @@ maak upgrade
 
 # Direct guix build (alternative)
 guix build -L modules <package-name>
+
+# Import Rust crate sources from crates.io
+maak import-crate <crate-name>[@version]
+# Uses guix import crate, auto-detects ./Cargo.lock
+# Inserts crate-source defs before ssss-separator in rust-crates.scm
 ```
 
 ## Repository Layout
