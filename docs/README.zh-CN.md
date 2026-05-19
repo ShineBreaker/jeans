@@ -1,24 +1,21 @@
 <!-- SPDX-FileCopyrightText: 2026 BrokenShine <xchai404@gmail.com> -->
+
 <!-- SPDX-License-Identifier: GPL-3.0-only -->
 
-```
-
-           8 8888 8 8888888888            .8.          b.             8    d888888o.
-           8 8888 8 8888                 .888.         888o.          8  .`8888:' `88.
-           8 8888 8 8888                :88888.        Y88888o.       8  8.`8888.   Y8
-           8 8888 8 8888               . `88888.       .`Y888888o.    8  `8.`8888.
-           8 8888 8 888888888888      .8. `88888.      8o. `Y888888o. 8   `8.`8888.
-           8 8888 8 8888             .8`8. `88888.     8`Y8o. `Y88888o8    `8.`8888.
-88.        8 8888 8 8888            .8' `8. `88888.    8   `Y8o. `Y8888     `8.`8888.
-`88.       8 888' 8 8888           .8'   `8. `88888.   8      `Y8o. `Y8 8b   `8.`8888.
-  `88o.    8 88'  8 8888          .888888888. `88888.  8         `Y8o.` `8b.  ;8.`8888
-    `Y888888 '    8 888888888888 .8'       `8. `88888. 8            `Yo  `Y8888P ,88P'
-
-```
+               8 8888 8 8888888888            .8.          b.             8    d888888o.
+               8 8888 8 8888                 .888.         888o.          8  .`8888:' `88.
+               8 8888 8 8888                :88888.        Y88888o.       8  8.`8888.   Y8
+               8 8888 8 8888               . `88888.       .`Y888888o.    8  `8.`8888.
+               8 8888 8 888888888888      .8. `88888.      8o. `Y888888o. 8   `8.`8888.
+               8 8888 8 8888             .8`8. `88888.     8`Y8o. `Y88888o8    `8.`8888.
+    88.        8 8888 8 8888            .8' `8. `88888.    8   `Y8o. `Y8888     `8.`8888.
+    `88.       8 888' 8 8888           .8'   `8. `88888.   8      `Y8o. `Y8 8b   `8.`8888.
+      `88o.    8 88'  8 8888          .888888888. `88888.  8         `Y8o.` `8b.  ;8.`8888
+        `Y888888 '    8 888888888888 .8'       `8. `88888. 8            `Yo  `Y8888P ,88P'
 
 # jeans -- Just Enough AI-geNerated Slops.
 
-[**English**](../README.md) | **中文**
+[**English**](../README.md) \| **中文**
 
 一个个人 [Guix Channel](https://guix.gnu.org/manual/en/html_node/Channels.html)，打包了一些前沿软件和闭源软件。
 
@@ -28,7 +25,7 @@
 
 镜像：`https://codeberg.org/BrokenShine/jeans.git`
 
----
+------------------------------------------------------------------------
 
 ## 目录
 
@@ -40,13 +37,13 @@
 - [开发](#开发)
 - [许可证](#许可证)
 
----
+------------------------------------------------------------------------
 
 ## 如何使用
 
 在你的 channels 配置中添加以下内容：
 
-```scheme
+``` scheme
                 (channel
                   (name 'jeans)
                   (branch "main")
@@ -62,27 +59,28 @@
 
 然后运行 `guix pull`。
 
----
+------------------------------------------------------------------------
 
 ## 可用包
 
 ### (jeans packages browser)
 
 | Package            | Description                                                                              |
-| ------------------ | ---------------------------------------------------------------------------------------- |
+|--------------------|------------------------------------------------------------------------------------------|
 | `librewolf-nongnu` | Custom version of Firefox, focused on privacy, security and freedom. (revert guix patch) |
 
 ### (jeans packages desktop)
 
-| Package           | Description                                                                 |
-| ----------------- | --------------------------------------------------------------------------- |
-| `waypaper`        | GUI wallpaper manager for Wayland and Xorg Linux systems                    |
-| `zen-browser-bin` | Experience tranquillity while browsing the web without people tracking you! |
+| Package                | Description                                                                 |
+|------------------------|-----------------------------------------------------------------------------|
+| `opencode-desktop-bin` | AI coding agent desktop application                                         |
+| `waypaper`             | GUI wallpaper manager for Wayland and Xorg Linux systems                    |
+| `zen-browser-bin`      | Experience tranquillity while browsing the web without people tracking you! |
 
 ### (jeans packages fonts)
 
 | Package                  | Description                                                                                 |
-| ------------------------ | ------------------------------------------------------------------------------------------- |
+|--------------------------|---------------------------------------------------------------------------------------------|
 | `font-maple-font-nf-cn`  | Maple Mono - An open source monospace font with round corner, ligatures and Nerd-Font icons |
 | `font-misans`            | MiSans - A font family for Xiaomi HyperOS (non-free license)                                |
 | `font-nerd-symbols`      | Nerd Fonts Symbols Only - Iconic font aggregator                                            |
@@ -91,27 +89,27 @@
 ### (jeans packages games)
 
 | Package                     | Description                                                       |
-| --------------------------- | ----------------------------------------------------------------- |
+|-----------------------------|-------------------------------------------------------------------|
 | `lr2oraja-endlessdream-bin` | Community fork of beatoraja BMS rhythm game with QoL improvements |
-| `osu-lazer-bin`             | rhythm is just a _click_ away!                                    |
+| `osu-lazer-bin`             | rhythm is just a *click* away!                                    |
 
 ### (jeans packages hardware)
 
 | Package                       | Description                     |
-| ----------------------------- | ------------------------------- |
+|-------------------------------|---------------------------------|
 | `opentabletdriver-udev-rules` | UDev rules for OpenTabletDriver |
 
 ### (jeans packages terminals)
 
 | Package        | Description                                                              |
-| -------------- | ------------------------------------------------------------------------ |
+|----------------|--------------------------------------------------------------------------|
 | `kitty-full`   | Fast, feature-rich, GPU-based terminal emulator. (with kitten utilities) |
 | `warp-oss-bin` | Open-source Rust-based terminal with AI and modern developer experience  |
 
 ### (jeans packages theme)
 
 | Package                | Description                                                                         |
-| ---------------------- | ----------------------------------------------------------------------------------- |
+|------------------------|-------------------------------------------------------------------------------------|
 | `colloid-gtk-theme`    | Colloid GTK theme - A modern Material Design theme for GTK                          |
 | `vimix-gtk-themes`     | Vimix GTK themes - Flat Material Design theme for GTK 3, GTK 2 and GNOME-Shell      |
 | `vimix-kvantum-themes` | Vimix Kvantum themes for KDE Plasma                                                 |
@@ -121,10 +119,9 @@
 ### (jeans packages tools)
 
 | Package                    | Description                                                                                  |
-| -------------------------- | -------------------------------------------------------------------------------------------- |
+|----------------------------|----------------------------------------------------------------------------------------------|
 | `amber-pm`                 | Container-based package manager using fuse-overlayfs                                         |
 | `cc-switch-bin`            | All-in-One assistant for Claude Code, Codex & Gemini CLI                                     |
-| `cherry-studio-bin`        | AI assistant desktop application                                                             |
 | `crush-bin`                | AI-powered coding assistant for the CLI                                                      |
 | `git-credential-keepassxc` | Use KeePassXC as a command-line credential store                                             |
 | `jdtls-bin`                | Java language server                                                                         |
@@ -132,46 +129,41 @@
 | `opencode-bin`             | The open source AI coding agent                                                              |
 | `winapps`                  | Run Windows applications on GNU/Linux seamlessly (Microsoft 365, Adobe Creative Cloud, etc.) |
 
----
+------------------------------------------------------------------------
 
 ## 使用示例
 
 安装包：
 
-```bash
+``` bash
 guix install librewolf-nongnu
 ```
 
 或使用通道前缀：
 
-```bash
+``` bash
 guix install jeans:librewolf-nongnu
 ```
 
----
+------------------------------------------------------------------------
 
 ## nix-ld：运行预编译二进制
 
 ### 它是什么
 
-[nix-ld](https://github.com/Mic92/nix-ld) 是一个最小的 ELF 动态链接器 shim（仅 62K），
-它让那些为 FHS（Filesystem Hierarchy Standard）系统编译的二进制文件——比如 Zoom、
-Master PDF Editor、一些游戏客户端——能够在不遵循 FHS 的系统上直接运行。
+[nix-ld](https://github.com/Mic92/nix-ld) 是一个最小的 ELF 动态链接器 shim（仅 62K）， 它让那些为 FHS（Filesystem Hierarchy Standard）系统编译的二进制文件——比如 Zoom、 Master PDF Editor、一些游戏客户端——能够在不遵循 FHS 的系统上直接运行。
 
 NixOS 社区广泛使用它。jeans 通道将其移植到了 Guix System。
 
 #### 工作原理
 
-预编译二进制文件的 ELF header 里硬编码了对动态链接器的绝对路径引用，
-例如 `/lib64/ld-linux-x86-64.so.2`。但 Guix System 没有 `/lib64/` 目录——
-动态链接器藏在 `/gnu/store/…-glibc-2.41/lib/ld-linux-x86-64.so.2`。
+预编译二进制文件的 ELF header 里硬编码了对动态链接器的绝对路径引用， 例如 `/lib64/ld-linux-x86-64.so.2`。但 Guix System 没有 `/lib64/` 目录—— 动态链接器藏在 `/gnu/store/…-glibc-2.41/lib/ld-linux-x86-64.so.2`。
 
 nix-ld 的解决方式：
 
-1. 在 `/lib64/ld-linux-x86-64.so.2` 放一个指向 nix-ld 自身的 symlink
-2. 预编译二进制启动时，内核加载 nix-ld 而非真正的 `ld-linux`
-3. nix-ld 读取环境变量 `NIX_LD`（真正的 ld-linux 路径）和 `NIX_LD_LIBRARY_PATH`
-   （库搜索路径），然后把控制权转交给真正的动态链接器
+1.  在 `/lib64/ld-linux-x86-64.so.2` 放一个指向 nix-ld 自身的 symlink
+2.  预编译二进制启动时，内核加载 nix-ld 而非真正的 `ld-linux`
+3.  nix-ld 读取环境变量 `NIX_LD`（真正的 ld-linux 路径）和 `NIX_LD_LIBRARY_PATH` （库搜索路径），然后把控制权转交给真正的动态链接器
 
 整个过程对二进制文件完全透明。
 
@@ -181,7 +173,7 @@ nix-ld 的解决方式：
 
 在你的 `operating-system` 声明里：
 
-```scheme
+``` scheme
 (use-modules (jeans services nix-ld))
 
 (operating-system
@@ -192,14 +184,14 @@ nix-ld 的解决方式：
 
 重新配置系统：
 
-```bash
+``` bash
 sudo guix system reconfigure /path/to/your-config.scm
 ```
 
 服务会自动完成以下事情：
 
 | 动作                               | 效果                                   |
-| ---------------------------------- | -------------------------------------- |
+|------------------------------------|----------------------------------------|
 | 创建 `/lib64/ld-linux-x86-64.so.2` | symlink → nix-ld 二进制                |
 | 生成 `/etc/profile.d/nix-ld.sh`    | 设置 `NIX_LD` 和 `NIX_LD_LIBRARY_PATH` |
 | 将 nix-ld 加入系统 profile         | 确保 nix-ld 二进制可用                 |
@@ -208,7 +200,7 @@ sudo guix system reconfigure /path/to/your-config.scm
 
 重新登录（让 `/etc/profile.d/nix-ld.sh` 生效），然后直接运行：
 
-```bash
+``` bash
 chmod +x some-fhs-binary
 ./some-fhs-binary
 ```
@@ -220,7 +212,7 @@ chmod +x some-fhs-binary
 `nix-ld-service-type` 接受一个 `nix-ld-configuration` 记录，有三个可配置字段：
 
 | 字段        | 类型                | 默认值   | 说明                             |
-| ----------- | ------------------- | -------- | -------------------------------- |
+|-------------|---------------------|----------|----------------------------------|
 | `package`   | `<package>`         | `nix-ld` | nix-ld 包本身                    |
 | `glibc`     | `<package>`         | `glibc`  | 指向真正的动态链接器的 glibc     |
 | `libraries` | `list of <package>` | 见下方   | `NIX_LD_LIBRARY_PATH` 中包含的库 |
@@ -241,7 +233,7 @@ chmod +x some-fhs-binary
 
 这覆盖了绝大多数预编译二进制的依赖。如果你需要额外的库：
 
-```scheme
+``` scheme
 (use-modules (jeans services nix-ld)
              (gnu packages gl)
              (gnu packages sdl)
@@ -268,13 +260,13 @@ chmod +x some-fhs-binary
 
 如果你不需要 `/lib64/` symlink 和环境变量自动设置，也可以单独安装：
 
-```bash
+``` bash
 guix install jeans:nix-ld
 ```
 
 然后手动设置环境变量：
 
-```bash
+``` bash
 export NIX_LD=/gnu/store/…-glibc-2.41/lib/ld-linux-x86-64.so.2
 export NIX_LD_LIBRARY_PATH=/gnu/store/…-glibc-2.41/lib:\
 /gnu/store/…-gcc-14.3.0-lib/lib:…
@@ -286,7 +278,7 @@ export NIX_LD_LIBRARY_PATH=/gnu/store/…-glibc-2.41/lib:\
 
 #### 运行 Zoom
 
-```bash
+``` bash
 # Zoom 是一个典型的 FHS 预编译二进制
 # 启用 nix-ld 服务后：
 ./zoom/zoom
@@ -294,14 +286,14 @@ export NIX_LD_LIBRARY_PATH=/gnu/store/…-glibc-2.41/lib:\
 
 #### 运行独立游戏
 
-```bash
+``` bash
 # 许多独立游戏（如 itch.io 上的）是预编译 ELF
 ./game-binary
-``` 
+```
 
 #### 运行 IDE / 工具链
 
-```bash
+``` bash
 # 一些闭源 IDE 只提供预编译二进制
 ./some-ide/bin/run
 ```
@@ -312,13 +304,13 @@ export NIX_LD_LIBRARY_PATH=/gnu/store/…-glibc-2.41/lib:\
 
 这通常意味着 `/lib64/ld-linux-x86-64.so.2` 不存在。检查服务是否启用：
 
-```bash
+``` bash
 ls -la /lib64/ld-linux-x86-64.so.2
 ```
 
 如果不存在，重新配置系统：
 
-```bash
+``` bash
 sudo guix system reconfigure /path/to/your-config.scm
 ```
 
@@ -328,32 +320,30 @@ sudo guix system reconfigure /path/to/your-config.scm
 
 你可以用 `ldd` 检查二进制需要哪些库：
 
-```bash
+``` bash
 ldd ./your-binary 2>&1 | grep "not found"
 ```
 
 #### 二进制在非 x86_64 架构上不工作
 
-nix-ld 和 `/lib64/ld-linux-x86-64.so.2` 路径是 x86_64 特定的。
-aarch64 系统上的路径会是 `/lib/ld-linux-aarch64.so.1`。
-当前 jeans 的 nix-ld 打包仅针对 x86_64 测试过。
+nix-ld 和 `/lib64/ld-linux-x86-64.so.2` 路径是 x86_64 特定的。 aarch64 系统上的路径会是 `/lib/ld-linux-aarch64.so.1`。 当前 jeans 的 nix-ld 打包仅针对 x86_64 测试过。
 
 #### 环境变量未设置
 
 确保你已经重新登录，或手动 source：
 
-```bash
+``` bash
 source /etc/profile.d/nix-ld.sh
 ```
 
 验证：
 
-```bash
+``` bash
 echo $NIX_LD
 echo $NIX_LD_LIBRARY_PATH
 ```
 
----
+------------------------------------------------------------------------
 
 ## OpenTabletDriver
 
@@ -361,13 +351,13 @@ echo $NIX_LD_LIBRARY_PATH
 - 通过 flatpak 安装 OpenTabletDriver
 - 禁用 `hid-uclogic` 和 `wacom` 内核模块
 
----
+------------------------------------------------------------------------
 
 ## 开发
 
 本仓库包含 `maak.scm` 用于常见任务：
 
-```bash
+``` bash
 # 检查包更新
 maak upgrade
 
