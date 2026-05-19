@@ -52,7 +52,7 @@
 (define-public crush-bin
   (package
     (name "crush-bin")
-    (version "0.69.1")
+    (version "0.70.0")
     (source
      (origin
        (method url-fetch)
@@ -60,7 +60,7 @@
              "https://github.com/charmbracelet/crush/releases/download/"
              "v" version "/crush_" version "_amd64.deb"))
        (sha256
-        (base32 "07fyl06m2548rpxhipw45kdw8k0ha14258qwyalmd8mklg8ckrbm"))))
+        (base32 "1fjrcfkhypan5yc78cg1sqysfpxfcwqg6wfp460zfr9bziq2qjly"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -131,15 +131,15 @@ This package provides the prebuilt binary release.")
 (define-public winapps
   (package
     (name "winapps")
-    (version "0-unstable-2026-05-15")
+    (version "0-unstable-2026-05-16")
     (source
      (origin
        (method git-fetch)
        (uri (git-reference
              (url "https://github.com/winapps-org/winapps")
-             (commit "f82fe2da2ba76556ecc57efb17428c3bb74b8ca1")))
+             (commit "be267c4ed62257fc9103bc0d4aa9893b98c72fcf")))
        (file-name (git-file-name name version))
-       (sha256 (base32 "000jj08hgpl84r4r7kq2i6sf2hw73v4i7bskqkag5p937vg156k0"))
+       (sha256 (base32 "1npdxph99x881y3z25jn6ghacxra2yblybf4r131g6h38nanxak9"))
        (patches (list (local-file "../patches/WinApps.patch")))))
     (build-system gnu-build-system)
     (arguments
@@ -269,7 +269,7 @@ protocol, to offer good support for the Java Language.")
 (define-public motrix-next-bin
   (package
     (name "motrix-next-bin")
-    (version "3.8.9")
+    (version "3.8.10")
     (source
      (origin
        (method url-fetch)
@@ -277,7 +277,7 @@ protocol, to offer good support for the Java Language.")
              "https://github.com/AnInsomniacy/motrix-next/releases/download/"
              "v" version "/MotrixNext_" version "_amd64.deb"))
        (sha256
-        (base32 "1582bq1x8cfrdmjvm75dzr1z1kdazs9f8sa2wynzw52v742clhvx"))))
+        (base32 "1973pmkd3y13wjba593366sxjnh1qr3zzhcb9ksd94vn0a94rzmw"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -546,7 +546,7 @@ enables command-line applications to interact with @code{keepassxc} databases.")
 (define-public opencode-bin
   (package
     (name "opencode-bin")
-    (version "1.15.0")
+    (version "1.15.5")
     (source
      (origin
        (method url-fetch)
@@ -554,7 +554,7 @@ enables command-line applications to interact with @code{keepassxc} databases.")
              "https://github.com/anomalyco/opencode/releases/download/"
              "v" version "/opencode-linux-x64.tar.gz"))
        (sha256
-        (base32 "1d0n47zgn74rl9ig39qv6fbfj1lyng1w3192ww63pkwnknsvia6s"))))
+        (base32 "1idi274035g4sgf5nkhnccrp27rmpv1lqx93rwxhf8lv13d7avxz"))))
     (build-system copy-build-system)
     (arguments
      (list
