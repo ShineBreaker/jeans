@@ -3,6 +3,7 @@
 ;;; SPDX-License-Identifier: GPL-3.0-only
 
 (define-module (jeans packages nix-ld)
+  #:use-module (guix packages)
   #:use-module (gnu packages gcc)
   #:use-module (gnu packages rust)
   #:use-module (guix build-system cargo)

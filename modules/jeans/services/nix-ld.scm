@@ -20,6 +20,7 @@
   #:use-module (gnu services)
   #:use-module (gnu services base)
   #:use-module (guix gexp)
+  #:use-module (guix packages)     ; package?
   #:use-module (guix records)
   #:use-module (ice-9 match)
   #:use-module (jeans packages nix-ld)
@@ -84,29 +85,29 @@
   "Return a file-like object for /etc/profile.d/nix-ld.sh setting environment variables."
   (let ((glibc (nix-ld-glibc config))
         (libs  (nix-ld-libraries config)))
-    ;; Build the lib path using file-append so store paths are resolved
-    (let ((nix-ld-value (file-append glibc "/lib/ld-linux-x86-64.so.2"))
-          (nix-ld-lib-path
-           (string-join
-            (map (match-lambda
-                   ((? string? p) p)
-                   ((? package? p) (file-append p "/lib"))
-                   (((? package? p) "lib") (file-append p "/lib"))
-                   (((? package? p) part) (file-append p "/" part)))
-                 libs)
-            ":")))
-      ;; Use a computed-file with a gexp so file-append references
-      ;; are properly lowered to store paths.
-      (computed-file
-       "nix-ld.sh"
+    (computed-file
+     "nix-ld.sh"
+     ;; Build the list of <file-append> objects inside a gexp so
+     ;; that #$expander resolves them to real store paths.
+     (with-imported-modules '((guix build utils))
        #~(call-with-output-file #$output
            (lambda (port)
-             (display
-              (string-append
-               "export NIX_LD=" #$nix-ld-value "\n"
-               "export NIX_LD_LIBRARY_PATH=" #$nix-ld-lib-path
-               "${NIX_LD_LIBRARY_PATH:+:$NIX_LD_LIBRARY_PATH}\n")
-              port)))))))
+             (let ((nix-ld-value
+                    #$(file-append glibc "/lib/ld-linux-x86-64.so.2"))
+                   (lib-paths
+                    (list
+                     #$@(map (match-lambda
+                               ((? string? p) p)
+                               ((? package? p) (file-append p "/lib"))
+                               (((? package? p) "lib") (file-append p "/lib"))
+                               (((? package? p) part) (file-append p "/" part)))
+                             libs))))
+               (display
+                (string-append
+                 "export NIX_LD=" nix-ld-value "\n"
+                 "export NIX_LD_LIBRARY_PATH=" (string-join lib-paths ":")
+                 "${NIX_LD_LIBRARY_PATH:+:$NIX_LD_LIBRARY_PATH}\n")
+                port))))))))
 
 ;;;
 ;;; Service type
