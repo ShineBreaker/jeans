@@ -1,3 +1,6 @@
+<!-- SPDX-FileCopyrightText: 2026 BrokenShine <xchai404@gmail.com> -->
+<!-- SPDX-License-Identifier: GPL-3.0-only -->
+
 ```
 
            8 8888 8 8888888888            .8.          b.             8    d888888o.
@@ -15,33 +18,33 @@
 
 # jeans -- Just Enough AI-geNerated Slops.
 
-**English** | [**中文**](docs/README.zh-CN.md)
+[**English**](../README.md) | **中文**
 
-### A Self-Using Guix Channel target to some cutting-edge softwares and some close-source software.
+一个个人 [Guix Channel](https://guix.gnu.org/manual/en/html_node/Channels.html)，打包了一些前沿软件和闭源软件。
 
-### AI-Assisted.
+**AI 辅助生成。**
 
-Primary repository: `https://github.com/ShineBreaker/jeans.git`
+主仓库：`https://github.com/ShineBreaker/jeans.git`
 
-Mirror: `https://codeberg.org/BrokenShine/jeans.git`
-
----
-
-## Table of Contents
-
-- [How to use](#how-to-use)
-- [Available Packages](#available-packages)
-- [Usage Examples](#usage-examples)
-- [nix-ld: Run Pre-compiled Binaries](#nix-ld-run-pre-compiled-binaries)
-- [OpenTabletDriver](#how-to-use-opentabletdriver)
-- [Development](#development)
-- [License](#license)
+镜像：`https://codeberg.org/BrokenShine/jeans.git`
 
 ---
 
-## How to use:
+## 目录
 
-adding the following line to your channel:
+- [如何使用](#如何使用)
+- [可用包](#可用包)
+- [使用示例](#使用示例)
+- [nix-ld：运行预编译二进制](#nix-ld运行预编译二进制)
+- [OpenTabletDriver](#opentabletdriver)
+- [开发](#开发)
+- [许可证](#许可证)
+
+---
+
+## 如何使用
+
+在你的 channels 配置中添加以下内容：
 
 ```scheme
                 (channel
@@ -55,13 +58,13 @@ adding the following line to your channel:
                      "6271 1D5E 9CCD EC69 07CA  DBF8 8637 1322 2257 1907"))))
 ```
 
-If you prefer the mirror, `https://codeberg.org/BrokenShine/jeans.git` should track the same `main` branch.
+如果你偏好镜像，`https://codeberg.org/BrokenShine/jeans.git` 同步相同的 `main` 分支。
 
-Then `guix pull`.
+然后运行 `guix pull`。
 
 ---
 
-## Available Packages
+## 可用包
 
 ### (jeans packages browser)
 
@@ -129,15 +132,17 @@ Then `guix pull`.
 | `opencode-bin`             | The open source AI coding agent                                                              |
 | `winapps`                  | Run Windows applications on GNU/Linux seamlessly (Microsoft 365, Adobe Creative Cloud, etc.) |
 
-## Usage Examples
+---
 
-Install a package:
+## 使用示例
+
+安装包：
 
 ```bash
 guix install librewolf-nongnu
 ```
 
-or using the channel prefix:
+或使用通道前缀：
 
 ```bash
 guix install jeans:librewolf-nongnu
@@ -145,96 +150,96 @@ guix install jeans:librewolf-nongnu
 
 ---
 
-## nix-ld: Run Pre-compiled Binaries
+## nix-ld：运行预编译二进制
 
-### What It Is
+### 它是什么
 
-[nix-ld](https://github.com/Mic92/nix-ld) is a minimal ELF dynamic linker shim (only 62K)
-that lets pre-compiled binaries built for FHS (Filesystem Hierarchy Standard) systems —
-such as Zoom, Master PDF Editor, game clients — run directly on non-FHS systems.
+[nix-ld](https://github.com/Mic92/nix-ld) 是一个最小的 ELF 动态链接器 shim（仅 62K），
+它让那些为 FHS（Filesystem Hierarchy Standard）系统编译的二进制文件——比如 Zoom、
+Master PDF Editor、一些游戏客户端——能够在不遵循 FHS 的系统上直接运行。
 
-It is widely used in the NixOS community. The jeans channel ports it to Guix System.
+NixOS 社区广泛使用它。jeans 通道将其移植到了 Guix System。
 
-#### How It Works
+#### 工作原理
 
-Pre-compiled binaries have absolute paths to the dynamic linker embedded in their ELF headers,
-e.g. `/lib64/ld-linux-x86-64.so.2`. Guix System doesn't have `/lib64/` — the dynamic linker
-lives at `/gnu/store/…-glibc-2.41/lib/ld-linux-x86-64.so.2`.
+预编译二进制文件的 ELF header 里硬编码了对动态链接器的绝对路径引用，
+例如 `/lib64/ld-linux-x86-64.so.2`。但 Guix System 没有 `/lib64/` 目录——
+动态链接器藏在 `/gnu/store/…-glibc-2.41/lib/ld-linux-x86-64.so.2`。
 
-nix-ld solves this by:
+nix-ld 的解决方式：
 
-1. Placing a symlink at `/lib64/ld-linux-x86-64.so.2` pointing to the nix-ld binary itself
-2. When a pre-compiled binary starts, the kernel loads nix-ld instead of the real `ld-linux`
-3. nix-ld reads the `NIX_LD` (real ld-linux path) and `NIX_LD_LIBRARY_PATH` (library search path)
-   environment variables, then hands control to the real dynamic linker
+1. 在 `/lib64/ld-linux-x86-64.so.2` 放一个指向 nix-ld 自身的 symlink
+2. 预编译二进制启动时，内核加载 nix-ld 而非真正的 `ld-linux`
+3. nix-ld 读取环境变量 `NIX_LD`（真正的 ld-linux 路径）和 `NIX_LD_LIBRARY_PATH`
+   （库搜索路径），然后把控制权转交给真正的动态链接器
 
-The whole process is completely transparent to the binary.
+整个过程对二进制文件完全透明。
 
-### Quick Start
+### 快速开始
 
-#### 1. Enable the service in your OS configuration
+#### 1. 在操作系统配置中启用服务
 
-In your `operating-system` declaration:
+在你的 `operating-system` 声明里：
 
 ```scheme
 (use-modules (jeans services nix-ld))
 
 (operating-system
   (services
-   (cons* (service nix-ld-service-type)   ;; ← add this line
+   (cons* (service nix-ld-service-type)   ;; ← 添加这一行
           %base-services)))
 ```
 
-Reconfigure your system:
+重新配置系统：
 
 ```bash
 sudo guix system reconfigure /path/to/your-config.scm
 ```
 
-The service automatically:
+服务会自动完成以下事情：
 
-| Action                                | Effect                                  |
-| ------------------------------------- | --------------------------------------- |
-| Creates `/lib64/ld-linux-x86-64.so.2` | symlink → nix-ld binary                 |
-| Generates `/etc/profile.d/nix-ld.sh`  | Sets `NIX_LD` and `NIX_LD_LIBRARY_PATH` |
-| Adds nix-ld to system profile         | Ensures the nix-ld binary is available  |
+| 动作                               | 效果                                   |
+| ---------------------------------- | -------------------------------------- |
+| 创建 `/lib64/ld-linux-x86-64.so.2` | symlink → nix-ld 二进制                |
+| 生成 `/etc/profile.d/nix-ld.sh`    | 设置 `NIX_LD` 和 `NIX_LD_LIBRARY_PATH` |
+| 将 nix-ld 加入系统 profile         | 确保 nix-ld 二进制可用                 |
 
-#### 2. Run pre-compiled binaries
+#### 2. 运行预编译二进制
 
-Log back in (so `/etc/profile.d/nix-ld.sh` takes effect), then simply run:
+重新登录（让 `/etc/profile.d/nix-ld.sh` 生效），然后直接运行：
 
 ```bash
 chmod +x some-fhs-binary
 ./some-fhs-binary
 ```
 
-That's it.
+就这么简单。
 
-### Custom Configuration
+### 自定义配置
 
-`nix-ld-service-type` accepts a `nix-ld-configuration` record with three configurable fields:
+`nix-ld-service-type` 接受一个 `nix-ld-configuration` 记录，有三个可配置字段：
 
-| Field       | Type                | Default   | Description                                   |
-| ----------- | ------------------- | --------- | --------------------------------------------- |
-| `package`   | `<package>`         | `nix-ld`  | The nix-ld package itself                     |
-| `glibc`     | `<package>`         | `glibc`   | glibc providing the real dynamic linker       |
-| `libraries` | `list of <package>` | See below | Libraries to include in `NIX_LD_LIBRARY_PATH` |
+| 字段        | 类型                | 默认值   | 说明                             |
+| ----------- | ------------------- | -------- | -------------------------------- |
+| `package`   | `<package>`         | `nix-ld` | nix-ld 包本身                    |
+| `glibc`     | `<package>`         | `glibc`  | 指向真正的动态链接器的 glibc     |
+| `libraries` | `list of <package>` | 见下方   | `NIX_LD_LIBRARY_PATH` 中包含的库 |
 
-#### Default Library List
+#### 默认库列表
 
-The service adds the following libraries to `NIX_LD_LIBRARY_PATH` by default:
+服务默认将以下库加入 `NIX_LD_LIBRARY_PATH`：
 
-- `glibc` — libc, libm, libpthread, etc.
-- `(gcc "lib")` — libstdc++, libgcc_s (needed for C++ programs)
-- `zlib` — compression
-- `bzip2` — bzip2 compression
-- `xz` — xz/lzma compression
+- `glibc` — libc、libm、libpthread 等
+- `(gcc "lib")` — libstdc++、libgcc_s（C++ 程序需要）
+- `zlib` — 压缩库
+- `bzip2` — bzip2 压缩
+- `xz` — xz/lzma 压缩
 - `openssl` — TLS/SSL
-- `curl` — HTTP client library
-- `expat` — XML parsing
-- `ncurses` — terminal UI
+- `curl` — HTTP 客户端库
+- `expat` — XML 解析
+- `ncurses` — 终端 UI
 
-This covers the vast majority of pre-compiled binary dependencies. If you need extra libraries:
+这覆盖了绝大多数预编译二进制的依赖。如果你需要额外的库：
 
 ```scheme
 (use-modules (jeans services nix-ld)
@@ -246,28 +251,28 @@ This covers the vast majority of pre-compiled binary dependencies. If you need e
   (nix-ld-configuration
    (libraries
     (append
-     %default-nix-ld-libraries    ;; keep defaults
+     %default-nix-ld-libraries    ;; 保留默认列表
      (list
       mesa                         ;; OpenGL
-      `(,gcc "lib")                ;; libstdc++ (already in defaults, shown for syntax)
-      sdl2                         ;; SDL2 game engine
-      pulseaudio)))))              ;; audio
+      `(,gcc "lib")                ;; libstdc++（已在默认中，此处演示语法）
+      sdl2                         ;; SDL2 游戏引擎
+      pulseaudio)))))              ;; 音频
 ```
 
-> **Note**: Elements in the `libraries` list can be:
+> **注意**：`libraries` 列表中的元素可以是：
 >
-> - A `<package>` object (uses its `lib` output)
-> - A `(package "output")` tuple (uses the specified output)
+> - 一个 `<package>` 对象（使用其 `lib` 输出）
+> - `(package "output")` 二元组（使用指定输出）
 
-### Package-only Install (No Service)
+### 纯包安装（无服务）
 
-If you don't need the `/lib64/` symlink and auto environment setup, you can install the package alone:
+如果你不需要 `/lib64/` symlink 和环境变量自动设置，也可以单独安装：
 
 ```bash
 guix install jeans:nix-ld
 ```
 
-Then manually set environment variables:
+然后手动设置环境变量：
 
 ```bash
 export NIX_LD=/gnu/store/…-glibc-2.41/lib/ld-linux-x86-64.so.2
@@ -275,50 +280,43 @@ export NIX_LD_LIBRARY_PATH=/gnu/store/…-glibc-2.41/lib:\
 /gnu/store/…-gcc-14.3.0-lib/lib:…
 ```
 
-> In most cases you should use the **service** instead.
+> 但绝大多数情况下你应该使用 **服务** 而非手动安装。
 
-### Practical Use Cases
+### 实际用例
 
-#### Running Zoom
+#### 运行 Zoom
 
 ```bash
-# Zoom is a typical FHS pre-compiled binary
-# After enabling nix-ld service:
+# Zoom 是一个典型的 FHS 预编译二进制
+# 启用 nix-ld 服务后：
 ./zoom/zoom
 ```
 
-#### Running indie games
+#### 运行独立游戏
 
 ```bash
-# Many indie games (e.g. from itch.io) are pre-compiled ELF
+# 许多独立游戏（如 itch.io 上的）是预编译 ELF
 ./game-binary
-```
+``` 
 
-#### Running Steam / Steam games
-
-```bash
-# After adding %steam-runtime-libraries to nix-ld-configuration
-steam
-```
-
-#### Running IDEs / toolchains
+#### 运行 IDE / 工具链
 
 ```bash
-# Some closed-source IDEs only ship as pre-compiled binaries
+# 一些闭源 IDE 只提供预编译二进制
 ./some-ide/bin/run
 ```
 
-### Troubleshooting
+### 故障排除
 
-#### `No such file or directory` when running a binary
+#### `No such file or directory` 运行二进制时
 
-This usually means `/lib64/ld-linux-x86-64.so.2` doesn't exist. Check if the service is enabled:
+这通常意味着 `/lib64/ld-linux-x86-64.so.2` 不存在。检查服务是否启用：
 
 ```bash
 ls -la /lib64/ld-linux-x86-64.so.2
 ```
 
-If missing, reconfigure:
+如果不存在，重新配置系统：
 
 ```bash
 sudo guix system reconfigure /path/to/your-config.scm
@@ -326,29 +324,29 @@ sudo guix system reconfigure /path/to/your-config.scm
 
 #### `error while loading shared libraries: libxxx.so`
 
-A dynamic library is missing. Add the corresponding Guix package to the `libraries` field of `nix-ld-configuration`.
+缺少某个动态库。把它对应的 Guix 包添加到 `nix-ld-configuration` 的 `libraries` 字段。
 
-Use `ldd` to check what libraries a binary needs:
+你可以用 `ldd` 检查二进制需要哪些库：
 
 ```bash
 ldd ./your-binary 2>&1 | grep "not found"
 ```
 
-#### Binary doesn't work on non-x86_64
+#### 二进制在非 x86_64 架构上不工作
 
-nix-ld and the `/lib64/ld-linux-x86-64.so.2` path are x86_64-specific.
-On aarch64, the path would be `/lib/ld-linux-aarch64.so.1`.
-Currently, jeans' nix-ld packaging is only tested on x86_64.
+nix-ld 和 `/lib64/ld-linux-x86-64.so.2` 路径是 x86_64 特定的。
+aarch64 系统上的路径会是 `/lib/ld-linux-aarch64.so.1`。
+当前 jeans 的 nix-ld 打包仅针对 x86_64 测试过。
 
-#### Environment variables not set
+#### 环境变量未设置
 
-Make sure you've logged back in, or manually source:
+确保你已经重新登录，或手动 source：
 
 ```bash
 source /etc/profile.d/nix-ld.sh
 ```
 
-Verify:
+验证：
 
 ```bash
 echo $NIX_LD
@@ -357,27 +355,29 @@ echo $NIX_LD_LIBRARY_PATH
 
 ---
 
-## How to use OpenTabletDriver
+## OpenTabletDriver
 
-- add `opentabletdriver-service-type` to your configuration
-- install OpenTabletDriver in flatpak
-- disable hid-uclogic & wacom kernel modules
+- 在配置中添加 `opentabletdriver-service-type`
+- 通过 flatpak 安装 OpenTabletDriver
+- 禁用 `hid-uclogic` 和 `wacom` 内核模块
 
-## Development
+---
 
-This repository includes a `maak.scm` for common tasks:
+## 开发
+
+本仓库包含 `maak.scm` 用于常见任务：
 
 ```bash
-# Check for package updates
+# 检查包更新
 maak upgrade
 
-# Build a package
+# 构建包
 maak build librewolf-nongnu
 
-# Import Rust crate sources
+# 导入 Rust crate 源
 maak import-crate <crate-name>[@version]
 ```
 
-## License
+## 许可证
 
-Packages in this channel are under various licenses. Please check individual package definitions for details.
+本通道中的包使用各种许可证。请查看各个包定义了解详情。
