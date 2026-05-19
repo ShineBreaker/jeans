@@ -16,7 +16,6 @@
                   (jeans packages games)
                   (jeans packages hardware)
                   (jeans packages rust-crates)
-                  (jeans packages terminals)
                   (jeans packages theme)
                   (jeans packages nix-ld)
 

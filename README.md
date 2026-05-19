@@ -95,13 +95,6 @@ Then `guix pull`.
 |-------------------------------|---------------------------------|
 | `opentabletdriver-udev-rules` | UDev rules for OpenTabletDriver |
 
-### (jeans packages terminals)
-
-| Package        | Description                                                              |
-|----------------|--------------------------------------------------------------------------|
-| `kitty-full`   | Fast, feature-rich, GPU-based terminal emulator. (with kitten utilities) |
-| `warp-oss-bin` | Open-source Rust-based terminal with AI and modern developer experience  |
-
 ### (jeans packages theme)
 
 | Package                | Description                                                                         |
