@@ -43,6 +43,8 @@
   #:use-module (gnu packages vulkan)
   #:use-module (gnu packages web)
   #:use-module (gnu packages webkit)
+  #:use-module (gnu packages cups)
+  #:use-module (gnu packages xml)
   #:use-module (gnu packages xdisorg)
   #:use-module (gnu packages wm)
   #:use-module (gnu packages xorg)
@@ -336,3 +338,152 @@ and Xorg.")
 We care about your experience, not your data.")
     (properties `((upstream-name . "zen")))
     (license (list license:mpl2.0))))
+
+(define-public opencode-desktop-bin
+  (package
+    (name "opencode-desktop-bin")
+    (version "1.15.5")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://github.com/anomalyco/opencode/releases/download/"
+             "v" version "/opencode-desktop-linux-amd64.deb"))
+       (sha256
+        (base32 "1589nxfjl1kar4njxkh1pbhllr4b4ywxh3wfcqw3hk1wwpdwpjyf"))))
+    (build-system gnu-build-system)
+    (arguments
+     (list
+      #:tests? #f
+      #:validate-runpath? #f
+      #:strip-binaries? #f
+      #:modules '((guix build gnu-build-system)
+                  (guix build utils)
+                  (ice-9 ftw)
+                  (ice-9 regex)
+                  (srfi srfi-26))
+      #:phases
+      #~(modify-phases %standard-phases
+          (delete 'configure)
+          (delete 'build)
+          (replace 'unpack
+            (lambda _
+              (invoke "ar" "x" #$source)
+              (invoke "tar" "xf" "data.tar.xz")))
+          (replace 'install
+            (lambda _
+              (let ((out #$output))
+                (copy-recursively "opt/OpenCode"
+                                  (string-append out "/lib/opencode-desktop"))
+                #t)))
+          (add-after 'install 'patch-elf
+            (lambda* (#:key inputs #:allow-other-keys)
+              (let* ((ld.so (string-append #$(this-package-input "glibc")
+                                           #$(glibc-dynamic-linker)))
+                     (rpath (string-join
+                             (cons* (string-append #$output "/lib/opencode-desktop")
+                                    (map (lambda (input)
+                                           (string-append (cdr input) "/lib"))
+                                         inputs))
+                             ":")))
+                (define (patch-elf file)
+                  (format #t "Patching ~a ..." file)
+                  (unless (string-contains file ".so")
+                    (invoke "patchelf" "--set-interpreter" ld.so file))
+                  (invoke "patchelf" "--set-rpath" rpath file)
+                  (display " done\n"))
+                (for-each patch-elf
+                          (append (find-files (string-append #$output
+                                                             "/lib/opencode-desktop")
+                                              ".*\\.so(\\.[0-9]+)?$")
+                                  (map (lambda (binary)
+                                         (string-append #$output
+                                                        "/lib/opencode-desktop/"
+                                                        binary))
+                                       '("@opencode-aidesktop"
+                                         "chrome_crashpad_handler"
+                                         "chrome-sandbox")))))))
+          (add-after 'patch-elf 'install-bin
+            (lambda _
+              (let* ((out #$output)
+                     (bin (string-append out "/bin"))
+                     (exe (string-append out "/lib/opencode-desktop/@opencode-aidesktop")))
+                (mkdir-p bin)
+                (symlink exe (string-append bin "/opencode-desktop")))))
+          (add-after 'install-bin 'install-desktop
+            (lambda _
+              (let* ((out #$output)
+                     (apps (string-append out "/share/applications")))
+                (mkdir-p apps)
+                (make-desktop-entry-file
+                 (string-append apps "/opencode-desktop.desktop")
+                 #:name "OpenCode"
+                 #:type "Application"
+                 #:comment #$(package-synopsis this-package)
+                 #:exec (string-append #$output "/bin/opencode-desktop %U")
+                 #:icon "opencode-desktop"
+                 #:categories '("Development")
+                 #:mime-type '("x-scheme-handler/opencode")
+                 #:startup-w-m-class "OpenCode"))))
+          (add-after 'install-desktop 'install-icons
+            (lambda _
+              (let* ((out #$output)
+                     (icon-src "usr/share/icons/hicolor")
+                     (icon-dst (string-append out "/share/icons/hicolor")))
+                (when (file-exists? icon-src)
+                  (copy-recursively icon-src icon-dst)
+                  (for-each
+                   (lambda (old)
+                     (let ((new (string-append
+                                 (string-append out "/share/icons/hicolor/"
+                                                (match:substring
+                                                 (string-match "/([0-9]+x[0-9]+)/apps/"
+                                                               old) 1)
+                                                "/apps/opencode-desktop.png"))))
+                       (when (file-exists? old)
+                         (copy-file old new))))
+                   (find-files icon-dst "@opencode-aidesktop\\.png$"))))))
+          (add-after 'install-icons 'wrap-program
+            (lambda* (#:key inputs outputs #:allow-other-keys)
+              (let* ((out (assoc-ref outputs "out"))
+                     (lib (string-append out "/lib/opencode-desktop"))
+                     (mesa-lib (string-append (assoc-ref inputs "mesa") "/lib"))
+                     (nss-lib (string-append (assoc-ref inputs "nss") "/lib/nss")))
+                (wrap-program (string-append out "/bin/opencode-desktop")
+                  `("LD_LIBRARY_PATH" prefix
+                    (,lib ,mesa-lib ,nss-lib))
+                  `("FONTCONFIG_FILE" =
+                    (,(string-append #$(this-package-input "fontconfig-minimal")
+                                     "/etc/fonts/fonts.conf")))
+                  `("XDG_DATA_DIRS" prefix
+                    (,(string-append out "/share"))))))))))
+    (native-inputs (list binutils patchelf tar xz))
+    (inputs (list alsa-lib
+                  at-spi2-core
+                  cups
+                  dbus
+                  eudev
+                  expat
+                  fontconfig
+                  `(,gcc "lib")
+                  glibc
+                  glib
+                  gtk+
+                  libx11
+                  libxcb
+                  libxcomposite
+                  libxdamage
+                  libxext
+                  libxfixes
+                  libxkbcommon
+                  libxrandr
+                  mesa
+                  nss))
+    (home-page "https://opencode.ai")
+    (synopsis "AI coding agent desktop application")
+    (description
+     "OpenCode is a terminal-based AI coding agent with a desktop GUI built
+with Electron.  It supports multiple LLM providers and offers an interactive
+coding experience with context awareness.")
+    (properties `((upstream-name . "opencode")))
+    (license license:expat)))
