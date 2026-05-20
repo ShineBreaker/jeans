@@ -1,3 +1,7 @@
+<!-- SPDX-FileCopyrightText: 2026 BrokenShine <xchai404@gmail.com> -->
+
+<!-- SPDX-License-Identifier: GPL-3.0-only -->
+
                8 8888 8 8888888888            .8.          b.             8    d888888o.
                8 8888 8 8888                 .888.         888o.          8  .`8888:' `88.
                8 8888 8 8888                :88888.        Y88888o.       8  8.`8888.   Y8
@@ -11,50 +15,52 @@
 
 # jeans -- Just Enough AI-geNerated Slops.
 
-**English** \| [**中文**](./README.zh-CN.md)
+[**English**](./README.md) \| **中文**
 
 [**Packages**](docs/packages.md) \| [**Usage**](docs/usage.md) \| [**nix-ld**](docs/nix-ld.md)
 
-### A Self-Using Guix Channel target to some cutting-edge softwares and some close-source software.
+一个个人 [Guix Channel](https://guix.gnu.org/manual/en/html_node/Channels.html)，打包了一些前沿软件和闭源软件。
 
-### AI-Assisted.
+**AI 辅助生成。**
 
-Primary repository: `https://github.com/ShineBreaker/jeans.git`
+主仓库：`https://github.com/ShineBreaker/jeans.git`
 
-Mirror: `https://codeberg.org/BrokenShine/jeans.git`
-
----
-
-## Table of Contents
-
-- [Quick Start](#quick-start)
-- [Available Packages](#available-packages)
-- [Development](#development)
-- [License](#license)
+镜像：`https://codeberg.org/BrokenShine/jeans.git`
 
 ---
 
-## Quick Start
+## 目录
 
-- **Usage Guide** → [docs/usage.md](docs/usage.md) — Channel setup, package installation, OpenTabletDriver
-- **nix-ld Guide** → [docs/nix-ld.md](docs/nix-ld.md) — Running pre-compiled binaries on Guix System
-- **Package List** → [docs/packages.md](docs/packages.md)
+- [快速开始](#快速开始)
+- [可用包](#可用包)
+- [开发](#开发)
+- [许可证](#许可证)
 
-## Development
+---
 
-This repository includes a `maak.scm` for common tasks:
+## 快速开始
+
+- **用法指南** → [usage.md](usage.md) — 频道配置、包安装、OpenTabletDriver
+- **nix-ld 指南** → [nix-ld.md](nix-ld.md) — 在 Guix System 上运行预编译二进制
+- **包列表** → [packages.md](packages.md)
+
+---
+
+## 开发
+
+本仓库包含 `maak.scm` 用于常见任务：
 
 ```bash
-# Check for package updates
+# 检查包更新
 maak upgrade
 
-# Build a package
+# 构建包
 maak build librewolf-nongnu
 
-# Import Rust crate sources
+# 导入 Rust crate 源
 maak import-crate <crate-name>[@version]
 ```
 
-## License
+## 许可证
 
-Packages in this channel are under various licenses. Please check individual package definitions for details.
+本通道中的包使用各种许可证。请查看各个包定义了解详情。
