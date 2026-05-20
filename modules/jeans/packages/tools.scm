@@ -678,8 +678,7 @@ It is a fork of the Pi project by Mario Zechner, extended with
 batteries-included coding workflow features.  This package provides
 the prebuilt binary release.")
     (license license:expat)
-    (supported-systems '("x86_64-linux"))
-)))
+    (supported-systems '("x86_64-linux"))))
 
 ;;; APM (Amber Package Manager): container-based package manager using
 ;;; fuse-overlayfs and dpkg.  Installs shell scripts, helper binaries,
