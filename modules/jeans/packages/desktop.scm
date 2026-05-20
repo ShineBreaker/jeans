@@ -336,7 +336,6 @@ and Xorg.")
     (description
      "Beautifully designed, privacy-focused, and packed with features.
 We care about your experience, not your data.")
-    (properties `((upstream-name . "zen")))
     (license (list license:mpl2.0))))
 
 (define-public opencode-desktop-bin
@@ -485,5 +484,4 @@ We care about your experience, not your data.")
      "OpenCode is a terminal-based AI coding agent with a desktop GUI built
 with Electron.  It supports multiple LLM providers and offers an interactive
 coding experience with context awareness.")
-    (properties `((upstream-name . "opencode")))
     (license license:expat)))

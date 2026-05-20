@@ -51,8 +51,7 @@
     (synopsis "Maple Mono is an open source monospace font focused on smoothing your coding flow.")
     (description
      "Maple Mono: Open source monospace font with round corner, ligatures and Nerd-Font icons for IDE and terminal, fine-grained customization options.")
-    (license license:silofl1.1)
-    (properties '((upstream-name . "MapleMono-NF-CN-unhinted")))))
+    (license license:silofl1.1)))
 
 (define-public font-misans
   (package

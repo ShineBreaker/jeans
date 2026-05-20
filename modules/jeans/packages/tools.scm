@@ -679,7 +679,7 @@ batteries-included coding workflow features.  This package provides
 the prebuilt binary release.")
     (license license:expat)
     (supported-systems '("x86_64-linux"))
-    (properties '((upstream-name . "oh-my-pi")))))
+)))
 
 ;;; APM (Amber Package Manager): container-based package manager using
 ;;; fuse-overlayfs and dpkg.  Installs shell scripts, helper binaries,

@@ -341,5 +341,4 @@ fonts, IR jars, and other assets at runtime.  The game requires OpenGL
 – iteration of the osu! game client which marks the beginning of an open era!
 Currently known by and released under the release codename lazer. As in
 sharper than cutting-edge.")
-    (properties '((upstream-name  . "osu")))
     (license license:expat)))
