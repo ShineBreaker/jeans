@@ -606,6 +606,81 @@ enables command-line applications to interact with @code{keepassxc} databases.")
  write code in your terminal.")
     (license license:expat)))
 
+;;; oh-my-pi (OMP): prebuilt AI coding agent with IDE integration.
+;;;
+;;; The upstream release is a single self-contained ELF binary (~530 MB)
+;;; that embeds a Bun runtime, native Rust addons, and all JS/TS code.
+;;; It is dynamically linked but has zero NEEDED entries — only the
+;;; ELF interpreter (/lib64/ld-linux-x86-64.so.2) must be redirected.
+;;;
+;;; Strategy: copy binary to libexec/, create a bin/ wrapper that
+;;; invokes it through Guix's ld-linux (same pattern as opencode-bin).
+
+(define-public oh-my-pi-bin
+  (package
+    (name "oh-my-pi-bin")
+    (version "15.1.7")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://github.com/can1357/oh-my-pi/releases/download/"
+             "v" version "/omp-linux-x64"))
+       (sha256
+        (base32 "123s0vddv92fb439r4s29fkm7mb1m191dfawsmcrqjfy8c90qxd1"))))
+    (build-system gnu-build-system)
+    (arguments
+     (list
+      #:tests? #f
+      #:validate-runpath? #f
+      #:strip-binaries? #f
+      #:modules '((guix build gnu-build-system)
+                  (guix build utils))
+      #:phases
+      #~(modify-phases %standard-phases
+          (delete 'configure)
+          (delete 'build)
+          (replace 'unpack
+            (lambda _
+              (copy-file #$source "omp")
+              (chmod "omp" #o755)))
+          (replace 'install
+            (lambda* (#:key inputs #:allow-other-keys)
+              (let* ((out #$output)
+                     (bin (string-append out "/bin"))
+                     (libexec (string-append out "/libexec"))
+                     (ld.so (string-append (assoc-ref inputs "glibc")
+                                           #$(glibc-dynamic-linker)))
+                     (lib-path (string-join
+                                (list (string-append (assoc-ref inputs "glibc") "/lib")
+                                      (string-append (assoc-ref inputs "gcc") "/lib"))
+                                ":")))
+                (mkdir-p libexec)
+                (install-file "omp" libexec)
+                (mkdir-p bin)
+                (call-with-output-file (string-append bin "/omp")
+                  (lambda (port)
+                    (format port
+                            "#!~a\nexec ~a --argv0 ~a/omp --library-path ~a ~a/omp \"$@\"\n"
+                            #$(file-append bash-minimal "/bin/sh")
+                            ld.so
+                            libexec
+                            lib-path
+                            libexec)))
+                (chmod (string-append bin "/omp") #o755)))))))
+    (inputs (list bash-minimal glibc `(,gcc "lib")))
+    (home-page "https://omp.sh")
+    (synopsis "AI coding agent with IDE integration")
+    (description "oh-my-pi (OMP) is a coding agent with deep IDE integration,
+featuring support for 40+ AI providers, 32 built-in tools, 13 LSP operations,
+27 DAP operations, subagents, web search, browser automation, and more.
+It is a fork of the Pi project by Mario Zechner, extended with
+batteries-included coding workflow features.  This package provides
+the prebuilt binary release.")
+    (license license:expat)
+    (supported-systems '("x86_64-linux"))
+    (properties '((upstream-name . "oh-my-pi")))))
+
 ;;; APM (Amber Package Manager): container-based package manager using
 ;;; fuse-overlayfs and dpkg.  Installs shell scripts, helper binaries,
 ;;; and the ace-env container rootfs tarball.

@@ -21,7 +21,7 @@ Primary repository: `https://github.com/ShineBreaker/jeans.git`
 
 Mirror: `https://codeberg.org/BrokenShine/jeans.git`
 
-------------------------------------------------------------------------
+---
 
 ## Table of Contents
 
@@ -33,13 +33,13 @@ Mirror: `https://codeberg.org/BrokenShine/jeans.git`
 - [Development](#development)
 - [License](#license)
 
-------------------------------------------------------------------------
+---
 
 ## How to use:
 
 adding the following line to your channel:
 
-``` scheme
+```scheme
                 (channel
                   (name 'jeans)
                   (branch "main")
@@ -55,20 +55,20 @@ If you prefer the mirror, `https://codeberg.org/BrokenShine/jeans.git` should tr
 
 Then `guix pull`.
 
-------------------------------------------------------------------------
+---
 
 ## Available Packages
 
 ### (jeans packages browser)
 
 | Package            | Description                                                                              |
-|--------------------|------------------------------------------------------------------------------------------|
+| ------------------ | ---------------------------------------------------------------------------------------- |
 | `librewolf-nongnu` | Custom version of Firefox, focused on privacy, security and freedom. (revert guix patch) |
 
 ### (jeans packages desktop)
 
 | Package                | Description                                                                 |
-|------------------------|-----------------------------------------------------------------------------|
+| ---------------------- | --------------------------------------------------------------------------- |
 | `opencode-desktop-bin` | AI coding agent desktop application                                         |
 | `waypaper`             | GUI wallpaper manager for Wayland and Xorg Linux systems                    |
 | `zen-browser-bin`      | Experience tranquillity while browsing the web without people tracking you! |
@@ -76,7 +76,7 @@ Then `guix pull`.
 ### (jeans packages fonts)
 
 | Package                  | Description                                                                                 |
-|--------------------------|---------------------------------------------------------------------------------------------|
+| ------------------------ | ------------------------------------------------------------------------------------------- |
 | `font-maple-font-nf-cn`  | Maple Mono - An open source monospace font with round corner, ligatures and Nerd-Font icons |
 | `font-misans`            | MiSans - A font family for Xiaomi HyperOS (non-free license)                                |
 | `font-nerd-symbols`      | Nerd Fonts Symbols Only - Iconic font aggregator                                            |
@@ -85,20 +85,20 @@ Then `guix pull`.
 ### (jeans packages games)
 
 | Package                     | Description                                                       |
-|-----------------------------|-------------------------------------------------------------------|
+| --------------------------- | ----------------------------------------------------------------- |
 | `lr2oraja-endlessdream-bin` | Community fork of beatoraja BMS rhythm game with QoL improvements |
-| `osu-lazer-bin`             | rhythm is just a *click* away!                                    |
+| `osu-lazer-bin`             | rhythm is just a _click_ away!                                    |
 
 ### (jeans packages hardware)
 
 | Package                       | Description                     |
-|-------------------------------|---------------------------------|
+| ----------------------------- | ------------------------------- |
 | `opentabletdriver-udev-rules` | UDev rules for OpenTabletDriver |
 
 ### (jeans packages theme)
 
 | Package                | Description                                                                         |
-|------------------------|-------------------------------------------------------------------------------------|
+| ---------------------- | ----------------------------------------------------------------------------------- |
 | `colloid-gtk-theme`    | Colloid GTK theme - A modern Material Design theme for GTK                          |
 | `vimix-gtk-themes`     | Vimix GTK themes - Flat Material Design theme for GTK 3, GTK 2 and GNOME-Shell      |
 | `vimix-kvantum-themes` | Vimix Kvantum themes for KDE Plasma                                                 |
@@ -108,13 +108,14 @@ Then `guix pull`.
 ### (jeans packages tools)
 
 | Package                    | Description                                                                                  |
-|----------------------------|----------------------------------------------------------------------------------------------|
+| -------------------------- | -------------------------------------------------------------------------------------------- |
 | `amber-pm`                 | Container-based package manager using fuse-overlayfs                                         |
 | `cc-switch-bin`            | All-in-One assistant for Claude Code, Codex & Gemini CLI                                     |
 | `crush-bin`                | AI-powered coding assistant for the CLI                                                      |
 | `git-credential-keepassxc` | Use KeePassXC as a command-line credential store                                             |
 | `jdtls-bin`                | Java language server                                                                         |
 | `motrix-next-bin`          | Full-featured download manager                                                               |
+| `oh-my-pi-bin`             | AI coding agent with IDE integration                                                         |
 | `opencode-bin`             | The open source AI coding agent                                                              |
 | `winapps`                  | Run Windows applications on GNU/Linux seamlessly (Microsoft 365, Adobe Creative Cloud, etc.) |
 
@@ -122,17 +123,17 @@ Then `guix pull`.
 
 Install a package:
 
-``` bash
+```bash
 guix install librewolf-nongnu
 ```
 
 or using the channel prefix:
 
-``` bash
+```bash
 guix install jeans:librewolf-nongnu
 ```
 
-------------------------------------------------------------------------
+---
 
 ## nix-ld: Run Pre-compiled Binaries
 
@@ -160,7 +161,7 @@ The whole process is completely transparent to the binary.
 
 In your `operating-system` declaration:
 
-``` scheme
+```scheme
 (use-modules (jeans services nix-ld))
 
 (operating-system
@@ -171,14 +172,14 @@ In your `operating-system` declaration:
 
 Reconfigure your system:
 
-``` bash
+```bash
 sudo guix system reconfigure /path/to/your-config.scm
 ```
 
 The service automatically:
 
 | Action                                | Effect                                  |
-|---------------------------------------|-----------------------------------------|
+| ------------------------------------- | --------------------------------------- |
 | Creates `/lib64/ld-linux-x86-64.so.2` | symlink → nix-ld binary                 |
 | Generates `/etc/profile.d/nix-ld.sh`  | Sets `NIX_LD` and `NIX_LD_LIBRARY_PATH` |
 | Adds nix-ld to system profile         | Ensures the nix-ld binary is available  |
@@ -187,7 +188,7 @@ The service automatically:
 
 Log back in (so `/etc/profile.d/nix-ld.sh` takes effect), then simply run:
 
-``` bash
+```bash
 chmod +x some-fhs-binary
 ./some-fhs-binary
 ```
@@ -199,7 +200,7 @@ That's it.
 `nix-ld-service-type` accepts a `nix-ld-configuration` record with three configurable fields:
 
 | Field       | Type                | Default   | Description                                   |
-|-------------|---------------------|-----------|-----------------------------------------------|
+| ----------- | ------------------- | --------- | --------------------------------------------- |
 | `package`   | `<package>`         | `nix-ld`  | The nix-ld package itself                     |
 | `glibc`     | `<package>`         | `glibc`   | glibc providing the real dynamic linker       |
 | `libraries` | `list of <package>` | See below | Libraries to include in `NIX_LD_LIBRARY_PATH` |
@@ -220,7 +221,7 @@ The service adds the following libraries to `NIX_LD_LIBRARY_PATH` by default:
 
 This covers the vast majority of pre-compiled binary dependencies. If you need extra libraries:
 
-``` scheme
+```scheme
 (use-modules (jeans services nix-ld)
              (gnu packages gl)
              (gnu packages sdl)
@@ -247,13 +248,13 @@ This covers the vast majority of pre-compiled binary dependencies. If you need e
 
 If you don't need the `/lib64/` symlink and auto environment setup, you can install the package alone:
 
-``` bash
+```bash
 guix install jeans:nix-ld
 ```
 
 Then manually set environment variables:
 
-``` bash
+```bash
 export NIX_LD=/gnu/store/…-glibc-2.41/lib/ld-linux-x86-64.so.2
 export NIX_LD_LIBRARY_PATH=/gnu/store/…-glibc-2.41/lib:\
 /gnu/store/…-gcc-14.3.0-lib/lib:…
@@ -265,7 +266,7 @@ export NIX_LD_LIBRARY_PATH=/gnu/store/…-glibc-2.41/lib:\
 
 #### Running Zoom
 
-``` bash
+```bash
 # Zoom is a typical FHS pre-compiled binary
 # After enabling nix-ld service:
 ./zoom/zoom
@@ -273,21 +274,21 @@ export NIX_LD_LIBRARY_PATH=/gnu/store/…-glibc-2.41/lib:\
 
 #### Running indie games
 
-``` bash
+```bash
 # Many indie games (e.g. from itch.io) are pre-compiled ELF
 ./game-binary
 ```
 
 #### Running Steam / Steam games
 
-``` bash
+```bash
 # After adding %steam-runtime-libraries to nix-ld-configuration
 steam
 ```
 
 #### Running IDEs / toolchains
 
-``` bash
+```bash
 # Some closed-source IDEs only ship as pre-compiled binaries
 ./some-ide/bin/run
 ```
@@ -298,13 +299,13 @@ steam
 
 This usually means `/lib64/ld-linux-x86-64.so.2` doesn't exist. Check if the service is enabled:
 
-``` bash
+```bash
 ls -la /lib64/ld-linux-x86-64.so.2
 ```
 
 If missing, reconfigure:
 
-``` bash
+```bash
 sudo guix system reconfigure /path/to/your-config.scm
 ```
 
@@ -314,7 +315,7 @@ A dynamic library is missing. Add the corresponding Guix package to the `librari
 
 Use `ldd` to check what libraries a binary needs:
 
-``` bash
+```bash
 ldd ./your-binary 2>&1 | grep "not found"
 ```
 
@@ -326,18 +327,18 @@ nix-ld and the `/lib64/ld-linux-x86-64.so.2` path are x86_64-specific. On aarch6
 
 Make sure you've logged back in, or manually source:
 
-``` bash
+```bash
 source /etc/profile.d/nix-ld.sh
 ```
 
 Verify:
 
-``` bash
+```bash
 echo $NIX_LD
 echo $NIX_LD_LIBRARY_PATH
 ```
 
-------------------------------------------------------------------------
+---
 
 ## How to use OpenTabletDriver
 
@@ -349,7 +350,7 @@ echo $NIX_LD_LIBRARY_PATH
 
 This repository includes a `maak.scm` for common tasks:
 
-``` bash
+```bash
 # Check for package updates
 maak upgrade
 
