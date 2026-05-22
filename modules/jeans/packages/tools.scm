@@ -273,7 +273,7 @@ protocol, to offer good support for the Java Language.")
 (define-public motrix-next-bin
   (package
     (name "motrix-next-bin")
-    (version "3.8.10")
+    (version "3.9.0")
     (source
      (origin
        (method url-fetch)
@@ -281,7 +281,7 @@ protocol, to offer good support for the Java Language.")
              "https://github.com/AnInsomniacy/motrix-next/releases/download/"
              "v" version "/MotrixNext_" version "_amd64.deb"))
        (sha256
-        (base32 "1973pmkd3y13wjba593366sxjnh1qr3zzhcb9ksd94vn0a94rzmw"))))
+        (base32 "1ni97kfmdksql4sa63yblr14iyhvzvz9i8lvgmqbny244ji76gym"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -550,7 +550,7 @@ enables command-line applications to interact with @code{keepassxc} databases.")
 (define-public opencode-bin
   (package
     (name "opencode-bin")
-    (version "1.15.5")
+    (version "1.15.6")
     (source
      (origin
        (method url-fetch)
@@ -558,7 +558,7 @@ enables command-line applications to interact with @code{keepassxc} databases.")
              "https://github.com/anomalyco/opencode/releases/download/"
              "v" version "/opencode-linux-x64.tar.gz"))
        (sha256
-        (base32 "1idi274035g4sgf5nkhnccrp27rmpv1lqx93rwxhf8lv13d7avxz"))))
+        (base32 "07y7512j7wgfwmila18d7yz5dm90xx1azf7bi68s00bvgy2x0x4q"))))
     (build-system copy-build-system)
     (arguments
      (list
@@ -623,7 +623,7 @@ enables command-line applications to interact with @code{keepassxc} databases.")
 (define-public oh-my-pi-bin
   (package
     (name "oh-my-pi-bin")
-    (version "15.1.7")
+    (version "15.1.9")
     (source
      (origin
        (method url-fetch)
@@ -631,7 +631,7 @@ enables command-line applications to interact with @code{keepassxc} databases.")
              "https://github.com/can1357/oh-my-pi/releases/download/"
              "v" version "/omp-linux-x64"))
        (sha256
-        (base32 "123s0vddv92fb439r4s29fkm7mb1m191dfawsmcrqjfy8c90qxd1"))))
+        (base32 "1pkjpik1zjlwbrd8ysc71n1943w07qgzrmg9bwkxvfsm359mnn8b"))))
     (build-system gnu-build-system)
     (arguments
      (list
