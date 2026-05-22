@@ -1,3 +1,7 @@
+<!-- SPDX-FileCopyrightText: 2026 BrokenShine <xchai404@gmail.com> -->
+
+<!-- SPDX-License-Identifier: GPL-3.0-only -->
+
 # nix-ld: Run Pre-compiled Binaries
 
 ## What It Is

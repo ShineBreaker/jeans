@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# SPDX-FileCopyrightText: 2026 BrokenShine <xchai404@gmail.com>
+# SPDX-License-Identifier: GPL-3.0-only
+#
 """
 Build updated non-binary Guix packages after an auto-update run.
 

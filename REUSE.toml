@@ -1,0 +1,21 @@
+# REUSE.toml — 全局版权与协议声明
+# https://reuse.readthedocs.io/en/latest/man/reuse-convert-dep5.html
+
+version = 1
+
+[[annotations]]
+path = [
+  ".github/**",
+  ".gitignore",
+  ".guix-authorizations",
+  ".guix-channel",
+  "AGENTS.md",
+  "NEWS",
+  "README.md",
+  "scripts/**",
+  "modules/jeans/patches/**",
+  "modules/jeans/licenses/**",
+]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 BrokenShine <xchai404@gmail.com>"
+SPDX-License-Identifier = "GPL-3.0-only"

@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# SPDX-FileCopyrightText: 2026 BrokenShine <xchai404@gmail.com>
+# SPDX-License-Identifier: GPL-3.0-only
+#
 """
 Guix包版本检查和更新工具
 检查GitHub仓库是否有新版本，并自动更新version和base32
