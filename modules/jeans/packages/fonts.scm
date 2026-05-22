@@ -69,7 +69,7 @@
     (native-inputs
      (list
       (list "font-license"
-            (local-file "../../../licenses/misans.txt"))))
+            (local-file (search-path %load-path "jeans/licenses/misans.txt")))))
 
     (arguments
      (list

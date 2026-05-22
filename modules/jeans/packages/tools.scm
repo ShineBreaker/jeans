@@ -1,3 +1,7 @@
+;;; SPDX-FileCopyrightText: 2026 BrokenShine <xchai404@gmail.com>
+;;;
+;;; SPDX-License-Identifier: GPL-3.0-only
+
 (define-module (jeans packages tools)
   #:use-module (ice-9 match)
   #:use-module (guix packages)
@@ -140,7 +144,7 @@ This package provides the prebuilt binary release.")
              (commit "be267c4ed62257fc9103bc0d4aa9893b98c72fcf")))
        (file-name (git-file-name name version))
        (sha256 (base32 "1npdxph99x881y3z25jn6ghacxra2yblybf4r131g6h38nanxak9"))
-       (patches (list (local-file "../patches/WinApps.patch")))))
+       (patches (list (local-file (search-path %load-path "jeans/patches/WinApps.patch"))))))
     (build-system gnu-build-system)
     (arguments
      (list

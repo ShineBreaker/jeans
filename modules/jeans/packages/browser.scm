@@ -1,3 +1,7 @@
+;;; SPDX-FileCopyrightText: 2026 BrokenShine <xchai404@gmail.com>
+;;;
+;;; SPDX-License-Identifier: GPL-3.0-only
+
 (define-module (jeans packages browser)
   #:use-module (guix packages)
   #:use-module (guix download)
@@ -15,6 +19,17 @@
   #:use-module (gnu system shadow)
   #:use-module (guix gexp)
   #:use-module (guix utils))
+
+;; Patch scripts for librewolf-nongnu (extracted to patches/)
+;; NOTE: Using search-path + local-file because relative local-file paths
+;; fail when modules are loaded via `guix build -L modules` (current-source-directory
+;; returns #f in that context). search-path resolves the absolute path at module
+;; load time via %load-path, which includes the `-L` directories.
+(define librewolf-patch-omni-script
+  (local-file (search-path %load-path "jeans/patches/librewolf-patch-omni.py")))
+
+(define librewolf-patch-browser-omni-script
+  (local-file (search-path %load-path "jeans/patches/librewolf-patch-browser-omni.py")))
 
 ;;; 保留 LibreWolf 本体，仅修补其对 Mozilla 官方附加组件与语言包服务的限制。
 (define-public librewolf-nongnu
@@ -85,78 +100,18 @@
          (let ((omni-file (string-append out "/lib/librewolf/omni.ja")))
            (dereference! omni-file)
            (chmod omni-file #o644)
-           (invoke #$(file-append python "/bin/python3")
-                   "-c"
-                   (string-append
-                    "import pathlib, re, shutil, tempfile, zipfile\n"
-                    "omni = pathlib.Path('" omni-file "')\n"
-                    "with tempfile.TemporaryDirectory() as td:\n"
-                    "    root = pathlib.Path(td)\n"
-                    "    with zipfile.ZipFile(omni) as zin:\n"
-                    "        zin.extractall(root)\n"
-                    "    # Patch 1: Fix MOZ_APP_VERSION in AppConstants\n"
-                    "    app = root / 'modules' / 'AppConstants.sys.mjs'\n"
-                    "    text = app.read_text()\n"
-                    "    text = re.sub(r'MOZ_APP_VERSION: \"([0-9]+\\.[0-9]+)-[0-9]+\"', r'MOZ_APP_VERSION: \"\\1\"', text)\n"
-                    "    text = re.sub(r'MOZ_APP_VERSION_DISPLAY: \"([0-9]+\\.[0-9]+)-[0-9]+\"', r'MOZ_APP_VERSION_DISPLAY: \"\\1\"', text)\n"
-                    "    app.write_text(text)\n"
-                    "    # Patch 2: Skip compat check for locale addons in XPIDatabase\n"
-                    "    db = root / 'modules' / 'addons' / 'XPIDatabase.sys.mjs'\n"
-                    "    db_text = db.read_text()\n"
-                    "    old_compat = 'if (lazy.AddonManager.checkCompatibility) {'\n"
-                    "    new_compat = 'if (aAddon.type != \"locale\" && lazy.AddonManager.checkCompatibility) {'\n"
-                    "    if old_compat in db_text:\n"
-                    "        db_text = db_text.replace(old_compat, new_compat, 1)\n"
-                    "        db.write_text(db_text)\n"
-                    "        print('Patched XPIDatabase: bypassed compat check for locale addons')\n"
-                    "    else:\n"
-                    "        print('WARNING: could not find compat check in XPIDatabase')\n"
-                    "    # Rebuild omni.ja\n"
-                    "    rebuilt = root / 'omni-fixed.ja'\n"
-                    "    with zipfile.ZipFile(rebuilt, 'w', compression=zipfile.ZIP_DEFLATED) as zout:\n"
-                    "        for path in sorted(root.rglob('*')):\n"
-                    "            if path.is_file() and path != rebuilt:\n"
-                    "                zout.write(path, path.relative_to(root).as_posix())\n"
-                    "    shutil.move(str(rebuilt), omni)\n"))
+          (invoke #$(file-append python "/bin/python3")
+                  #$librewolf-patch-omni-script
+                  omni-file)
            (chmod omni-file #o444))
 
          ;; 2.3 修补 browser/omni.ja：移除启动时无条件卸载所有语言包的逻辑
          (let ((browser-omni-file (string-append out "/lib/librewolf/browser/omni.ja")))
            (dereference! browser-omni-file)
            (chmod browser-omni-file #o644)
-           (invoke #$(file-append python "/bin/python3")
-                   "-c"
-                   (string-append
-                    "import pathlib, shutil, tempfile, zipfile\n"
-                    "omni = pathlib.Path('" browser-omni-file "')\n"
-                    "target = '''const removeLangpacks = async () => {\n"
-                    "      for (const addon of await lazy.AddonManager.getAddonsByTypes([\"locale\"])) {\n"
-                    "        await addon.uninstall();\n"
-                    "      }\n"
-                    "    };\n"
-                    "    \n"
-                    "    removeLangpacks().catch(err => {\n"
-                    "      console.error(\"Could not remove langpacks\", err);\n"
-                    "    });\n"
-                    "'''\n"
-                    "with tempfile.TemporaryDirectory() as td:\n"
-                    "    root = pathlib.Path(td)\n"
-                    "    with zipfile.ZipFile(omni) as zin:\n"
-                    "        zin.extractall(root)\n"
-                    "    glue = root / 'modules' / 'BrowserGlue.sys.mjs'\n"
-                    "    text = glue.read_text()\n"
-                    "    if target in text:\n"
-                    "        text = text.replace(target, '', 1)\n"
-                    "        glue.write_text(text)\n"
-                    "        print('Patched BrowserGlue: removed startup langpack uninstall hook')\n"
-                    "    else:\n"
-                    "        print('WARNING: could not find startup langpack uninstall hook in BrowserGlue')\n"
-                    "    rebuilt = root / 'browser-omni-fixed.ja'\n"
-                    "    with zipfile.ZipFile(rebuilt, 'w', compression=zipfile.ZIP_DEFLATED) as zout:\n"
-                    "        for path in sorted(root.rglob('*')):\n"
-                    "            if path.is_file() and path != rebuilt:\n"
-                    "                zout.write(path, path.relative_to(root).as_posix())\n"
-                    "    shutil.move(str(rebuilt), omni)\n"))
+          (invoke #$(file-append python "/bin/python3")
+                  #$librewolf-patch-browser-omni-script
+                  browser-omni-file)
            (chmod browser-omni-file #o444))
 
          ;; 3. Patch policies.json: 允许安装语言包，并显示语言切换 UI
