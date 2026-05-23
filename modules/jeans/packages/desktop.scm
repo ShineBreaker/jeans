@@ -341,7 +341,7 @@ We care about your experience, not your data.")
 (define-public opencode-desktop-bin
   (package
     (name "opencode-desktop-bin")
-    (version "1.15.6")
+    (version "1.15.10")
     (source
      (origin
        (method url-fetch)
@@ -349,7 +349,7 @@ We care about your experience, not your data.")
              "https://github.com/anomalyco/opencode/releases/download/"
              "v" version "/opencode-desktop-linux-amd64.deb"))
        (sha256
-        (base32 "10j4an1i6qdb3dq97qvkqii7n0avjragb6cx9l57idqnm23sz1a1"))))
+        (base32 "163ysyblns3r3svgcgc4z9z7wa23cipjim95vwa6489llpd4iwg8"))))
     (build-system gnu-build-system)
     (arguments
      (list

@@ -56,7 +56,7 @@
 (define-public crush-bin
   (package
     (name "crush-bin")
-    (version "0.70.0")
+    (version "0.71.0")
     (source
      (origin
        (method url-fetch)
@@ -64,7 +64,7 @@
              "https://github.com/charmbracelet/crush/releases/download/"
              "v" version "/crush_" version "_amd64.deb"))
        (sha256
-        (base32 "1fjrcfkhypan5yc78cg1sqysfpxfcwqg6wfp460zfr9bziq2qjly"))))
+        (base32 "0s90yh943giqj5f1295k3aqr99pkc95wnxkia5ina0ibmdlwbz7g"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -550,7 +550,7 @@ enables command-line applications to interact with @code{keepassxc} databases.")
 (define-public opencode-bin
   (package
     (name "opencode-bin")
-    (version "1.15.6")
+    (version "1.15.10")
     (source
      (origin
        (method url-fetch)
@@ -558,7 +558,7 @@ enables command-line applications to interact with @code{keepassxc} databases.")
              "https://github.com/anomalyco/opencode/releases/download/"
              "v" version "/opencode-linux-x64.tar.gz"))
        (sha256
-        (base32 "07y7512j7wgfwmila18d7yz5dm90xx1azf7bi68s00bvgy2x0x4q"))))
+        (base32 "1ifh7jhpgdkspbgh7rffniq574lylin09727mvikgxnvgx5ckh54"))))
     (build-system copy-build-system)
     (arguments
      (list
@@ -623,7 +623,7 @@ enables command-line applications to interact with @code{keepassxc} databases.")
 (define-public oh-my-pi-bin
   (package
     (name "oh-my-pi-bin")
-    (version "15.1.9")
+    (version "15.2.4")
     (source
      (origin
        (method url-fetch)
@@ -631,7 +631,7 @@ enables command-line applications to interact with @code{keepassxc} databases.")
              "https://github.com/can1357/oh-my-pi/releases/download/"
              "v" version "/omp-linux-x64"))
        (sha256
-        (base32 "1pkjpik1zjlwbrd8ysc71n1943w07qgzrmg9bwkxvfsm359mnn8b"))))
+        (base32 "1saw8g4svf8x2mxp33kpj8pnv0lg9h7z5ylcigkn4jyymy6v05c0"))))
     (build-system gnu-build-system)
     (arguments
      (list
