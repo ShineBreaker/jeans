@@ -263,8 +263,8 @@ protocol, to offer good support for the Java Language.")
 ;;; Motrix-Next: prebuilt binary download manager (Tauri/WebKitGTK app).
 ;;;
 ;;; The upstream .deb ships two ELF binaries:
-;;;   - motrix-next      (Tauri app, dynamically linked to webkit2gtk-4.1, gtk3, etc.)
-;;;   - motrixnext-aria2c (statically linked aria2 RPC helper)
+;;;   - motrix-next        (Tauri app, dynamically linked to webkit2gtk-4.1, gtk3, etc.)
+;;;   - motrix-next-engine (statically linked aria2 RPC helper, renamed from motrixnext-aria2c in v3.9.0)
 ;;;
 ;;; Because this is a prebuilt binary compiled on Ubuntu, we must:
 ;;;   1. Use patchelf to set the ELF interpreter to Guix's ld-linux.
@@ -333,7 +333,7 @@ protocol, to offer good support for the Java Language.")
                 ;; Place the aria2c sidecar in bin/ as well.  Tauri sidecar
                 ;; resolution takes the basename of the externalBin entry and
                 ;; searches in the executable's directory (exe_dir = bin/).
-                (install-file "usr/bin/motrixnext-aria2c" bin)
+                (install-file "usr/bin/motrix-next-engine" bin)
 
                 ;; Install aria2.conf into lib/MotrixNext/binaries/.
                 ;; Tauri resolves BaseDirectory::Resource to resource_dir()
