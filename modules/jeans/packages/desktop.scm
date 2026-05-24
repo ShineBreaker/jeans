@@ -74,6 +74,7 @@
        (sha256
         (base32 "1l9frlckb9zbwx5kngxv5byi353jyfmpskcy38m40d3yrimhg0wr"))))
     (build-system python-build-system)
+    (native-inputs (list python-setuptools))
     (arguments (list #:tests? #f))
     (home-page "https://github.com/rr-/screeninfo")
     (synopsis "Fetch location and size of physical screens")
