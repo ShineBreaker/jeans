@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 #
 """
-Build updated non-binary Guix packages after an auto-update run.
+Build all updated Guix packages after an auto-update run.
 
 If any build fails in GitHub Actions, create a deduplicated GitHub issue
 and exit non-zero so the update does not get committed.
@@ -29,13 +29,9 @@ def load_report(path: Path) -> Dict[str, Any]:
         return json.load(f)
 
 
-def select_updated_nonbinary_packages(report: Dict[str, Any]) -> List[Dict[str, Any]]:
+def select_updated_packages(report: Dict[str, Any]) -> List[Dict[str, Any]]:
     packages = report.get("packages", [])
-    return [
-        pkg
-        for pkg in packages
-        if pkg.get("status") == "updated" and not str(pkg.get("name", "")).endswith("-bin")
-    ]
+    return [pkg for pkg in packages if pkg.get("status") == "updated"]
 
 
 def summarize_output(stdout: str, stderr: str, limit_lines: int = 80, limit_chars: int = 6000) -> str:
@@ -96,7 +92,7 @@ def build_issue_body(failures: List[Dict[str, Any]], tested_packages: List[Dict[
     if run_url:
         lines.append(f"Workflow run: {run_url}")
     lines.append("")
-    lines.append("Updated non-binary packages tested:")
+    lines.append("Updated packages tested:")
     for pkg in tested_packages:
         lines.append(f"- `{pkg['name']}` ({pkg.get('old_version', '?')} -> {pkg.get('new_version', '?')})")
     lines.append("")
@@ -153,7 +149,7 @@ def main() -> int:
         return 2
 
     report = load_report(REPORT_FILE)
-    packages = select_updated_nonbinary_packages(report)
+    packages = select_updated_packages(report)
     build_report: Dict[str, Any] = {
         "timestamp": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "tested_count": len(packages),
@@ -162,12 +158,12 @@ def main() -> int:
     }
 
     if not packages:
-        print("ℹ️  本次没有更新到需要构建测试的非 binary 包")
+        print("ℹ️  本次没有更新到需要构建测试的包")
         with open(BUILD_REPORT_FILE, "w", encoding="utf-8") as f:
             json.dump(build_report, f, ensure_ascii=False, indent=2)
         return 0
 
-    print(f"🔨 将测试 {len(packages)} 个更新过的非 binary 包")
+    print(f"🔨 将测试 {len(packages)} 个更新过的包")
     failures: List[Dict[str, Any]] = []
 
     for pkg in packages:
