@@ -25,19 +25,9 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Install Guix
+      - name: Install Python dependencies
         shell: bash
-        run: |
-          set -euo pipefail
-          curl -fsSL https://guix.gnu.org/install.sh -o /tmp/install-guix.sh
-          { yes "" 2>/dev/null || true; } | sudo -E bash /tmp/install-guix.sh
-          if [ -f /var/guix/current/etc/profile ]; then
-            . /var/guix/current/etc/profile
-          fi
-          if [ -f "$HOME/.config/guix/current/etc/profile" ]; then
-            . "$HOME/.config/guix/current/etc/profile"
-          fi
-          guix --version
+        run: pip install requests
 
       - name: Run auto-update script
         id: updater
@@ -46,15 +36,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set +e
-          if [ -f /var/guix/current/etc/profile ]; then
-            . /var/guix/current/etc/profile
-          fi
-          if [ -f "$HOME/.config/guix/current/etc/profile" ]; then
-            . "$HOME/.config/guix/current/etc/profile"
-          fi
-          guix shell --manifest=scripts/check-updates/manifest.scm -- \
-            env CI=true \
-            GITHUB_TOKEN="$GITHUB_TOKEN" \
+          env CI=true GITHUB_TOKEN="$GITHUB_TOKEN" \
             python3 scripts/check-updates/update_versions.py
           status=$?
           echo "exit_code=$status" >> "$GITHUB_OUTPUT"

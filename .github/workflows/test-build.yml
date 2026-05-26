@@ -1,0 +1,69 @@
+name: Test Build Updated Packages
+
+on:
+  workflow_run:
+    workflows: ["Auto Update Packages"]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  issues: write
+
+jobs:
+  test-build:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.workflow_run.head_branch }}
+
+      - name: Download report artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: auto-update-report
+          path: scripts/check-updates/
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install Guix
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL https://guix.gnu.org/install.sh -o /tmp/install-guix.sh
+          { yes "" 2>/dev/null || true; } | sudo -E bash /tmp/install-guix.sh
+          if [ -f /var/guix/current/etc/profile ]; then
+            . /var/guix/current/etc/profile
+          fi
+          if [ -f "$HOME/.config/guix/current/etc/profile" ]; then
+            . "$HOME/.config/guix/current/etc/profile"
+          fi
+          guix --version
+
+      - name: Install Python dependencies
+        shell: bash
+        run: pip install requests
+
+      - name: Run build tests
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -f /var/guix/current/etc/profile ]; then
+            . /var/guix/current/etc/profile
+          fi
+          if [ -f "$HOME/.config/guix/current/etc/profile" ]; then
+            . "$HOME/.config/guix/current/etc/profile"
+          fi
+          python3 scripts/check-updates/test_updated_packages.py
+
+      - name: Upload build report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-test-report
+          path: scripts/check-updates/build-report.json
+          if-no-files-found: warn
