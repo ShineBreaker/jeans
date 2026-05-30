@@ -129,7 +129,7 @@ and Xorg.")
 (define-public zen-browser-bin
   (package
     (name "zen-browser-bin")
-    (version "1.20b")
+    (version "1.20.1b")
     (source
      (origin
        (method url-fetch)
@@ -137,7 +137,7 @@ and Xorg.")
              "https://github.com/zen-browser/desktop/releases/download/"
              version "/zen.linux-x86_64.tar.xz"))
        (sha256
-        (base32 "0n3yv7f4di814pb3cqfkz7d5ri8wydrwyg2m6kgj1jqvgfy1rnai"))))
+        (base32 "16n0fpjmdv2hd12z120j0zfg1af0dzpfhyzxchqlf2yn0bg8ryj3"))))
     (build-system copy-build-system)
     (arguments
      (list
@@ -342,7 +342,7 @@ We care about your experience, not your data.")
 (define-public opencode-desktop-bin
   (package
     (name "opencode-desktop-bin")
-    (version "1.15.10")
+    (version "1.15.12")
     (source
      (origin
        (method url-fetch)
@@ -350,7 +350,7 @@ We care about your experience, not your data.")
              "https://github.com/anomalyco/opencode/releases/download/"
              "v" version "/opencode-desktop-linux-amd64.deb"))
        (sha256
-        (base32 "163ysyblns3r3svgcgc4z9z7wa23cipjim95vwa6489llpd4iwg8"))))
+        (base32 "0gyl6cjviwf2ig3sqg9dxhs1f6whqwslb9fzkqbzdljvpahbwlf9"))))
     (build-system gnu-build-system)
     (arguments
      (list

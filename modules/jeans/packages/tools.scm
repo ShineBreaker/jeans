@@ -56,7 +56,7 @@
 (define-public crush-bin
   (package
     (name "crush-bin")
-    (version "0.72.0")
+    (version "0.74.1")
     (source
      (origin
        (method url-fetch)
@@ -64,7 +64,7 @@
              "https://github.com/charmbracelet/crush/releases/download/"
              "v" version "/crush_" version "_amd64.deb"))
        (sha256
-        (base32 "0493jppribs2y37s83q2w6hamj311dk1ahq858m2ss5kyv1ix4c9"))))
+        (base32 "1wlym8yh1g4b1rmddppz7iz2svifdj8fzch170zg0av9gk4d8n71"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -273,7 +273,7 @@ protocol, to offer good support for the Java Language.")
 (define-public motrix-next-bin
   (package
     (name "motrix-next-bin")
-    (version "3.9.0")
+    (version "3.9.2")
     (source
      (origin
        (method url-fetch)
@@ -281,7 +281,7 @@ protocol, to offer good support for the Java Language.")
              "https://github.com/AnInsomniacy/motrix-next/releases/download/"
              "v" version "/MotrixNext_" version "_amd64.deb"))
        (sha256
-        (base32 "1ni97kfmdksql4sa63yblr14iyhvzvz9i8lvgmqbny244ji76gym"))))
+        (base32 "1hpmcfi8b64kn94v9020hdw1vhjbp8j617v427zzqz916kb84cil"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -412,7 +412,7 @@ binary release.")
 (define-public cc-switch-bin
   (package
     (name "cc-switch-bin")
-    (version "3.15.0")
+    (version "3.16.0")
     (source
      (origin
        (method url-fetch)
@@ -420,7 +420,7 @@ binary release.")
              "https://github.com/farion1231/cc-switch/releases/download/"
              "v" version "/CC-Switch-v" version "-Linux-x86_64.deb"))
        (sha256
-        (base32 "0apgdsg3frk9zm19fzfah7qd26rvymarxn63b6fj8sh4bcv4c9d5"))))
+        (base32 "08czd3i0vp8nrgm1mypzq4fc8xf9jcrx97ffi569j85jsfxxilgh"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -550,7 +550,7 @@ enables command-line applications to interact with @code{keepassxc} databases.")
 (define-public opencode-bin
   (package
     (name "opencode-bin")
-    (version "1.15.10")
+    (version "1.15.12")
     (source
      (origin
        (method url-fetch)
@@ -558,7 +558,7 @@ enables command-line applications to interact with @code{keepassxc} databases.")
              "https://github.com/anomalyco/opencode/releases/download/"
              "v" version "/opencode-linux-x64.tar.gz"))
        (sha256
-        (base32 "1ifh7jhpgdkspbgh7rffniq574lylin09727mvikgxnvgx5ckh54"))))
+        (base32 "0rrs60aw0207df1k53lr1rvika54wzxhrzlvg2zb47za1z78nvzd"))))
     (build-system copy-build-system)
     (arguments
      (list
@@ -623,7 +623,7 @@ enables command-line applications to interact with @code{keepassxc} databases.")
 (define-public oh-my-pi-bin
   (package
     (name "oh-my-pi-bin")
-    (version "15.3.2")
+    (version "15.5.15")
     (source
      (origin
        (method url-fetch)
@@ -631,7 +631,7 @@ enables command-line applications to interact with @code{keepassxc} databases.")
              "https://github.com/can1357/oh-my-pi/releases/download/"
              "v" version "/omp-linux-x64"))
        (sha256
-        (base32 "0z7h66kzbiv2p78lwmxiwm4a4ld70w7zrgzpwnr806rvxnkjj466"))))
+        (base32 "19paan6w6q33ydvp14jan7vj1wpqfrn6bwhdl5k74qpnjcvliwdn"))))
     (build-system gnu-build-system)
     (arguments
      (list
