@@ -48,11 +48,13 @@ def summarize_output(stdout: str, stderr: str, limit_lines: int = 80, limit_char
 
 
 def build_package(package_name: str) -> Dict[str, Any]:
-    result = subprocess.run(
-        ["guix", "build", "-L", "modules", package_name],
-        capture_output=True,
-        text=True,
-    )
+    cmd = ["guix", "build", "-L", "modules"]
+    extra_load_path = os.environ.get("GUIX_EXTRA_LOAD_PATH", "")
+    for path in extra_load_path.split(":") if extra_load_path else []:
+        if path:
+            cmd.extend(["-L", path])
+    cmd.append(package_name)
+    result = subprocess.run(cmd, capture_output=True, text=True)
     output = summarize_output(result.stdout, result.stderr)
     return {
         "name": package_name,

@@ -42,6 +42,13 @@ jobs:
           fi
           guix --version
 
+      - name: Checkout nonguix channel
+        shell: bash
+        run: |
+          git clone --depth=1 \
+            https://gitlab.com/nonguix/nonguix.git \
+            /tmp/nonguix
+
       - name: Install Python dependencies
         shell: bash
         run: pip install requests
@@ -50,6 +57,7 @@ jobs:
         shell: bash
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GUIX_EXTRA_LOAD_PATH: /tmp/nonguix
         run: |
           set -euo pipefail
           if [ -f /var/guix/current/etc/profile ]; then
