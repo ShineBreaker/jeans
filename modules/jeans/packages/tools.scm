@@ -281,7 +281,7 @@ protocol, to offer good support for the Java Language.")
              "https://github.com/AnInsomniacy/motrix-next/releases/download/"
              "v" version "/MotrixNext_" version "_amd64.deb"))
        (sha256
-        (base32 "1hpmcfi8b64kn94v9020hdw1vhjbp8j617v427zzqz916kb84cil"))))
+        (base32 "1jyjjwbnc3bpzmp7ks4jzy7bd2d0inljfk056j0l4vxzk0vjj3k5"))))
     (build-system gnu-build-system)
     (arguments
      (list
