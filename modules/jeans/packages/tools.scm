@@ -412,7 +412,7 @@ binary release.")
 (define-public cc-switch-bin
   (package
     (name "cc-switch-bin")
-    (version "3.16.0")
+    (version "3.16.1")
     (source
      (origin
        (method url-fetch)
@@ -420,7 +420,7 @@ binary release.")
              "https://github.com/farion1231/cc-switch/releases/download/"
              "v" version "/CC-Switch-v" version "-Linux-x86_64.deb"))
        (sha256
-        (base32 "08czd3i0vp8nrgm1mypzq4fc8xf9jcrx97ffi569j85jsfxxilgh"))))
+        (base32 "0jpny3adri61pcza2pj3pddxzlcgwdhf2y10qqgqbjjs3w7x77dx"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -550,7 +550,7 @@ enables command-line applications to interact with @code{keepassxc} databases.")
 (define-public opencode-bin
   (package
     (name "opencode-bin")
-    (version "1.15.12")
+    (version "1.15.13")
     (source
      (origin
        (method url-fetch)
@@ -558,7 +558,7 @@ enables command-line applications to interact with @code{keepassxc} databases.")
              "https://github.com/anomalyco/opencode/releases/download/"
              "v" version "/opencode-linux-x64.tar.gz"))
        (sha256
-        (base32 "0rrs60aw0207df1k53lr1rvika54wzxhrzlvg2zb47za1z78nvzd"))))
+        (base32 "0y9x9fnjwrzb8jy3zxq7rvd3717p1xd5q8x54m8prwh9q03mly2i"))))
     (build-system copy-build-system)
     (arguments
      (list
@@ -623,7 +623,7 @@ enables command-line applications to interact with @code{keepassxc} databases.")
 (define-public oh-my-pi-bin
   (package
     (name "oh-my-pi-bin")
-    (version "15.5.15")
+    (version "15.7.6")
     (source
      (origin
        (method url-fetch)
@@ -631,7 +631,7 @@ enables command-line applications to interact with @code{keepassxc} databases.")
              "https://github.com/can1357/oh-my-pi/releases/download/"
              "v" version "/omp-linux-x64"))
        (sha256
-        (base32 "19paan6w6q33ydvp14jan7vj1wpqfrn6bwhdl5k74qpnjcvliwdn"))))
+        (base32 "1f54wgziplmz9ffx6cc3axymj7fc9l11hi911hcwprfv3xychzz3"))))
     (build-system gnu-build-system)
     (arguments
      (list
