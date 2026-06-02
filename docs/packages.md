@@ -62,4 +62,5 @@
 | `motrix-next-bin`          | Full-featured download manager                                                               |
 | `oh-my-pi-bin`             | AI coding agent with IDE integration                                                         |
 | `opencode-bin`             | The open source AI coding agent                                                              |
+| `pi-bin`                   | Terminal-based coding agent with multi-model support                                         |
 | `winapps`                  | Run Windows applications on GNU/Linux seamlessly (Microsoft 365, Adobe Creative Cloud, etc.) |
