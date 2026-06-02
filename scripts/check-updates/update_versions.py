@@ -514,7 +514,13 @@ def get_base32_from_guix_download(url: str) -> Optional[str]:
             raise RetryableError(f"HTTP {response.status_code}")
         response.raise_for_status()
 
-        digest = hashlib.sha256(response.content).digest()
+        content = response.content
+        content_length = response.headers.get("Content-Length")
+        if content_length and len(content) != int(content_length):
+            print(f"     ⚠️  下载不完整: 预期 {content_length} 字节, 实际 {len(content)} 字节")
+            raise RetryableError(f"下载不完整")
+
+        digest = hashlib.sha256(content).digest()
         base32 = _sha256_to_guix_base32(digest)
 
         if re.fullmatch(r"[0-9a-z]{52}", base32):
