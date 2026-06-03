@@ -5,8 +5,9 @@
 """
 Build all updated Guix packages after an auto-update run.
 
-If any build fails in GitHub Actions, create a deduplicated GitHub issue
-and exit non-zero so the update does not get committed.
+Runs in the same CI job as the updater, before commit/push.
+If any build fails, exits non-zero to block the commit and
+creates a deduplicated GitHub issue for notification.
 """
 
 import hashlib
@@ -16,7 +17,7 @@ import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 import requests
 

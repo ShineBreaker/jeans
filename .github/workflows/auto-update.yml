@@ -54,6 +54,55 @@ jobs:
             echo "has_changes=true" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Install Guix
+        if: steps.changes.outputs.has_changes == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL https://guix.gnu.org/install.sh -o /tmp/install-guix.sh
+          { yes "" 2>/dev/null || true; } | sudo -E bash /tmp/install-guix.sh
+          if [ -f /var/guix/current/etc/profile ]; then
+            . /var/guix/current/etc/profile
+          fi
+          if [ -f "$HOME/.config/guix/current/etc/profile" ]; then
+            . "$HOME/.config/guix/current/etc/profile"
+          fi
+          guix pull --verbosity=0
+          hash guix
+          guix --version
+
+      - name: Checkout nonguix channel
+        if: steps.changes.outputs.has_changes == 'true'
+        shell: bash
+        run: |
+          git clone --depth=1 \
+            https://gitlab.com/nonguix/nonguix.git \
+            /tmp/nonguix
+
+      - name: Build test updated packages
+        if: steps.changes.outputs.has_changes == 'true'
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GUIX_EXTRA_LOAD_PATH: /tmp/nonguix
+        run: |
+          set -euo pipefail
+          if [ -f /var/guix/current/etc/profile ]; then
+            . /var/guix/current/etc/profile
+          fi
+          if [ -f "$HOME/.config/guix/current/etc/profile" ]; then
+            . "$HOME/.config/guix/current/etc/profile"
+          fi
+          python3 scripts/check-updates/test_updated_packages.py
+
+      - name: Upload build report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-test-report
+          path: scripts/check-updates/build-report.json
+          if-no-files-found: warn
+
       - name: Configure GPG signing
         if: steps.changes.outputs.has_changes == 'true'
         shell: bash
@@ -154,7 +203,7 @@ jobs:
           git remote add codeberg "$remote_url"
           git push --force codeberg "HEAD:refs/heads/${{ github.ref_name }}"
 
-      - name: Upload report artifact
+      - name: Upload update report artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:

@@ -150,14 +150,13 @@ Rust 包使用双文件模式：
 
 ## CI 流水线
 
-`auto-update.yml` 工作流每周运行（周一 02:00 UTC）或手动触发：
+`auto-update.yml` 工作流每周运行（周二、四、六 02:00 UTC）或手动触发：
 
-1. 在 Ubuntu runner 上安装 Guix
-2. 运行更新脚本 → 检测变更
-3. 使用工作流密钥进行 GPG 签名提交
-4. 构建测试更新的非二进制包
-5. 推送到 GitHub → 镜像到 Codeberg
-6. 为构建失败创建 GitHub Issues（带去重）
+1. 运行更新脚本 → 检测变更
+2. 安装 Guix 并 `guix pull` 更新到最新版本
+3. 构建测试所有更新的包
+4. 全部通过后 GPG 签名提交 → 推送到 GitHub → 镜像到 Codeberg
+5. 构建失败则阻止提交，并创建 GitHub Issue 通知
 
 ## 已知陷阱
 
