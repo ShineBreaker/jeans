@@ -1,8 +1,6 @@
-diff --git a/setup.sh b/setup.sh
-index 3a871c8..71a8fa0 100755
---- a/setup.sh
-+++ b/setup.sh
-@@ -39,8 +39,8 @@ readonly SYS_BIN_PATH="/usr/local/bin"                  # UNIX path to 'bin' dir
+--- a/setup.sh	2026-06-06 03:31:22.729091179 +0800
++++ b/setup.sh	2026-06-06 03:34:34.107241286 +0800
+@@ -39,8 +39,8 @@
  readonly USER_BIN_PATH="${HOME}/.local/bin"             # UNIX path to 'bin' directory for a '--user' WinApps installation.
  readonly USER_BIN_PATH_WIN='\\tsclient\home\.local\bin' # WINDOWS path to 'bin' directory for a '--user' WinApps installation.
  # 'SOURCE'
@@ -13,7 +11,7 @@ index 3a871c8..71a8fa0 100755
  # 'APP'
  readonly SYS_APP_PATH="/usr/share/applications"                        # UNIX path to 'applications' directory for a '--system' WinApps installation.
  readonly USER_APP_PATH="${HOME}/.local/share/applications"             # UNIX path to 'applications' directory for a '--user' WinApps installation.
-@@ -70,7 +70,7 @@ readonly TEST_PATH_WIN="${USER_APPDATA_PATH_WIN}\\FreeRDP_Connection_Test" # WIN
+@@ -70,7 +70,7 @@
  # 'WinApps Configuration File'
  readonly CONFIG_PATH="${HOME}/.config/winapps/winapps.conf" # UNIX path to the WinApps configuration file.
  # 'Inquirer Bash Script'
@@ -21,8 +19,8 @@ index 3a871c8..71a8fa0 100755
 +readonly INQUIRER_PATH="@out@/src/install/inquirer.sh" # UNIX path to the 'inquirer' script, which is used to produce selection menus.
  
  # REMOTE DESKTOP CONFIGURATION
- readonly RDP_PORT=3389         # Port used for RDP on Windows.
-@@ -157,13 +157,6 @@ function waGetSourceCode() {
+ RDP_PORT=3389                  # Port used for RDP on Windows.
+@@ -161,12 +161,6 @@
          echo -e "${WARNING_TEXT}[WARNING]${CLEAR_TEXT} You might want to remove your old installation on '${SCRIPT_DIR_PATH}'."
      fi
  
@@ -32,11 +30,10 @@ index 3a871c8..71a8fa0 100755
 -        echo -e "${INFO_TEXT}WinApps installation already present at ${CLEAR_TEXT}${COMMAND_TEXT}${SOURCE_PATH}${CLEAR_TEXT}${INFO_TEXT}. Updating...${CLEAR_TEXT}"
 -        $SUDO git -C "$SOURCE_PATH" pull --no-rebase
 -    fi
--
+ 
      # Silently change the working directory.
      if ! cd "$SOURCE_PATH" &>/dev/null; then
-         # Display the error type.
-@@ -188,21 +181,8 @@ function waGetSourceCode() {
+@@ -192,21 +186,8 @@
  # Name: 'waGetInquirer'
  # Role: Loads the inquirer script, even if the source isn't cloned yet
  function waGetInquirer() {
@@ -59,7 +56,7 @@ index 3a871c8..71a8fa0 100755
  }
  
  # Name: 'waCheckInput'
-@@ -807,7 +787,7 @@ function waCheckGroupMembership() {
+@@ -895,7 +876,7 @@
      # Identify groups the current user belongs to.
      USER_GROUPS=$(groups "$(whoami)")
  
@@ -68,7 +65,7 @@ index 3a871c8..71a8fa0 100755
          # Complete the previous line.
          echo -e "${FAIL_TEXT}Failed!${CLEAR_TEXT}\n"
  
-@@ -1239,11 +1219,11 @@ function waConfigureWindows() {
+@@ -1331,11 +1312,11 @@
      # Populate variables.
      WIN_BASH="\
  #!/usr/bin/env bash
@@ -82,7 +79,7 @@ index 3a871c8..71a8fa0 100755
  Terminal=false
  Type=Application
  Icon=${APPDATA_PATH}/icons/windows.svg
-@@ -1290,13 +1270,13 @@ function waConfigureApp() {
+@@ -1382,13 +1363,13 @@
      # Determine the content of the bash script for the application.
      APP_BASH="\
  #!/usr/bin/env bash
@@ -98,17 +95,16 @@ index 3a871c8..71a8fa0 100755
  Terminal=false
  Type=Application
  Icon=${APP_ICON}
-@@ -1364,7 +1344,9 @@ function waConfigureOfficiallySupported() {
+@@ -1457,6 +1438,8 @@
              fi
  
              # Copy the protocol handler to the appropriate directory.
 +            # Fix permissions for nix.
-             $SUDO cp "./apps/ms-office-protocol-handler.desktop" "$TARGET_DIR/ms-office-protocol-handler.desktop"
 +            $SUDO chmod u+w "$TARGET_DIR/ms-office-protocol-handler.desktop"
+             $SUDO cp "./apps/ms-office-protocol-handler.desktop" "$TARGET_DIR/ms-office-protocol-handler.desktop"
          fi
  
-         # Print feedback.
-@@ -1596,7 +1578,7 @@ function waInstall() {
+@@ -1689,7 +1672,7 @@
      echo -e "${BOLD_TEXT}Installing WinApps.${CLEAR_TEXT}"
  
      # Check for existing conflicting WinApps installations.
@@ -117,7 +113,7 @@ index 3a871c8..71a8fa0 100755
  
      # Load the WinApps configuration file.
      waLoadConfig
-@@ -1664,9 +1646,8 @@ function waInstall() {
+@@ -1757,9 +1740,8 @@
      # Check for installed applications.
      waFindInstalled
  
@@ -129,14 +125,14 @@ index 3a871c8..71a8fa0 100755
  
      # Configure the Windows RDP session application launcher.
      waConfigureWindows
-@@ -1727,18 +1708,15 @@ function waUninstall() {
+@@ -1820,18 +1802,16 @@
      local DESKTOP_FILE_NAME=""        # Stores the name of the '.desktop' file for the application.
      local BASH_SCRIPT_NAME=""         # Stores the name of the application.
  
 -    # Remove the 'WinApps' bash scripts.
 -    $SUDO rm -f "${BIN_PATH}/winapps"
 -    $SUDO rm -f "${BIN_PATH}/winapps-setup"
--
+ 
      # Remove WinApps configuration data, temporary files and logs.
 +    chmod -R +rw "$USER_APPDATA_PATH"
      rm -rf "$USER_APPDATA_PATH"
@@ -150,7 +146,7 @@ index 3a871c8..71a8fa0 100755
  
      # Remove each '.desktop' file.
      for DESKTOP_FILE_PATH in "${WINAPPS_DESKTOP_FILES[@]}"; do
-@@ -1759,7 +1737,7 @@ function waUninstall() {
+@@ -1852,7 +1832,7 @@
      done
  
      # Store the paths of bash scripts calling 'WinApps' to launch specific applications in an array, returning an empty array if no such files exist.
@@ -159,13 +155,14 @@ index 3a871c8..71a8fa0 100755
  
      # Remove each bash script.
      for BASH_SCRIPT_PATH in "${WINAPPS_APP_BASH_SCRIPTS[@]}"; do
-@@ -1780,10 +1758,9 @@ function waUninstall() {
+@@ -1873,10 +1853,10 @@
      done
  
      # Print caveats.
 -    echo -e "\n${INFO_TEXT}Please note that your WinApps configuration and the WinApps source code were not removed.${CLEAR_TEXT}"
 -    echo -e "${INFO_TEXT}You can remove these manually by running:${CLEAR_TEXT}"
-+    echo -e "\n${INFO_TEXT}Please note that your WinApps configuration and the WinApps package were not removed.${CLEAR_TEXT}"
++    echo -e "
++${INFO_TEXT}Please note that your WinApps configuration and the WinApps package were not removed.${CLEAR_TEXT}"
 +    echo -e "${INFO_TEXT}You can remove your config manually by running:${CLEAR_TEXT}"
      echo -e "${COMMAND_TEXT}rm -r $(dirname "$CONFIG_PATH")${CLEAR_TEXT}"
 -    echo -e "${COMMAND_TEXT}rm -r ${SOURCE_PATH}${CLEAR_TEXT}\n"

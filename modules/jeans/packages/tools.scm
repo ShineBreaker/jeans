@@ -56,7 +56,7 @@
 (define-public crush-bin
   (package
     (name "crush-bin")
-    (version "0.74.1")
+    (version "0.75.0")
     (source
      (origin
        (method url-fetch)
@@ -64,7 +64,7 @@
              "https://github.com/charmbracelet/crush/releases/download/"
              "v" version "/crush_" version "_amd64.deb"))
        (sha256
-        (base32 "1wlym8yh1g4b1rmddppz7iz2svifdj8fzch170zg0av9gk4d8n71"))))
+        (base32 "1sw7700mnszwgpz3k4liciw6iqn271k083pnj6jfw9jbcqfd5lki"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -135,15 +135,15 @@ This package provides the prebuilt binary release.")
 (define-public winapps
   (package
     (name "winapps")
-    (version "0-unstable-2026-05-16")
+    (version "0-unstable-2026-06-02")
     (source
      (origin
        (method git-fetch)
        (uri (git-reference
              (url "https://github.com/winapps-org/winapps")
-             (commit "be267c4ed62257fc9103bc0d4aa9893b98c72fcf")))
+             (commit "3c1e7e148703d3ddce375f7a893f669be6e95222")))
        (file-name (git-file-name name version))
-       (sha256 (base32 "1npdxph99x881y3z25jn6ghacxra2yblybf4r131g6h38nanxak9"))
+       (sha256 (base32 "06axrzlximkhzhns4sdc256wn9l6p726f6x75cvgwr4kkw0j4wfy"))
        (patches (list (local-file (search-path %load-path "jeans/patches/WinApps.patch"))))))
     (build-system gnu-build-system)
     (arguments
@@ -273,7 +273,7 @@ protocol, to offer good support for the Java Language.")
 (define-public motrix-next-bin
   (package
     (name "motrix-next-bin")
-    (version "3.9.2")
+    (version "3.9.3")
     (source
      (origin
        (method url-fetch)
@@ -281,7 +281,7 @@ protocol, to offer good support for the Java Language.")
              "https://github.com/AnInsomniacy/motrix-next/releases/download/"
              "v" version "/MotrixNext_" version "_amd64.deb"))
        (sha256
-        (base32 "1jyjjwbnc3bpzmp7ks4jzy7bd2d0inljfk056j0l4vxzk0vjj3k5"))))
+        (base32 "0bcvv129nzvrq3j1ka9i3y108lwcgbzh0hqvg1ji7ifi2hl0cadf"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -623,7 +623,7 @@ enables command-line applications to interact with @code{keepassxc} databases.")
 (define-public oh-my-pi-bin
   (package
     (name "oh-my-pi-bin")
-    (version "15.7.6")
+    (version "15.9.3")
     (source
      (origin
        (method url-fetch)
@@ -631,7 +631,7 @@ enables command-line applications to interact with @code{keepassxc} databases.")
              "https://github.com/can1357/oh-my-pi/releases/download/"
              "v" version "/omp-linux-x64"))
        (sha256
-        (base32 "1f54wgziplmz9ffx6cc3axymj7fc9l11hi911hcwprfv3xychzz3"))))
+        (base32 "05qrq3k3vgv3xnxvky7sim4g8dqaz8d2cbc7vq5cyl1yc74lbck0"))))
     (build-system gnu-build-system)
     (arguments
      (list
