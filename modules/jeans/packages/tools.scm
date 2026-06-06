@@ -550,7 +550,7 @@ enables command-line applications to interact with @code{keepassxc} databases.")
 (define-public opencode-bin
   (package
     (name "opencode-bin")
-    (version "1.15.13")
+    (version "1.16.2")
     (source
      (origin
        (method url-fetch)
@@ -558,7 +558,7 @@ enables command-line applications to interact with @code{keepassxc} databases.")
              "https://github.com/anomalyco/opencode/releases/download/"
              "v" version "/opencode-linux-x64.tar.gz"))
        (sha256
-        (base32 "0y9x9fnjwrzb8jy3zxq7rvd3717p1xd5q8x54m8prwh9q03mly2i"))))
+        (base32 "0afldch4ndrjnap0k20qb7dkdkgscz7i41s4n8b1gl7qnxdrr9q6"))))
     (build-system copy-build-system)
     (arguments
      (list
@@ -568,6 +568,7 @@ enables command-line applications to interact with @code{keepassxc} databases.")
       #~'(("opencode" "libexec/opencode"))
       #:phases
       #~(modify-phases %standard-phases
+          (delete 'install-license-files)
           (add-after 'unpack 'patch-proc-self-exe
             (lambda _
               ;; Replace /proc/self/exe with /proc/self/ex_ to force Bun
