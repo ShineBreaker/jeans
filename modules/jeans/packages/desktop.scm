@@ -70,7 +70,7 @@
     (source
      (origin
        (method url-fetch)
-       (uri (pypi-uri "screeninfo" version))
+       (uri ((@ (guix build-system pyproject) pypi-uri) "screeninfo" version))
        (sha256
         (base32 "1l9frlckb9zbwx5kngxv5byi353jyfmpskcy38m40d3yrimhg0wr"))))
     (build-system python-build-system)
@@ -125,219 +125,6 @@ physical screens in multi-monitor setups.")
      "Waypaper is a simple GUI wallpaper manager for Linux, supporting both Wayland
 and Xorg.")
     (license license:gpl3)))
-
-(define-public zen-browser-bin
-  (package
-    (name "zen-browser-bin")
-    (version "1.20.2b")
-    (source
-     (origin
-       (method url-fetch)
-       (uri (string-append
-             "https://github.com/zen-browser/desktop/releases/download/"
-             version "/zen.linux-x86_64.tar.xz"))
-       (sha256
-        (base32 "0x0npkhgs07pfyr0l1q7m5pcxj9byc9m1lfisfhhway20r649b9n"))))
-    (build-system copy-build-system)
-    (arguments
-     (list
-      #:install-plan
-      #~'(("." "lib/zen"))
-      #:modules `((ice-9 regex)
-                  (ice-9 string-fun)
-                  (ice-9 ftw)
-                  (srfi srfi-1)
-                  (srfi srfi-26)
-                  (rnrs bytevectors)
-                  (rnrs io ports)
-                  (guix elf)
-                  (guix build gremlin)
-                  ,@%copy-build-system-modules
-                  ,@%default-gnu-imported-modules)
-      #:phases
-      #~(modify-phases (@@ (guix build copy-build-system) %standard-phases)
-          (add-after 'install 'wrap-program
-            (lambda* (#:key inputs outputs #:allow-other-keys)
-              (define (runpath-of lib)
-                (call-with-input-file lib
-                  (compose elf-dynamic-info-runpath elf-dynamic-info parse-elf
-                           get-bytevector-all)))
-              (define (runpaths-of-input label)
-                (let* ((dir (string-append (assoc-ref inputs label) "/lib"))
-                       (libs (find-files dir "\\.so$")))
-                  (append-map runpath-of libs)))
-              (let* ((out (assoc-ref outputs "out"))
-                     (lib (string-append out "/lib"))
-                     ;; ;; TODO: make me a loop again
-                     (mesa-lib (string-append (assoc-ref inputs "mesa") "/lib"))
-                     ;; For the integration of native notifications
-                     (libnotify-lib (string-append (assoc-ref inputs
-                                                              "libnotify")
-                                                   "/lib"))
-                     ;; For hardware video acceleration via VA-API
-                     (libva-lib (string-append (assoc-ref inputs "libva")
-                                               "/lib"))
-                     ;; Needed for video acceleration (via libdrm which mesa
-                     ;; and libva depend on).
-                     (pciaccess-lib (string-append (assoc-ref inputs
-                                                              "libpciaccess")
-                                                   "/lib"))
-                     ;; VA-API is run in the RDD (Remote Data Decoder) sandbox
-                     ;; and must be explicitly given access to files it needs.
-                     ;; Rather than adding the whole store (as Nix had
-                     ;; upstream do, see
-                     ;; <https://github.com/NixOS/nixpkgs/pull/165964> and
-                     ;; linked upstream patches), we can just follow the
-                     ;; runpaths of the needed libraries to add everything to
-                     ;; LD_LIBRARY_PATH.  These will then be accessible in the
-                     ;; RDD sandbox.
-                     ;; TODO: Properly handle the runpath of libraries needed
-                     ;; (for RDD) recursively, so the explicit libpciaccess
-                     ;; can be removed.
-                     (rdd-whitelist (map (cut string-append <> "/")
-                                         (delete-duplicates (append-map
-                                                             runpaths-of-input
-                                                             '("mesa" "ffmpeg")))))
-                     (pulseaudio-lib (string-append (assoc-ref inputs
-                                                               "pulseaudio")
-                                                    "/lib"))
-                     ;; For sharing on Wayland
-                     (pipewire-lib (string-append (assoc-ref inputs "pipewire")
-                                                  "/lib"))
-                     ;; For U2F and WebAuthn
-                     (eudev-lib (string-append (assoc-ref inputs "eudev")
-                                               "/lib"))
-                     (gtk-share (string-append (assoc-ref inputs "gtk+")
-                                               "/share")))
-                (wrap-program (car (find-files lib "^zen$"))
-                  `("LD_LIBRARY_PATH" prefix
-                    (,mesa-lib ,libnotify-lib
-                     ,libva-lib
-                     ,pciaccess-lib
-                     ,pulseaudio-lib
-                     ,eudev-lib
-                     ,@rdd-whitelist
-                     ,pipewire-lib))
-                  `("XDG_DATA_DIRS" prefix
-                    (,gtk-share))
-                  `("MOZ_LEGACY_PROFILES" =
-                    ("1"))
-                  `("MOZ_ALLOW_DOWNGRADE" =
-                    ("1"))))))
-          (add-after 'install 'patch-elf
-            (lambda* (#:key inputs #:allow-other-keys)
-              (let ((ld.so (string-append #$(this-package-input "glibc")
-                                          #$(glibc-dynamic-linker)))
-                    (rpath (string-join (cons* (string-append #$output
-                                                              "/lib/zen")
-                                               (string-append #$output
-                                                "/lib/zen/gmp-clearkey/0.1")
-                                               (string-append #$(this-package-input
-                                                                 "gtk+")
-                                                              "/share")
-                                               (map (lambda (input)
-                                                      (string-append (cdr
-                                                                      input)
-                                                                     "/lib"))
-                                                    inputs)) ":")))
-                ;; Got this proc from hako's Rosenthal, thanks
-                (define (patch-elf file)
-                  (format #t "Patching ~a ..." file)
-                  (unless (string-contains file ".so")
-                    (invoke "patchelf" "--set-interpreter" ld.so file))
-                  (invoke "patchelf" "--set-rpath" rpath file)
-                  (display " done\n"))
-                (for-each (lambda (binary)
-                            (patch-elf binary))
-                          (append (map (lambda (binary)
-                                         (string-append #$output "/lib/zen/"
-                                                        binary))
-                                       '("glxtest" "updater" "vaapitest" "zen"
-                                         "zen-bin" "pingsender"))
-                                  (find-files (string-append #$output
-                                                             "/lib/zen")
-                                              ".*\\.so.*"))))))
-          (add-after 'patch-elf 'install-bin
-            (lambda _
-              (let* ((zen (string-append #$output "/lib/zen/zen"))
-                     (bin-zen (string-append #$output "/bin/zen")))
-                (mkdir (string-append #$output "/bin"))
-                (symlink zen bin-zen))))
-          (add-after 'install-bin 'install-desktop
-            (lambda _
-              (let* ((share-applications (string-append #$output
-                                                        "/share/applications"))
-                     (desktop (string-append share-applications "/zen.desktop")))
-                (mkdir-p share-applications)
-                (make-desktop-entry-file desktop
-                                         #:name "Zen Browser"
-                                         #:icon "zen"
-                                         #:type "Application"
-                                         #:comment #$(package-synopsis
-                                                      this-package)
-                                         #:exec (string-append #$output
-                                                               "/bin/zen %u")
-                                         #:keywords '("Internet" "WWW"
-                                                      "Browser" "Web"
-                                                      "Explorer")
-                                         #:categories '("Network" "Browser")
-                                         ;; #:actions '("new-window" "new-private-window" "profilemanager")
-                                         #:mime-type '("text/html" "text/xml"
-                                                       "application/xhtml+xml"
-                                                       "x-scheme-handler/http"
-                                                       "x-scheme-handler/https"
-                                                       "application/x-xpinstall"
-                                                       "application/pdf"
-                                                       "application/json")
-                                         #:startup-w-m-class "zen-alpha"))))
-          (add-after 'install-desktop 'install-icons
-            (lambda _
-              (let* ((out #$output)
-                     (icon-source (string-append out
-                                   "/lib/zen/browser/chrome/icons/default"))
-                     (icon-target (string-append out "/share/icons/hicolor"))
-                     (icons '(("16" . "16x16") ("32" . "32x32")
-                              ("48" . "48x48")
-                              ("64" . "64x64")
-                              ("128" . "128x128"))))
-                (when (file-exists? icon-source)
-                  (for-each (lambda (entry)
-                              (let* ((file-size (car entry))
-                                     (dir-size (cdr entry))
-                                     (icon-file (string-append icon-source
-                                                               "/default"
-                                                               file-size
-                                                               ".png"))
-                                     (target-dir (string-append icon-target
-                                                                "/" dir-size
-                                                                "/apps")))
-                                (when (file-exists? icon-file)
-                                  (mkdir-p target-dir)
-                                  (copy-file icon-file
-                                             (string-append target-dir
-                                                            "/zen.png")))))
-                            icons))))))))
-    (native-inputs (list patchelf))
-    (inputs (list alsa-lib
-                  eudev
-                  gcc-toolchain
-                  icu4c
-                  gtk+
-                  glibc
-                  libnotify
-                  libva
-                  pciutils
-                  mesa
-                  ffmpeg-6
-                  libpciaccess
-                  pipewire
-                  pulseaudio))
-    (home-page "https://zen-browser.app/")
-    (synopsis "Experience tranquillity while browsing the web without people tracking you!")
-    (description
-     "Beautifully designed, privacy-focused, and packed with features.
-We care about your experience, not your data.")
-    (license (list license:mpl2.0))))
 
 (define-public opencode-desktop-bin
   (package
@@ -486,3 +273,93 @@ We care about your experience, not your data.")
 with Electron.  It supports multiple LLM providers and offers an interactive
 coding experience with context awareness.")
     (license license:expat)))
+
+(define-public reasonix-desktop-bin
+  (package
+    (name "reasonix-desktop-bin")
+    (version "1.3.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
+             "desktop-v" version "/Reasonix-linux-amd64.tar.gz"))
+       (sha256
+        (base32 "1xbp3iww9qxl6y5hv2cxn44l0n4p0x5nwlm9pwvgww3z24a0sihl"))))
+    (build-system gnu-build-system)
+    (arguments
+     (list
+      #:tests? #f
+      #:validate-runpath? #f
+      #:strip-binaries? #f
+      #:modules '((guix build gnu-build-system)
+                  (guix build utils))
+      #:phases
+      #~(modify-phases %standard-phases
+          (delete 'configure)
+          (delete 'build)
+          (replace 'unpack
+            (lambda _
+              (invoke "tar" "xzf" #$source)))
+          (replace 'install
+            (lambda* (#:key inputs #:allow-other-keys)
+              (let* ((out #$output)
+                     (libexec (string-append out "/libexec/reasonix-desktop"))
+                     (bin (string-append out "/bin"))
+                     (ld.so (string-append (assoc-ref inputs "glibc")
+                                           #$(glibc-dynamic-linker)))
+                     (lib-path (string-join
+                                (map (lambda (input)
+                                       (string-append (cdr input) "/lib"))
+                                     inputs)
+                                ":"))
+                     (glib-lib (string-append (assoc-ref inputs "glib") "/lib"))
+                     (gtk-lib (string-append (assoc-ref inputs "gtk+") "/lib"))
+                     (gtk-share (string-append (assoc-ref inputs "gtk+") "/share"))
+                     (webkitgtk-lib (string-append (assoc-ref inputs "webkitgtk-for-gtk3")
+                                                   "/lib"))
+                     (webkitgtk-share (string-append (assoc-ref inputs "webkitgtk-for-gtk3")
+                                                     "/share"))
+                     (gdk-pixbuf (assoc-ref inputs "gdk-pixbuf")))
+                (mkdir-p libexec)
+                (copy-file "reasonix-desktop"
+                           (string-append libexec "/reasonix-desktop"))
+                (chmod (string-append libexec "/reasonix-desktop") #o755)
+                (mkdir-p bin)
+                (with-output-to-file (string-append bin "/reasonix-desktop")
+                  (lambda ()
+                    (display
+                     (string-append
+                      "#!" #$(this-package-input "bash-minimal") "/bin/sh\n"
+                      "export FONTCONFIG_FILE=" #$(this-package-input "fontconfig-minimal") "/etc/fonts/fonts.conf\n"
+                      "export XDG_DATA_DIRS=" out "/share:" gtk-share ":" webkitgtk-share "\n"
+                      "export GI_TYPELIB_PATH=" glib-lib "/girepository-1.0:"
+                      gtk-lib "/girepository-1.0:"
+                      webkitgtk-lib "/girepository-1.0:"
+                      gdk-pixbuf "/lib/girepository-1.0\n"
+                      "export GIO_EXTRA_MODULES=" glib-lib "/gio/modules\n"
+                      "export GDK_PIXBUF_MODULE_FILE=" gdk-pixbuf "/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache\n"
+                      "exec " ld.so " --argv0 " libexec "/reasonix-desktop"
+                      " --library-path " lib-path " " libexec "/reasonix-desktop \"$@\"\n"))))
+                (chmod (string-append bin "/reasonix-desktop") #o755)))))))
+    (native-inputs (list tar gzip))
+    (inputs (list `(,gcc "lib")
+                  bash-minimal
+                  fontconfig
+                  glibc
+                  glib
+                  gtk+
+                  gdk-pixbuf
+                  libsoup
+                  mesa
+                  webkitgtk-for-gtk3))
+    (home-page "https://github.com/esengine/DeepSeek-Reasonix")
+    (synopsis "DeepSeek-native AI coding agent with desktop GUI")
+    (description
+     "Reasonix is a DeepSeek-native AI coding agent for your terminal,
+tuned around DeepSeek's prefix cache so token costs stay low across long sessions.
+This is the desktop version with a graphical interface built with Wails
+(Go + WebKitGTK).  It provides a config- and plugin-driven harness with
+support for multiple LLM providers.")
+    (license license:expat)
+    (supported-systems '("x86_64-linux"))))
