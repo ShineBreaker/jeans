@@ -580,21 +580,26 @@ cargo license            # 验证可接受的许可证
 3. 构建系统模块
 4. 包模块（按字母顺序）
 
-#### 测试
+#### 测试与验证
+
+**所有新包和修改过的包必须通过以下完整验证流程：**
 
 ```bash
-# 构建包
+# 1. 构建包
 guix build -L modules package-name
 
-# 在隔离环境中试用
+# 2. Lint 检查（必须！）
+#    检查 synopsis/description 格式、许可证一致性、home-page 可达性等
+guix lint -L modules package-name
+
+# 3. 在隔离环境中试用
 guix shell -L modules package-name -- package-name --help
 
-# 检查问题
-guix lint package-name
-
-# 验证依赖
+# 4. 验证依赖
 guix graph package-name | dot -Tpng > graph.png
 ```
+
+**Lint 是强制性步骤**，不是可选的。每个包在首次打包或修改后都必须通过 `guix lint` 检查，修复所有报告的问题后再提交。
 
 ### 快速参考
 
@@ -614,8 +619,8 @@ guix package -L modules -i PACKAGE
 # 带包进入 shell
 guix shell -L modules PACKAGE
 
-# Lint 检查
-guix lint PACKAGE
+# Lint 检查（打包后必须运行）
+guix lint -L modules PACKAGE
 
 # 显示包信息
 guix show PACKAGE
