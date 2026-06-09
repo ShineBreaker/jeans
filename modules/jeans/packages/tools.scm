@@ -60,7 +60,7 @@
 (define-public crush-bin
   (package
     (name "crush-bin")
-    (version "0.75.0")
+    (version "0.76.0")
     (source
      (origin
        (method url-fetch)
@@ -68,7 +68,7 @@
              "https://github.com/charmbracelet/crush/releases/download/"
              "v" version "/crush_" version "_amd64.deb"))
        (sha256
-        (base32 "1sw7700mnszwgpz3k4liciw6iqn271k083pnj6jfw9jbcqfd5lki"))))
+        (base32 "1kpk6jlmrzwvam2v53wi020ww9d6m742rcyaam93qnv0vgl8d81j"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -628,7 +628,7 @@ enables command-line applications to interact with @code{keepassxc} databases.")
 (define-public oh-my-pi-bin
   (package
     (name "oh-my-pi-bin")
-    (version "15.9.3")
+    (version "15.9.5")
     (source
      (origin
        (method url-fetch)
@@ -636,7 +636,7 @@ enables command-line applications to interact with @code{keepassxc} databases.")
              "https://github.com/can1357/oh-my-pi/releases/download/"
              "v" version "/omp-linux-x64"))
        (sha256
-        (base32 "05qrq3k3vgv3xnxvky7sim4g8dqaz8d2cbc7vq5cyl1yc74lbck0"))))
+        (base32 "1pqg01k8gx5g4ja3cm157ffkv6xc55nlwsjcvmwkhb206ni8f94v"))))
     (build-system gnu-build-system)
     (arguments
      (list
