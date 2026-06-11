@@ -12,6 +12,7 @@
   #:use-module (gnu packages check)
   #:use-module (gnu packages commencement)
   #:use-module (gnu packages compression)
+  #:use-module (gnu packages backup)
   #:use-module (gnu packages elf)
   #:use-module (gnu packages fontutils)
   #:use-module (gnu packages freedesktop)
@@ -277,15 +278,15 @@ coding experience with context awareness.")
 (define-public reasonix-desktop-bin
   (package
     (name "reasonix-desktop-bin")
-    (version "1.3.0")
+    (version "1.5.0")
     (source
      (origin
        (method url-fetch)
        (uri (string-append
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
-             "desktop-v" version "/Reasonix-linux-amd64.tar.gz"))
+             "desktop-v" version "/Reasonix-linux-amd64.deb"))
        (sha256
-        (base32 "1xbp3iww9qxl6y5hv2cxn44l0n4p0x5nwlm9pwvgww3z24a0sihl"))))
+        (base32 "03m0blqwbw574fz87s1j0id6bs3clz6xrnnp1d17m5a7ws7b4b25"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -300,7 +301,8 @@ coding experience with context awareness.")
           (delete 'build)
           (replace 'unpack
             (lambda _
-              (invoke "tar" "xzf" #$source)))
+              (invoke "bsdtar" "xf" #$source)
+              (invoke "tar" "xzf" "data.tar.gz")))
           (replace 'install
             (lambda* (#:key inputs #:allow-other-keys)
               (let* ((out #$output)
@@ -322,7 +324,7 @@ coding experience with context awareness.")
                                                      "/share"))
                      (gdk-pixbuf (assoc-ref inputs "gdk-pixbuf")))
                 (mkdir-p libexec)
-                (copy-file "reasonix-desktop"
+                (copy-file "usr/bin/reasonix-desktop"
                            (string-append libexec "/reasonix-desktop"))
                 (chmod (string-append libexec "/reasonix-desktop") #o755)
                 (mkdir-p bin)
@@ -341,8 +343,22 @@ coding experience with context awareness.")
                       "export GDK_PIXBUF_MODULE_FILE=" gdk-pixbuf "/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache\n"
                       "exec " ld.so " --argv0 " libexec "/reasonix-desktop"
                       " --library-path " lib-path " " libexec "/reasonix-desktop \"$@\"\n"))))
-                (chmod (string-append bin "/reasonix-desktop") #o755)))))))
-    (native-inputs (list tar gzip))
+                (chmod (string-append bin "/reasonix-desktop") #o755))))
+          (add-after 'install 'install-desktop-entry
+            (lambda _
+              (let* ((out #$output)
+                     (apps (string-append out "/share/applications"))
+                     (pixmaps (string-append out "/share/pixmaps")))
+                (mkdir-p apps)
+                (mkdir-p pixmaps)
+                (copy-file "usr/share/applications/reasonix.desktop"
+                           (string-append apps "/reasonix-desktop.desktop"))
+                (substitute* (string-append apps "/reasonix-desktop.desktop")
+                  (("Exec=reasonix-desktop")
+                   (string-append "Exec=" out "/bin/reasonix-desktop")))
+                (copy-file "usr/share/pixmaps/reasonix-desktop.png"
+                           (string-append pixmaps "/reasonix-desktop.png"))))))))
+    (native-inputs (list libarchive tar gzip))
     (inputs (list `(,gcc "lib")
                   bash-minimal
                   fontconfig

@@ -47,7 +47,8 @@
   #:use-module (gnu packages emacs)          ; emacs-build-system
   #:use-module (guix build-system emacs)
   #:use-module (gnu packages emacs-xyz)      ; emacs-lsp-mode, emacs-company, etc.
-  #:use-module (gnu packages emacs-build))    ; emacs-dash, emacs-s, etc.
+  #:use-module (gnu packages emacs-build)    ; emacs-dash, emacs-s, etc.
+  #:use-module (gnu packages node))          ; node
 
 ;;; Crush: AI-powered coding assistant (Go TUI binary).
 ;;;
@@ -1014,4 +1015,112 @@ stdin/stdout, and an Emacs Lisp backend that provides completion, hover,
 signature help, and code actions for Elisp files.  This package provides
 the prebuilt proxy binary.")
     (license license:gpl3+)
+    (supported-systems '("x86_64-linux"))))
+
+;;; Eask: CLI tool for building, testing and managing Emacs packages (source).
+;;;
+;;; Eask is a Node.js + Emacs Lisp hybrid application.  The source is
+;;; installed to lib/eask/ with vendored node_modules.  A wrapper script
+;;; in bin/ sets NODE_PATH so the bundled modules are found at runtime.
+
+(define-public eask
+  (package
+    (name "eask")
+    (version "0.12.10")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/emacs-eask/cli")
+             (commit version)))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "1w2pwfh4shbdb31fs6ifza0plm721l4mrwi6clhm87xwavqq84x2"))))
+    (build-system copy-build-system)
+    (arguments
+     (list
+      #:tests? #f
+      #:install-plan
+      #~'(("eask.js" "lib/eask/")
+          ("package.json" "lib/eask/")
+          ("src" "lib/eask/")
+          ("cmds" "lib/eask/")
+          ("lisp" "lib/eask/"))
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'install 'unpack-node-modules
+            (lambda _
+              (invoke "tar" "xzf"
+                      #$(local-file
+                         (canonicalize-path
+                          (search-path %load-path
+                           "jeans/vendor/eask-node-modules-0.12.10.tar.gz")))
+                      "-C" (string-append #$output "/lib/eask/"))))
+          (add-after 'unpack-node-modules 'wrap-bin
+            (lambda* (#:key inputs #:allow-other-keys)
+              (let ((bin (string-append #$output "/bin"))
+                    (lib (string-append #$output "/lib/eask"))
+                    (node-bin (dirname (search-input-file inputs "bin/node"))))
+                (mkdir-p bin)
+                (call-with-output-file (string-append bin "/eask")
+                  (lambda (port)
+                    (format port "#!/bin/sh\nexec ~a/bin/node ~a/eask.js \"$@\"\n"
+                            #$bash-minimal #$node lib)))
+                (chmod (string-append bin "/eask") #o755)
+                (wrap-program (string-append bin "/eask")
+                  `("PATH" ":" prefix (,node-bin))
+                  `("NODE_PATH" = (,(string-append lib "/node_modules"))))))))))
+    (inputs (list node bash-minimal emacs))
+    (home-page "https://github.com/emacs-eask/cli")
+    (synopsis "CLI tool for building, testing and managing Emacs packages")
+    (description "Eask is a CLI tool that helps you build, test, and manage
+Emacs packages.  It provides a consistent build environment regardless of your
+Emacs configuration, supporting batch operations, linting, testing, and
+packaging of Emacs Lisp projects.")
+    (license license:gpl3+)))
+
+;;; Reasonix: DeepSeek-native AI coding agent (Go static binary).
+;;;
+;;; The upstream tar.gz ships a single statically-linked Go ELF binary:
+;;;   - reasonix       (CGO_ENABLED=0, no interpreter, no NEEDED)
+;;;
+;;; No patchelf or ld-linux wrapper needed — just extract and install.
+
+(define-public reasonix-bin
+  (package
+    (name "reasonix-bin")
+    (version "1.5.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
+             "v" version "/reasonix-linux-amd64.tar.gz"))
+       (sha256
+        (base32 "0lmm4709zbic00hwpxl0q1fx2dgygsgw8g704i6ils8v8v0xmcbc"))))
+    (build-system gnu-build-system)
+    (arguments
+     (list
+      #:tests? #f
+      #:validate-runpath? #f
+      #:strip-binaries? #f
+      #:modules '((guix build gnu-build-system)
+                  (guix build utils))
+      #:phases
+      #~(modify-phases %standard-phases
+          (delete 'configure)
+          (delete 'build)
+          (replace 'install
+            (lambda _
+              (let ((bin (string-append #$output "/bin")))
+                (mkdir-p bin)
+                (install-file "reasonix" bin)))))))
+    (home-page "https://github.com/esengine/DeepSeek-Reasonix")
+    (synopsis "DeepSeek-native AI coding agent for the terminal")
+    (description
+     "Reasonix is a config- and plugin-driven AI coding agent written in Go,
+designed around DeepSeek's prefix cache to keep token costs low across long sessions.
+It supports multi-model composition, external tools via MCP-compatible JSON-RPC,
+and ships as a single static binary with no runtime dependencies.")
+    (license license:expat)
     (supported-systems '("x86_64-linux"))))
