@@ -188,6 +188,7 @@ def load_config(config_path: Path) -> dict[str, Any]:
             config.setdefault("skip_packages", [])
             config.setdefault("skip_files", [])
             config.setdefault("notes", {})
+            config.setdefault("tag_prefix", {})
             return config
     except FileNotFoundError:
         print(f"⚠️  配置文件不存在: {config_path}")
@@ -197,6 +198,7 @@ def load_config(config_path: Path) -> dict[str, Any]:
             "skip_packages": [],
             "skip_files": [],
             "notes": {},
+            "tag_prefix": {},
         }
     except json.JSONDecodeError as e:
         print(f"⚠️  配置文件格式错误: {e}")
@@ -206,6 +208,7 @@ def load_config(config_path: Path) -> dict[str, Any]:
             "skip_packages": [],
             "skip_files": [],
             "notes": {},
+            "tag_prefix": {},
         }
 
 
@@ -281,13 +284,15 @@ def format_commit_version(current_version: str, new_date: str) -> str:
 
 
 def get_latest_github_release(
-    repo: str, include_pre_release: bool = False
+    repo: str, include_pre_release: bool = False, tag_prefix: Optional[str] = None
 ) -> Optional[str]:
     """获取GitHub仓库的最新release版本
 
     Args:
         repo: GitHub仓库路径 (owner/repo)
         include_pre_release: 是否包含pre-release版本
+        tag_prefix: 可选的 tag 前缀。当同一 repo 有多个 release 系列
+            （如 v* 和 desktop-v*）时，只返回以此前缀开头的最新 tag。
 
     Returns:
         最新版本的tag名称，如果获取失败则返回None
@@ -297,6 +302,22 @@ def get_latest_github_release(
         headers["Authorization"] = f"token {GITHUB_TOKEN}"
 
     try:
+        # tag_prefix 模式：用列表 API 找匹配前缀的最新（非预）发布
+        if tag_prefix:
+            url = f"{GITHUB_API_URL}/{repo}/releases?per_page=30"
+            response = requests.get(url, headers=headers, timeout=10)
+            if 500 <= response.status_code <= 599:
+                raise RetryableError(f"GitHub API 服务器错误: {response.status_code}")
+            response.raise_for_status()
+            for rel in response.json():
+                tag_name = rel.get("tag_name") or ""
+                if not tag_name.startswith(tag_prefix):
+                    continue
+                if rel.get("prerelease", False) and not include_pre_release:
+                    continue
+                return tag_name
+            return None
+
         # 首先尝试获取最新的稳定版release
         url = f"{GITHUB_API_URL}/{repo}/releases/latest"
         response = requests.get(url, headers=headers, timeout=10)
@@ -339,6 +360,18 @@ def get_latest_github_release(
         raise RetryableError(f"网络连接错误: {e}")
     except requests.exceptions.RequestException as e:
         raise RetryableError(f"网络错误: {e}")
+
+
+def normalize_tag_to_version(tag: str, tag_prefix: Optional[str] = None) -> str:
+    """将 GitHub tag 转为 Guix version（去掉 tag 前缀）。
+
+    有 tag_prefix 时剥离该前缀；否则仅去掉前导 'v'（保留原有行为）。
+    """
+    if tag_prefix:
+        if tag.startswith(tag_prefix):
+            return tag[len(tag_prefix):]
+        return tag.lstrip("v")
+    return tag.lstrip("v")
 
 
 def get_latest_github_tag(repo: str) -> Optional[str]:
@@ -848,6 +881,7 @@ def main():
     check_pre_release_packages = set(config.get("check_pre_release", []))
     skip_packages = set(config.get("skip_packages", []))
     skip_files = set(config.get("skip_files", []))
+    tag_prefix_map = config.get("tag_prefix", {})
 
     print(f"📋 配置:")
     print(f"   检查pre-release的包: {', '.join(check_pre_release_packages) or '无'}")
@@ -973,6 +1007,7 @@ def main():
                 include_pre_release = package_name in check_pre_release_packages
                 if include_pre_release:
                     print(f"     🔍 包含pre-release检查")
+                pkg_tag_prefix = tag_prefix_map.get(package_name)
 
                 # --- commit 引用 version 变量：走 release/tag 流程 ---
                 if is_version_ref(package["commit_expr"]):
@@ -981,6 +1016,7 @@ def main():
                             get_latest_github_release,
                             github_repo,
                             include_pre_release,
+                            pkg_tag_prefix,
                             max_retries=2,
                             base_delay=5,
                         )
@@ -1014,10 +1050,11 @@ def main():
                     if latest_release:
                         print(f"     最新版本: {latest_release}")
 
-                        if compare_versions(package["version"], latest_release):
+                        # Guix version 字段不含 tag 前缀；剥离前缀得到纯版本号
+                        normalized_version = normalize_tag_to_version(latest_release, pkg_tag_prefix)
+
+                        if compare_versions(package["version"], normalized_version):
                             print(f"     ✅ 发现新版本: {latest_release}")
-                            # Guix version 字段不含 v 前缀；去掉 tag 中的前导 v
-                            normalized_version = latest_release.lstrip("v")
                             package_report["new_version"] = normalized_version
 
                             try:
@@ -1175,6 +1212,7 @@ def main():
                     include_pre_release = package_name in check_pre_release_packages
                     if include_pre_release:
                         print(f"     🔍 包含pre-release检查")
+                    pkg_tag_prefix = tag_prefix_map.get(package_name)
 
                     # 获取最新release
                     try:
@@ -1182,6 +1220,7 @@ def main():
                             get_latest_github_release,
                             github_repo,
                             include_pre_release,
+                            pkg_tag_prefix,
                             max_retries=2,
                             base_delay=5,
                         )
@@ -1197,11 +1236,12 @@ def main():
                     if latest_release:
                         print(f"     最新release: {latest_release}")
 
+                        # Guix version 字段不含 tag 前缀；剥离前缀得到纯版本号
+                        normalized_version = normalize_tag_to_version(latest_release, pkg_tag_prefix)
+
                         # 比较版本
-                        if compare_versions(package["version"], latest_release):
+                        if compare_versions(package["version"], normalized_version):
                             print(f"     ✅ 发现新版本: {latest_release}")
-                            # Guix version 字段不含 v 前缀；去掉 tag 中的前导 v
-                            normalized_version = latest_release.lstrip("v")
                             package_report["new_version"] = normalized_version
 
                             # 从 uri 表达式构造新版本的下载 URL

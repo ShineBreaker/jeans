@@ -140,15 +140,15 @@ This package provides the prebuilt binary release.")
 (define-public winapps
   (package
     (name "winapps")
-    (version "0-unstable-2026-06-02")
+    (version "0-unstable-2026-06-07")
     (source
      (origin
        (method git-fetch)
        (uri (git-reference
              (url "https://github.com/winapps-org/winapps")
-             (commit "3c1e7e148703d3ddce375f7a893f669be6e95222")))
+             (commit "abc2c3da1a7980a8e87c616f7387bd898aadfeb3")))
        (file-name (git-file-name name version))
-       (sha256 (base32 "06axrzlximkhzhns4sdc256wn9l6p726f6x75cvgwr4kkw0j4wfy"))
+       (sha256 (base32 "0hmzxnbjjqjsqg1dkh4da5dmc67s6maxpbj7l2v87n17pjiivflb"))
        (patches (list (local-file (search-path %load-path "jeans/patches/WinApps.patch"))))))
     (build-system gnu-build-system)
     (arguments
@@ -278,7 +278,7 @@ protocol, to offer good support for the Java Language.")
 (define-public motrix-next-bin
   (package
     (name "motrix-next-bin")
-    (version "3.9.3")
+    (version "3.9.4")
     (source
      (origin
        (method url-fetch)
@@ -286,11 +286,13 @@ protocol, to offer good support for the Java Language.")
              "https://github.com/AnInsomniacy/motrix-next/releases/download/"
              "v" version "/MotrixNext_" version "_amd64.deb"))
        (sha256
-        (base32 "0bcvv129nzvrq3j1ka9i3y108lwcgbzh0hqvg1ji7ifi2hl0cadf"))))
+        (base32 "0abc2slc754ppkacp7w2sqh19b5cpgmvzld7pyvpjgpsa9hk3zqi"))))
     (build-system gnu-build-system)
     (arguments
      (list
       #:tests? #f
+      #:validate-runpath? #f
+      #:strip-binaries? #f
       #:modules '((guix build gnu-build-system)
                   (guix build utils))
       #:phases
@@ -323,7 +325,7 @@ protocol, to offer good support for the Java Language.")
                               (string-append (assoc-ref inputs pkg) "/lib"))
                              '("webkitgtk-for-gtk3" "gtk+" "glib" "cairo"
                                "gdk-pixbuf" "libsoup" "glibc" "gcc"
-                               "libappindicator"))
+                               "openssl" "libappindicator"))
                        ":")))
                 ;; Place the main ELF binary directly in bin/.  wrap-program
                 ;; will rename it to .motrix-next-real and create a wrapper
@@ -352,6 +354,15 @@ protocol, to offer good support for the Java Language.")
                         (string-append bin "/motrix-next"))
                 (invoke patchelf-bin "--set-rpath" rpath
                         (string-append bin "/motrix-next"))
+
+                ;; Patch ELF interpreter and RPATH for motrix-next-engine
+                ;; (aria2 sidecar).  It is dynamically linked against
+                ;; libssl, libcrypto, libstdc++ and libgcc_s, so it needs
+                ;; the same interpreter/RPATH as the main binary.
+                (invoke patchelf-bin "--set-interpreter" ldso
+                        (string-append bin "/motrix-next-engine"))
+                (invoke patchelf-bin "--set-rpath" rpath
+                        (string-append bin "/motrix-next-engine"))
 
                 ;; wrap-program renames the real binary to .motrix-next-real
                 ;; and creates a bash wrapper that sets env vars before exec.
@@ -396,6 +407,7 @@ protocol, to offer good support for the Java Language.")
             cairo
             gdk-pixbuf
             libsoup
+            openssl
             libappindicator))
     (home-page "https://github.com/AnInsomniacy/motrix-next")
     (synopsis "Full-featured download manager")
@@ -1028,7 +1040,7 @@ the prebuilt proxy binary.")
 (define-public reasonix-bin
   (package
     (name "reasonix-bin")
-    (version "1.5.0")
+    (version "1.7.0")
     (source
      (origin
        (method url-fetch)
@@ -1036,7 +1048,7 @@ the prebuilt proxy binary.")
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
              "v" version "/reasonix-linux-amd64.tar.gz"))
        (sha256
-        (base32 "0lmm4709zbic00hwpxl0q1fx2dgygsgw8g704i6ils8v8v0xmcbc"))))
+        (base32 "01228qhlnsdbik7m5zyq3zh3bzv171zhqhivh19fwpm9jacg92vk"))))
     (build-system gnu-build-system)
     (arguments
      (list

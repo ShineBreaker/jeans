@@ -278,7 +278,7 @@ coding experience with context awareness.")
 (define-public reasonix-desktop-bin
   (package
     (name "reasonix-desktop-bin")
-    (version "1.5.0")
+    (version "1.7.0")
     (source
      (origin
        (method url-fetch)
@@ -286,7 +286,7 @@ coding experience with context awareness.")
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
              "desktop-v" version "/Reasonix-linux-amd64.deb"))
        (sha256
-        (base32 "03m0blqwbw574fz87s1j0id6bs3clz6xrnnp1d17m5a7ws7b4b25"))))
+        (base32 "11xv2ar4hr0pgqamvad7mrgbf84mb4jvkna82v1ylx1rwx5d9ncl"))))
     (build-system gnu-build-system)
     (arguments
      (list

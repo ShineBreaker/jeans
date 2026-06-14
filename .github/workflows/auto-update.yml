@@ -87,6 +87,9 @@ jobs:
           GUIX_EXTRA_LOAD_PATH: /tmp/nonguix
         run: |
           set -euo pipefail
+          # GitHub runner 的 /etc/gitconfig 会干扰 guix 沙箱内的 git-fetch（权限拒绝），
+          # 确保其对所有用户可读（gitconfig 本就是公开配置）。
+          sudo chmod a+r /etc/gitconfig 2>/dev/null || true
           if [ -f /var/guix/current/etc/profile ]; then
             . /var/guix/current/etc/profile
           fi
