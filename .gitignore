@@ -2,3 +2,4 @@ __pycache__
 .codex
 
 .agents/workfile
+scripts/check-updates/report.json

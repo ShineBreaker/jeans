@@ -1,5 +1,5 @@
 {
-  "check_pre_release": [],
+  "check_pre_release": ["emacs-ellsp", "ellsp-bin"],
   "skip_packages": [],
   "skip_files": ["rust-crates.scm"],
   "tag_prefix": {

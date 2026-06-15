@@ -1,3 +1,3 @@
 (specifications->manifest
- '("python"
+ '("python-wrapper"
    "python-requests"))
