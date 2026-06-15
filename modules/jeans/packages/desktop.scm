@@ -188,14 +188,14 @@ and Xorg.")
                                          (string-append #$output
                                                         "/lib/opencode-desktop/"
                                                         binary))
-                                       '("@opencode-aidesktop"
+                                       '("ai.opencode.desktop"
                                          "chrome_crashpad_handler"
                                          "chrome-sandbox")))))))
           (add-after 'patch-elf 'install-bin
             (lambda _
               (let* ((out #$output)
                      (bin (string-append out "/bin"))
-                     (exe (string-append out "/lib/opencode-desktop/@opencode-aidesktop")))
+                     (exe (string-append out "/lib/opencode-desktop/ai.opencode.desktop")))
                 (mkdir-p bin)
                 (symlink exe (string-append bin "/opencode-desktop")))))
           (add-after 'install-bin 'install-desktop
@@ -230,7 +230,7 @@ and Xorg.")
                                                 "/apps/opencode-desktop.png"))))
                        (when (file-exists? old)
                          (copy-file old new))))
-                   (find-files icon-dst "@opencode-aidesktop\\.png$"))))))
+                   (find-files icon-dst "ai\\.opencode\\.desktop\\.png$"))))))
           (add-after 'install-icons 'wrap-program
             (lambda* (#:key inputs outputs #:allow-other-keys)
               (let* ((out (assoc-ref outputs "out"))
