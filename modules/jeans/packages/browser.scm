@@ -187,7 +187,7 @@
 (define-public zen-browser-bin
   (package
     (name "zen-browser-bin")
-    (version "1.20.2b")
+    (version "1.21.1b")
     (source
      (origin
        (method url-fetch)
@@ -195,7 +195,7 @@
              "https://github.com/zen-browser/desktop/releases/download/"
              version "/zen.linux-x86_64.tar.xz"))
        (sha256
-        (base32 "0x0npkhgs07pfyr0l1q7m5pcxj9byc9m1lfisfhhway20r649b9n"))))
+        (base32 "1n8f23laasmf5bydqzq0qsijawzglpc96gdgql5lyq7y28zwzym7"))))
     (build-system copy-build-system)
     (arguments
      (list
