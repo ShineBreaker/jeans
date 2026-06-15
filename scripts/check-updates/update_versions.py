@@ -1089,6 +1089,8 @@ def main():
                                 print(f"     ✓ 已更新: {package_name}")
                                 has_updates = True
                                 package_report["status"] = "updated"
+                                finalize_package_report()
+                                continue
                             else:
                                 print(f"     ❌ 更新失败")
                                 has_errors = True
@@ -1171,6 +1173,8 @@ def main():
                                 print(f"     ✓ 已更新: {package_name}")
                                 has_updates = True
                                 package_report["status"] = "updated"
+                                finalize_package_report()
+                                continue
                             else:
                                 print(f"     ❌ 更新失败")
                                 has_errors = True
@@ -1291,6 +1295,8 @@ def main():
                                 print(f"     ✓ 已更新: {package_name}")
                                 has_updates = True
                                 package_report["status"] = "updated"
+                                finalize_package_report()
+                                continue
                             else:
                                 print(f"     ❌ 更新失败")
                                 has_errors = True
