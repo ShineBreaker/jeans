@@ -187,7 +187,7 @@
 (define-public zen-browser-bin
   (package
     (name "zen-browser-bin")
-    (version "1.21.1b")
+    (version "1.21.2b")
     (source
      (origin
        (method url-fetch)
@@ -195,12 +195,14 @@
              "https://github.com/zen-browser/desktop/releases/download/"
              version "/zen.linux-x86_64.tar.xz"))
        (sha256
-        (base32 "1n8f23laasmf5bydqzq0qsijawzglpc96gdgql5lyq7y28zwzym7"))))
+        (base32 "0dxjmkb9krrb2c7rjhamsq2lrsh43zjp56v742kh34f9q8ky18mk"))))
     (build-system copy-build-system)
     (arguments
      (list
       #:install-plan
       #~'(("." "lib/zen"))
+      #:validate-runpath? #f
+      #:strip-binaries? #f
       #:modules `((ice-9 regex)
                   (ice-9 string-fun)
                   (ice-9 ftw)
@@ -310,7 +312,7 @@
                           (append (map (lambda (binary)
                                          (string-append #$output "/lib/zen/"
                                                         binary))
-                                       '("glxtest" "updater" "vaapitest" "zen"
+                                       '("glxtest" "updater" "vaapitest" "vulkantest" "zen"
                                          "zen-bin" "pingsender"))
                                   (find-files (string-append #$output
                                                              "/lib/zen")
