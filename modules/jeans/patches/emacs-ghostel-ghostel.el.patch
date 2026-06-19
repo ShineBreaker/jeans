@@ -1,0 +1,19 @@
+Guix build sandbox workaround: replace the hard-coded /bin/bash reference
+with bare "bash" so the executable is resolved via the Guix store PATH
+rather than from a fixed absolute path.  Generated against ghostel v0.35.4.
+
+Upstream-Status: Inappropriate [Guix-specific build environment]
+
+diff --git a/lisp/ghostel.el b/lisp/ghostel.el
+index cf4a1de..dd881eb 100644
+--- a/lisp/ghostel.el
++++ b/lisp/ghostel.el
+@@ -230,7 +230,7 @@ README for the full design and per-call escape hatch."
+ Each entry is (TRAMP-METHOD SHELL [FALLBACK]).  TRAMP-METHOD is a
+ method string such as \"ssh\" or \"docker\", or t as a catch-all default.
+ 
+-SHELL is either a path string like \"/bin/bash\" or the symbol
++SHELL is either a path string like \"bash\" or the symbol
+ `login-shell' to auto-detect the remote user's login shell via
+ `getent passwd'.  FALLBACK, when present, is used when login-shell
+ detection fails."

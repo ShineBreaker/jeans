@@ -1,0 +1,105 @@
+Guix build sandbox workaround: stub GhosttyFrameData with empty inline
+data since ghostel does not embed the renderer frame animation table.
+Generated against ghostty commit 6246c288ae1087c8d67f75432a59da004b30bf25.
+
+Upstream-Status: Inappropriate [Guix-specific build environment]
+
+diff --git a/src/build/GhosttyFrameData.zig b/src/build/GhosttyFrameData.zig
+index 8469759..2a9c60a 100644
+--- a/src/build/GhosttyFrameData.zig
++++ b/src/build/GhosttyFrameData.zig
+@@ -1,75 +1,44 @@
+-//! GhosttyFrameData generates a compressed file and zig module which contains (and exposes) the
+-//! Ghostty animation frames for use in `ghostty +boo`
++//! GhosttyFrameData handles the compressed frame data blob used by the
++//! renderer. Ghostel only needs lib-vt, so we stub this out to an empty
++//! inline string.
+ const GhosttyFrameData = @This();
+ 
+ const std = @import("std");
+ const DistResource = @import("GhosttyDist.zig").Resource;
+ 
+-/// The output path for the compressed framedata zig file
+ output: std.Build.LazyPath,
+ 
+ pub fn init(b: *std.Build) !GhosttyFrameData {
+-    const dist = distResources(b);
+-
+-    // Generate the Zig source file that embeds the compressed data
+     const wf = b.addWriteFiles();
+-    _ = wf.addCopyFile(dist.framedata.path(b), "framedata.compressed");
+-    const zig_file = wf.add("framedata.zig",
+-        \\//! This file is auto-generated. Do not edit.
+-        \\
+-        \\pub const compressed = @embedFile("framedata.compressed");
+-        \\
++    const zig_file = wf.add(
++        "framedata.zig",
++        "pub const compressed = \"\";\n",
+     );
+-
+     return .{ .output = zig_file };
+ }
+ 
+-/// Add the "framedata" import.
+-pub fn addImport(self: *const GhosttyFrameData, step: *std.Build.Step.Compile) void {
++pub fn addImport(
++    self: *const GhosttyFrameData,
++    step: *std.Build.Step.Compile,
++) void {
+     self.output.addStepDependencies(&step.step);
+-    step.root_module.addAnonymousImport("framedata", .{
+-        .root_source_file = self.output,
+-    });
++    step.root_module.addAnonymousImport(
++        "framedata",
++        .{ .root_source_file = self.output },
++    );
+ }
+ 
+-/// Creates the framedata resources that can be prebuilt for our dist build.
+ pub fn distResources(b: *std.Build) struct {
+     framedata: DistResource,
+ } {
+-    const exe = b.addExecutable(.{
+-        .name = "framegen",
+-        .root_module = b.createModule(.{
+-            .target = b.graph.host,
+-        }),
+-    });
+-    exe.addCSourceFile(.{
+-        .file = b.path("src/build/framegen/main.c"),
+-        .flags = &.{},
+-    });
+-    exe.linkLibC();
+-
+-    if (b.systemIntegrationOption("zlib", .{})) {
+-        exe.linkSystemLibrary2("zlib", .{
+-            .preferred_link_mode = .dynamic,
+-            .search_strategy = .mode_first,
+-        });
+-    } else {
+-        if (b.lazyDependency("zlib", .{
+-            .target = b.graph.host,
+-            .optimize = .ReleaseFast,
+-        })) |zlib_dep| {
+-            exe.linkLibrary(zlib_dep.artifact("z"));
+-        }
+-    }
+-
+-    const run = b.addRunArtifact(exe);
+-    run.addDirectoryArg(b.path("src/build/framegen/frames"));
+-    const compressed_file = run.addOutputFileArg("framedata.compressed");
+-
++    const file = b.addWriteFiles().add(
++        "framedata.compressed",
++        "",
++    );
+     return .{
+         .framedata = .{
+             .dist = "src/build/framegen/framedata.compressed",
+-            .generated = compressed_file,
++            .generated = file,
+         },
+     };
+ }

@@ -1,0 +1,18 @@
+Guix build sandbox workaround: disable ghostty's SIMD code path to keep the
+libghostty-vt target compatible with the baseline CPU used by zig build.
+Generated against ghostel v0.35.4.
+
+Upstream-Status: Inappropriate [Guix-specific build environment]
+
+diff --git a/build.zig b/build.zig
+index 3cd46fd..db5e35c 100644
+--- a/build.zig
++++ b/build.zig
+@@ -18,6 +18,7 @@ pub fn build(b: *std.Build) void {
+         .target = target,
+         .optimize = ghostty_optimize,
+         .@"emit-lib-vt" = true,
++        .simd = false,
+     });
+ 
+     const mod = b.createModule(.{

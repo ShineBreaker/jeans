@@ -12,6 +12,7 @@
                   (guix utils)
                   (jeans packages browser)
                   (jeans packages desktop)
+                  (jeans packages emacs-xyz)
                   (jeans packages fonts)
                   (jeans packages games)
                   (jeans packages hardware)
