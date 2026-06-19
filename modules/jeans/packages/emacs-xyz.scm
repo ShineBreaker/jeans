@@ -18,60 +18,67 @@
   #:use-module (gnu packages emacs-build)
   #:use-module ((guix licenses) #:prefix license:))
 
+;; Ghostel vendors ghostty and uucode as build-time git sources.  Earlier
+;; revisions inlined these origins inside a (let*) wrapping the package
+;; body, which confuses scripts/check-updates/update_versions.py: its
+;; r"\\(uri\s+(.+?)\)\s+\\(sha256" regex picks up the inner ghostty
+;; origin as if it were the package source.  Hoisting the supporting
+;; origins to module top level keeps the emacs-ghostel package definition
+;; block free of nested (origin ...) forms.
+(define %ghostel-local-patch
+  (lambda (name)
+    (local-file
+     (search-path %load-path
+                  (string-append "jeans/patches/" name)))))
+
+(define %ghostel-patches
+  (list (%ghostel-local-patch "emacs-ghostel-build.zig.zon.patch")
+        (%ghostel-local-patch "emacs-ghostel-build.zig.patch")
+        (%ghostel-local-patch "emacs-ghostel-ghostel.el.patch")))
+
+(define %ghostel-ghostty-patches
+  (list (%ghostel-local-patch "emacs-ghostel-ghostty-build.zig.zon.patch")
+        (%ghostel-local-patch "emacs-ghostel-ghostty-exe.zig.patch")
+        (%ghostel-local-patch "emacs-ghostel-ghostty-bench.zig.patch")
+        (%ghostel-local-patch "emacs-ghostel-ghostty-framedata.zig.patch")
+        (%ghostel-local-patch "emacs-ghostel-ghostty-resources.zig.patch")))
+
+(define %ghostel-ghostty-source
+  (let ((commit "6246c288ae1087c8d67f75432a59da004b30bf25"))
+    (origin
+      (method git-fetch)
+      (uri (git-reference
+            (url "https://github.com/ghostty-org/ghostty")
+            (commit commit)))
+      (file-name (git-file-name "ghostty" commit))
+      (sha256
+       (base32 "02a7s2qbsipic2wm42bij6q90ia79f686iiyada24ync6zb6xyjf"))
+      (patches %ghostel-ghostty-patches))))
+
+(define %ghostel-uucode-source
+  (origin
+    (method git-fetch)
+    (uri (git-reference
+          (url "https://github.com/jacobsandlund/uucode")
+          (commit "v0.2.0")))
+    (file-name (git-file-name "uucode" "0.2.0"))
+    (sha256
+     (base32 "1a3lrmbpc4ifdj1z6ra2b3xnfwh784q2bx835pz58hwpc2pf3flc"))))
+
 (define-public emacs-ghostel
-  (let* ((version "0.35.4")
-         (ghostty-version "1.3.2-dev")
-         (ghostty-commit "6246c288ae1087c8d67f75432a59da004b30bf25")
-         (uucode-version "0.2.0")
-         (patch (lambda (name)
-                  (local-file
-                   (search-path %load-path
-                                (string-append "jeans/patches/" name)))))
-         (ghostel-patches
-          (list (patch "emacs-ghostel-build.zig.zon.patch")
-                (patch "emacs-ghostel-build.zig.patch")
-                (patch "emacs-ghostel-ghostel.el.patch")))
-         (ghostty-patches
-          (list (patch "emacs-ghostel-ghostty-build.zig.zon.patch")
-                (patch "emacs-ghostel-ghostty-exe.zig.patch")
-                (patch "emacs-ghostel-ghostty-bench.zig.patch")
-                (patch "emacs-ghostel-ghostty-framedata.zig.patch")
-                (patch "emacs-ghostel-ghostty-resources.zig.patch")))
-         (ghostty-source
-          (origin
-            (method git-fetch)
-            (uri (git-reference
-                  (url "https://github.com/ghostty-org/ghostty")
-                  (commit ghostty-commit)))
-            (file-name (git-file-name "ghostty" ghostty-commit))
-            (sha256
-             (base32
-              "02a7s2qbsipic2wm42bij6q90ia79f686iiyada24ync6zb6xyjf"))
-            (patches ghostty-patches)))
-         (uucode-source
-          (origin
-            (method git-fetch)
-            (uri (git-reference
-                  (url "https://github.com/jacobsandlund/uucode")
-                  (commit (string-append "v" uucode-version))))
-            (file-name (git-file-name "uucode" uucode-version))
-            (sha256
-             (base32
-              "1a3lrmbpc4ifdj1z6ra2b3xnfwh784q2bx835pz58hwpc2pf3flc")))))
-    (package
-      (name "emacs-ghostel")
-      (version version)
-      (source
-       (origin
-         (method git-fetch)
-         (uri (git-reference
-               (url "https://github.com/dakra/ghostel")
-               (commit (string-append "v" version))))
-         (file-name (git-file-name name version))
-         (sha256
-          (base32
-           "10zrcnzymrn8vyjq548fsvskwlqv7fd8r8dp3f66ir2cnmvlq0b4"))
-         (patches ghostel-patches)))
+  (package
+    (name "emacs-ghostel")
+    (version "0.35.4")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/dakra/ghostel")
+             (commit (string-append "v" version))))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "10zrcnzymrn8vyjq548fsvskwlqv7fd8r8dp3f66ir2cnmvlq0b4"))
+       (patches %ghostel-patches)))
       (build-system emacs-build-system)
       (arguments
        (list
@@ -93,10 +100,10 @@
                        (deps (string-append source-root "/deps")))
                   (setenv "GUIX_GHOSTEL_SOURCE_ROOT" source-root)
                   (mkdir-p deps)
-                  (copy-recursively #$ghostty-source
+                  (copy-recursively #$%ghostel-ghostty-source
                                     (string-append deps "/ghostty")
                                     #:log (%make-void-port "w"))
-                  (copy-recursively #$uucode-source
+                  (copy-recursively #$%ghostel-uucode-source
                                     (string-append deps "/uucode")
                                     #:log (%make-void-port "w"))
                   (for-each make-file-writable
@@ -161,7 +168,7 @@ shell integration, and user commands.")
       (license (list license:gpl3+
                      license:expat
                      license:asl2.0
-                     license:unicode)))))
+                     license:unicode))))
 ;; Emacs plugins previously lived in tools.scm; migrated here so all
 ;;; emacs-* packages share one definition file.
 
