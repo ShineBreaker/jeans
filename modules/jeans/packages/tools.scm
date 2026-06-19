@@ -49,15 +49,18 @@
 ;;; Crush: AI-powered coding assistant (Go TUI binary).
 ;;;
 ;;; The upstream .deb ships a single Go ELF binary:
-;;;   - crush        (dynamically linked, only needs glibc: libc, libdl, libpthread)
+;;;   - crush        (<= 0.77.x: dynamically linked to glibc;
+;;;                   >= 0.78.0: statically linked Go build, no .interp)
 ;;;
-;;; Patch the ELF interpreter to Guix's ld-linux, then wrap with PATH
-;;; so crush can find git and other runtime tools.
+;;; Probe linkage via `patchelf --print-interpreter` and only patch
+;;; the ELF interpreter when dynamic; statically linked binaries are
+;;; left untouched.  Wrap with PATH so crush can find git and other
+;;; runtime tools regardless.
 
 (define-public crush-bin
   (package
     (name "crush-bin")
-    (version "0.77.0")
+    (version "0.78.0")
     (source
      (origin
        (method url-fetch)
@@ -65,7 +68,7 @@
              "https://github.com/charmbracelet/crush/releases/download/"
              "v" version "/crush_" version "_amd64.deb"))
        (sha256
-        (base32 "1qx4d3wbn29w537cvza8sbyprgm1xhq7r69ivh31lnil6ilf7779"))))
+        (base32 "10vdv9nz18iqw0i8qsnfzqjfpj4adih432dy3g7sz72br8c6gq9p"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -93,14 +96,24 @@
                       (string-append (assoc-ref inputs "patchelf")
                                      "/bin/patchelf"))
                      (ldso (string-append (assoc-ref inputs "glibc")
-                                          "/lib/ld-linux-x86-64.so.2")))
+                                          "/lib/ld-linux-x86-64.so.2"))
+                     (crush-target (string-append bin "/crush")))
                 (mkdir-p bin)
                 (install-file "usr/bin/crush" bin)
 
-                (invoke patchelf-bin "--set-interpreter" ldso
-                        (string-append bin "/crush"))
+                ;; crush >= 0.78.0 ships a statically linked Go binary
+                ;; (no .interp section); patchelf --set-interpreter
+                ;; errors out on such binaries with "cannot find
+                ;; section '.interp'".  Probe via --print-interpreter
+                ;; (exits 0 for dynamic, non-zero for static) and only
+                ;; patch when dynamic linkage is present.
+                (when (zero? (system* patchelf-bin
+                                     "--print-interpreter"
+                                     crush-target))
+                  (invoke patchelf-bin "--set-interpreter" ldso
+                          crush-target))
 
-                (wrap-program (string-append bin "/crush")
+                (wrap-program crush-target
                   `("PATH" ":" prefix
                     ,(list (string-append #$bash-minimal "/bin")
                            (string-append #$coreutils "/bin")
