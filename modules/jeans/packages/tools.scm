@@ -8,7 +8,7 @@
   #:use-module (guix build-system cargo)
   #:use-module (guix download)
   #:use-module (guix git-download)
-  #:use-module (guix build-system copy)
+  #:use-module (guix build-system copy)  ; opencode-bin
   #:use-module (guix build-system gnu)
   #:use-module (guix gexp)
   #:use-module (gnu packages bootstrap)  ; glibc-dynamic-linker
@@ -44,11 +44,7 @@
   #:use-module (gnu packages cups)         ; cups
   #:use-module (gnu packages xml)          ; expat
   #:use-module (gnu packages golang)         ; go
-  #:use-module (gnu packages emacs)          ; emacs-build-system
-  #:use-module (guix build-system emacs)
-  #:use-module (gnu packages emacs-xyz)      ; emacs-lsp-mode, emacs-company, etc.
-  #:use-module (gnu packages emacs-build)    ; emacs-dash, emacs-s, etc.
-  #:use-module (gnu packages node))          ; node
+  )
 
 ;;; Crush: AI-powered coding assistant (Go TUI binary).
 ;;;
@@ -851,183 +847,6 @@ The seed data is installed under @file{share/apm/var-lib/} in the Guix
 store and must be copied to @file{/var/lib/apm} before first use.")
       (license license:agpl3+))))
 
-(define-public emacs-msgu
-  (package
-    (name "emacs-msgu")
-    (version "0.1.0")
-    (source
-     (origin
-       (method git-fetch)
-       (uri (git-reference
-             (url "https://github.com/jcs-elpa/msgu")
-             (commit version)))
-       (file-name (git-file-name name version))
-       (sha256
-        (base32 "15brivkix3q0q32q8c3byzy7rl1x6zlgwkvz6ydx2dpyfpb1wyr6"))))
-    (build-system emacs-build-system)
-    (arguments
-     (list #:tests? #f))
-    (home-page "https://github.com/jcs-elpa/msgu")
-    (synopsis "Utility functions for message output in Emacs")
-    (description
-     "msgu provides utility functions to help with outputting messages in Emacs.
-It includes macros for silencing messages, preserving colored output in the
-*Messages* buffer, and helper functions for sleep/sit-for with defaults.")
-    (license license:gpl3+)))
-
-;;; Eask: CLI tool for building, testing and managing Emacs packages.
-;;;
-;;; The upstream release is a statically linked ELF binary built with
-;;; @yao-pkg/pkg (Node.js runtime embedded).  It internally locates Emacs
-;;; via the EMACS or ELLSP_EMACS environment variable, or the system PATH.
-;;;
-;;; The binary ships with a bundled lisp/ directory used at runtime to
-;;; locate Emacs Lisp scripts.  We install the binary to libexec/ and
-;;; create a bin/ wrapper that sets EMACS to Guix's emacs.
-
-(define-public eask-bin
-  (package
-    (name "eask-bin")
-    (version "0.12.9")
-    (source
-     (origin
-       (method url-fetch)
-       (uri (string-append
-             "https://github.com/emacs-eask/cli/releases/download/"
-             version "/eask_" version "_linux-x64.tar.gz"))
-       (sha256
-        (base32 "0nkdmiii8biyyfjzz9pg7w2l4jwb2dkkh7inaxa807af0in38rk3"))))
-    (build-system gnu-build-system)
-    (arguments
-     (list
-      #:validate-runpath? #f
-      #:strip-binaries? #f
-      #:tests? #f
-      #:modules '((guix build gnu-build-system)
-                  (guix build utils))
-      #:phases
-      #~(modify-phases %standard-phases
-          (delete 'configure)
-          (delete 'build)
-          (add-after 'unpack 'back-to-root
-            (lambda _
-              ;; gnu-build-system unpack chdirs into first subdir (lisp/);
-              ;; go back so we can access both eask binary and lisp/.
-              (chdir "..")))
-          (replace 'install
-            (lambda* (#:key inputs #:allow-other-keys)
-              (let* ((out #$output)
-                     (bin (string-append out "/bin"))
-                     (libexec (string-append out "/libexec/eask"))
-                     (emacs-bin (search-input-file inputs "bin/emacs")))
-                (mkdir-p libexec)
-                (install-file "eask" libexec)
-                (chmod (string-append libexec "/eask") #o555)
-                (copy-recursively "lisp" (string-append libexec "/lisp"))
-                (mkdir-p bin)
-                (call-with-output-file (string-append bin "/eask")
-                  (lambda (port)
-                    (format port
-                            "#!/bin/sh\nexport EMACS=~a\nexec ~a \"$@\"\n"
-                            emacs-bin
-                            (string-append libexec "/eask"))))
-                (chmod (string-append bin "/eask") #o755)))))))
-    (inputs (list bash-minimal emacs))
-    (propagated-inputs '())
-    (home-page "https://github.com/emacs-eask/cli")
-    (synopsis "CLI tool for building, testing and managing Emacs packages")
-    (description
-     "Eask is a CLI tool that helps you build, test, and manage Emacs packages.
-It provides a consistent build environment regardless of your Emacs
-configuration, supporting batch operations, linting, testing, and packaging
-of Emacs Lisp projects.  This package provides the prebuilt binary release.")
-    (license license:gpl3+)
-    (supported-systems '("x86_64-linux"))))
-
-(define-public emacs-ellsp
-  (package
-    (name "emacs-ellsp")
-    (version "0.2.0")
-    (source
-     (origin
-       (method git-fetch)
-       (uri (git-reference
-             (url "https://github.com/elisp-lsp/Ellsp")
-             (commit version)))
-       (file-name (git-file-name name version))
-       (sha256
-        (base32 "1zyjq0k2ccp3aji7x1hv1dbnziwhznm8ylbw1wfrcgzwiz1nvlm0"))))
-    (build-system emacs-build-system)
-    (arguments
-     (list #:tests? #f))
-    (propagated-inputs
-     (list emacs-lsp-mode
-           emacs-company
-           emacs-dash
-           emacs-s
-           emacs-msgu
-           emacs-log4e))
-    (home-page "https://github.com/elisp-lsp/Ellsp")
-    (synopsis "Elisp Language Server Protocol server (Emacs backend)")
-    (description
-     "Ellsp is a Language Server Protocol (LSP) server for Emacs Lisp.
-This package provides the Emacs Lisp backend that implements completion,
-hover, signature help, and code actions for Elisp files via the LSP protocol.
-It requires lsp-mode, company, and several utility libraries to function.")
-    (license license:gpl3+)))
-
-(define-public ellsp-bin
-  (package
-    (name "ellsp-bin")
-    (version "0.2.0")
-    (source
-     (origin
-       (method url-fetch)
-       (uri (string-append
-             "https://github.com/elisp-lsp/Ellsp/releases/download/"
-             version "/ellsp_linux-x64.tar.gz"))
-       (sha256
-        (base32 "13plraz5z1cyxd4n29b9y9dxmm0la97zaa37k115mrh98jvawzkp"))))
-    (build-system copy-build-system)
-    (arguments
-     (list
-      #:validate-runpath? #f
-      #:strip-binaries? #f
-      #:tests? #f
-      #:install-plan
-      #~'(("ellsp" "libexec/ellsp/"))
-      #:phases
-      #~(modify-phases %standard-phases
-          (delete 'install-license-files)
-          (add-after 'install 'make-binary-executable
-            (lambda _
-              (chmod (string-append #$output "/libexec/ellsp/ellsp") #o555)))
-          (add-after 'make-binary-executable 'create-wrapper
-            (lambda* (#:key inputs #:allow-other-keys)
-              (let ((bin (string-append #$output "/bin"))
-                    (libexec (string-append #$output "/libexec/ellsp/ellsp"))
-                    (emacs-bin (search-input-file inputs "bin/emacs")))
-                (mkdir-p bin)
-                (call-with-output-file (string-append bin "/ellsp")
-                  (lambda (port)
-                    (format port
-                            "#!/bin/sh\nexport ELLSP_EMACS=~a\nexec ~a \"$@\"\n"
-                            emacs-bin
-                            libexec)))
-                (chmod (string-append bin "/ellsp") #o755)))))))
-    (inputs (list bash-minimal))
-    (propagated-inputs
-     (list emacs emacs-ellsp))
-    (home-page "https://github.com/elisp-lsp/Ellsp")
-    (synopsis "Elisp Language Server Protocol server")
-    (description
-     "Ellsp is a Language Server Protocol (LSP) server for Emacs Lisp.
-It consists of a Node.js proxy that communicates with LSP clients via
-stdin/stdout, and an Emacs Lisp backend that provides completion, hover,
-signature help, and code actions for Elisp files.  This package provides
-the prebuilt proxy binary.")
-    (license license:gpl3+)
-    (supported-systems '("x86_64-linux"))))
 
 
 ;;; Reasonix: DeepSeek-native AI coding agent (Go static binary).
