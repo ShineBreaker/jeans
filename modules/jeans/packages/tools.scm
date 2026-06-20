@@ -60,7 +60,7 @@
 (define-public crush-bin
   (package
     (name "crush-bin")
-    (version "0.78.0")
+    (version "0.79.0")
     (source
      (origin
        (method url-fetch)
@@ -68,7 +68,7 @@
              "https://github.com/charmbracelet/crush/releases/download/"
              "v" version "/crush_" version "_amd64.deb"))
        (sha256
-        (base32 "10vdv9nz18iqw0i8qsnfzqjfpj4adih432dy3g7sz72br8c6gq9p"))))
+        (base32 "1zg1navpn9lblrxhiddsyxx2j2k4qvsk0hqxgx4wzzbxclcjg2nf"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -287,7 +287,7 @@ protocol, to offer good support for the Java Language.")
 (define-public motrix-next-bin
   (package
     (name "motrix-next-bin")
-    (version "3.9.4")
+    (version "3.9.5")
     (source
      (origin
        (method url-fetch)
@@ -295,7 +295,7 @@ protocol, to offer good support for the Java Language.")
              "https://github.com/AnInsomniacy/motrix-next/releases/download/"
              "v" version "/MotrixNext_" version "_amd64.deb"))
        (sha256
-        (base32 "0abc2slc754ppkacp7w2sqh19b5cpgmvzld7pyvpjgpsa9hk3zqi"))))
+        (base32 "11bxl7rn0q5xbffknarkhjw1f992y148ca6fmbhzmiydm8p6f58s"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -576,7 +576,7 @@ enables command-line applications to interact with @code{keepassxc} databases.")
 (define-public opencode-bin
   (package
     (name "opencode-bin")
-    (version "1.17.7")
+    (version "1.17.8")
     (source
      (origin
        (method url-fetch)
@@ -584,7 +584,7 @@ enables command-line applications to interact with @code{keepassxc} databases.")
              "https://github.com/anomalyco/opencode/releases/download/"
              "v" version "/opencode-linux-x64.tar.gz"))
        (sha256
-        (base32 "093rc20880z87csyirzgcylacbg12zgfv3rlg704xxlsvj95mzk0"))))
+        (base32 "0pqy5f33v4xz3c89r08j4r6dkkq4p2k7wxqlglmld4vh48lzrzqk"))))
     (build-system copy-build-system)
     (arguments
      (list
@@ -650,7 +650,7 @@ enables command-line applications to interact with @code{keepassxc} databases.")
 (define-public oh-my-pi-bin
   (package
     (name "oh-my-pi-bin")
-    (version "16.0.0")
+    (version "16.1.6")
     (source
      (origin
        (method url-fetch)
@@ -658,7 +658,7 @@ enables command-line applications to interact with @code{keepassxc} databases.")
              "https://github.com/can1357/oh-my-pi/releases/download/"
              "v" version "/omp-linux-x64"))
        (sha256
-        (base32 "0k1walqcl6wl90xdghp375yjmiwz60lknv7811v2ilp96lyc39wz"))))
+        (base32 "0xvm8l0qwdl0vig2mi8daz4xwqcbw4hawlz7xr4gf6wwfp6j9y4g"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -872,7 +872,7 @@ store and must be copied to @file{/var/lib/apm} before first use.")
 (define-public reasonix-bin
   (package
     (name "reasonix-bin")
-    (version "1.8.0")
+    (version "1.9.1")
     (source
      (origin
        (method url-fetch)
@@ -880,7 +880,7 @@ store and must be copied to @file{/var/lib/apm} before first use.")
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
              "v" version "/reasonix-linux-amd64.tar.gz"))
        (sha256
-        (base32 "0bm39ghgg9wyz6zk3kmmbf6wygh4fx5rl5pidijipj06di4ny840"))))
+        (base32 "1jj9wz7xlp4vj8fd41kshlqq4ra41dsfpi2wap22xmx5f3av5xsx"))))
     (build-system gnu-build-system)
     (arguments
      (list
