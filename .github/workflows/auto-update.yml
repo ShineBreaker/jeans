@@ -85,10 +85,19 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GUIX_EXTRA_LOAD_PATH: /tmp/nonguix
+          # Guix 的 git-fetch 在 build sandbox 里调用 `git init` 时会尝试读
+          # /etc/gitconfig（GitHub runner 的 ubuntu-latest 镜像自 runner-images
+          # PR #5420 起在 /etc/gitconfig 写入 safe.directory 等条目，PR #9899
+          # 后又叠加 GIT_CLONE_PROTECTION_ACTIVE），但 build user 在 chroot
+          # 内无读权限，导致 git init 退出 128。`sudo chmod a+r` 仅能放开 host
+          # 文件，sandbox bind-mount 之后依旧拒读。直接告诉 git 不要尝试系统
+          # gitconfig，从源头绕过。
+          # 旁证：NixOS issue #63774 (fetchgit: set GIT_CONFIG_NOSYSTEM)。
+          GIT_CONFIG_NOSYSTEM: "1"
         run: |
           set -euo pipefail
-          # GitHub runner 的 /etc/gitconfig 会干扰 guix 沙箱内的 git-fetch（权限拒绝），
-          # 确保其对所有用户可读（gitconfig 本就是公开配置）。
+          # 仍然尝试 chmod 一下，作为 GIT_CONFIG_NOSYSTEM 之外的二级兜底
+          # （例如未来若有工具链显式调用 git 而不读取 env）。
           sudo chmod a+r /etc/gitconfig 2>/dev/null || true
           if [ -f /var/guix/current/etc/profile ]; then
             . /var/guix/current/etc/profile
