@@ -33,8 +33,7 @@
 
 (define %ghostel-patches
   (list (%ghostel-local-patch "emacs-ghostel-build.zig.zon.patch")
-        (%ghostel-local-patch "emacs-ghostel-build.zig.patch")
-        (%ghostel-local-patch "emacs-ghostel-ghostel.el.patch")))
+        (%ghostel-local-patch "emacs-ghostel-build.zig.patch")))
 
 (define %ghostel-ghostty-patches
   (list (%ghostel-local-patch "emacs-ghostel-ghostty-build.zig.zon.patch")

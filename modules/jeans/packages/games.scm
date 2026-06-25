@@ -249,6 +249,7 @@ fonts, IR jars, and other assets at runtime.  The game requires OpenGL
                         (ice-9 format))
             #:phases
             #~(modify-phases %standard-phases
+                (delete 'install-license-files)
                 (add-after 'unpack 'extract-appimage
                   (lambda _
                     (invoke "7z" "x" "osu.AppImage")))
