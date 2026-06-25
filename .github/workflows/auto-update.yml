@@ -54,6 +54,23 @@ jobs:
             echo "has_changes=true" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Prepare /etc/gitconfig for Guix sandbox
+        if: steps.changes.outputs.has_changes == 'true'
+        shell: bash
+        run: |
+          # GitHub Actions runner 的 /etc/gitconfig 可能含 safe.directory 等条目
+          # 且权限受限（非 world-readable）。Guix 构建沙箱内的 git init 会尝试
+          # 读取它，若文件存在但不可读则返回 EACCES → git 退出 128。
+          # GIT_CONFIG_NOSYSTEM 环境变量无法穿透 guix-daemon 的构建沙箱，因此
+          # 必须从文件系统层面解决：在 daemon 启动前彻底移除该文件。
+          # 如果文件不存在，git 会静默跳过（ENOENT），不影响构建。
+          if [ -f /etc/gitconfig ]; then
+            echo "Removing /etc/gitconfig before Guix daemon starts..."
+            sudo rm -f /etc/gitconfig
+          else
+            echo "/etc/gitconfig does not exist, nothing to remove."
+          fi
+
       - name: Install Guix
         if: steps.changes.outputs.has_changes == 'true'
         shell: bash
@@ -85,20 +102,17 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GUIX_EXTRA_LOAD_PATH: /tmp/nonguix
-          # Guix 的 git-fetch 在 build sandbox 里调用 `git init` 时会尝试读
-          # /etc/gitconfig（GitHub runner 的 ubuntu-latest 镜像自 runner-images
-          # PR #5420 起在 /etc/gitconfig 写入 safe.directory 等条目，PR #9899
-          # 后又叠加 GIT_CLONE_PROTECTION_ACTIVE），但 build user 在 chroot
-          # 内无读权限，导致 git init 退出 128。`sudo chmod a+r` 仅能放开 host
-          # 文件，sandbox bind-mount 之后依旧拒读。直接告诉 git 不要尝试系统
-          # gitconfig，从源头绕过。
-          # 旁证：NixOS issue #63774 (fetchgit: set GIT_CONFIG_NOSYSTEM)。
+          # 主防线：上一步 "Prepare /etc/gitconfig" 已在 daemon 启动前 rm -f 该文件。
+          # GIT_CONFIG_NOSYSTEM 作为二级兜底（若将来 Guix 支持将 env 传入沙箱）。
           GIT_CONFIG_NOSYSTEM: "1"
         run: |
           set -euo pipefail
-          # 仍然尝试 chmod 一下，作为 GIT_CONFIG_NOSYSTEM 之外的二级兜底
-          # （例如未来若有工具链显式调用 git 而不读取 env）。
-          sudo chmod a+r /etc/gitconfig 2>/dev/null || true
+          # 三级兜底：若 /etc/gitconfig 在上一步之后被意外重建，再次尝试移除
+          # 并设 world-readable（仅报告，不阻塞）。
+          if [ -f /etc/gitconfig ]; then
+            echo "WARNING: /etc/gitconfig reappeared — removing..."
+            sudo rm -f /etc/gitconfig
+          fi
           if [ -f /var/guix/current/etc/profile ]; then
             . /var/guix/current/etc/profile
           fi
