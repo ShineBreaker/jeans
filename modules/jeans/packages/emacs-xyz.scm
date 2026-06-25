@@ -63,7 +63,7 @@
 (define-public emacs-ghostel
   (package
     (name "emacs-ghostel")
-    (version "0.35.4")
+    (version "0.38.0")
     (source
      (origin
        (method url-fetch)
@@ -71,7 +71,7 @@
               "https://github.com/dakra/ghostel"
               "/archive/refs/tags/v" version ".tar.gz"))
        (sha256
-        (base32 "0i4fnkjrdss2rwdzfb5a771b5pfjsksblgw3zjqvlnavhyi15han"))
+        (base32 "0ix4wh3y14wqqzqmmmhsbjwdq6jy50p6r7lgnx9v50xq3cda5zyw"))
        (patches %ghostel-patches)))
       (build-system emacs-build-system)
       (arguments

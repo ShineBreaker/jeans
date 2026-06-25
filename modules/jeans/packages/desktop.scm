@@ -130,7 +130,7 @@ and Xorg.")
 (define-public opencode-desktop-bin
   (package
     (name "opencode-desktop-bin")
-    (version "1.17.8")
+    (version "1.17.11")
     (source
      (origin
        (method url-fetch)
@@ -138,7 +138,7 @@ and Xorg.")
              "https://github.com/anomalyco/opencode/releases/download/"
              "v" version "/opencode-desktop-linux-amd64.deb"))
        (sha256
-        (base32 "1m0ijzjrjl1cd9kks8jbkzs7l5wf8pnzkxk75a8kvx4i0g7lrqkf"))))
+        (base32 "024189d75i4zrk31wmzgva10wl1ghdirhnw4hxvpn04a4sl6ydz3"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -278,7 +278,7 @@ coding experience with context awareness.")
 (define-public reasonix-desktop-bin
   (package
     (name "reasonix-desktop-bin")
-    (version "1.9.1")
+    (version "1.12.0")
     (source
      (origin
        (method url-fetch)
@@ -286,7 +286,7 @@ coding experience with context awareness.")
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
              "desktop-v" version "/Reasonix-linux-amd64.deb"))
        (sha256
-        (base32 "1sd6xz4276y94igsrn5hz0iajic1bbqwvfzw492sfigs9sf24a3s"))))
+        (base32 "1px35mn2msqjyhj175hhj4gmmn9z3p9p3z13rk62bnih8nxg38y2"))))
     (build-system gnu-build-system)
     (arguments
      (list
