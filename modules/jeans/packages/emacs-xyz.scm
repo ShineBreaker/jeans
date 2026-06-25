@@ -94,12 +94,16 @@
                        (deps (string-append source-root "/deps")))
                   (setenv "GUIX_GHOSTEL_SOURCE_ROOT" source-root)
                   (mkdir-p deps)
-                  (copy-recursively #$%ghostel-ghostty-source
-                                    (string-append deps "/ghostty")
-                                    #:log (%make-void-port "w"))
-                  (copy-recursively #$%ghostel-uucode-source
-                                    (string-append deps "/uucode")
-                                    #:log (%make-void-port "w"))
+                  ;; url-fetch origins are stored as tarballs; extract them
+                  ;; rather than copy-recursively (which would copy the file as-is).
+                  (let ((ghostty-dir (string-append deps "/ghostty")))
+                    (mkdir-p ghostty-dir)
+                    (invoke "tar" "xf" #$%ghostel-ghostty-source
+                            "-C" ghostty-dir "--strip-components=1"))
+                  (let ((uucode-dir (string-append deps "/uucode")))
+                    (mkdir-p uucode-dir)
+                    (invoke "tar" "xf" #$%ghostel-uucode-source
+                            "-C" uucode-dir "--strip-components=1"))
                   (for-each make-file-writable
                             (find-files deps #:directories? #t)))))
             (add-after 'unpack-zig-dependencies 'patch-guix-specific-shell-paths
