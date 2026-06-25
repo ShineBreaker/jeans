@@ -46,24 +46,20 @@
 (define %ghostel-ghostty-source
   (let ((commit "6246c288ae1087c8d67f75432a59da004b30bf25"))
     (origin
-      (method git-fetch)
-      (uri (git-reference
-            (url "https://github.com/ghostty-org/ghostty")
-            (commit commit)))
-      (file-name (git-file-name "ghostty" commit))
+      (method url-fetch)
+      (uri (string-append
+             "https://github.com/ghostty-org/ghostty"
+             "/archive/" commit ".tar.gz"))
       (sha256
-       (base32 "02a7s2qbsipic2wm42bij6q90ia79f686iiyada24ync6zb6xyjf"))
+       (base32 "0zf82ziicl5ciyhgbj691vmgdgcwdnqsjbgj2czwmdjgvfc01cyz"))
       (patches %ghostel-ghostty-patches))))
 
 (define %ghostel-uucode-source
   (origin
-    (method git-fetch)
-    (uri (git-reference
-          (url "https://github.com/jacobsandlund/uucode")
-          (commit "v0.2.0")))
-    (file-name (git-file-name "uucode" "0.2.0"))
+    (method url-fetch)
+    (uri "https://github.com/jacobsandlund/uucode/archive/refs/tags/v0.2.0.tar.gz")
     (sha256
-     (base32 "1a3lrmbpc4ifdj1z6ra2b3xnfwh784q2bx835pz58hwpc2pf3flc"))))
+     (base32 "15az8qzp0rg5qj8ma0dam9j8jbf4wwb7wxsiq3iymmlb9w7yxayh"))))
 
 (define-public emacs-ghostel
   (package
@@ -71,13 +67,12 @@
     (version "0.35.4")
     (source
      (origin
-       (method git-fetch)
-       (uri (git-reference
-             (url "https://github.com/dakra/ghostel")
-             (commit (string-append "v" version))))
-       (file-name (git-file-name name version))
+       (method url-fetch)
+       (uri (string-append
+              "https://github.com/dakra/ghostel"
+              "/archive/refs/tags/v" version ".tar.gz"))
        (sha256
-        (base32 "10zrcnzymrn8vyjq548fsvskwlqv7fd8r8dp3f66ir2cnmvlq0b4"))
+        (base32 "0i4fnkjrdss2rwdzfb5a771b5pfjsksblgw3zjqvlnavhyi15han"))
        (patches %ghostel-patches)))
       (build-system emacs-build-system)
       (arguments
