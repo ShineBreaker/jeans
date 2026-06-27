@@ -438,7 +438,7 @@ binary release.")
 (define-public cc-switch-bin
   (package
     (name "cc-switch-bin")
-    (version "3.16.3")
+    (version "3.16.4")
     (source
      (origin
        (method url-fetch)
@@ -446,7 +446,7 @@ binary release.")
              "https://github.com/farion1231/cc-switch/releases/download/"
              "v" version "/CC-Switch-v" version "-Linux-x86_64.deb"))
        (sha256
-        (base32 "07pc7lcqg431g5y08adwh6m8mbbnpknzy3ig41vsdh0k72i9pcwg"))))
+        (base32 "1n5pdjc4fzxrzd7djxshc15rnsr6j2x6vwv8w0lbr75v26v7aqq8"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -650,7 +650,7 @@ enables command-line applications to interact with @code{keepassxc} databases.")
 (define-public oh-my-pi-bin
   (package
     (name "oh-my-pi-bin")
-    (version "16.1.19")
+    (version "16.2.1")
     (source
      (origin
        (method url-fetch)
@@ -658,7 +658,7 @@ enables command-line applications to interact with @code{keepassxc} databases.")
              "https://github.com/can1357/oh-my-pi/releases/download/"
              "v" version "/omp-linux-x64"))
        (sha256
-        (base32 "1psav8b99hnvwzc4svc70mmbg8g41nv52wrbx55clyl0sczybglw"))))
+        (base32 "17fa7lbkhc2p97hkwpllrir4x6b3l4x7zs9zzjb02fj4nn71fvg5"))))
     (build-system gnu-build-system)
     (arguments
      (list
