@@ -11,23 +11,33 @@
 
 ## 构建命令
 
+任务运行器使用 [BLUE](https://codeberg.org/lapislazuli/blue)，定义在 `blueprint.scm`（已从原先的 `maak` 迁移）。所有命令在仓库根目录执行。
+
 ```bash
+# 列出所有可用命令
+blue help
+
 # 构建单个包
-maak build <包名>
+blue build <包名>
 # 等价于: guix build --load-path=./modules <包名>
-# 支持多包: maak build pkg-a pkg-b
+# 支持多包: blue build pkg-a pkg-b
 
 # 检查所有包的上游更新
-maak upgrade
+blue upgrade
 # 内部调用 scripts/check-updates/update_versions.py
+
+# 从 crates.io 导入 Rust crate 源码
+blue import-crate <crate名>[@版本]
+# 使用 guix import crate，自动检测 ./Cargo.lock
+# 在 rust-crates.scm 的 ssss-separator 前插入 crate-source 定义
+
+# 根据 modules/ 里的包定义重新生成 docs/packages.md
+blue gen-docs
+# 内部通过 guix repl 运行 scripts/gen-docs.scm，读取每个包的 name/synopsis
+# 加载失败的模块会被跳过并给出警告（例如依赖未满足时）
 
 # 直接 guix 构建（替代方案）
 guix build -L modules <包名>
-
-# 从 crates.io 导入 Rust crate 源码
-maak import-crate <crate名>[@版本]
-# 使用 guix import crate，自动检测 ./Cargo.lock
-# 在 rust-crates.scm 的 ssss-separator 前插入 crate-source 定义
 ```
 
 ## 仓库结构
@@ -50,12 +60,14 @@ modules/                          # 通道包目录（由 .guix-channel 指定�
     hardware.scm                  # Guix 服务定义（opentabletdriver-service-type）
   jeans/patches/
     WinApps.patch                 # 通过 local-file 被包定义引用的补丁
-scripts/check-updates/
-  update_versions.py              # 自动版本检查器（GitHub API）
-  test_updated_packages.py        # 对更新的非二进制包进行构建测试
-  config.json                     # 更新器的跳过/预发布配置
-  manifest.scm                    # guix shell 环境：python + python-requests
-maak.scm                          # 构建任务运行器（maak 工具）
+scripts/
+  check-updates/
+    update_versions.py            # 自动版本检查器（GitHub API）
+    test_updated_packages.py      # 对更新的非二进制包进行构建测试
+    config.json                   # 更新器的跳过/预发布配置
+    manifest.scm                  # guix shell 环境：python + python-requests
+  gen-docs.scm                    # 由 `blue gen-docs` 调用，生成 docs/packages.md
+blueprint.scm                     # BLUE 蓝图：任务运行器（build/upgrade/import-crate/gen-docs）
 ```
 
 ## 提交信息规范
@@ -137,7 +149,7 @@ Rust 包使用双文件模式：
 
 ## 更新工作流
 
-1. 运行 `maak upgrade` —— 脚本扫描 `modules/jeans/packages/` 中的所有 `.scm` 文件，通过正则解析 `define-public` 块，检查 GitHub releases/tags/commits API。
+1. 运行 `blue upgrade` —— 脚本扫描 `modules/jeans/packages/` 中的所有 `.scm` 文件，通过正则解析 `define-public` 块，检查 GitHub releases/tags/commits API。
 2. **url-fetch 包**：通过 `guix download <url>` 自动计算正确的 `base32`。
 3. **git-fetch 包**：`git clone --depth=1` + `guix hash -rx <dir>` 计算 hash。部分包设置占位 hash；你必须重新构建以获取真实 hash。
 4. 版本规范化：去除 GitHub 标签的 `v` 前缀（Guix 约定：不带 `v` 前缀）。

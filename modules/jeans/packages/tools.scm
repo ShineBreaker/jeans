@@ -8,24 +8,22 @@
   #:use-module (guix build-system cargo)
   #:use-module (guix download)
   #:use-module (guix git-download)
-  #:use-module (guix build-system copy)  ; opencode-bin
   #:use-module (guix build-system gnu)
   #:use-module (guix gexp)
-  #:use-module (gnu packages bootstrap)  ; glibc-dynamic-linker
   #:use-module ((guix licenses) #:prefix license:)
   #:use-module ((nonguix licenses) #:prefix license:)
   #:use-module (gnu packages bash)
   #:use-module (gnu packages python)
   #:use-module (gnu packages java)
   #:use-module (gnu packages rdesktop)
-  #:use-module (gnu packages gtk)      ; yad, cairo, gdk-pixbuf, pango, at-spi2-core
+  #:use-module (gnu packages gtk)      ; gtk+, cairo, gdk-pixbuf
   #:use-module (gnu packages linux)    ; iproute
   #:use-module (gnu packages admin)    ; netcat-openbsd
   #:use-module (gnu packages gnome)    ; libnotify, libsoup
   #:use-module (gnu packages ncurses)  ; dialog
   #:use-module (gnu packages elf)      ; patchelf
   #:use-module (gnu packages webkit)   ; webkitgtk-for-gtk3
-  #:use-module (gnu packages base)     ; binutils (ar)
+  #:use-module (gnu packages base)     ; glibc, binutils, coreutils
   #:use-module (gnu packages glib)     ; glib
   #:use-module (gnu packages freedesktop) ; libappindicator
   #:use-module (gnu packages gcc)         ; gcc:lib
@@ -33,118 +31,7 @@
   #:use-module (gnu packages tls)          ; openssl
   #:use-module (gnu packages compression) ; xz
   #:use-module (gnu packages version-control) ; git
-  #:use-module (gnu packages audio)       ; alsa-lib
-  #:use-module (gnu packages curl)        ; curl
-  #:use-module (gnu packages fontutils)   ; fontconfig
-  #:use-module (gnu packages gl)          ; libglvnd, mesa
-  #:use-module (gnu packages xdisorg)     ; libxkbcommon
-  #:use-module (gnu packages xorg)        ; libx11, libxcb, libxcursor, libxi
-  #:use-module (gnu packages vulkan)      ; vulkan-loader
-  #:use-module (gnu packages nss)          ; nss
-  #:use-module (gnu packages cups)         ; cups
-  #:use-module (gnu packages xml)          ; expat
-  #:use-module (gnu packages golang)         ; go
   )
-
-;;; Crush: AI-powered coding assistant (Go TUI binary).
-;;;
-;;; The upstream .deb ships a single Go ELF binary:
-;;;   - crush        (<= 0.77.x: dynamically linked to glibc;
-;;;                   >= 0.78.0: statically linked Go build, no .interp)
-;;;
-;;; Probe linkage via `patchelf --print-interpreter` and only patch
-;;; the ELF interpreter when dynamic; statically linked binaries are
-;;; left untouched.  Wrap with PATH so crush can find git and other
-;;; runtime tools regardless.
-
-(define-public crush-bin
-  (package
-    (name "crush-bin")
-    (version "0.80.0")
-    (source
-     (origin
-       (method url-fetch)
-       (uri (string-append
-             "https://github.com/charmbracelet/crush/releases/download/"
-             "v" version "/crush_" version "_amd64.deb"))
-       (sha256
-        (base32 "11bygsad891g3yy5h0lp0lqafix53gyzaqkw6nf4y539c577jcgr"))))
-    (build-system gnu-build-system)
-    (arguments
-     (list
-      #:tests? #f
-      #:modules '((guix build gnu-build-system)
-                  (guix build utils))
-      #:phases
-      #~(modify-phases %standard-phases
-          (delete 'configure)
-          (delete 'build)
-          (replace 'unpack
-            (lambda _
-              (let ((debdir (string-append "crush-" #$version)))
-                (mkdir debdir)
-                (with-directory-excursion debdir
-                  (invoke "ar" "x" #$source)
-                  (invoke "tar" "xzf" "data.tar.gz"))
-                (chdir debdir))))
-          (replace 'install
-            (lambda* (#:key inputs #:allow-other-keys)
-              (let* ((out #$output)
-                     (bin (string-append out "/bin"))
-                     (share (string-append out "/share"))
-                     (patchelf-bin
-                      (string-append (assoc-ref inputs "patchelf")
-                                     "/bin/patchelf"))
-                     (ldso (string-append (assoc-ref inputs "glibc")
-                                          "/lib/ld-linux-x86-64.so.2"))
-                     (crush-target (string-append bin "/crush")))
-                (mkdir-p bin)
-                (install-file "usr/bin/crush" bin)
-
-                ;; crush >= 0.78.0 ships a statically linked Go binary
-                ;; (no .interp section); patchelf --set-interpreter
-                ;; errors out on such binaries with "cannot find
-                ;; section '.interp'".  Probe via --print-interpreter
-                ;; (exits 0 for dynamic, non-zero for static) and only
-                ;; patch when dynamic linkage is present.
-                (when (zero? (system* patchelf-bin
-                                     "--print-interpreter"
-                                     crush-target))
-                  (invoke patchelf-bin "--set-interpreter" ldso
-                          crush-target))
-
-                (wrap-program crush-target
-                  `("PATH" ":" prefix
-                    ,(list (string-append #$bash-minimal "/bin")
-                           (string-append #$coreutils "/bin")
-                           (string-append #$git "/bin")
-                           (string-append #$go "/bin"))))
-
-                (mkdir-p (string-append share "/bash-completion/completions"))
-                (copy-file "etc/bash_completion.d/crush"
-                           (string-append share "/bash-completion/completions/crush"))
-
-                (mkdir-p (string-append share "/fish/vendor_completions.d"))
-                (copy-file "usr/share/fish/vendor_completions.d/crush.fish"
-                           (string-append share "/fish/vendor_completions.d/crush.fish"))
-
-                (mkdir-p (string-append share "/zsh/site-functions"))
-                (copy-file "usr/share/zsh/site-functions/_crush"
-                           (string-append share "/zsh/site-functions/_crush"))
-
-                (mkdir-p (string-append share "/man/man1"))
-                (copy-file "usr/share/man/man1/crush.1.gz"
-                           (string-append share "/man/man1/crush.1.gz"))))))))
-    (native-inputs (list patchelf binutils))
-    (inputs
-     (list bash-minimal glibc git coreutils go))
-    (home-page "https://github.com/charmbracelet/crush")
-    (synopsis "AI-powered coding assistant for the CLI")
-    (description "Crush is an AI-powered coding assistant that runs in the terminal.
-It supports multiple LLM providers, MCP servers, LSP integration, and provides
-tools for file editing, shell command execution, web fetching, and more.
-This package provides the prebuilt binary release.")
-    (license (license:nonfree "https://github.com/charmbracelet/crush/blob/main/LICENSE.md"))))
 
 (define-public winapps
   (package
@@ -573,144 +460,6 @@ binary release.")
 enables command-line applications to interact with @code{keepassxc} databases.")
     (license license:gpl3+)))
 
-(define-public opencode-bin
-  (package
-    (name "opencode-bin")
-    (version "1.17.11")
-    (source
-     (origin
-       (method url-fetch)
-       (uri (string-append
-             "https://github.com/anomalyco/opencode/releases/download/"
-             "v" version "/opencode-linux-x64.tar.gz"))
-       (sha256
-        (base32 "18nw8k1abvkjzwmz8sw19wkksg5vzbdqs8755djb9k84gyxwpvva"))))
-    (build-system copy-build-system)
-    (arguments
-     (list
-      #:validate-runpath? #f
-      #:strip-binaries? #f
-      #:install-plan
-      #~'(("opencode" "libexec/opencode"))
-      #:phases
-      #~(modify-phases %standard-phases
-          (delete 'install-license-files)
-          (add-after 'unpack 'patch-proc-self-exe
-            (lambda _
-              ;; Replace /proc/self/exe with /proc/self/ex_ to force Bun
-              ;; to fall back to argv[0] for finding the embedded modules.
-              (invoke "sed" "-i" "s|/proc/self/exe|/proc/self/ex_|g"
-                      "opencode")))
-          (add-after 'install 'make-binary-executable
-            (lambda _
-              (chmod (string-append #$output "/libexec/opencode") #o555)))
-          (add-after 'make-binary-executable 'create-wrapper
-            (lambda* (#:key inputs #:allow-other-keys)
-              (let ((bin (string-append #$output "/bin"))
-                    (libexec (string-append #$output "/libexec/opencode"))
-                    (ld.so (string-append (assoc-ref inputs "glibc")
-                                          #$(glibc-dynamic-linker)))
-                    (lib-path (string-join (list (string-append (assoc-ref
-                                                                 inputs
-                                                                 "glibc")
-                                                                "/lib")
-                                                 (string-append (assoc-ref
-                                                                 inputs "gcc")
-                                                                "/lib")) ":")))
-                (mkdir-p bin)
-                (call-with-output-file (string-append bin "/opencode")
-                  (lambda (port)
-                    (format port
-                            "#!~a\nexec ~a --argv0 ~a --library-path ~a ~a \"$@\"\n"
-                            #$(file-append bash-minimal "/bin/sh")
-                            ld.so
-                            libexec
-                            lib-path
-                            libexec)))
-                (chmod (string-append bin "/opencode") #o755)))))))
-    (native-inputs (list sed))
-    (inputs (list bash-minimal glibc
-                  `(,gcc "lib")))
-    (home-page "https://opencode.ai")
-    (synopsis "The open source AI coding agent.")
-    (description "OpenCode is an open source agent that helps you
- write code in your terminal.")
-    (license license:expat)))
-
-;;; oh-my-pi (OMP): prebuilt AI coding agent with IDE integration.
-;;;
-;;; The upstream release is a single self-contained ELF binary (~530 MB)
-;;; that embeds a Bun runtime, native Rust addons, and all JS/TS code.
-;;; It is dynamically linked but has zero NEEDED entries — only the
-;;; ELF interpreter (/lib64/ld-linux-x86-64.so.2) must be redirected.
-;;;
-;;; Strategy: copy binary to libexec/, create a bin/ wrapper that
-;;; invokes it through Guix's ld-linux (same pattern as opencode-bin).
-
-(define-public oh-my-pi-bin
-  (package
-    (name "oh-my-pi-bin")
-    (version "16.2.1")
-    (source
-     (origin
-       (method url-fetch)
-       (uri (string-append
-             "https://github.com/can1357/oh-my-pi/releases/download/"
-             "v" version "/omp-linux-x64"))
-       (sha256
-        (base32 "17fa7lbkhc2p97hkwpllrir4x6b3l4x7zs9zzjb02fj4nn71fvg5"))))
-    (build-system gnu-build-system)
-    (arguments
-     (list
-      #:tests? #f
-      #:validate-runpath? #f
-      #:strip-binaries? #f
-      #:modules '((guix build gnu-build-system)
-                  (guix build utils))
-      #:phases
-      #~(modify-phases %standard-phases
-          (delete 'configure)
-          (delete 'build)
-          (replace 'unpack
-            (lambda _
-              (copy-file #$source "omp")
-              (chmod "omp" #o755)))
-          (replace 'install
-            (lambda* (#:key inputs #:allow-other-keys)
-              (let* ((out #$output)
-                     (bin (string-append out "/bin"))
-                     (libexec (string-append out "/libexec"))
-                     (ld.so (string-append (assoc-ref inputs "glibc")
-                                           #$(glibc-dynamic-linker)))
-                     (lib-path (string-join
-                                (list (string-append (assoc-ref inputs "glibc") "/lib")
-                                      (string-append (assoc-ref inputs "gcc") "/lib"))
-                                ":")))
-                (mkdir-p libexec)
-                (install-file "omp" libexec)
-                (mkdir-p bin)
-                (call-with-output-file (string-append bin "/omp")
-                  (lambda (port)
-                    (format port
-                            "#!~a\nexec ~a --argv0 ~a/omp --library-path ~a ~a/omp \"$@\"\n"
-                            #$(file-append bash-minimal "/bin/sh")
-                            ld.so
-                            libexec
-                            lib-path
-                            libexec)))
-                (chmod (string-append bin "/omp") #o755)))))))
-    (inputs (list bash-minimal glibc `(,gcc "lib")))
-    (home-page "https://omp.sh")
-    (synopsis "AI coding agent with IDE integration")
-    (description "oh-my-pi (OMP) is a coding agent with deep IDE integration,
-featuring support for 40+ AI providers, 32 built-in tools, 13 LSP operations,
-27 DAP operations, subagents, web search, browser automation, and more.
-It is a fork of the Pi project by Mario Zechner, extended with
-batteries-included coding workflow features.  This package provides
-the prebuilt binary release.")
-    (license license:expat)
-    (supported-systems '("x86_64-linux"))))
-
 ;;; APM (Amber Package Manager): container-based package manager using
 ;;; fuse-overlayfs and dpkg.  Installs shell scripts, helper binaries,
 ;;; and the ace-env container rootfs tarball.
@@ -859,51 +608,3 @@ APM requires a writable @file{/var/lib/apm} directory at runtime.
 The seed data is installed under @file{share/apm/var-lib/} in the Guix
 store and must be copied to @file{/var/lib/apm} before first use.")
       (license license:agpl3+))))
-
-
-
-;;; Reasonix: DeepSeek-native AI coding agent (Go static binary).
-;;;
-;;; The upstream tar.gz ships a single statically-linked Go ELF binary:
-;;;   - reasonix       (CGO_ENABLED=0, no interpreter, no NEEDED)
-;;;
-;;; No patchelf or ld-linux wrapper needed — just extract and install.
-
-(define-public reasonix-bin
-  (package
-    (name "reasonix-bin")
-    (version "1.12.0")
-    (source
-     (origin
-       (method url-fetch)
-       (uri (string-append
-             "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
-             "v" version "/reasonix-linux-amd64.tar.gz"))
-       (sha256
-        (base32 "18bgrdm258rkaj6m853mnwlhdwpzss28n36h5hwamcz7fx1gx0kx"))))
-    (build-system gnu-build-system)
-    (arguments
-     (list
-      #:tests? #f
-      #:validate-runpath? #f
-      #:strip-binaries? #f
-      #:modules '((guix build gnu-build-system)
-                  (guix build utils))
-      #:phases
-      #~(modify-phases %standard-phases
-          (delete 'configure)
-          (delete 'build)
-          (replace 'install
-            (lambda _
-              (let ((bin (string-append #$output "/bin")))
-                (mkdir-p bin)
-                (install-file "reasonix" bin)))))))
-    (home-page "https://github.com/esengine/DeepSeek-Reasonix")
-    (synopsis "DeepSeek-native AI coding agent for the terminal")
-    (description
-     "Reasonix is a config- and plugin-driven AI coding agent written in Go,
-designed around DeepSeek's prefix cache to keep token costs low across long sessions.
-It supports multi-model composition, external tools via MCP-compatible JSON-RPC,
-and ships as a single static binary with no runtime dependencies.")
-    (license license:expat)
-    (supported-systems '("x86_64-linux"))))

@@ -10,6 +10,7 @@
              (define %public-modules
                 '((gnu)
                   (guix utils)
+                  (jeans packages agent)
                   (jeans packages browser)
                   (jeans packages desktop)
                   (jeans packages emacs-xyz)
