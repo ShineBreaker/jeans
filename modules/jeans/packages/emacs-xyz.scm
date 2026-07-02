@@ -147,14 +147,36 @@
                        (elpa-dir (elpa-directory out)))
                   (copy-recursively (string-append root "/etc")
                                     (string-append elpa-dir "/etc"))
-                  ;; Ghostel's build.zig uses 'addInstallFile(..., "../ghostel-module.so")'
-                  ;; to put the native module next to $out, which zig 0.15
-                  ;; resolves by escaping the prefix.  In the Guix sandbox
-                  ;; only the default 'installArtifact' copy under $out/lib
-                  ;; is reliable, so we lift the .so into the Emacs package
-                  ;; directory from there.
-                  (install-file (string-append out "/lib/libghostel-module.so")
-                                elpa-dir)))))))
+                  ;; Ghostel's build.zig produces two install targets the
+                  ;; Elisp loader depends on:
+                  ;;   1. installArtifact        -> $out/lib/libghostel-module.so
+                  ;;      (Zig forces the 'lib' prefix on shared libs)
+                  ;;   2. addInstallFile(.., "../ghostel-module.so")
+                  ;;      addInstallFile(.., "../ghostel-module.version")
+                  ;;      -> $out/ghostel-module.so / .version
+                  ;;      (canonical, prefix-less names that ghostel.el looks up)
+                  ;; zig 0.15 resolves the "../" destination by escaping
+                  ;; $prefix, which is unreliable inside the Guix build
+                  ;; sandbox — only target 1 actually lands.  So we lift the
+                  ;; .so from $out/lib and rename it to the canonical
+                  ;; 'ghostel-module.so' (no 'lib' prefix) that
+                  ;; ghostel--load-module (ghostel-module-install.el) looks
+                  ;; up via (expand-file-name "ghostel-module"
+                  ;; module-file-suffix).  Without the rename ghostel can't
+                  ;; find its module and falls back to the "native module not
+                  ;; found" download prompt.
+                  ;;
+                  ;; The version sidecar is written by build.zig next to the
+                  ;; canonical .so; we reproduce it here from #$version
+                  ;; (kept in sync with src/version.zig upstream) so the
+                  ;; loader skips the live version probe and the
+                  ;; 'stale module' upgrade path.
+                  (copy-file (string-append out "/lib/libghostel-module.so")
+                             (string-append elpa-dir "/ghostel-module.so"))
+                  (call-with-output-file
+                      (string-append elpa-dir "/ghostel-module.version")
+                    (lambda (port)
+                      (display (string-append #$version "\n") port)))))))))
       (native-inputs (list zig-0.15))
       (home-page "https://github.com/dakra/ghostel")
       (synopsis "Terminal emulator powered by libghostty")
