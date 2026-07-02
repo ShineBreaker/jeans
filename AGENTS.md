@@ -9,6 +9,8 @@
 - Codeberg 镜像：从 GitHub 自动同步
 - 硬依赖 [nonguix](https://gitlab.com/nonguix/nonguix)（在 `.guix-channel` 中声明）。部分包从 `(nongnu ...)` 模块导入（如 `hardware.scm` 使用 `nongnu packages dotnet`）
 
+<critical> 在进行任何操作前，请先执行 `git pull` ，以防止CI的提交未被拉取到本地</critical>
+
 ## 构建命令
 
 任务运行器使用 [BLUE](https://codeberg.org/lapislazuli/blue)，定义在 `blueprint.scm`（已从原先的 `maak` 迁移）。所有命令在仓库根目录执行。
