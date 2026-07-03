@@ -588,7 +588,7 @@ support for multiple LLM providers.")
 (define-public zcode
   (package
     (name "zcode")
-    (version "3.2.2")
+    (version "3.2.3")
     (source
      (origin
        (method url-fetch)
@@ -596,7 +596,7 @@ support for multiple LLM providers.")
              "https://cdn-zcode.z.ai/zcode/electron/releases/"
              version "/ZCode-" version "-linux-x64.deb"))
        (sha256
-        (base32 "1wlqvhfyjsii1idzssgficib1rwjgriqd7z90j9qfllv5n7nxl62"))))
+        (base32 "1zxhgzmwfqr2jj659sl6nl8gpiag9jb49bbdlv9hj14xcdwib4j2"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -730,12 +730,10 @@ support for multiple LLM providers.")
                   mesa
                   nss))
     (home-page "https://zcode.z.ai/")
-    (synopsis "AI-powered code editor from Zhipu AI (GLM)")
+    (synopsis "ZCode Desktop App")
     (description
-     "ZCode is a closed-source AI-powered code editor and IDE developed by
-Zhipu AI (z.ai), built on Electron and deeply integrated with the GLM
-family of large language models.  It combines multi-agent collaboration,
-long-horizon task planning, code review and a familiar editor workflow,
-exposing Zhipu's proprietary GLM models through a polished desktop UI.")
+     "Simple, Fast, Vibe‑Ready ! -- ZCode combines the best AI agents
+with your existing tools so you can plan, code, review, and deploy
+without friction.")
     (license (license:nonfree "https://zcode.z.ai/"))
     (supported-systems '("x86_64-linux"))))
