@@ -32,8 +32,7 @@
                   (string-append "jeans/patches/" name)))))
 
 (define %ghostel-patches
-  (list (%ghostel-local-patch "emacs-ghostel-build.zig.zon.patch")
-        (%ghostel-local-patch "emacs-ghostel-build.zig.patch")))
+  (list (%ghostel-local-patch "emacs-ghostel-build.zig.patch")))
 
 (define %ghostel-ghostty-patches
   (list (%ghostel-local-patch "emacs-ghostel-ghostty-build.zig.zon.patch")
@@ -85,11 +84,39 @@
             ;; and zig cache paths that don't satisfy Guix's RUNPATH
             ;; validator.  Disable the check rather than patch the build.
             (delete 'validate-runpath)
-            (add-after 'unpack 'unpack-zig-dependencies
+            (add-after 'unpack 'redirect-ghostty-dependency
               (lambda _
                 ;; emacs-build-system 'unpack chdirs into 'lisp-directory,
-                ;; so the source root is one level up.  Stash it for the
-                ;; later phases to find.
+                ;; so the source root is one level up.  Rewrite the
+                ;; .ghostty dependency in build.zig.zon to point at the
+                ;; ./deps/ghostty directory we populate below, so the build
+                ;; never touches the network.  We do this in scheme by
+                ;; rewriting the file rather than using a patch file
+                ;; because the ghostty URL/hash inside the dependency
+                ;; block changes between ghostel releases (e.g. 0.39.0 ->
+                ;; 0.41.0) and a context-sensitive patch would need to be
+                ;; regenerated for every bump.  substitute* is line-based
+                ;; so it cannot collapse the four-line .url/.hash block
+                ;; into the single-line .path form on its own.
+                (let* ((source-root (dirname (getcwd)))
+                       (zon (string-append source-root "/build.zig.zon"))
+                       (original (with-input-from-file zon
+                                   (lambda () (read-string)))))
+                  ;; Replace the entire .ghostty dependency block (compact
+                  ;; one-line or canonical multi-line .url/.hash form) with
+                  ;; a single .path entry that points at the ./deps/ghostty
+                  ;; directory populated in the next phase.
+                  (let* ((pattern
+                          "        \\.ghostty = \\{\\s*(([^}]+)\\}?")
+                         (rewritten
+                          (regexp-substitute/global #f pattern original
+                            'pre
+                            "        .ghostty = .{ .path = "./deps/ghostty" },"
+                            'post)))
+                    (with-output-to-file zon
+                      (lambda () (display rewritten)))))))
+            (add-after 'redirect-ghostty-dependency 'unpack-zig-dependencies
+              (lambda _
                 (let* ((source-root (dirname (getcwd)))
                        (deps (string-append source-root "/deps")))
                   (setenv "GUIX_GHOSTEL_SOURCE_ROOT" source-root)
