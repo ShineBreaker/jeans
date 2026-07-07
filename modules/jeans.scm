@@ -20,6 +20,7 @@
                   (jeans packages rust-crates)
                   (jeans packages theme)
                   (jeans packages nix-ld)
+                 (jeans packages tools)
 
                  (jeans services hardware)
                  (jeans services nix-ld)))
