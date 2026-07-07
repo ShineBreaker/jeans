@@ -7,81 +7,94 @@
 本文件由 `blue gen-docs` 根据 `modules/jeans/packages/` 下的包定义自动生成。
 请勿手动编辑——所有改动都会在下一次生成时被覆盖。
 
+### (jeans packages agent)
+
+| Package | Description |
+| --- | --- |
+| `crush-bin` | AI-powered coding assistant for the CLI |
+| `oh-my-pi-bin` | AI coding agent with IDE integration |
+| `opencode-bin` | The open source AI coding agent. |
+| `opencode-desktop-bin` | AI coding agent desktop application |
+| `reasonix-bin` | DeepSeek-native AI coding agent for the terminal |
+| `reasonix-desktop-bin` | DeepSeek-native AI coding agent with desktop GUI |
+| `zcode` | ZCode Desktop App |
+
 ### (jeans packages browser)
 
-| Package            | Description                                                                              |
-| ------------------ | ---------------------------------------------------------------------------------------- |
+| Package | Description |
+| --- | --- |
 | `librewolf-nongnu` | Custom version of Firefox, focused on privacy, security and freedom. (revert guix patch) |
-| `zen-browser-bin`  | Experience tranquillity while browsing the web without people tracking you!              |
+| `zen-browser-bin` | Experience tranquillity while browsing the web without people tracking you! |
 
 ### (jeans packages desktop)
 
-| Package                | Description                                              |
-| ---------------------- | -------------------------------------------------------- |
-| `opencode-desktop-bin` | AI coding agent desktop application                      |
-| `python-screeninfo`    | Fetch location and size of physical screens              |
-| `reasonix-desktop-bin` | DeepSeek-native AI coding agent with desktop GUI         |
-| `waypaper`             | GUI wallpaper manager for Wayland and Xorg Linux systems |
+| Package | Description |
+| --- | --- |
+| `opencode-desktop-bin` | AI coding agent desktop application |
+| `python-screeninfo` | Fetch location and size of physical screens |
+| `reasonix-desktop-bin` | DeepSeek-native AI coding agent with desktop GUI |
+| `waypaper` | GUI wallpaper manager for Wayland and Xorg Linux systems |
 
 ### (jeans packages emacs-xyz)
 
-| Package         | Description                                                |
-| --------------- | ---------------------------------------------------------- |
-| `eask-bin`      | CLI tool for building, testing and managing Emacs packages |
-| `ellsp-bin`     | Elisp Language Server Protocol server                      |
-| `emacs-ellsp`   | Elisp Language Server Protocol server (Emacs backend)      |
-| `emacs-ghostel` | Terminal emulator powered by libghostty                    |
-| `emacs-msgu`    | Utility functions for message output in Emacs              |
+| Package | Description |
+| --- | --- |
+| `eask-bin` | CLI tool for building, testing and managing Emacs packages |
+| `ellsp-bin` | Elisp Language Server Protocol server |
+| `emacs-ellsp` | Elisp Language Server Protocol server (Emacs backend) |
+| `emacs-ghostel` | Terminal emulator powered by libghostty |
+| `emacs-msgu` | Utility functions for message output in Emacs |
 
 ### (jeans packages fonts)
 
-| Package                  | Description                                                                        |
-| ------------------------ | ---------------------------------------------------------------------------------- |
-| `font-maple-font-nf-cn`  | Maple Mono is an open source monospace font focused on smoothing your coding flow. |
-| `font-misans`            | MiSans is a font family for Xiaomi HyperOS.                                        |
-| `font-nerd-font-iosevka` | Iconic font aggregator.                                                            |
-| `font-nerd-symbols`      | Iconic font aggregator                                                             |
+| Package | Description |
+| --- | --- |
+| `font-maple-font-nf-cn` | Maple Mono is an open source monospace font focused on smoothing your coding flow. |
+| `font-misans` | MiSans is a font family for Xiaomi HyperOS. |
+| `font-nerd-font-iosevka` | Iconic font aggregator. |
+| `font-nerd-symbols` | Iconic font aggregator |
 
 ### (jeans packages games)
 
-| Package                     | Description                                                       |
-| --------------------------- | ----------------------------------------------------------------- |
+| Package | Description |
+| --- | --- |
 | `lr2oraja-endlessdream-bin` | Community fork of beatoraja BMS rhythm game with QoL improvements |
-| `osu-lazer-bin`             | rhythm is just a _click_ away!                                    |
+| `osu-lazer-bin` | rhythm is just a *click* away! |
 
 ### (jeans packages hardware)
 
-| Package                       | Description                     |
-| ----------------------------- | ------------------------------- |
+| Package | Description |
+| --- | --- |
 | `opentabletdriver-udev-rules` | UDev rules for OpenTabletDriver |
 
 ### (jeans packages nix-ld)
 
-| Package  | Description                                       |
-| -------- | ------------------------------------------------- |
+| Package | Description |
+| --- | --- |
 | `nix-ld` | Run unpatched dynamic binaries on non-FHS systems |
 
 ### (jeans packages theme)
 
-| Package                | Description                                                                 |
-| ---------------------- | --------------------------------------------------------------------------- |
-| `colloid-gtk-theme`    | Colloid gtk theme for linux.                                                |
-| `colloid-kde-themes`   | Orchis Kvantum themes for KDE Plasma                                        |
-| `orchis-kde-themes`    | Orchis Kvantum themes for KDE Plasma                                        |
-| `vimix-gtk-themes`     | Vimix is a flat Material Design theme for GTK 3, GTK 2 and Gnome-Shell etc. |
-| `vimix-kvantum-themes` | Build from Vimix kde.                                                       |
+| Package | Description |
+| --- | --- |
+| `colloid-gtk-theme` | Colloid gtk theme for linux. |
+| `colloid-kde-themes` | Orchis Kvantum themes for KDE Plasma |
+| `orchis-kde-themes` | Orchis Kvantum themes for KDE Plasma |
+| `vimix-gtk-themes` | Vimix is a flat Material Design theme for GTK 3, GTK 2 and Gnome-Shell etc. |
+| `vimix-kvantum-themes` | Build from Vimix kde. |
 
 ### (jeans packages tools)
 
-| Package                    | Description                                              |
-| -------------------------- | -------------------------------------------------------- |
-| `amber-pm`                 | Container-based package manager using fuse-overlayfs     |
-| `cc-switch-bin`            | All-in-One assistant for Claude Code, Codex & Gemini CLI |
-| `crush-bin`                | AI-powered coding assistant for the CLI                  |
-| `git-credential-keepassxc` | Use KeePassXC as a command-line credential store         |
-| `jdtls-bin`                | Java language server                                     |
-| `motrix-next-bin`          | Full-featured download manager                           |
-| `oh-my-pi-bin`             | AI coding agent with IDE integration                     |
-| `opencode-bin`             | The open source AI coding agent.                         |
-| `reasonix-bin`             | DeepSeek-native AI coding agent for the terminal         |
-| `winapps`                  | Run Windows applications on GNU/Linux                    |
+| Package | Description |
+| --- | --- |
+| `amber-pm` | Container-based package manager using fuse-overlayfs |
+| `cc-switch-bin` | All-in-One assistant for Claude Code, Codex & Gemini CLI |
+| `crush-bin` | AI-powered coding assistant for the CLI |
+| `git-credential-keepassxc` | Use KeePassXC as a command-line credential store |
+| `jdtls-bin` | Java language server |
+| `motrix-next-bin` | Full-featured download manager |
+| `oh-my-pi-bin` | AI coding agent with IDE integration |
+| `opencode-bin` | The open source AI coding agent. |
+| `reasonix-bin` | DeepSeek-native AI coding agent for the terminal |
+| `winapps` | Run Windows applications on GNU/Linux |
+
