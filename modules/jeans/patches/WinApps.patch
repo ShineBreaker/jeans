@@ -65,12 +65,12 @@
          # Complete the previous line.
          echo -e "${FAIL_TEXT}Failed!${CLEAR_TEXT}\n"
  
-@@ -1331,11 +1312,11 @@
+@@ -1331,11 +1331,11 @@
      # Populate variables.
      WIN_BASH="\
  #!/usr/bin/env bash
--${BIN_PATH}/winapps windows"
-+@out@/bin/winapps windows"
+-${BIN_PATH}/winapps windows \"\$@\""
++@out@/bin/winapps windows \"\$@\""
      WIN_DESKTOP="\
  [Desktop Entry]
  Name=Windows
@@ -79,12 +79,12 @@
  Terminal=false
  Type=Application
  Icon=${APPDATA_PATH}/icons/windows.svg
-@@ -1382,13 +1363,13 @@
+@@ -1382,13 +1382,13 @@
      # Determine the content of the bash script for the application.
      APP_BASH="\
  #!/usr/bin/env bash
--${BIN_PATH}/winapps ${1}"
-+@out@/bin/winapps ${1}"
+-${BIN_PATH}/winapps ${1} \"\$@\""
++@out@/bin/winapps ${1} \"\$@\""
  
      # Determine the content of the '.desktop' file for the application.
      APP_DESKTOP_FILE="\

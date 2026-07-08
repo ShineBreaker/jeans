@@ -57,7 +57,7 @@
 (define-public crush-bin
   (package
     (name "crush-bin")
-    (version "0.81.0")
+    (version "0.82.0")
     (source
      (origin
        (method url-fetch)
@@ -65,7 +65,7 @@
              "https://github.com/charmbracelet/crush/releases/download/"
              "v" version "/crush_" version "_amd64.deb"))
        (sha256
-        (base32 "1919sv1fmkq78pd1291i3csim7j5nmrkmrmkx494xyvmn2k99ajy"))))
+        (base32 "0vrn4jcrm7cgr585j308c3l5985nxa80w4vgx4sadzwdy9gvkg0l"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -147,7 +147,7 @@ This package provides the prebuilt binary release.")
 (define-public opencode-bin
   (package
     (name "opencode-bin")
-    (version "1.17.13")
+    (version "1.17.15")
     (source
      (origin
        (method url-fetch)
@@ -155,7 +155,7 @@ This package provides the prebuilt binary release.")
              "https://github.com/anomalyco/opencode/releases/download/"
              "v" version "/opencode-linux-x64.tar.gz"))
        (sha256
-        (base32 "0j5kkgjy81kgsh41h83b3xx976qi4v3rmq8cvrr9738skllglyhm"))))
+        (base32 "0rrybwjdfczxbkixki0d8ajbi2v6f3zn23b11kfd5iwj25vm64qf"))))
     (build-system copy-build-system)
     (arguments
      (list
@@ -292,7 +292,7 @@ package provides the prebuilt binary release.")
 (define-public opencode-desktop-bin
   (package
     (name "opencode-desktop-bin")
-    (version "1.17.13")
+    (version "1.17.15")
     (source
      (origin
        (method url-fetch)
@@ -300,7 +300,7 @@ package provides the prebuilt binary release.")
              "https://github.com/anomalyco/opencode/releases/download/"
              "v" version "/opencode-desktop-linux-amd64.deb"))
        (sha256
-        (base32 "06jl20db37fzrp1x723y19wmhmc7l34kzcdy1cxqrsz44rbg1llw"))))
+        (base32 "0k3pbrlh26rj6z76pk44qq2kq6ja244cv2pgbnarb9355qqss4cc"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -603,7 +603,7 @@ agent orchestration.")
 (define-public oh-my-pi-bin
   (package
     (name "oh-my-pi-bin")
-    (version "16.3.0")
+    (version "16.3.11")
     (source
      (origin
        (method url-fetch)
@@ -611,7 +611,7 @@ agent orchestration.")
              "https://github.com/can1357/oh-my-pi/releases/download/"
              "v" version "/omp-linux-x64"))
        (sha256
-        (base32 "0iyvhvi4qbzmmhkim7jcg6rd0j9glyqm7xrx6rw56da86903b8m2"))))
+        (base32 "13gkcfns3mpynjw81dyx7hvl8ir87vrxs3q3nracsxp17bgd95cd"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -757,7 +757,7 @@ compatible providers.  This package provides the prebuilt binary release.")
 (define-public reasonix-bin
   (package
     (name "reasonix-bin")
-    (version "1.15.0")
+    (version "1.17.7")
     (source
      (origin
        (method url-fetch)
@@ -765,7 +765,7 @@ compatible providers.  This package provides the prebuilt binary release.")
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
              "v" version "/reasonix-linux-amd64.tar.gz"))
        (sha256
-        (base32 "1jykv714fkgqhyarp75s7irfdwnlvfygjvgpyfj3mvpz25rkh04q"))))
+        (base32 "1cfk6bcgy3qhc1kkfmwgdnq0qri2q019cdx51i1m93fppx6i59by"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -797,7 +797,7 @@ and ships as a single static binary with no runtime dependencies.")
 (define-public reasonix-desktop-bin
   (package
     (name "reasonix-desktop-bin")
-    (version "1.15.0")
+    (version "1.17.7")
     (source
      (origin
        (method url-fetch)
@@ -805,7 +805,7 @@ and ships as a single static binary with no runtime dependencies.")
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
              "desktop-v" version "/Reasonix-linux-amd64.deb"))
        (sha256
-        (base32 "07azhpxvhygazph2drnmfa1308fdpf6q098rlib98haczskfr8h1"))))
+        (base32 "0i84sw4a0z0y4nyb2br3ngz1vq6rcy5gy9aw13lxmrl9gcqpknbz"))))
     (build-system gnu-build-system)
     (arguments
      (list

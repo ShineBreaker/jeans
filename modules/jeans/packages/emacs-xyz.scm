@@ -42,14 +42,14 @@
         (%ghostel-local-patch "emacs-ghostel-ghostty-resources.zig.patch")))
 
 (define %ghostel-ghostty-source
-  (let ((commit "6246c288ae1087c8d67f75432a59da004b30bf25"))
+  (let ((commit "c41c6b81a4642ccba18d47b375d9495664de72a0"))
     (origin
       (method url-fetch)
       (uri (string-append
              "https://github.com/ghostty-org/ghostty"
              "/archive/" commit ".tar.gz"))
       (sha256
-       (base32 "0zf82ziicl5ciyhgbj691vmgdgcwdnqsjbgj2czwmdjgvfc01cyz"))
+       (base32 "1lyr0s4vc1xvcqilini0hi8g73gfj0jzy7jcm3fdnynzjayn1riv"))
       (patches %ghostel-ghostty-patches))))
 
 (define %ghostel-uucode-source
@@ -62,7 +62,7 @@
 (define-public emacs-ghostel
   (package
     (name "emacs-ghostel")
-    (version "0.39.0")
+    (version "0.42.1")
     (source
      (origin
        (method url-fetch)
@@ -70,7 +70,7 @@
               "https://github.com/dakra/ghostel"
               "/archive/refs/tags/v" version ".tar.gz"))
        (sha256
-        (base32 "1q98jvcdzybdmkdzdqg9hv09kigbyifxhcaf5w3jnsa8cnlhpw7a"))
+        (base32 "17bv03dgnablllb1snn84nprfn4mm19s0gn5kx958j9kb3q1pg79"))
        (patches %ghostel-patches)))
       (build-system emacs-build-system)
       (arguments
@@ -190,36 +190,22 @@
                        (elpa-dir (elpa-directory out)))
                   (copy-recursively (string-append root "/etc")
                                     (string-append elpa-dir "/etc"))
-                  ;; Ghostel's build.zig produces two install targets the
-                  ;; Elisp loader depends on:
-                  ;;   1. installArtifact        -> $out/lib/libghostel-module.so
-                  ;;      (Zig forces the 'lib' prefix on shared libs)
-                  ;;   2. addInstallFile(.., "../ghostel-module.so")
-                  ;;      addInstallFile(.., "../ghostel-module.version")
-                  ;;      -> $out/ghostel-module.so / .version
-                  ;;      (canonical, prefix-less names that ghostel.el looks up)
-                  ;; zig 0.15 resolves the "../" destination by escaping
-                  ;; $prefix, which is unreliable inside the Guix build
-                  ;; sandbox — only target 1 actually lands.  So we lift the
-                  ;; .so from $out/lib and rename it to the canonical
-                  ;; 'ghostel-module.so' (no 'lib' prefix) that
-                  ;; ghostel--load-module (ghostel-module-install.el) looks
-                  ;; up via (expand-file-name "ghostel-module"
-                  ;; module-file-suffix).  Without the rename ghostel can't
-                  ;; find its module and falls back to the "native module not
-                  ;; found" download prompt.
-                  ;;
-                  ;; The version sidecar is written by build.zig next to the
-                  ;; canonical .so; we reproduce it here from #$version
-                  ;; (kept in sync with src/version.zig upstream) so the
-                  ;; loader skips the live version probe and the
-                  ;; 'stale module' upgrade path.
-                  (copy-file (string-append out "/lib/libghostel-module.so")
+                  ;; Since 0.42.0 ghostel's build.zig installs the native
+                  ;; module via addInstallFile(lib.getEmittedBin(),
+                  ;; moduleOutputName(target_os)) — i.e. directly to
+                  ;; $out/ghostel-module.so (no 'lib/' prefix, no 'lib' soname
+                  ;; prefix).  The version sidecar is likewise written by
+                  ;; build.zig to $out/ghostel-module.version.  ghostel--load-
+                  ;; module (ghostel-module-install.el) looks both up with
+                  ;; (expand-file-name "ghostel-module" module-file-suffix)
+                  ;; inside the ELPA directory, so relocate them there.  The
+                  ;; pre-0.42 layout ($out/lib/libghostel-module.so produced by
+                  ;; installArtifact) no longer exists.
+                  (copy-file (string-append out "/ghostel-module.so")
                              (string-append elpa-dir "/ghostel-module.so"))
-                  (call-with-output-file
-                      (string-append elpa-dir "/ghostel-module.version")
-                    (lambda (port)
-                      (display (string-append #$version "\n") port)))))))))
+                  (copy-file (string-append out "/ghostel-module.version")
+                             (string-append elpa-dir
+                                            "/ghostel-module.version"))))))))
       (native-inputs (list zig-0.15))
       (home-page "https://github.com/dakra/ghostel")
       (synopsis "Terminal emulator powered by libghostty")

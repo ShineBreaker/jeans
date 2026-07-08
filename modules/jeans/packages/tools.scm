@@ -36,15 +36,15 @@
 (define-public winapps
   (package
     (name "winapps")
-    (version "0-unstable-2026-06-07")
+    (version "0-unstable-2026-07-07")
     (source
      (origin
        (method git-fetch)
        (uri (git-reference
              (url "https://github.com/winapps-org/winapps")
-             (commit "abc2c3da1a7980a8e87c616f7387bd898aadfeb3")))
+             (commit "5cbf7381f9a12af630e5a289d6dab5f7adc70e5d")))
        (file-name (git-file-name name version))
-       (sha256 (base32 "0hmzxnbjjqjsqg1dkh4da5dmc67s6maxpbj7l2v87n17pjiivflb"))
+       (sha256 (base32 "01a6dyc7mbcxr3cf8gxj4146pys15p6c0i21ywr8nxh9h61xl7cv"))
        (patches (list (local-file (search-path %load-path "jeans/patches/WinApps.patch"))))))
     (build-system gnu-build-system)
     (arguments
