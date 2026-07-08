@@ -77,6 +77,15 @@
        (list
         #:lisp-directory "lisp"
         #:tests? #f
+        ;; 'redirect-ghostty-dependency' rewrites build.zig.zon in Scheme
+        ;; using read-string (ice-9 rdelim) and regexp-substitute/global
+        ;; (ice-9 regex).  emacs-build-system's default #:modules only
+        ;; imports them privately, so the free variables are unbound in the
+        ;; builder's (guile-user).  Add the modules explicitly.
+        #:modules '((guix build emacs-build-system)
+                    (guix build utils)
+                    (ice-9 rdelim)
+                    (ice-9 regex))
         #:phases
         #~(modify-phases %standard-phases
             (delete 'patch-el-files)
@@ -102,19 +111,26 @@
                        (zon (string-append source-root "/build.zig.zon"))
                        (original (with-input-from-file zon
                                    (lambda () (read-string)))))
-                  ;; Replace the entire .ghostty dependency block (compact
-                  ;; one-line or canonical multi-line .url/.hash form) with
-                  ;; a single .path entry that points at the ./deps/ghostty
-                  ;; directory populated in the next phase.
+                  ;; Replace the entire .ghostty dependency block (canonical
+                  ;; multi-line .url/.hash form) with a single .path entry
+                  ;; that points at the ./deps/ghostty directory populated in
+                  ;; the next phase.  The block looks like:
+                  ;;   .ghostty = .{
+                  ;;       .url = "...tar.gz",
+                  ;;       .hash = "...",
+                  ;;   },
+                  ;; so anchor on ".ghostty = .{" and consume up to and
+                  ;; including the matching "}," (the first one after the
+                  ;; opening brace, since ghostty has no nested braces here).
                   (let* ((pattern
-                          "        \\.ghostty = \\{\\s*(([^}]+)\\}?")
+                          "        \\.ghostty = \\.\\{[^}]+\\},")
                          (rewritten
                           (regexp-substitute/global #f pattern original
                             'pre
-                            "        .ghostty = .{ .path = "./deps/ghostty" },"
+                            "        .ghostty = .{ .path = \"./deps/ghostty\" },"
                             'post)))
-                    (with-output-to-file zon
-                      (lambda () (display rewritten)))))))
+                    (call-with-output-file zon
+                      (lambda (port) (display rewritten port)))))))
             (add-after 'redirect-ghostty-dependency 'unpack-zig-dependencies
               (lambda _
                 (let* ((source-root (dirname (getcwd)))
