@@ -25,6 +25,7 @@
   #:use-module (gnu packages gtk)          ; gtk+, cairo, gdk-pixbuf, at-spi2-core
   #:use-module (gnu packages linux)        ; eudev
   #:use-module (gnu packages nss)          ; nss
+  #:use-module (gnu packages pulseaudio)   ; pulseaudio
   #:use-module (gnu packages tls)          ; openssl
   #:use-module (gnu packages version-control) ; git
   #:use-module (gnu packages webkit)       ; webkitgtk-for-gtk3
@@ -208,6 +209,84 @@ This package provides the prebuilt binary release.")
     (license license:expat)))
 
 
+;;; MiMoCode: Xiaomi's terminal-native AI coding agent.
+;;;
+;;; MiMoCode is a fork of opencode, shipped as a single Bun-compiled
+;;; ELF binary embedding the JS/TS code and the Bun runtime.  The
+;;; linkage and /proc/self/exe behaviour are identical to opencode-bin,
+;;; so this package mirrors its copy-build-system + ld-linux wrapper
+;;; strategy.
+
+(define-public mimocode-bin
+  (package
+    (name "mimocode-bin")
+    (version "0.1.5")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://github.com/XiaomiMiMo/MiMo-Code/releases/download/"
+             "v" version "/mimocode-linux-x64.tar.gz"))
+       (sha256
+        (base32 "1mv3falwr98hnb5qc7kx64fkqy2zy6p955a90wpy97gdai5ffmx9"))))
+    (build-system copy-build-system)
+    (arguments
+     (list
+      #:validate-runpath? #f
+      #:strip-binaries? #f
+      #:install-plan
+      #~'(("mimo" "libexec/mimocode"))
+      #:phases
+      #~(modify-phases %standard-phases
+          (delete 'install-license-files)
+          (add-after 'unpack 'patch-proc-self-exe
+            (lambda _
+              ;; Replace /proc/self/exe with /proc/self/ex_ to force Bun
+              ;; to fall back to argv[0] for finding the embedded modules.
+              (invoke "sed" "-i" "s|/proc/self/exe|/proc/self/ex_|g"
+                      "mimo")))
+          (add-after 'install 'make-binary-executable
+            (lambda _
+              (chmod (string-append #$output "/libexec/mimocode") #o555)))
+          (add-after 'make-binary-executable 'create-wrapper
+            (lambda* (#:key inputs #:allow-other-keys)
+              (let ((bin (string-append #$output "/bin"))
+                    (libexec (string-append #$output "/libexec/mimocode"))
+                    (ld.so (string-append (assoc-ref inputs "glibc")
+                                          #$(glibc-dynamic-linker)))
+                    (lib-path (string-join (list (string-append (assoc-ref
+                                                                 inputs
+                                                                 "glibc")
+                                                                "/lib")
+                                                 (string-append (assoc-ref
+                                                                 inputs "gcc")
+                                                                "/lib")) ":")))
+                (mkdir-p bin)
+                (call-with-output-file (string-append bin "/mimocode")
+                  (lambda (port)
+                    (format port
+                            "#!~a\nexec ~a --argv0 ~a --library-path ~a ~a \"$@\"\n"
+                            #$(file-append bash-minimal "/bin/sh")
+                            ld.so
+                            libexec
+                            lib-path
+                            libexec)))
+                (chmod (string-append bin "/mimocode") #o755)))))))
+    (native-inputs (list sed))
+    (inputs (list bash-minimal glibc
+                  `(,gcc "lib")))
+    (home-page "https://mimo.xiaomi.com/coder")
+    (synopsis "Terminal-native AI coding agent from Xiaomi")
+    (description "MiMoCode is a terminal-native AI coding assistant.  It can
+read and write code, run commands, manage Git, and use a persistent memory
+system to keep a deep understanding of your project across sessions while
+continuously improving itself.  MiMo Auto is built in as a free channel, and
+MiMoCode also supports connecting to any mainstream LLM provider API.  This
+package provides the prebuilt binary release.")
+    (license license:expat)
+    (supported-systems '("x86_64-linux"))))
+
+
 (define-public opencode-desktop-bin
   (package
     (name "opencode-desktop-bin")
@@ -357,6 +436,158 @@ coding experience with context awareness.")
     (license license:expat)))
 
 
+;;; Orca (orca-ide): AI orchestrator desktop app for parallel agentic
+;;; development, shipping a prebuilt Electron .deb for x86_64.
+;;;
+;;; The upstream .deb bundles a Chromium-based Electron app under opt/Orca
+;;; with a single 216 MB `orca-ide' ELF plus bundled .so files (libEGL,
+;;; libGLESv2, libffmpeg, libvulkan, ...).  Same packaging approach as
+;;; opencode-desktop-bin: unpack the .deb with ar/tar, copy the tree into
+;;; lib/orca-ide, patchelf the interpreter + rpath, wrap LD_LIBRARY_PATH.
+
+(define-public orca-ide-bin
+  (package
+    (name "orca-ide-bin")
+    (version "1.4.128")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://github.com/stablyai/orca/releases/download/"
+             "v" version "/orca-ide_" version "_amd64.deb"))
+       (sha256
+        (base32 "18x4wbq8qqfk5qvxkim75lf1l4jm46csfv6n2pyqw26xx8hgaqkn"))))
+    (build-system gnu-build-system)
+    (arguments
+     (list
+      #:tests? #f
+      #:validate-runpath? #f
+      #:strip-binaries? #f
+      #:modules '((guix build gnu-build-system)
+                  (guix build utils)
+                  (ice-9 ftw)
+                  (ice-9 regex)
+                  (srfi srfi-26))
+      #:phases
+      #~(modify-phases %standard-phases
+          (delete 'configure)
+          (delete 'build)
+          (replace 'unpack
+            (lambda _
+              (invoke "ar" "x" #$source)
+              (invoke "tar" "xf" "data.tar.xz")))
+          (replace 'install
+            (lambda _
+              (let ((out #$output))
+                (copy-recursively "opt/Orca"
+                                  (string-append out "/lib/orca-ide"))
+                #t)))
+          (add-after 'install 'patch-elf
+            (lambda* (#:key inputs #:allow-other-keys)
+              (let* ((ld.so (string-append #$(this-package-input "glibc")
+                                           #$(glibc-dynamic-linker)))
+                     (rpath (string-join
+                             (cons* (string-append #$output "/lib/orca-ide")
+                                    (map (lambda (input)
+                                           (string-append (cdr input) "/lib"))
+                                         inputs))
+                             ":")))
+                (define (patch-elf file)
+                  (format #t "Patching ~a ..." file)
+                  (unless (string-contains file ".so")
+                    (invoke "patchelf" "--set-interpreter" ld.so file))
+                  (invoke "patchelf" "--set-rpath" rpath file)
+                  (display " done\n"))
+                (for-each patch-elf
+                          (append (find-files (string-append #$output
+                                                             "/lib/orca-ide")
+                                              ".*\\.so(\\.[0-9]+)?$")
+                                  (map (lambda (binary)
+                                         (string-append #$output
+                                                        "/lib/orca-ide/"
+                                                        binary))
+                                       '("orca-ide"
+                                         "chrome_crashpad_handler"
+                                         "chrome-sandbox"
+                                         "resources/agent-browser-linux-x64")))))))
+          (add-after 'patch-elf 'install-bin
+            (lambda _
+              (let* ((out #$output)
+                     (bin (string-append out "/bin"))
+                     (exe (string-append out "/lib/orca-ide/orca-ide")))
+                (mkdir-p bin)
+                (symlink exe (string-append bin "/orca-ide")))))
+          (add-after 'install-bin 'install-desktop
+            (lambda _
+              (let* ((out #$output)
+                     (apps (string-append out "/share/applications")))
+                (mkdir-p apps)
+                (make-desktop-entry-file
+                 (string-append apps "/orca-ide.desktop")
+                 #:name "Orca"
+                 #:type "Application"
+                 #:comment #$(package-synopsis this-package)
+                 #:exec (string-append #$output "/bin/orca-ide %U")
+                 #:icon "orca-ide"
+                 #:categories '("Development")
+                 #:mime-type '("x-scheme-handler/orca")
+                 #:startup-w-m-class "orca"))))
+          (add-after 'install-desktop 'install-icons
+            (lambda _
+              (let* ((out #$output)
+                     (icon-src "usr/share/icons/hicolor")
+                     (icon-dst (string-append out "/share/icons/hicolor")))
+                (when (file-exists? icon-src)
+                  (copy-recursively icon-src icon-dst)))))
+          (add-after 'install-icons 'wrap-program
+            (lambda* (#:key inputs outputs #:allow-other-keys)
+              (let* ((out (assoc-ref outputs "out"))
+                     (lib (string-append out "/lib/orca-ide"))
+                     (mesa-lib (string-append (assoc-ref inputs "mesa") "/lib"))
+                     (nss-lib (string-append (assoc-ref inputs "nss") "/lib/nss")))
+                (wrap-program (string-append out "/bin/orca-ide")
+                  `("LD_LIBRARY_PATH" prefix
+                    (,lib ,mesa-lib ,nss-lib))
+                  `("FONTCONFIG_FILE" =
+                    (,(string-append #$(this-package-input "fontconfig-minimal")
+                                     "/etc/fonts/fonts.conf")))
+                  `("XDG_DATA_DIRS" prefix
+                    (,(string-append out "/share"))))))))))
+    (native-inputs (list binutils patchelf tar xz))
+    (inputs (list alsa-lib
+                  at-spi2-core
+                  bash-minimal
+                  cups
+                  dbus
+                  eudev
+                  expat
+                  fontconfig
+                  `(,gcc "lib")
+                  glibc
+                  glib
+                  gtk+
+                  libx11
+                  libxcb
+                  libxcomposite
+                  libxdamage
+                  libxext
+                  libxfixes
+                  libxkbcommon
+                  libxrandr
+                  mesa
+                  nss))
+    (home-page "https://onorca.dev")
+    (synopsis "AI orchestrator desktop app for parallel agentic development")
+    (description
+     "Orca is an AI orchestrator desktop application built with Electron.  It
+runs coding agents such as Codex, Claude Code, OpenCode and Pi side-by-side,
+each in its own git worktree, with progress tracked in a single unified
+interface.  Features include a mobile companion app, parallel worktrees and
+agent orchestration.")
+    (license license:expat)
+    (supported-systems '("x86_64-linux"))))
+
+
 ;;; oh-my-pi (OMP): prebuilt AI coding agent with IDE integration.
 ;;;
 ;;; The upstream release is a single self-contained ELF binary (~530 MB)
@@ -428,6 +659,84 @@ featuring support for 40+ AI providers, 32 built-in tools, 13 LSP operations,
 It is a fork of the Pi project by Mario Zechner, extended with
 batteries-included coding workflow features.  This package provides
 the prebuilt binary release.")
+    (license license:expat)
+    (supported-systems '("x86_64-linux"))))
+
+
+;;; kimi-code: Moonshot AI's terminal-native AI coding agent.
+;;;
+;;; The upstream release is a single Node.js Single Executable
+;;; Application (SEA) ELF (~157 MB) embedding the Node runtime and all
+;;; JS/TS code, shipped inside a zip archive.  It is dynamically linked
+;;; against glibc/gcc and embeds a node-pty native addon for PTY-based
+;;; tool execution (loaded via dlopen at runtime, hence the gcc:lib
+;;; dependency even though it has no RPATH).
+;;;
+;;; Strategy: unzip the binary to libexec/, create a bin/ wrapper that
+;;; invokes it through Guix's ld-linux (same pattern as oh-my-pi-bin).
+
+(define-public kimi-code-bin
+  (package
+    (name "kimi-code-bin")
+    (version "0.23.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://github.com/MoonshotAI/kimi-code/releases/download/"
+             "%40moonshot-ai%2Fkimi-code%40" version
+             "/kimi-code-linux-x64.zip"))
+       (sha256
+        (base32 "1smxv3gh5pbg4c2lw4pink7h8mjk9khqdh5fzh5ax00xl1izq5ii"))))
+    (build-system gnu-build-system)
+    (arguments
+     (list
+      #:tests? #f
+      #:validate-runpath? #f
+      #:strip-binaries? #f
+      #:modules '((guix build gnu-build-system)
+                  (guix build utils))
+      #:phases
+      #~(modify-phases %standard-phases
+          (delete 'configure)
+          (delete 'build)
+          (replace 'unpack
+            (lambda _
+              (invoke "unzip" #$source)
+              (chmod "kimi" #o755)))
+          (replace 'install
+            (lambda* (#:key inputs #:allow-other-keys)
+              (let* ((out #$output)
+                     (bin (string-append out "/bin"))
+                     (libexec (string-append out "/libexec"))
+                     (ld.so (string-append (assoc-ref inputs "glibc")
+                                           #$(glibc-dynamic-linker)))
+                     (lib-path (string-join
+                                (list (string-append (assoc-ref inputs "glibc") "/lib")
+                                      (string-append (assoc-ref inputs "gcc") "/lib"))
+                                ":")))
+                (mkdir-p libexec)
+                (install-file "kimi" libexec)
+                (mkdir-p bin)
+                (call-with-output-file (string-append bin "/kimi")
+                  (lambda (port)
+                    (format port
+                            "#!~a\nexec ~a --argv0 ~a/kimi --library-path ~a ~a/kimi \"$@\"\n"
+                            #$(file-append bash-minimal "/bin/sh")
+                            ld.so
+                            libexec
+                            lib-path
+                            libexec)))
+                (chmod (string-append bin "/kimi") #o755)))))))
+    (native-inputs (list unzip))
+    (inputs (list bash-minimal glibc `(,gcc "lib")))
+    (home-page "https://github.com/MoonshotAI/kimi-code")
+    (synopsis "Terminal-native AI coding agent from Moonshot AI")
+    (description "Kimi Code is a terminal-native AI coding agent.  It can read
+and write code, execute shell commands, retrieve files and fetch web pages,
+and autonomously decide the next step based on feedback.  It works with the
+Kimi model from Moonshot AI out of the box and can also target other
+compatible providers.  This package provides the prebuilt binary release.")
     (license license:expat)
     (supported-systems '("x86_64-linux"))))
 
@@ -736,4 +1045,168 @@ support for multiple LLM providers.")
 with your existing tools so you can plan, code, review, and deploy
 without friction.")
     (license (license:nonfree "https://zcode.z.ai/"))
+    (supported-systems '("x86_64-linux"))))
+
+
+;;; GitHub Copilot app: agent-native desktop client (Tauri + WebKitGTK).
+;;;
+;;; The upstream .deb bundles a 668 MB Tauri ELF (`github') plus a small
+;;; `git-credential-copilot' helper, resources under usr/lib/GitHub Copilot/
+;;; (onnxruntime .so, pulse audio plugin, copilot-sdk JS, terminal
+;;; integration scripts, icons, sounds), and a .desktop entry + hicolor
+;;; icons.  The data.tar is zstd-compressed, hence libarchive (bsdtar) is
+;;; used for unpacking.
+;;;
+;;; Same approach as reasonix-desktop-bin: do not patchelf the giant
+;;; binary, instead launch it via the Guix ld-linux wrapper with a
+;;; --library-path assembled from every input's /lib.  WebKitGTK,
+;;; libsoup, javascriptcore and the rest come transitively from
+;;; webkitgtk-for-gtk3.
+
+(define-public github-copilot-bin
+  (package
+    (name "github-copilot-bin")
+    (version "1.0.17")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://github.com/github/app/releases/download/"
+             "v" version "/GitHub-Copilot-linux-x64.deb"))
+       (sha256
+        (base32 "1hsd938qjm0sihg4xys08pn2hv379hgbagklk1r6zvc4wbnlfv9w"))))
+    (build-system gnu-build-system)
+    (arguments
+     (list
+      #:tests? #f
+      #:validate-runpath? #f
+      #:strip-binaries? #f
+      #:modules '((guix build gnu-build-system)
+                  (guix build utils))
+      #:phases
+      #~(modify-phases %standard-phases
+          (delete 'configure)
+          (delete 'build)
+          (replace 'unpack
+            (lambda _
+              (invoke "bsdtar" "xf" #$source)
+              (invoke "bsdtar" "xf" "data.tar.zst")))
+          (replace 'install
+            (lambda* (#:key inputs #:allow-other-keys)
+              (let* ((out #$output)
+                     (libexec (string-append out "/libexec/github-copilot"))
+                     (bin (string-append out "/bin"))
+                     ;; ld-linux dynamic loader from glibc.
+                     (ld.so (string-append (assoc-ref inputs "glibc")
+                                           #$(glibc-dynamic-linker)))
+                     ;; Flat library-path of every input's /lib.
+                     (lib-path (string-join
+                                (map (lambda (input)
+                                       (string-append (cdr input) "/lib"))
+                                     inputs)
+                                ":"))
+                     (glib-lib (string-append (assoc-ref inputs "glib") "/lib"))
+                     (gtk-lib (string-append (assoc-ref inputs "gtk+") "/lib"))
+                     (gtk-share (string-append (assoc-ref inputs "gtk+") "/share"))
+                     (webkitgtk-lib (string-append
+                                     (assoc-ref inputs "webkitgtk-for-gtk3")
+                                     "/lib"))
+                     (webkitgtk-share (string-append
+                                       (assoc-ref inputs "webkitgtk-for-gtk3")
+                                       "/share"))
+                     (gdk-pixbuf (assoc-ref inputs "gdk-pixbuf"))
+                     (fontconf #$(this-package-input "fontconfig-minimal"))
+                     (sh #$(this-package-input "bash-minimal")))
+                ;; Main binary + credential helper.
+                (mkdir-p libexec)
+                (copy-file "usr/bin/github"
+                           (string-append libexec "/github"))
+                (chmod (string-append libexec "/github") #o755)
+                (copy-file "usr/bin/git-credential-copilot"
+                           (string-append libexec "/git-credential-copilot"))
+                (chmod (string-append libexec "/git-credential-copilot") #o755)
+                ;; Runtime resources (onnxruntime, native plugins, copilot-sdk,
+                ;; terminal integration, icons, sounds).
+                (copy-recursively "usr/lib/GitHub Copilot"
+                                  (string-append libexec "/resources"))
+                ;; ld-linux wrapper for the main app.
+                (mkdir-p bin)
+                (with-output-to-file (string-append bin "/github")
+                  (lambda ()
+                    (display
+                     (string-append
+                      "#!" sh "/bin/sh\n"
+                      "export FONTCONFIG_FILE=" fontconf
+                      "/etc/fonts/fonts.conf\n"
+                      "export XDG_DATA_DIRS=" out "/share:"
+                      gtk-share ":" webkitgtk-share "\n"
+                      "export GI_TYPELIB_PATH=" glib-lib "/girepository-1.0:"
+                      gtk-lib "/girepository-1.0:"
+                      webkitgtk-lib "/girepository-1.0:"
+                      gdk-pixbuf "/lib/girepository-1.0\n"
+                      "export GIO_EXTRA_MODULES=" glib-lib "/gio/modules\n"
+                      "export GDK_PIXBUF_MODULE_FILE=" gdk-pixbuf
+                      "/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache\n"
+                      ;; The app dlopens native plugins / onnxruntime from its
+                      ;; resource dir; keep it on the library path too.
+                      "export LD_LIBRARY_PATH=" libexec "/resources"
+                      "${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}\n"
+                      "exec " ld.so " --argv0 " libexec "/github"
+                      " --library-path " lib-path ":" libexec "/resources"
+                      " " libexec "/github \"$@\"\n"))))
+                (chmod (string-append bin "/github") #o755)
+                ;; git-credential-copilot also needs ld-linux + libgcc_s.
+                (with-output-to-file (string-append bin "/git-credential-copilot")
+                  (lambda ()
+                    (display
+                     (string-append
+                      "#!" sh "/bin/sh\n"
+                      "exec " ld.so " --argv0 " libexec "/git-credential-copilot"
+                      " --library-path " lib-path
+                      " " libexec "/git-credential-copilot \"$@\"\n"))))
+                (chmod (string-append bin "/git-credential-copilot") #o755))))
+          (add-after 'install 'install-desktop-entry
+            (lambda _
+              (let* ((out #$output)
+                     (apps (string-append out "/share/applications")))
+                (mkdir-p apps)
+                (copy-file "usr/share/applications/GitHub Copilot.desktop"
+                           (string-append apps "/github-copilot.desktop"))
+                (substitute* (string-append apps "/github-copilot.desktop")
+                  (("Exec=github")
+                   (string-append "Exec=" out "/bin/github"))
+                  (("Icon=github")
+                   "Icon=github")))))
+          (add-after 'install-desktop-entry 'install-icons
+            (lambda _
+              (let* ((out #$output)
+                     (icon-src "usr/share/icons/hicolor")
+                     (icon-dst (string-append out "/share/icons/hicolor")))
+                (copy-recursively icon-src icon-dst)))))))
+    (native-inputs (list libarchive))
+    (inputs (list `(,gcc "lib")
+                  alsa-lib
+                  bash-minimal
+                  fontconfig
+                  glibc
+                  glib
+                  gtk+
+                  gdk-pixbuf
+                  libsoup
+                  mesa
+                  openssl
+                  pulseaudio
+                  webkitgtk-for-gtk3))
+    (home-page "https://github.com/github/app")
+    (synopsis "Agent-native GitHub Copilot desktop application")
+    (description
+     "The GitHub Copilot app is an agent-native desktop experience for
+finding, running, steering, and landing software work across your GitHub
+repositories.  It provides a single control center for starting and
+steering local and cloud agent sessions, reviewing progress on shared
+canvases, and tracking issues and pull requests.  Each local session runs
+in its own isolated git worktree so multiple agents can work in parallel.
+This is the unofficial Guix packaging of the prebuilt Linux x86_64
+release; the application itself is proprietary.")
+    (license (license:nonfree "https://github.com/github/app"))
     (supported-systems '("x86_64-linux"))))
