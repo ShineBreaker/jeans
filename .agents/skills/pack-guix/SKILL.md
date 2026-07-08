@@ -11,6 +11,7 @@ description: 'Auto-generate Guix package definitions from binary URLs and source
 ## 工作流
 
 ```
+0. 创建隔离工作目录（避免并行 agent 抢夺 /tmp 路径）
 1. 接收输入（binary URL + repo URL）
 2. 下载并分析 binary（patchelf --print-interpreter / --print-needed）
 3. 克隆仓库分析构建系统（CMake/Meson/Makefile/Gradle 等）
@@ -22,6 +23,25 @@ description: 'Auto-generate Guix package definitions from binary URLs and source
 9. 运行时验证（guix shell + 功能测试）
 10. 生成测试脚本
 ```
+
+## ⚠ 工作目录隔离（步骤 0，必须先做）
+
+**并行运行多个 pack-guix agent 时，固定路径（如 `/tmp/pack-guix-binary`）会被互相覆盖**，导致 hash 错误、解压失败、文件类型异常等诡异问题。因此**每次会话必须先创建一个唯一的工作目录**，后续所有临时文件（下载的 binary、解压目录、源码 clone）都放在该目录下。
+
+```bash
+# 用包名 + PID 作为后缀，既唯一又便于调试（出错时可 ls 查看对应目录）
+PKG_NAME="${PKG_NAME:-$(basename "<REPO_URL>" .git)}"
+WORK_DIR=$(mktemp -d "/tmp/pack-guix-${PKG_NAME}-XXXXXX")
+echo "工作目录: $WORK_DIR"
+
+# 后续所有路径都用 $WORK_DIR 下的子路径，绝不再写固定的 /tmp/pack-guix-* 路径：
+#   下载的 binary      → "$WORK_DIR/binary"
+#   解压目录           → "$WORK_DIR/extract"
+#   源码 clone         → "$WORK_DIR/src"
+#   源码归档（源码包） → "$WORK_DIR/source.tar.gz"
+```
+
+> 关键：**下载 binary 后立即校验文件类型**（`file` 命令）。如果预期是 `.deb`/`tar.gz` 却得到 `gzip compressed data` 或大小明显不符，极可能是工作目录被别的进程覆盖——这种情况在用了 `$WORK_DIR` 隔离后就不会再发生，但若仍出现，说明 `$WORK_DIR` 变量未生效，需检查。
 
 ## 输入格式
 
@@ -46,11 +66,11 @@ pack-guix --binary <URL> --repo <URL> [--name <pkg-name>] [--test-cmd <cmd>]
 ### （如果传入了 `binary` 参数）步骤 1 ：下载分析 Binary
 
 ```bash
-# 下载 binary
-curl -fsSL -o /tmp/pack-guix-binary "<BINARY_URL>"
+# 下载 binary 到隔离工作目录（WORK_DIR 在步骤 0 创建）
+curl -fsSL -o "$WORK_DIR/binary" "<BINARY_URL>"
 
 # 判断文件类型（归档 vs raw binary）
-file /tmp/pack-guix-binary
+file "$WORK_DIR/binary"
 # 输出示例：
 #   "ELF 64-bit LSB executable"  → raw ELF binary，无需解压
 #   "gzip compressed data"       → tar.gz 归档，需要 tar 解压
@@ -58,21 +78,25 @@ file /tmp/pack-guix-binary
 #   "POSIX tar archive"          → tar 归档
 
 # 如果是归档，解压分析
-if file /tmp/pack-guix-binary | grep -qE 'gzip|zip|tar|archive'; then
-    mkdir -p /tmp/pack-guix-extract
+if file "$WORK_DIR/binary" | grep -qE 'gzip|zip|tar|archive'; then
+    EXTRACT_DIR="$WORK_DIR/extract"
+    mkdir -p "$EXTRACT_DIR"
     if [[ "$BINARY_URL" == *.tar.gz ]] || [[ "$BINARY_URL" == *.tgz ]]; then
-        tar xzf /tmp/pack-guix-binary -C /tmp/pack-guix-extract
+        tar xzf "$WORK_DIR/binary" -C "$EXTRACT_DIR"
     elif [[ "$BINARY_URL" == *.zip ]]; then
-        unzip -q /tmp/pack-guix-binary -d /tmp/pack-guix-extract
+        unzip -q "$WORK_DIR/binary" -d "$EXTRACT_DIR"
+    elif [[ "$BINARY_URL" == *.deb ]]; then
+        # .deb：用 ar 解包，再 tar 解出 data.tar.*
+        (cd "$EXTRACT_DIR" && ar x "$WORK_DIR/binary" && tar xf data.tar.*)
     else
         # 尝试自动检测
-        tar xf /tmp/pack-guix-binary -C /tmp/pack-guix-extract 2>/dev/null || \
-            unzip -q /tmp/pack-guix-binary -d /tmp/pack-guix-extract 2>/dev/null
+        tar xf "$WORK_DIR/binary" -C "$EXTRACT_DIR" 2>/dev/null || \
+            unzip -q "$WORK_DIR/binary" -d "$EXTRACT_DIR" 2>/dev/null
     fi
-    BINARY_DIR=/tmp/pack-guix-extract
+    BINARY_DIR="$EXTRACT_DIR"
 else
     # raw binary，直接分析
-    BINARY_DIR=/tmp
+    BINARY_DIR="$WORK_DIR"
 fi
 
 # 分析动态链接器依赖
@@ -96,9 +120,9 @@ done
 ### 步骤 2：分析源码仓库
 
 ```bash
-# 克隆仓库
-git clone --depth 1 "<REPO_URL>" /tmp/pack-guix-src
-cd /tmp/pack-guix-src
+# 克隆仓库到隔离工作目录
+git clone --depth 1 "<REPO_URL>" "$WORK_DIR/src"
+cd "$WORK_DIR/src"
 
 # 检测构建系统
 if [ -f CMakeLists.txt ]; then
@@ -138,14 +162,14 @@ sha256sum <binary> | xxd -r -p | base32 | tr '[:lower:]' '[:upper:]' | sed 's/=*
 - 如果只提供了源代码：
 
 ```bash
-# 下载源码归档
+# 下载源码归档到隔离工作目录
 SOURCE_URL="<REPO_URL>/archive/refs/tags/v<VERSION>.tar.gz"
-curl -fsSL -o /tmp/pack-guix-source.tar.gz "$SOURCE_URL"
+curl -fsSL -o "$WORK_DIR/source.tar.gz" "$SOURCE_URL"
 
 # 计算 Guix 格式的 base32 hash
-guix hash /tmp/pack-guix-source.tar.gz
+guix hash "$WORK_DIR/source.tar.gz"
 # 或 fallback:
-sha256sum /tmp/pack-guix-source.tar.gz | xxd -r -p | base32 | tr '[:lower:]' '[:upper:]' | sed 's/=*$//'
+sha256sum "$WORK_DIR/source.tar.gz" | xxd -r -p | base32 | tr '[:lower:]' '[:upper:]' | sed 's/=*$//'
 ```
 
 ### 步骤 4：生成 Package Definition

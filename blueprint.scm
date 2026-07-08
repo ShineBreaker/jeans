@@ -231,7 +231,8 @@ rust-crates.scm 只含 crate-source 定义，不是包，故不在扫描之列�
     #f)
    (else
     (log:progress "正在重新生成 ~a …" packages-doc)
-    (let ((cmd (string-append "guix repl " gen-docs-script
+    (let ((cmd (string-append "guix repl --load-path=./modules "
+                              gen-docs-script
                               " > " packages-doc)))
       (if (zero? (run-shell cmd))
           (begin
