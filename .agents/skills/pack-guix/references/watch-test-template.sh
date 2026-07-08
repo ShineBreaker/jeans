@@ -21,26 +21,26 @@ echo "  Ctrl+C 退出"
 echo "═══════════════════════════════════════"
 
 run_test() {
-  echo ""
-  echo "[$(date '+%H:%M:%S')] 触发测试..."
+	echo ""
+	echo "[$(date '+%H:%M:%S')] 触发测试..."
 
-  echo ">>> Dry-run..."
-  if ! guix build -f "$PACKAGE_FILE" --dry-run >/dev/null 2>&1; then
-    echo "  ✗ Dry-run 失败"
-    return 1
-  fi
-  echo "  ✓ Dry-run 通过"
+	echo ">>> Dry-run..."
+	if ! guix build -f "$PACKAGE_FILE" --dry-run >/dev/null 2>&1; then
+		echo "  ✗ Dry-run 失败"
+		return 1
+	fi
+	echo "  ✓ Dry-run 通过"
 
-  echo ">>> 构建..."
-  if ! guix build -f "$PACKAGE_FILE" >/dev/null 2>&1; then
-    echo "  ✗ 构建失败"
-    return 1
-  fi
-  echo "  ✓ 构建成功"
+	echo ">>> 构建..."
+	if ! guix build -f "$PACKAGE_FILE" >/dev/null 2>&1; then
+		echo "  ✗ 构建失败"
+		return 1
+	fi
+	echo "  ✓ 构建成功"
 
-  echo ">>> 运行测试..."
-  guix shell -f "$PACKAGE_FILE" -- "$PKG_NAME" $TEST_CMD 2>&1 | tail -1
-  echo "--- 完成 ---"
+	echo ">>> 运行测试..."
+	guix shell -f "$PACKAGE_FILE" -- "$PKG_NAME" $TEST_CMD 2>&1 | tail -1
+	echo "--- 完成 ---"
 }
 
 # 首次运行
@@ -48,7 +48,7 @@ run_test
 
 # 监控文件变化
 inotifywait -m -e modify -e create -e delete \
-  --format '%w%f' "$PACKAGE_FILE" 2>/dev/null | while read changed; do
-  sleep 0.5
-  run_test
+	--format '%w%f' "$PACKAGE_FILE" 2>/dev/null | while read changed; do
+	sleep 0.5
+	run_test
 done

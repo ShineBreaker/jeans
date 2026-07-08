@@ -220,7 +220,7 @@ protocol, to offer good support for the Java Language.")
                        (map (lambda (pkg)
                               (string-append (assoc-ref inputs pkg) "/lib"))
                              '("webkitgtk-for-gtk3" "gtk+" "glib" "cairo"
-                               "gdk-pixbuf" "libsoup" "glibc" "gcc"
+                               "gdk-pixbuf" "libsoup" "glibc" "gcc:lib"
                                "openssl" "libappindicator"))
                        ":")))
                 ;; Place the main ELF binary directly in bin/.  wrap-program
@@ -294,17 +294,17 @@ protocol, to offer good support for the Java Language.")
                  '("32x32" "128x128" "256x256@2"))))))))
      (native-inputs (list patchelf binutils))
      (inputs
-      (list bash-minimal
-            glibc
-            `(,gcc "lib")
-            webkitgtk-for-gtk3
-            gtk+
-            glib
-            cairo
-            gdk-pixbuf
-            libsoup
-            openssl
-            libappindicator))
+      `(("bash-minimal" ,bash-minimal)
+        ("glibc" ,glibc)
+        ("gcc:lib" ,gcc "lib")
+        ("webkitgtk-for-gtk3" ,webkitgtk-for-gtk3)
+        ("gtk+" ,gtk+)
+        ("glib" ,glib)
+        ("cairo" ,cairo)
+        ("gdk-pixbuf" ,gdk-pixbuf)
+        ("libsoup" ,libsoup)
+        ("openssl" ,openssl)
+        ("libappindicator" ,libappindicator)))
     (home-page "https://github.com/AnInsomniacy/motrix-next")
     (synopsis "Full-featured download manager")
     (description "Motrix-Next is a full-featured download manager that supports
@@ -368,7 +368,7 @@ binary release.")
                               (string-append (assoc-ref inputs pkg) "/lib"))
                             '("webkitgtk-for-gtk3" "gtk+" "glib" "cairo"
                               "gdk-pixbuf" "libsoup" "openssl" "xz"
-                              "libappindicator" "glibc" "gcc"))
+                              "libappindicator" "glibc" "gcc:lib"))
                        ":")))
                 (mkdir-p bin)
                 (install-file "usr/bin/cc-switch" bin)
@@ -412,18 +412,18 @@ binary release.")
                  '("32x32" "128x128" "256x256@2"))))))))
      (native-inputs (list patchelf binutils))
      (inputs
-      (list bash-minimal
-            glibc
-            `(,gcc "lib")
-            webkitgtk-for-gtk3
-            gtk+
-            glib
-            cairo
-            gdk-pixbuf
-            libsoup
-            openssl
-            xz
-            libappindicator))
+      `(("bash-minimal" ,bash-minimal)
+        ("glibc" ,glibc)
+        ("gcc:lib" ,gcc "lib")
+        ("webkitgtk-for-gtk3" ,webkitgtk-for-gtk3)
+        ("gtk+" ,gtk+)
+        ("glib" ,glib)
+        ("cairo" ,cairo)
+        ("gdk-pixbuf" ,gdk-pixbuf)
+        ("libsoup" ,libsoup)
+        ("openssl" ,openssl)
+        ("xz" ,xz)
+        ("libappindicator" ,libappindicator)))
      (home-page "https://github.com/farion1231/cc-switch")
      (synopsis "All-in-One assistant for Claude Code, Codex & Gemini CLI")
      (description "CC-Switch is a desktop application that provides an all-in-one

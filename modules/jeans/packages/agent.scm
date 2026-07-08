@@ -186,7 +186,7 @@ This package provides the prebuilt binary release.")
                                                                  "glibc")
                                                                 "/lib")
                                                  (string-append (assoc-ref
-                                                                 inputs "gcc")
+                                                                 inputs "gcc:lib")
                                                                 "/lib")) ":")))
                 (mkdir-p bin)
                 (call-with-output-file (string-append bin "/opencode")
@@ -200,8 +200,9 @@ This package provides the prebuilt binary release.")
                             libexec)))
                 (chmod (string-append bin "/opencode") #o755)))))))
     (native-inputs (list sed))
-    (inputs (list bash-minimal glibc
-                  `(,gcc "lib")))
+    (inputs `(("bash-minimal" ,bash-minimal)
+              ("glibc" ,glibc)
+              ("gcc:lib" ,gcc "lib")))
     (home-page "https://opencode.ai")
     (synopsis "The open source AI coding agent.")
     (description "OpenCode is an open source agent that helps you
@@ -259,7 +260,7 @@ This package provides the prebuilt binary release.")
                                                                  "glibc")
                                                                 "/lib")
                                                  (string-append (assoc-ref
-                                                                 inputs "gcc")
+                                                                 inputs "gcc:lib")
                                                                 "/lib")) ":")))
                 (mkdir-p bin)
                 (call-with-output-file (string-append bin "/mimocode")
@@ -273,8 +274,9 @@ This package provides the prebuilt binary release.")
                             libexec)))
                 (chmod (string-append bin "/mimocode") #o755)))))))
     (native-inputs (list sed))
-    (inputs (list bash-minimal glibc
-                  `(,gcc "lib")))
+    (inputs `(("bash-minimal" ,bash-minimal)
+              ("glibc" ,glibc)
+              ("gcc:lib" ,gcc "lib")))
     (home-page "https://mimo.xiaomi.com/coder")
     (synopsis "Terminal-native AI coding agent from Xiaomi")
     (description "MiMoCode is a terminal-native AI coding assistant.  It can
@@ -406,27 +408,27 @@ package provides the prebuilt binary release.")
                   `("XDG_DATA_DIRS" prefix
                     (,(string-append out "/share"))))))))))
     (native-inputs (list binutils patchelf tar xz))
-    (inputs (list alsa-lib
-                  at-spi2-core
-                  cups
-                  dbus
-                  eudev
-                  expat
-                  fontconfig
-                  `(,gcc "lib")
-                  glibc
-                  glib
-                  gtk+
-                  libx11
-                  libxcb
-                  libxcomposite
-                  libxdamage
-                  libxext
-                  libxfixes
-                  libxkbcommon
-                  libxrandr
-                  mesa
-                  nss))
+    (inputs `(("alsa-lib" ,alsa-lib)
+              ("at-spi2-core" ,at-spi2-core)
+              ("cups" ,cups)
+              ("dbus" ,dbus)
+              ("eudev" ,eudev)
+              ("expat" ,expat)
+              ("fontconfig-minimal" ,fontconfig)
+              ("gcc:lib" ,gcc "lib")
+              ("glibc" ,glibc)
+              ("glib" ,glib)
+              ("gtk+" ,gtk+)
+              ("libx11" ,libx11)
+              ("libxcb" ,libxcb)
+              ("libxcomposite" ,libxcomposite)
+              ("libxdamage" ,libxdamage)
+              ("libxext" ,libxext)
+              ("libxfixes" ,libxfixes)
+              ("libxkbcommon" ,libxkbcommon)
+              ("libxrandr" ,libxrandr)
+              ("mesa" ,mesa)
+              ("nss" ,nss)))
     (home-page "https://opencode.ai")
     (synopsis "AI coding agent desktop application")
     (description
@@ -554,28 +556,28 @@ coding experience with context awareness.")
                   `("XDG_DATA_DIRS" prefix
                     (,(string-append out "/share"))))))))))
     (native-inputs (list binutils patchelf tar xz))
-    (inputs (list alsa-lib
-                  at-spi2-core
-                  bash-minimal
-                  cups
-                  dbus
-                  eudev
-                  expat
-                  fontconfig
-                  `(,gcc "lib")
-                  glibc
-                  glib
-                  gtk+
-                  libx11
-                  libxcb
-                  libxcomposite
-                  libxdamage
-                  libxext
-                  libxfixes
-                  libxkbcommon
-                  libxrandr
-                  mesa
-                  nss))
+    (inputs `(("alsa-lib" ,alsa-lib)
+              ("at-spi2-core" ,at-spi2-core)
+              ("bash-minimal" ,bash-minimal)
+              ("cups" ,cups)
+              ("dbus" ,dbus)
+              ("eudev" ,eudev)
+              ("expat" ,expat)
+              ("fontconfig-minimal" ,fontconfig)
+              ("gcc:lib" ,gcc "lib")
+              ("glibc" ,glibc)
+              ("glib" ,glib)
+              ("gtk+" ,gtk+)
+              ("libx11" ,libx11)
+              ("libxcb" ,libxcb)
+              ("libxcomposite" ,libxcomposite)
+              ("libxdamage" ,libxdamage)
+              ("libxext" ,libxext)
+              ("libxfixes" ,libxfixes)
+              ("libxkbcommon" ,libxkbcommon)
+              ("libxrandr" ,libxrandr)
+              ("mesa" ,mesa)
+              ("nss" ,nss)))
     (home-page "https://onorca.dev")
     (synopsis "AI orchestrator desktop app for parallel agentic development")
     (description
@@ -635,7 +637,7 @@ agent orchestration.")
                                            #$(glibc-dynamic-linker)))
                      (lib-path (string-join
                                 (list (string-append (assoc-ref inputs "glibc") "/lib")
-                                      (string-append (assoc-ref inputs "gcc") "/lib"))
+                                      (string-append (assoc-ref inputs "gcc:lib") "/lib"))
                                 ":")))
                 (mkdir-p libexec)
                 (install-file "omp" libexec)
@@ -650,7 +652,9 @@ agent orchestration.")
                             lib-path
                             libexec)))
                 (chmod (string-append bin "/omp") #o755)))))))
-    (inputs (list bash-minimal glibc `(,gcc "lib")))
+    (inputs `(("bash-minimal" ,bash-minimal)
+              ("glibc" ,glibc)
+              ("gcc:lib" ,gcc "lib")))
     (home-page "https://omp.sh")
     (synopsis "AI coding agent with IDE integration")
     (description "oh-my-pi (OMP) is a coding agent with deep IDE integration,
@@ -713,7 +717,7 @@ the prebuilt binary release.")
                                            #$(glibc-dynamic-linker)))
                      (lib-path (string-join
                                 (list (string-append (assoc-ref inputs "glibc") "/lib")
-                                      (string-append (assoc-ref inputs "gcc") "/lib"))
+                                      (string-append (assoc-ref inputs "gcc:lib") "/lib"))
                                 ":")))
                 (mkdir-p libexec)
                 (install-file "kimi" libexec)
@@ -729,7 +733,9 @@ the prebuilt binary release.")
                             libexec)))
                 (chmod (string-append bin "/kimi") #o755)))))))
     (native-inputs (list unzip))
-    (inputs (list bash-minimal glibc `(,gcc "lib")))
+    (inputs `(("bash-minimal" ,bash-minimal)
+              ("glibc" ,glibc)
+              ("gcc:lib" ,gcc "lib")))
     (home-page "https://github.com/MoonshotAI/kimi-code")
     (synopsis "Terminal-native AI coding agent from Moonshot AI")
     (description "Kimi Code is a terminal-native AI coding agent.  It can read
@@ -872,16 +878,16 @@ and ships as a single static binary with no runtime dependencies.")
                 (copy-file "usr/share/pixmaps/reasonix-desktop.png"
                            (string-append pixmaps "/reasonix-desktop.png"))))))))
     (native-inputs (list libarchive tar gzip))
-    (inputs (list `(,gcc "lib")
-                  bash-minimal
-                  fontconfig
-                  glibc
-                  glib
-                  gtk+
-                  gdk-pixbuf
-                  libsoup
-                  mesa
-                  webkitgtk-for-gtk3))
+    (inputs `(("gcc:lib" ,gcc "lib")
+              ("bash-minimal" ,bash-minimal)
+              ("fontconfig-minimal" ,fontconfig)
+              ("glibc" ,glibc)
+              ("glib" ,glib)
+              ("gtk+" ,gtk+)
+              ("gdk-pixbuf" ,gdk-pixbuf)
+              ("libsoup" ,libsoup)
+              ("mesa" ,mesa)
+              ("webkitgtk-for-gtk3" ,webkitgtk-for-gtk3)))
     (home-page "https://github.com/esengine/DeepSeek-Reasonix")
     (synopsis "DeepSeek-native AI coding agent with desktop GUI")
     (description
@@ -1017,27 +1023,27 @@ support for multiple LLM providers.")
                   `("XDG_DATA_DIRS" prefix
                     (,(string-append out "/share"))))))))))
     (native-inputs (list binutils patchelf tar xz))
-    (inputs (list alsa-lib
-                  at-spi2-core
-                  cups
-                  dbus
-                  eudev
-                  expat
-                  fontconfig
-                  `(,gcc "lib")
-                  glibc
-                  glib
-                  gtk+
-                  libx11
-                  libxcb
-                  libxcomposite
-                  libxdamage
-                  libxext
-                  libxfixes
-                  libxkbcommon
-                  libxrandr
-                  mesa
-                  nss))
+    (inputs `(("alsa-lib" ,alsa-lib)
+              ("at-spi2-core" ,at-spi2-core)
+              ("cups" ,cups)
+              ("dbus" ,dbus)
+              ("eudev" ,eudev)
+              ("expat" ,expat)
+              ("fontconfig-minimal" ,fontconfig)
+              ("gcc:lib" ,gcc "lib")
+              ("glibc" ,glibc)
+              ("glib" ,glib)
+              ("gtk+" ,gtk+)
+              ("libx11" ,libx11)
+              ("libxcb" ,libxcb)
+              ("libxcomposite" ,libxcomposite)
+              ("libxdamage" ,libxdamage)
+              ("libxext" ,libxext)
+              ("libxfixes" ,libxfixes)
+              ("libxkbcommon" ,libxkbcommon)
+              ("libxrandr" ,libxrandr)
+              ("mesa" ,mesa)
+              ("nss" ,nss)))
     (home-page "https://zcode.z.ai/")
     (synopsis "ZCode Desktop App")
     (description
@@ -1184,19 +1190,19 @@ without friction.")
                      (icon-dst (string-append out "/share/icons/hicolor")))
                 (copy-recursively icon-src icon-dst)))))))
     (native-inputs (list libarchive))
-    (inputs (list `(,gcc "lib")
-                  alsa-lib
-                  bash-minimal
-                  fontconfig
-                  glibc
-                  glib
-                  gtk+
-                  gdk-pixbuf
-                  libsoup
-                  mesa
-                  openssl
-                  pulseaudio
-                  webkitgtk-for-gtk3))
+    (inputs `(("gcc:lib" ,gcc "lib")
+              ("alsa-lib" ,alsa-lib)
+              ("bash-minimal" ,bash-minimal)
+              ("fontconfig-minimal" ,fontconfig)
+              ("glibc" ,glibc)
+              ("glib" ,glib)
+              ("gtk+" ,gtk+)
+              ("gdk-pixbuf" ,gdk-pixbuf)
+              ("libsoup" ,libsoup)
+              ("mesa" ,mesa)
+              ("openssl" ,openssl)
+              ("pulseaudio" ,pulseaudio)
+              ("webkitgtk-for-gtk3" ,webkitgtk-for-gtk3)))
     (home-page "https://github.com/github/app")
     (synopsis "Agent-native GitHub Copilot desktop application")
     (description

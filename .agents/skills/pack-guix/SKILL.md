@@ -115,7 +115,7 @@ done
 
 注意：
 
-- **即使 `NEEDED` 为空，也要警惕**：Rust/C++ 二进制可能通过 `dlopen` 在运行时加载 native addon（如 `.node`、`.so`），这些 addon 可能依赖 `libgcc_s.so.1` → 需要 `(,gcc "lib")`
+- **即使 `NEEDED` 为空，也要警惕**：Rust/C++ 二进制可能通过 `dlopen` 在运行时加载 native addon（如 `.node`、`.so`），这些 addon 可能依赖 `libgcc_s.so.1` → 需要 gcc 的 `lib` 子输出（写法见步骤 4 的 input label 规范：`("gcc:lib" ,gcc "lib")`）
 
 ### 步骤 2：分析源码仓库
 
@@ -207,7 +207,9 @@ sha256sum "$WORK_DIR/source.tar.gz" | xxd -r -p | base32 | tr '[:lower:]' '[:upp
               (chmod "<binary-name>" #o755)))
           (replace 'install
             <ld-linux-wrapper-or-patchelf>))))
-    (inputs (list bash-minimal glibc `(,gcc "lib")))
+    (inputs `(("bash-minimal" ,bash-minimal)
+              ("glibc" ,glibc)
+              ("gcc:lib" ,gcc "lib")))
     (home-page "<home-page>")
     (synopsis "<one-line description>")
     (description "<detailed description>")
@@ -255,7 +257,7 @@ sha256sum "$WORK_DIR/source.tar.gz" | xxd -r -p | base32 | tr '[:lower:]' '[:upp
               (file-name (git-file-name name version))
               (sha256 (base32 "<hash>"))))
     (build-system <build-system>)
-    (inputs (list <dependencies>))
+    (inputs `(<dependencies>))           ; quasiquote alist，如 ("dep" ,dep)
     (home-page "<home-page>")
     (synopsis "<one-line description>")
     (description "<detailed description>")
@@ -440,26 +442,26 @@ done
 
 Binary 的 `patchelf --print-needed` 输出 → Guix 包映射：
 
-| 库名                     | Guix 包    |
-| ------------------------ | ---------- |
-| libc.so.6                | glibc      |
-| libstdc++.so.6           | gcc:lib    |
-| libm.so.6                | glibc      |
-| libpthread.so.0          | glibc      |
-| libdl.so.2               | glibc      |
-| libz.so.1                | zlib       |
-| libssl.so / libcrypto.so | openssl    |
-| libcurl.so.4             | curl       |
-| libfuse.so.2             | fuse       |
-| libX11.so.6              | libx11     |
-| libGL.so.1               | libglvnd   |
-| libasound.so.2           | alsa-lib   |
-| libpulse.so.0            | pulseaudio |
+| 库名                     | Guix 包              |
+| ------------------------ | -------------------- |
+| libc.so.6                | glibc                |
+| libstdc++.so.6           | gcc:lib              |
+| libm.so.6                | glibc                |
+| libpthread.so.0          | glibc                |
+| libdl.so.2               | glibc                |
+| libz.so.1                | zlib                 |
+| libssl.so / libcrypto.so | openssl              |
+| libcurl.so.4             | curl                 |
+| libfuse.so.2             | fuse                 |
+| libX11.so.6              | libx11               |
+| libGL.so.1               | libglvnd             |
+| libasound.so.2           | alsa-lib             |
+| libpulse.so.0            | pulseaudio           |
 | libfontconfig.so.1       | fontconfig-minimal ⚠ |
-| libfreetype.so.6         | freetype   |
-| libnss3.so               | nss        |
+| libfreetype.so.6         | freetype             |
+| libnss3.so               | nss                  |
 
-> ⚠ **fontconfig 名称陷阱**：Guix 的 `fontconfig` 变量实际指向的包 name 是 `"fontconfig-minimal"`。在 build 阶段用 `(assoc-ref inputs "fontconfig")` 会返回 `#f`，**必须用 `(assoc-ref inputs "fontconfig-minimal")`**。inputs 里写 `fontconfig` 不报错，但 build-side 查询要用 `-minimal` 后缀。同理对任何带子包/最小变体的库，先 `guix show <pkg>` 确认实际 name。
+> ⚠ **变量名 ≠ 包名（label 陷阱）**：写 input 的 label 时必须用包的**实际 `name`**，而非变量名。已知不符：`fontconfig` 变量 → `name: "fontconfig-minimal"`；`openjdk17` 变量 → `name: "openjdk"`。在 quasiquote alist 里 label 写错会同时触发 lint 警告**并**让 build-side 的 `(assoc-ref inputs "fontconfig")` 返回 `#f`（因为实际 label 是 `"fontconfig-minimal"`）。拿不准就 `guix show <var>` 查 `name:` 字段。
 
 ## 输出文件清单
 
@@ -488,7 +490,13 @@ Binary 的 `patchelf --print-needed` 输出 → Guix 包映射：
    - 避免盲目使用 `trivial-build-system`，它不适合需要复杂 install 阶段的 binary
 5. **FHS 警告**：如果检测到 `/lib64/ld-linux-x86-64.so.2` 依赖，必须在 package.scm 中处理（wrapper 或 patchelf）
 6. **运行时依赖陷阱**：即使 `patchelf --print-needed` 返回空，运行时通过 `dlopen` 加载的 native addon（常见：Rust 二进制里的 N-API `.node` 文件、Electron app 的 `.so`）仍可能依赖 `libgcc_s.so.1` 或 `libstdc++.so.6`。构建成功后务必运行一次完整的功能测试。
-7. **build-side inputs key 陷阱**：`(assoc-ref inputs "<name>")` 中的 `<name>` 是包的 `name` 字段，不是 inputs 列表里的符号。常见坑：`fontconfig`→实际 name 是 `fontconfig-minimal`；`(\`,gcc \"lib\")`→key 是 `gcc` 但带 `:lib` 输出。查不到时先 `guix show <pkg>` 看 `name:` 字段，或查构建日志的 store 路径（如 `/gnu/store/...-fontconfig-minimal-2.16.0`）。
+7. **input label 规范（必须遵守以通过 `guix lint`，全通道统一）**：
+   - **inputs 字段用 quasiquote alist 形式**，不要用现代 `(list ...)`：``(inputs `(("pkg-name" ,pkg) ...))``。
+   - **带子输出的 input**（如 gcc 的 lib）：label 必须是 `"name:output"`，即 `("gcc:lib" ,gcc "lib")`。现代 `(list ... `(,gcc "lib"))`只会生成裸`"gcc"` label，**永远过不了 lint**（`check-input-labels`要求带 output 的 label =`name:output`）。
+   - **label 必须用包的实际 `name` 字段**，不是变量名。已知不符：`fontconfig` 变量 → `name: "fontconfig-minimal"`；`openjdk17` 变量 → `name: "openjdk"`。拿不准就 `guix show <var>` 查 `name:`。
+   - **build-side 查询与 label 必须一致**：`(assoc-ref inputs "gcc:lib")`、`(this-package-input "fontconfig-minimal")` 等。label 写错会让查询返回 `#f`，导致构建期 `wrong-type-arg: Wrong type (expecting string): #f`。
+   - 详见 `AGENTS.md` 的「input label 规范」与「变量名 ≠ 包名」陷阱。
+8. **`#$<symbol>` gexp 引用必须是已导出的绑定**：`(gnu packages gcc)` 导出 `gcc` 但**不导出** `gcc:lib`——写 `#$gcc:lib` 是未绑定符号。gexp 惰性求值，模块加载期不报错，**只在构建时爆**，是危险的潜伏 bug。正确写法：`#$(this-package-input "gcc:lib")` 或 `#$(gcc "lib")`。
 
 ## 与知识库联动
 

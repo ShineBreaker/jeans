@@ -21,21 +21,21 @@ echo "════════════════════════�
 echo ""
 echo "[1/4] 模块加载..."
 if guix build -L "$MODULES_DIR" "$PKG_NAME" --dry-run >/dev/null 2>&1; then
-  echo "  ✓ 模块加载成功"
+	echo "  ✓ 模块加载成功"
 else
-  echo "  ✗ 模块加载失败"
-  guix build -L "$MODULES_DIR" "$PKG_NAME" --dry-run 2>&1 | tail -5
-  exit 1
+	echo "  ✗ 模块加载失败"
+	guix build -L "$MODULES_DIR" "$PKG_NAME" --dry-run 2>&1 | tail -5
+	exit 1
 fi
 
 # [2/4] 构建
 echo ""
 echo "[2/4] 构建..."
 if OUT=$(guix build -L "$MODULES_DIR" "$PKG_NAME" 2>&1 | tail -1); then
-  echo "  ✓ 构建成功: $OUT"
+	echo "  ✓ 构建成功: $OUT"
 else
-  echo "  ✗ 构建失败"
-  exit 1
+	echo "  ✗ 构建失败"
+	exit 1
 fi
 
 # [3/4] 运行时库解析（ld.so --list，确认无 "not found"）
@@ -46,11 +46,11 @@ LIBPATH=$(sed -n 's/.* --library-path \([^ ]*\) .*/\1/p' "$OUT/bin/github")
 BIN="$OUT/libexec/github-copilot/github"
 NOT_FOUND=$("$LD" --list --library-path "$LIBPATH" "$BIN" 2>&1 | grep -c "not found" || true)
 if [ "$NOT_FOUND" -eq 0 ]; then
-  echo "  ✓ 所有 NEEDED 库已解析"
+	echo "  ✓ 所有 NEEDED 库已解析"
 else
-  echo "  ✗ 发现 $NOT_FOUND 个缺失库:"
-  "$LD" --list --library-path "$LIBPATH" "$BIN" 2>&1 | grep "not found"
-  exit 1
+	echo "  ✗ 发现 $NOT_FOUND 个缺失库:"
+	"$LD" --list --library-path "$LIBPATH" "$BIN" 2>&1 | grep "not found"
+	exit 1
 fi
 
 # [4/4] git-credential-copilot 运行测试
@@ -59,9 +59,9 @@ fi
 echo ""
 echo "[4/4] git-credential-copilot 运行测试..."
 if guix shell -L "$MODULES_DIR" "$PKG_NAME" -- $TEST_CMD >/dev/null 2>&1; then
-  echo "  ✓ git-credential-copilot 可执行"
+	echo "  ✓ git-credential-copilot 可执行"
 else
-  echo "  ⚠ git-credential-copilot 退出码非 0（可能需要 broker，属正常）"
+	echo "  ⚠ git-credential-copilot 退出码非 0（可能需要 broker，属正常）"
 fi
 
 echo ""
