@@ -365,12 +365,22 @@ def get_latest_github_release(
 def normalize_tag_to_version(tag: str, tag_prefix: Optional[str] = None) -> str:
     """将 GitHub tag 转为 Guix version（去掉 tag 前缀）。
 
-    有 tag_prefix 时剥离该前缀；否则仅去掉前导 'v'（保留原有行为）。
+    有 tag_prefix 时剥离该前缀；否则依次尝试：
+      1. npm scoped package tag（形如 ``@scope/name@1.2.3``）——
+         取最后一个 ``@`` 之后的部分作为版本号；
+      2. 仅去掉前导 'v'（保留原有行为）。
     """
     if tag_prefix:
         if tag.startswith(tag_prefix):
             return tag[len(tag_prefix):]
         return tag.lstrip("v")
+
+    # npm scoped package tag: "@scope/name@version" -> "version"
+    # 这类 tag 以 '@' 开头（scope），并在包名后用第二个 '@' 分隔版本号。
+    # 取最后一个 '@' 之后的部分作为版本号。
+    if tag.startswith("@") and tag.count("@") >= 2:
+        return tag.rsplit("@", 1)[1]
+
     return tag.lstrip("v")
 
 

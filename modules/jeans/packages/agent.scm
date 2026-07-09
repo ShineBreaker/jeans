@@ -682,7 +682,7 @@ the prebuilt binary release.")
 (define-public kimi-code-bin
   (package
     (name "kimi-code-bin")
-    (version "0.23.1")
+    (version "0.23.3")
     (source
      (origin
        (method url-fetch)
@@ -691,7 +691,7 @@ the prebuilt binary release.")
              "%40moonshot-ai%2Fkimi-code%40" version
              "/kimi-code-linux-x64.zip"))
        (sha256
-        (base32 "1smxv3gh5pbg4c2lw4pink7h8mjk9khqdh5fzh5ax00xl1izq5ii"))))
+        (base32 "0wa7qhcmdbqyylq5bqjqvfcgy4q7lzl5d6ynm5k5m0qcc5ifp12h"))))
     (build-system gnu-build-system)
     (arguments
      (list
