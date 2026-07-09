@@ -11,8 +11,23 @@
   #:use-module (guix build-system copy)
   #:use-module (guix build-system emacs)
   #:use-module (guix build-system gnu)
-  #:use-module (gnu packages zig)
+  #:use-module (gnu packages backup)         ; libarchive (bsdtar for .zst deb)
+  #:use-module (gnu packages base)           ; glibc
   #:use-module (gnu packages bash)
+  #:use-module (gnu packages bootstrap)      ; glibc-dynamic-linker
+  #:use-module (gnu packages elf)            ; patchelf
+  #:use-module (gnu packages fontutils)      ; fontconfig
+  #:use-module (gnu packages freedesktop)    ; wayland (libwayland-*)
+  #:use-module (gnu packages gcc)            ; gcc "lib"
+  #:use-module (gnu packages gl)             ; mesa (libEGL/libGL/libgbm)
+  #:use-module (gnu packages glib)           ; glib
+  #:use-module (gnu packages gstreamer)      ; gstreamer, gst-plugins-base
+  #:use-module (gnu packages ncurses)        ; ncurses (libtinfo)
+  #:use-module (gnu packages compression)    ; zlib
+  #:use-module (gnu packages vulkan)         ; vulkan-loader (wgpu ash backend)
+  #:use-module (gnu packages xdisorg)        ; libxkbcommon
+  #:use-module (gnu packages xorg)           ; libx11, libxcb, libxi, libxcursor
+  #:use-module (gnu packages zig)
   #:use-module (gnu packages emacs)
   #:use-module (gnu packages emacs-xyz)
   #:use-module (gnu packages emacs-build)
@@ -396,5 +411,223 @@ the prebuilt proxy binary.")
 It provides a consistent build environment regardless of your Emacs
 configuration, supporting batch operations, linting, testing, and packaging
 of Emacs Lisp projects.  This package provides the prebuilt binary release.")
+    (license license:gpl3+)
+    (supported-systems '("x86_64-linux"))))
+
+;;; Neomacs (NEO Emacs) is a from-scratch reimplementation of an
+;;; Emacs-like, programmable text editor in Rust.  Instead of the Emacs
+;;; C engine, it runs Emacs Lisp on top of a Neovim-derived virtual
+;;; machine (neovm).  The GUI is rendered with wgpu and the layout comes
+;;; from a dedicated engine; it can also embed terminals (alacritty)
+;;; and play media via GStreamer.
+;;;
+;;; This package wraps the official prebuilt Linux .deb, which ships a
+;;; set of x86_64 ELF binaries plus a pre-dumped runtime image
+;;; (neomacs.pdump) and the full Lisp/Etc data tree
+;;; (usr/share/neomacs/{lisp,etc,leim}).
+;;;
+;;; Upstream's self-locator logic is FHS-specific, so we must respect it:
+;;;
+;;;   * The .pdump for an executable lives NEXT TO the executable, named
+;;;     "<exe-name>.pdump" (see neovm-core load.rs:
+;;;     runtime_image_path_for_executable => exe.parent().join(exe+".pdump")).
+;;;   * The Lisp/Etc runtime root is resolved as
+;;;     exe.parent().parent().join("share/neomacs") (load.rs:
+;;;     runtime_project_root), i.e. <prefix>/share/neomacs where <prefix>
+;;;     is two levels up from the binary.
+;;;
+;;; Consequence: an ld-linux wrapper CANNOT be used, because it makes
+;;; /proc/self/exe point at the wrapper script and breaks the
+;;; self-locator.  We therefore patchelf every ELF in place (set
+;;; interpreter + RPATH) and lay them out as:
+;;;
+;;;   out/bin/neomacs            (patchelf'd)
+;;;   out/bin/neomacs.pdump      (sibling pdump, see above)
+;;;   out/bin/neomacsclient ...
+;;;   out/share/neomacs/         (<prefix>=out, two levels: bin/../ = out)
+;;;
+;;; The deb's data.tar is zstd-compressed, hence libarchive's bsdtar.
+;;;
+;;; Runtime ELF dependencies (readelf -d neomacs): libtinfo.so.6,
+;;; libgst{video,app}-1.0.so.0, libgstreamer-1.0.so.0,
+;;; libgobject-2.0.so.0, libglib-2.0.so.0, libfontconfig.so.1,
+;;; libz.so.1, libgcc_s.so.1, libm/libc.so.6.  The Deb control only
+;;; declares libfontconfig1 + libglib2.0-0 but the binary is linked
+;;; against many more, so we add the full set.
+
+(define-public neomacs-bin
+  (package
+    (name "neomacs-bin")
+    (version "0.0.11")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://github.com/eval-exec/neomacs/releases/download/"
+             "v" version "/neomacs_" version "_amd64.deb"))
+       (sha256
+        (base32 "131096nm935fgfjll0ivkp590cl10nkqqrl4b6hwdycpy3mvgi9d"))))
+    (build-system gnu-build-system)
+    (arguments
+     (list
+      #:tests? #f
+      #:validate-runpath? #f
+      #:strip-binaries? #f
+      #:modules '((guix build gnu-build-system)
+                  (guix build utils))
+      #:phases
+      #~(modify-phases %standard-phases
+          (delete 'configure)
+          (delete 'build)
+          (replace 'unpack
+            (lambda _
+              ;; .deb = ar archive: debian-binary, control.tar.zst,
+              ;; data.tar.zst.  bsdtar handles both the ar wrapper and
+              ;; the zstd payload in one go.
+              (invoke "bsdtar" "xf" #$source)
+              (invoke "bsdtar" "xf" "data.tar.zst")))
+          (replace 'install
+            (lambda* (#:key inputs #:allow-other-keys)
+              (let* ((out #$output)
+                     (bin (string-append out "/bin"))
+                     (lib (string-append out "/lib"))
+                     (share (string-append out "/share/neomacs"))
+                     (ldso (string-append (assoc-ref inputs "glibc")
+                                          #$(glibc-dynamic-linker)))
+                     (patchelf-bin
+                      (string-append (assoc-ref inputs "patchelf")
+                                     "/bin/patchelf"))
+                     ;; NOTE: assoc-ref (not this-package-input) is used for
+                     ;; every input on purpose: for multi-output inputs such
+                     ;; as ("gcc:lib" ,gcc "lib"), assoc-ref returns the store
+                     ;; path of the *bound output* (the lib output), whereas
+                     ;; #$(this-package-input ...) yields the package record and
+                     ;; the gexp then dereferences its DEFAULT output (the gcc
+                     ;; main output, which lacks libgcc_s.so.1).  This is the
+                     ;; "gexp default-output" footgun documented in AGENTS.md.
+                     (gcc-lib (string-append (assoc-ref inputs "gcc:lib") "/lib"))
+                     (ncurses-lib (string-append (assoc-ref inputs "ncurses") "/lib"))
+                     ;; RPATH over every runtime library input + our own lib/
+                     ;; (which carries the libtinfo.so.6 compatibility symlink,
+                     ;; see below).
+                     ;;
+                     ;; IMPORTANT: this includes the GUI windowing/GPU stack
+                     ;; (wayland, mesa, vulkan-loader, libxkbcommon, the X11
+                     ;; libs).  winit/wgpu do NOT list these in readelf NEEDED
+                     ;; -- they are dlopen'd at runtime (libwayland-client.so,
+                     ;; libxkbcommon.so on Wayland; libX11.so/libxcb.so on X11;
+                     ;; libEGL.so/libvulkan.so for the wgpu backend).  Putting
+                     ;; them on RUNPATH lets dlopen find them, since the dynamic
+                     ;; loader searches RUNPATH for dlopen too.
+                     (rpath (string-join
+                             (list lib
+                                   (string-append (assoc-ref inputs "glibc") "/lib")
+                                   gcc-lib
+                                   ncurses-lib
+                                   (string-append
+                                    (assoc-ref inputs "gstreamer") "/lib")
+                                   (string-append
+                                    (assoc-ref inputs "gst-plugins-base") "/lib")
+                                   (string-append (assoc-ref inputs "glib") "/lib")
+                                   (string-append
+                                    (assoc-ref inputs "fontconfig-minimal") "/lib")
+                                   (string-append (assoc-ref inputs "zlib") "/lib")
+                                   ;; GUI windowing/GPU stack (dlopen'd, see above).
+                                   (string-append
+                                    (assoc-ref inputs "wayland") "/lib")
+                                   (string-append
+                                    (assoc-ref inputs "libxkbcommon") "/lib")
+                                   (string-append (assoc-ref inputs "mesa") "/lib")
+                                   (string-append
+                                    (assoc-ref inputs "vulkan-loader") "/lib")
+                                   (string-append (assoc-ref inputs "libx11") "/lib")
+                                   (string-append (assoc-ref inputs "libxcb") "/lib")
+                                   (string-append (assoc-ref inputs "libxi") "/lib")
+                                   (string-append
+                                    (assoc-ref inputs "libxcursor") "/lib"))
+                             ":")))
+                ;; libtinfo.so.6 compatibility symlink.
+                ;;
+                ;; The neomacs ELF links against libtinfo.so.6, but Guix's
+                ;; ncurses is built with --enable-widec and WITHOUT
+                ;; --with-termlib, so the terminfo subset lives inside
+                ;; libncursesw.so.6 and there is no standalone libtinfo.so.6
+                ;; in the store (cf. haskell.scm's GHC bootstrap, which uses
+                ;; the same workaround).  libtinfo is an ABI-compatible subset
+                ;; of libncursesw, so we ship a symlink in the package's own
+                ;; lib/ directory and put it on RUNPATH.
+                (mkdir-p lib)
+                (symlink (string-append ncurses-lib "/libncursesw.so.6")
+                         (string-append lib "/libtinfo.so.6"))
+                ;; Binaries + sibling pdump.
+                (mkdir-p bin)
+                (for-each
+                 (lambda (f)
+                   (install-file (string-append "usr/bin/" f) bin))
+                 '("neomacs" "neomacsclient" "neomacs-temacs"
+                   "bootstrap-neomacs" "mock-display"))
+                ;; neomacs.pdump is NOT executable; copy as data.
+                (copy-file "usr/bin/neomacs.pdump"
+                           (string-append bin "/neomacs.pdump"))
+                ;; Runtime data tree (lisp, etc, leim).
+                (mkdir-p share)
+                (copy-recursively "usr/share/neomacs/." share)
+                ;; Patch every ELF: interpreter + RPATH.
+                (for-each
+                 (lambda (elf)
+                   (invoke patchelf-bin "--set-interpreter" ldso elf)
+                   (invoke patchelf-bin "--set-rpath" rpath elf))
+                 (find-files bin (lambda (name stat)
+                                   (and (eq? 'regular (stat:type stat))
+                                        (executable-file? name)
+                                        (string-prefix? (string-append bin "/")
+                                                        name))))))))
+          (add-after 'install 'install-desktop-entry
+            (lambda* (#:key outputs #:allow-other-keys)
+              (let* ((out (assoc-ref outputs "out"))
+                     (apps (string-append out "/share/applications")))
+                (mkdir-p apps)
+                (copy-file "usr/share/applications/neomacs.desktop"
+                           (string-append apps "/neomacs.desktop"))
+                ;; Point Exec at the absolute store path; keep Icon as-is.
+                (substitute* (string-append apps "/neomacs.desktop")
+                  (("Exec=neomacs")
+                   (string-append "Exec=" out "/bin/neomacs"))))))
+          (add-after 'install-desktop-entry 'install-icons
+            (lambda* (#:key outputs #:allow-other-keys)
+              (let* ((out (assoc-ref outputs "out"))
+                     (icon-dst (string-append
+                                out "/share/icons/hicolor/128x128/apps")))
+                (mkdir-p icon-dst)
+                (copy-file "usr/share/icons/hicolor/128x128/apps/neomacs.png"
+                           (string-append icon-dst "/neomacs.png"))))))))
+    (native-inputs (list libarchive patchelf))
+    (inputs `(("glibc" ,glibc)
+              ("gcc:lib" ,gcc "lib")
+              ("ncurses" ,ncurses)
+              ("gstreamer" ,gstreamer)
+              ("gst-plugins-base" ,gst-plugins-base)
+              ("glib" ,glib)
+              ("fontconfig-minimal" ,fontconfig)
+              ("zlib" ,zlib)
+              ;; GUI windowing/GPU stack — not in readelf NEEDED; loaded via
+              ;; dlopen by winit/wgpu at runtime, so they must be on RUNPATH.
+              ("wayland" ,wayland)
+              ("libxkbcommon" ,libxkbcommon)
+              ("mesa" ,mesa)
+              ("vulkan-loader" ,vulkan-loader)
+              ("libx11" ,libx11)
+              ("libxcb" ,libxcb)
+              ("libxi" ,libxi)
+              ("libxcursor" ,libxcursor)))
+    (home-page "https://github.com/eval-exec/neomacs")
+    (synopsis "Extensible text editor built on Emacs Lisp and the Neovim VM")
+    (description
+     "Neomacs (NEO Emacs) is an extensible, programmable text editor written
+in Rust.  Instead of the GNU Emacs C engine it runs Emacs Lisp on top of a
+Neovim-derived virtual machine (neovm), and renders its GUI with wgpu and a
+dedicated layout engine.  It can edit and evaluate Emacs Lisp, embed
+terminals, and play media through GStreamer.  This package wraps the
+official prebuilt Linux x86_64 release.")
     (license license:gpl3+)
     (supported-systems '("x86_64-linux"))))

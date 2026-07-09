@@ -39,13 +39,14 @@
 
 ### (jeans packages emacs-xyz)
 
-| Package         | Description                                                |
-| --------------- | ---------------------------------------------------------- |
-| `eask-bin`      | CLI tool for building, testing and managing Emacs packages |
-| `ellsp-bin`     | Elisp Language Server Protocol server                      |
-| `emacs-ellsp`   | Elisp Language Server Protocol server (Emacs backend)      |
-| `emacs-ghostel` | Terminal emulator powered by libghostty                    |
-| `emacs-msgu`    | Utility functions for message output in Emacs              |
+| Package         | Description                                                  |
+| --------------- | ------------------------------------------------------------ |
+| `eask-bin`      | CLI tool for building, testing and managing Emacs packages   |
+| `ellsp-bin`     | Elisp Language Server Protocol server                        |
+| `emacs-ellsp`   | Elisp Language Server Protocol server (Emacs backend)        |
+| `emacs-ghostel` | Terminal emulator powered by libghostty                      |
+| `emacs-msgu`    | Utility functions for message output in Emacs                |
+| `neomacs-bin`   | Extensible text editor built on Emacs Lisp and the Neovim VM |
 
 ### (jeans packages fonts)
 
