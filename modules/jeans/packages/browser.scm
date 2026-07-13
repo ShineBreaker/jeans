@@ -188,7 +188,7 @@ This package reverts the upstream Guix patch.")
 (define-public zen-browser-bin
   (package
     (name "zen-browser-bin")
-    (version "1.21.5b")
+    (version "1.21.6b")
     (source
      (origin
        (method url-fetch)
@@ -196,7 +196,7 @@ This package reverts the upstream Guix patch.")
              "https://github.com/zen-browser/desktop/releases/download/"
              version "/zen.linux-x86_64.tar.xz"))
        (sha256
-        (base32 "0sd0z9fsc8p2jbwd9n7ypsqhxcmh16k8iwir53iy3ngyqnxhkshd"))))
+        (base32 "081vnn141v9rx7p8iqvz0bhnf1f3f0iz179vhrdsbf915har1x7g"))))
     (build-system copy-build-system)
     (arguments
      (list
