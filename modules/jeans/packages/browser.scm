@@ -181,7 +181,8 @@
    fingerprinting techniques, while also including a few security improvements.
    This is achieved through our privacy and security oriented settings and
    patches.  LibreWolf also aims to remove all the telemetry, data collection and
-   annoyances, as well as disabling anti-freedom features like DRM. (revert guix patch)")
+   annoyances, as well as disabling anti-freedom features like DRM. (revert guix patch).
+This package reverts the upstream Guix patch.")
        (license license:mpl2.0)))
 
 (define-public zen-browser-bin

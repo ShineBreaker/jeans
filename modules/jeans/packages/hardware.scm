@@ -52,5 +52,5 @@
     (native-inputs (list bash-minimal jq))
     (home-page "https://opentabletdriver.net")
     (synopsis "UDev rules for OpenTabletDriver")
-    (description "Open source, cross-platform, user-mode tablet driver")
+    (description "Open source, cross-platform, user-mode tablet driver.")
     (license license:lgpl3+)))
