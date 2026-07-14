@@ -92,7 +92,7 @@ Rust 包使用双文件模式：
 - crate 根为 workspace 根时使用 `#:cargo-install-paths ''(".")`。
 - Rust 包可能需要自定义 `unpack` 阶段来改写 `Cargo.toml` 条目（去除 `git =`、`rev =` 行，替换为 `version = "*"` 以支持 vendored 依赖）。
 
-### 预编译二进制包（`-bin` 后缀）
+### 预编译二进制包
 
 二进制包有三种常见形态，处理方式不同：
 
@@ -107,7 +107,9 @@ Rust 包使用双文件模式：
 - 设置 `#:validate-runpath? #f`（预编译二进制无法通过 Guix 的 runpath 校验）。
 - 设置 `#:strip-binaries? #f`（预编译二进制不支持 Guix 的 strip，会导致损坏）。
 - 二进制安装到 `lib/<pkg>/`，然后从 `bin/` 创建符号链接，使 patchelf 能找到同目录的 `.so` 文件。
-- 二进制包（`-bin`）被排除在 CI 构建测试之外 —— 只有源码包会被测试构建。
+- 二进制包被排除在 CI 构建测试之外 —— 只有源码包会被测试构建。
+
+**⚠️ 命名规范**：二进制包**不加 `-bin` 后缀**。闭源软件只有二进制一种形态，后缀冗余。例如用 `github-copilot` 而非 `github-copilot-bin`，用 `orca-ide` 而非 `orca-ide-bin`。仅当同一软件同时存在源码包和二进制包时才用 `-bin` 区分。
 
 **⚠️ 裸 ELF 的陷阱**：即使 `readelf -d` 显示 NEEDED 为空，运行时仍可能通过 `dlopen` 加载 native addon（如 oh-my-pi 的 `pi_natives.linux-x64-modern.node`）。这些 addon 可能依赖 `libgcc_s.so.1`，因此 inputs 中需要包含 gcc 的 `lib` 子输出（写法见下方「input label 规范」）。
 
@@ -206,6 +208,7 @@ Rust 包使用双文件模式：
   - `openjdk17`（变量名）→ `name` 是 `"openjdk"`
   - 拿不准时先 `guix show <var>` 看 `name:` 字段，或 `(package-name <var>)` 在 repl 里查。quasiquote alist 里 label 写错会同时触发 lint 警告**并**让 build-side 的 `(assoc-ref inputs ...)` / `(this-package-input ...)` 返回 `#f`。
 - **`#$<symbol>` gexp 引用必须是已导出的绑定**：在 gexp（`#$`）里引用包时，符号必须真实存在于 import 的模块里。例如 `(gnu packages gcc)` 导出的是 `gcc`，不导出 `gcc:lib`——写 `#$gcc:lib` 会成为未绑定符号，但因 gexp 是惰性求值，**只在构建时才爆**（模块加载期不报错），是危险的潜伏 bug。正确写法：`#$(this-package-input "gcc:lib")`（按 label 查）或 `#$(gcc "lib")`（显式 output）。
+- **`XDG_DATA_DIRS` 必须 prefix 追加，绝不能用 `=` 精确替换**（GTK/gdk-pixbuf 陷阱）：在手写 wrapper 脚本（`with-output-to-file`）里设置 `XDG_DATA_DIRS` 时，**必须**用追加语法 `"${XDG_DATA_DIRS:+:$XDG_DATA_DIRS}"`，保留系统原有的 `~/.guix-home/profile/share`、`/run/current-system/profile/share` 等路径。如果用 `export XDG_DATA_DIRS=...`（精确替换）覆盖掉系统路径，gdk-pixbuf 会找不到 loaders cache 和 mime 数据 → GTK 加载 PNG 图标时崩溃（`Gtk:ERROR ... Unrecognized image file format (gdk-pixbuf-error-quark, 3)` SIGABRT）。这个 bug 极其隐蔽：构建正常、`guix lint` 通过、纯 gdk-pixbuf 程序（不调 `gtk_init`）正常，只有完整 GTK 应用才崩。同样适用于 `GDK_PIXBUF_MODULE_FILE`：Guix 的 gdk-pixbuf 用补丁加了 `GUIX_GDK_PIXBUF_MODULE_FILES`（复数），上游的 `GDK_PIXBUF_MODULE_FILE`（单数）在 Guix 环境下指向的 store cache 通常只有部分 loader（无 PNG/JPEG，因为它们是内建的），设置它反而有害——应让 gdk-pixbuf 从 profile 继承。
 
 ---
 

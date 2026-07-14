@@ -231,16 +231,21 @@ rust-crates.scm 只含 crate-source 定义，不是包，故不在扫描之列�
     #f)
    (else
     (log:progress "正在重新生成 ~a …" packages-doc)
-    (let ((cmd (string-append "guix repl --load-path=./modules "
-                              gen-docs-script
-                              " > " packages-doc)))
-      (if (zero? (run-shell cmd))
-          (begin
-            (log:progress "已生成 ~a" packages-doc)
-            #t)
+    (let ((gen-cmd (string-append "guix repl --load-path=./modules "
+                                  gen-docs-script
+                                  " > " packages-doc)))
+      (if (not (zero? (run-shell gen-cmd)))
           (begin
             (log:warning! "生成失败，请检查上面的 guix repl 输出。")
-            #f))))))
+            #f)
+          ;; gen-docs.scm 输出未填充的 Markdown 表格；用 prettier 把表格
+          ;; 对齐为仓库一贯的填充风格。prettier 通过 npx 按需获取，无需
+          ;; 预装；若 npx/prettier 不可用则保留未填充输出（功能不受影响）。
+          (let ((fmt-cmd (string-append "npx --yes prettier@3 --write "
+                                        packages-doc " >/dev/null 2>&1")))
+            (run-shell fmt-cmd)
+            (log:progress "已生成 ~a" packages-doc)
+            #t))))))
 
 
 ;; ════════════════════════════════════════════════════════════════════════
