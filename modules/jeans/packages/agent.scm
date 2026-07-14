@@ -25,6 +25,7 @@
   #:use-module (gnu packages gtk)          ; gtk+, cairo, gdk-pixbuf, at-spi2-core
   #:use-module (gnu packages linux)        ; eudev
   #:use-module (gnu packages nss)          ; nss
+  #:use-module (gnu packages ncurses)
   #:use-module (gnu packages pulseaudio)   ; pulseaudio
   #:use-module (gnu packages tls)          ; openssl
   #:use-module (gnu packages version-control) ; git
@@ -288,6 +289,114 @@ package provides the prebuilt binary release.")
     (license license:expat)
     (supported-systems '("x86_64-linux"))))
 
+;;; Open Interpreter (Rust edition): prebuilt musl package.
+;;;
+;;; The upstream tarball bundles:
+;;;   bin/interpreter, bin/i            ; main static-musl ELF (identical content)
+;;;   codex-path/rg                     ; bundled ripgrep (static-musl)
+;;;   codex-resources/bwrap             ; bundled bubblewrap (static-musl)
+;;;   codex-resources/zsh/bin/zsh       ; bundled sandbox shell — DYNAMICALLY linked,
+;;;                                     ;   needs /lib64/ld-linux-x86-64.so.2 +
+;;;                                     ;   libtinfo.so.6, libm.so.6, libc.so.6
+;;;   codex-package.json                ; layout manifest (entrypoint = bin/interpreter)
+;;;
+;;; Strategy: install the whole tree under lib/<pkg>/ to preserve the layout the
+;;; interpreter expects (it locates rg/zsh/bwrap relative to its own binary), then
+;;; symlink the two entry binaries into bin/.  The three static binaries need no
+;;; patching; only the bundled zsh is patchelf'd (interpreter + RPATH) and given a
+;;; libtinfo.so.6 -> libncursesw.so.6 shim, since Guix ships terminfo symbols inside
+;;; libncursesw rather than a separate libtinfo.
+(define-public open-interpreter-bin
+  (package
+    (name "open-interpreter-bin")
+    (version "0.0.21")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://github.com/openinterpreter/openinterpreter/releases/download/"
+             "rust-v" version
+             "/open-interpreter-package-x86_64-unknown-linux-musl.tar.gz"))
+       (sha256
+        (base32 "1z6dggrdxyidzjzm63y2l5crbgx8lfgw7rj37brrckcsgk18hdqg"))))
+    (build-system gnu-build-system)
+    (arguments
+     (list
+      #:tests? #f
+      #:validate-runpath? #f
+      #:strip-binaries? #f
+      #:modules '((guix build gnu-build-system)
+                  (guix build utils))
+      #:phases
+      #~(modify-phases %standard-phases
+          (delete 'configure)
+          (delete 'build)
+          (replace 'unpack
+            (lambda* (#:key inputs #:allow-other-keys)
+              (let ((dir "open-interpreter-bin"))
+                (mkdir dir)
+                (with-directory-excursion dir
+                  (invoke "tar" "xzf" #$source))
+                (chdir dir))))
+          (replace 'install
+            (lambda* (#:key inputs outputs #:allow-other-keys)
+              (let* ((out (assoc-ref outputs "out"))
+                     (bindir (string-append out "/bin"))
+                     (pkgdir (string-append out "/lib/open-interpreter-bin"))
+                     (patchelf-bin
+                      (string-append (assoc-ref inputs "patchelf")
+                                     "/bin/patchelf"))
+                     (ldso (string-append (assoc-ref inputs "glibc")
+                                          "/lib/ld-linux-x86-64.so.2"))
+                     ;; RPATH for the bundled zsh: glibc (ld-linux, libc, libm)
+                     ;; and ncurses (terminfo symbols live in libncursesw).
+                     (rpath
+                      (string-join
+                       (list (string-append (assoc-ref inputs "glibc") "/lib")
+                             (string-append (assoc-ref inputs "ncurses") "/lib"))
+                       ":")))
+                ;; Install the whole tree verbatim so the interpreter can
+                ;; locate its resources (rg, zsh, bwrap) by relative path.
+                (mkdir-p pkgdir)
+                (copy-recursively "." pkgdir)
+
+                ;; Provide libtinfo.so.6 for the bundled zsh.  Guix's ncurses
+                ;; folds terminfo into libncursesw, so a SONAME shim suffices
+                ;; (a "no version information available" warning at runtime is
+                ;; benign — the loader resolves the unversioned symbols).
+                (let* ((zsh-lib (string-append pkgdir "/codex-resources/zsh/lib"))
+                       (zsh (string-append pkgdir "/codex-resources/zsh/bin/zsh")))
+                  (mkdir-p zsh-lib)
+                  (symlink (string-append (assoc-ref inputs "ncurses")
+                                          "/lib/libncursesw.so.6")
+                           (string-append zsh-lib "/libtinfo.so.6"))
+
+                  ;; Patch the bundled zsh ELF: set the Guix interpreter and an
+                  ;; RPATH that covers the shim above plus glibc and ncurses.
+                  (invoke patchelf-bin "--set-interpreter" ldso zsh)
+                  (invoke patchelf-bin "--set-rpath"
+                          (string-append zsh-lib ":" rpath) zsh))
+
+                ;; Expose the two entry binaries (identical content) in bin/.
+                (mkdir-p bindir)
+                (symlink (string-append pkgdir "/bin/interpreter")
+                         (string-append bindir "/interpreter"))
+                (symlink (string-append pkgdir "/bin/i")
+                         (string-append bindir "/i"))))))))
+    (native-inputs (list patchelf))
+    (inputs
+     `(("glibc" ,glibc)
+       ("ncurses" ,ncurses)))
+    (home-page "https://github.com/openinterpreter/openinterpreter")
+    (synopsis "AI coding agent that runs code on your machine")
+    (description "Open Interpreter is an AI agent that writes and runs code
+locally to accomplish tasks.  The Rust edition is a fast, self-contained
+rewrite that bundles a sandboxed shell (zsh), ripgrep and bubblewrap in its
+package layout so it can execute commands and search files without external
+runtime dependencies.  This package installs the official prebuilt musl
+release verbatim and only patches the bundled zsh to run under Guix.")
+    (license license:asl2.0)
+    (supported-systems '("x86_64-linux"))))
 
 (define-public opencode-desktop-bin
   (package

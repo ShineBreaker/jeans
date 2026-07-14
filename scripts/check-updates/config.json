@@ -4,7 +4,8 @@
   "skip_files": ["rust-crates.scm"],
   "tag_prefix": {
     "reasonix-bin": "v",
-    "reasonix-desktop-bin": "desktop-v"
+    "reasonix-desktop-bin": "desktop-v",
+    "open-interpreter-bin": "rust-v"
   },
   "notes": {
     "check_pre_release": "这个列表中的包会检查包括pre-release在内的所有版本",

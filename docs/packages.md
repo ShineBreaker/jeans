@@ -12,7 +12,7 @@
 | Package                | Description                                                  |
 | ---------------------- | ------------------------------------------------------------ |
 | `crush-bin`            | AI-powered coding assistant for the CLI                      |
-| `github-copilot-bin`   | Agent-native GitHub Copilot desktop application              |
+| `github-copilot`       | Agent-native GitHub Copilot desktop application              |
 | `kimi-code-bin`        | Terminal-native AI coding agent from Moonshot AI             |
 | `mimocode-bin`         | Terminal-native AI coding agent from Xiaomi                  |
 | `oh-my-pi-bin`         | AI coding agent with IDE integration                         |
@@ -95,4 +95,5 @@
 | `git-credential-keepassxc` | Use KeePassXC as a command-line credential store         |
 | `jdtls-bin`                | Java language server                                     |
 | `motrix-next-bin`          | Full-featured download manager                           |
+| `open-interpreter-bin`     | AI coding agent that runs code on your machine           |
 | `winapps`                  | Run Windows applications on GNU/Linux                    |
