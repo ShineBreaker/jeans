@@ -325,7 +325,7 @@ binary release.")
 (define-public cc-switch-bin
   (package
     (name "cc-switch-bin")
-    (version "3.16.5")
+    (version "3.17.0")
     (source
      (origin
        (method url-fetch)
@@ -333,7 +333,7 @@ binary release.")
              "https://github.com/farion1231/cc-switch/releases/download/"
              "v" version "/CC-Switch-v" version "-Linux-x86_64.deb"))
        (sha256
-        (base32 "15lhzx4yiywhchkar3jwg0mp4jb1rc2l8qds193bzlgkarfr675s"))))
+        (base32 "0yhyyp4wvxmii7f8pcyf8hr6qnabgng1az5li40zsfdwqlr7ai8x"))))
     (build-system gnu-build-system)
     (arguments
      (list

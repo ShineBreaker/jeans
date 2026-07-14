@@ -57,7 +57,7 @@
 (define-public crush-bin
   (package
     (name "crush-bin")
-    (version "0.84.0")
+    (version "0.84.1")
     (source
      (origin
        (method url-fetch)
@@ -65,7 +65,7 @@
              "https://github.com/charmbracelet/crush/releases/download/"
              "v" version "/crush_" version "_amd64.deb"))
        (sha256
-        (base32 "1bjydjvix7bd7cxvwbyjwxqx5inzcb5h0p7mb9d514f4ysiapfg8"))))
+        (base32 "1w4rw4sqkhrdal2lzcdy65w7d4ligr97bryd1jaynlyq8mix014v"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -147,7 +147,7 @@ This package provides the prebuilt binary release.")
 (define-public opencode-bin
   (package
     (name "opencode-bin")
-    (version "1.17.18")
+    (version "1.17.20")
     (source
      (origin
        (method url-fetch)
@@ -155,7 +155,7 @@ This package provides the prebuilt binary release.")
              "https://github.com/anomalyco/opencode/releases/download/"
              "v" version "/opencode-linux-x64.tar.gz"))
        (sha256
-        (base32 "0g0kwwnkkc5v556xgd7fh8vyj4mkjf1vzl44zgahqz36wlpd6jg1"))))
+        (base32 "0r65k7hl2rr3b54bdp2nskxw3zd63513n4lmsljvl3wqs050q45p"))))
     (build-system copy-build-system)
     (arguments
      (list
@@ -292,7 +292,7 @@ package provides the prebuilt binary release.")
 (define-public opencode-desktop-bin
   (package
     (name "opencode-desktop-bin")
-    (version "1.17.18")
+    (version "1.17.20")
     (source
      (origin
        (method url-fetch)
@@ -300,7 +300,7 @@ package provides the prebuilt binary release.")
              "https://github.com/anomalyco/opencode/releases/download/"
              "v" version "/opencode-desktop-linux-amd64.deb"))
        (sha256
-        (base32 "10ssljwsgshdnimzqwc13jaywwyvsg0scl7nvgb6lnvn8j0dj0f3"))))
+        (base32 "06llqf8ana3ypawk4dnb1pay2q48jgn3r4wjw2mfkhb6hgwbvi79"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -450,7 +450,7 @@ coding experience with context awareness.")
 (define-public orca-ide-bin
   (package
     (name "orca-ide-bin")
-    (version "1.4.135")
+    (version "1.4.138")
     (source
      (origin
        (method url-fetch)
@@ -458,7 +458,7 @@ coding experience with context awareness.")
              "https://github.com/stablyai/orca/releases/download/"
              "v" version "/orca-ide_" version "_amd64.deb"))
        (sha256
-        (base32 "1d5wa8zf1sjjlg24hvipgi3xlwx5mnjywz2dr2w17cnlwqwddq2l"))))
+        (base32 "1p36vvm4lqa365v5p5mr1cqcgiyk0828cpvvinbybfszalgz8g6j"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -603,7 +603,7 @@ agent orchestration.")
 (define-public oh-my-pi-bin
   (package
     (name "oh-my-pi-bin")
-    (version "16.4.2")
+    (version "16.5.0")
     (source
      (origin
        (method url-fetch)
@@ -611,7 +611,7 @@ agent orchestration.")
              "https://github.com/can1357/oh-my-pi/releases/download/"
              "v" version "/omp-linux-x64"))
        (sha256
-        (base32 "1nbz4mxzngrshbwh8khmc3z0n5bifad92n4m5iij8lf94xka86zh"))))
+        (base32 "103aq1x6ifj4nnnr5nda5hwq1cdag9qpmm0hzwls02pykrj2m207"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -682,7 +682,7 @@ the prebuilt binary release.")
 (define-public kimi-code-bin
   (package
     (name "kimi-code-bin")
-    (version "0.23.5")
+    (version "0.23.6")
     (source
      (origin
        (method url-fetch)
@@ -691,7 +691,7 @@ the prebuilt binary release.")
              "%40moonshot-ai%2Fkimi-code%40" version
              "/kimi-code-linux-x64.zip"))
        (sha256
-        (base32 "1yf1af64vx5zxmq0ajxswnvrmmk8qi80spzkbn1q4797qm93bqjm"))))
+        (base32 "134fh1qkv1gw25kl3m3ajmb9qmig1h65f8qlvyaqqz368jnhrcrq"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -757,7 +757,7 @@ compatible providers.  This package provides the prebuilt binary release.")
 (define-public reasonix-bin
   (package
     (name "reasonix-bin")
-    (version "1.17.10")
+    (version "1.17.12")
     (source
      (origin
        (method url-fetch)
@@ -765,7 +765,7 @@ compatible providers.  This package provides the prebuilt binary release.")
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
              "v" version "/reasonix-linux-amd64.tar.gz"))
        (sha256
-        (base32 "10v3876wh1g8q04mvz1sglarzvg55skd7bk7marsdal7q8yhza01"))))
+        (base32 "0chx6qyzd0b6cw8n2n4kq86c6jnj8xgz07xbv9f1lkp243wi90wz"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -797,7 +797,7 @@ and ships as a single static binary with no runtime dependencies.")
 (define-public reasonix-desktop-bin
   (package
     (name "reasonix-desktop-bin")
-    (version "1.17.10")
+    (version "1.17.12")
     (source
      (origin
        (method url-fetch)
@@ -805,7 +805,7 @@ and ships as a single static binary with no runtime dependencies.")
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
              "desktop-v" version "/Reasonix-linux-amd64.deb"))
        (sha256
-        (base32 "1105hphaxj1hq2x699dqp7h6afwisynp9hdh1303hnh3y7hpkasm"))))
+        (base32 "1qdz7q9hc63sxhaigx9s6krf6hbcwkcyi5ximwvd1dpfvvym2g6d"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -1073,7 +1073,7 @@ without friction.")
 (define-public github-copilot-bin
   (package
     (name "github-copilot-bin")
-    (version "1.0.21")
+    (version "1.0.22")
     (source
      (origin
        (method url-fetch)
@@ -1081,7 +1081,7 @@ without friction.")
              "https://github.com/github/app/releases/download/"
              "v" version "/GitHub-Copilot-linux-x64.deb"))
        (sha256
-        (base32 "0nh82fldllyslcaq6crjh0ika61jwvs7mwvah25hfqzb1xcjqjqb"))))
+        (base32 "09a4xqdh5s0ww134mwlw5s6dh599dcf97rp3ga0dhvyr920yvxhg"))))
     (build-system gnu-build-system)
     (arguments
      (list
