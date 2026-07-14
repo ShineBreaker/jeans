@@ -1199,6 +1199,11 @@ without friction.")
               ("glib" ,glib)
               ("gtk+" ,gtk+)
               ("gdk-pixbuf" ,gdk-pixbuf)
+              ;; tray-icon (used by Tauri for the taskbar tray) dlopens
+              ;; libayatana-appindicator3.so.1 / libappindicator3.so.1 at
+              ;; startup; missing it panics the whole app before any window
+              ;; appears (see ~/.copilot/crash-reports/*).
+              ("libappindicator" ,libappindicator)
               ("libsoup" ,libsoup)
               ("mesa" ,mesa)
               ("openssl" ,openssl)
