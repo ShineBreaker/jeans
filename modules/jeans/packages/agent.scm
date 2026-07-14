@@ -853,13 +853,12 @@ and ships as a single static binary with no runtime dependencies.")
                      (string-append
                       "#!" #$(this-package-input "bash-minimal") "/bin/sh\n"
                       "export FONTCONFIG_FILE=" #$(this-package-input "fontconfig-minimal") "/etc/fonts/fonts.conf\n"
-                      "export XDG_DATA_DIRS=" out "/share:" gtk-share ":" webkitgtk-share "\n"
+                      "export XDG_DATA_DIRS=" out "/share:" gtk-share ":" webkitgtk-share "${XDG_DATA_DIRS:+:$XDG_DATA_DIRS}\n"
                       "export GI_TYPELIB_PATH=" glib-lib "/girepository-1.0:"
                       gtk-lib "/girepository-1.0:"
                       webkitgtk-lib "/girepository-1.0:"
                       gdk-pixbuf "/lib/girepository-1.0\n"
                       "export GIO_EXTRA_MODULES=" glib-lib "/gio/modules\n"
-                      "export GDK_PIXBUF_MODULE_FILE=" gdk-pixbuf "/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache\n"
                       "exec " ld.so " --argv0 " libexec "/reasonix-desktop"
                       " --library-path " lib-path " " libexec "/reasonix-desktop \"$@\"\n"))))
                 (chmod (string-append bin "/reasonix-desktop") #o755))))
@@ -1070,9 +1069,9 @@ without friction.")
 ;;; libsoup, javascriptcore and the rest come transitively from
 ;;; webkitgtk-for-gtk3.
 
-(define-public github-copilot-bin
+(define-public github-copilot
   (package
-    (name "github-copilot-bin")
+    (name "github-copilot")
     (version "1.0.22")
     (source
      (origin
@@ -1145,15 +1144,25 @@ without friction.")
                       "#!" sh "/bin/sh\n"
                       "export FONTCONFIG_FILE=" fontconf
                       "/etc/fonts/fonts.conf\n"
+                      ;; Use prefix (not =) so the system XDG_DATA_DIRS
+                      ;; (guix-home, current-system, shared-mime-info, ...)
+                      ;; is preserved.  Overwriting it breaks gdk-pixbuf's
+                      ;; loader/mime resolution: GTK aborts with
+                      ;; "Unrecognized image file format (gdk-pixbuf-error-quark, 3)"
+                      ;; before any window appears.
                       "export XDG_DATA_DIRS=" out "/share:"
-                      gtk-share ":" webkitgtk-share "\n"
+                      gtk-share ":" webkitgtk-share
+                      "${XDG_DATA_DIRS:+:$XDG_DATA_DIRS}\n"
                       "export GI_TYPELIB_PATH=" glib-lib "/girepository-1.0:"
                       gtk-lib "/girepository-1.0:"
                       webkitgtk-lib "/girepository-1.0:"
                       gdk-pixbuf "/lib/girepository-1.0\n"
                       "export GIO_EXTRA_MODULES=" glib-lib "/gio/modules\n"
-                      "export GDK_PIXBUF_MODULE_FILE=" gdk-pixbuf
-                      "/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache\n"
+                      ;; Let gdk-pixbuf pick up loaders via the Guix profile
+                      ;; hook (GUIX_GDK_PIXBUF_MODULE_FILES) inherited from
+                      ;; the environment, rather than pointing the upstream
+                      ;; GDK_PIXBUF_MODULE_FILE at this package's partial
+                      ;; 11-loader cache (no png/jpeg).
                       ;; The app dlopens native plugins / onnxruntime from its
                       ;; resource dir; keep it on the library path too.
                       "export LD_LIBRARY_PATH=" libexec "/resources"
