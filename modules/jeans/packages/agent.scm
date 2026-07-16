@@ -984,6 +984,63 @@ release.")
     (supported-systems '("x86_64-linux"))))
 
 
+;;; Herdr: terminal workspace manager that orchestrates multiple AI
+;;; coding agents (Rust static-pie binary).
+;;;
+;;; The upstream release ships a single statically-linked (static-pie)
+;;; Rust ELF binary with no interpreter and no NEEDED entries.  Being
+;;; fully static, no patchelf or ld-linux wrapper is needed — just copy
+;;; the raw binary to bin/ and make it executable (same approach as
+;;; codewhale-bin / reasonix-bin).
+
+(define-public herdr-bin
+  (package
+    (name "herdr-bin")
+    (version "0.7.4")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://github.com/ogulcancelik/herdr/releases/download/"
+             "v" version "/herdr-linux-x86_64"))
+       (sha256
+        (base32 "0n9h20yaq3q5iqvmbsx6rig7hdp0gzk46fimqb5gj0559cnw03xw"))))
+    (build-system gnu-build-system)
+    (arguments
+     (list
+      #:tests? #f
+      #:validate-runpath? #f
+      #:strip-binaries? #f
+      #:modules '((guix build gnu-build-system)
+                  (guix build utils))
+      #:phases
+      #~(modify-phases %standard-phases
+          (delete 'configure)
+          (delete 'build)
+          (replace 'unpack
+            (lambda _
+              ;; The source is a raw ELF, not an archive: copy it in
+              ;; place and restore the executable bit.
+              (copy-file #$source "herdr")
+              (chmod "herdr" #o755)))
+          (replace 'install
+            (lambda _
+              (let ((bin (string-append #$output "/bin")))
+                (mkdir-p bin)
+                (install-file "herdr" bin)))))))
+    (home-page "https://herdr.dev")
+    (synopsis "Terminal workspace manager for AI coding agents")
+    (description
+     "Herdr is an agent multiplexer that lives in your terminal, orchestrating
+multiple AI coding agents (Claude Code, Codex, and others) from a single
+tmux-style session.  It owns persistent PTYs so sessions survive restarts and
+can be reattached locally or over SSH, and exposes a Unix-domain socket API so
+agents can spawn panes, run commands, read output and wait on each other.
+This package provides the prebuilt binary release.")
+    (license license:agpl3+)
+    (supported-systems '("x86_64-linux"))))
+
+
 ;;; Reasonix: DeepSeek-native AI coding agent (Go static binary).
 ;;;
 ;;; The upstream tar.gz ships a single statically-linked Go ELF binary:
