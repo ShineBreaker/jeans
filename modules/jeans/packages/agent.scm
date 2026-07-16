@@ -44,6 +44,34 @@
                 #:prefix license:))
 
 
+(define (disable-electron-updater-phase application-directory)
+  #~(lambda _
+      ;; electron-updater treats "package-type" as permission to replace the
+      ;; application with a downloaded .deb.  Guix owns package upgrades.
+      (let ((package-type
+             (string-append #$output "/lib/" #$application-directory
+                            "/resources/package-type")))
+        (when (file-exists? package-type)
+          (delete-file package-type)))))
+
+(define (prefer-electron-wayland-phase program)
+  #~(lambda _
+      (let ((wrapper (string-append #$output "/bin/" #$program)))
+        (substitute* wrapper
+          (("^exec -a ")
+           (string-append
+            "case \"${ELECTRON_OZONE_PLATFORM_HINT:-auto}\" in\n"
+            "  auto|wayland)\n"
+            "    if [ -n \"${WAYLAND_DISPLAY:-}\" ]; then\n"
+            "      set -- --ozone-platform=wayland "
+            "--enable-features=UseOzonePlatform,WaylandWindowDecorations "
+            "\"$@\"\n"
+            "    fi\n"
+            "    ;;\n"
+            "esac\n"
+            "exec -a "))))))
+
+
 ;;; Crush: AI-powered coding assistant (Go TUI binary).
 ;;;
 ;;; The upstream .deb ships a single Go ELF binary:
@@ -71,6 +99,8 @@
     (arguments
      (list
       #:tests? #f
+      #:validate-runpath? #f
+      #:strip-binaries? #f
       #:modules '((guix build gnu-build-system)
                   (guix build utils))
       #:phases
@@ -114,7 +144,7 @@
                 (wrap-program crush-target
                   `("PATH" ":" prefix
                     ,(list (string-append #$bash-minimal "/bin")
-                           (string-append #$coreutils "/bin")
+                           (string-append #$coreutils-minimal "/bin")
                            (string-append #$git "/bin")
                            (string-append #$go "/bin"))))
 
@@ -135,14 +165,20 @@
                            (string-append share "/man/man1/crush.1.gz"))))))))
     (native-inputs (list patchelf binutils))
     (inputs
-     (list bash-minimal glibc git coreutils go))
+     `(("bash-minimal" ,bash-minimal)
+       ("glibc" ,glibc)
+       ("git" ,git)
+       ("coreutils-minimal" ,coreutils-minimal)
+       ("go" ,go)))
     (home-page "https://github.com/charmbracelet/crush")
     (synopsis "AI-powered coding assistant for the CLI")
     (description "Crush is an AI-powered coding assistant that runs in the terminal.
 It supports multiple LLM providers, MCP servers, LSP integration, and provides
 tools for file editing, shell command execution, web fetching, and more.
 This package provides the prebuilt binary release.")
-    (license (license:nonfree "https://github.com/charmbracelet/crush/blob/main/LICENSE.md"))))
+    (license
+     (license:nonfree
+      "https://github.com/charmbracelet/crush/blob/main/LICENSE.md"))))
 
 
 (define-public opencode-bin
@@ -160,6 +196,7 @@ This package provides the prebuilt binary release.")
     (build-system copy-build-system)
     (arguments
      (list
+      #:tests? #f
       #:validate-runpath? #f
       #:strip-binaries? #f
       #:install-plan
@@ -205,7 +242,7 @@ This package provides the prebuilt binary release.")
               ("glibc" ,glibc)
               ("gcc:lib" ,gcc "lib")))
     (home-page "https://opencode.ai")
-    (synopsis "The open source AI coding agent.")
+    (synopsis "Open source AI coding agent")
     (description "OpenCode is an open source agent that helps you
  write code in your terminal.")
     (license license:expat)))
@@ -234,6 +271,7 @@ This package provides the prebuilt binary release.")
     (build-system copy-build-system)
     (arguments
      (list
+      #:tests? #f
       #:validate-runpath? #f
       #:strip-binaries? #f
       #:install-plan
@@ -435,6 +473,8 @@ release verbatim and only patches the bundled zsh to run under Guix.")
                 (copy-recursively "opt/OpenCode"
                                   (string-append out "/lib/opencode-desktop"))
                 #t)))
+          (add-after 'install 'disable-electron-updater
+            #$(disable-electron-updater-phase "opencode-desktop"))
           (add-after 'install 'patch-elf
             (lambda* (#:key inputs #:allow-other-keys)
               (let* ((ld.so (string-append #$(this-package-input "glibc")
@@ -466,7 +506,8 @@ release verbatim and only patches the bundled zsh to run under Guix.")
             (lambda _
               (let* ((out #$output)
                      (bin (string-append out "/bin"))
-                     (exe (string-append out "/lib/opencode-desktop/ai.opencode.desktop")))
+                     (exe (string-append
+                           out "/lib/opencode-desktop/ai.opencode.desktop")))
                 (mkdir-p bin)
                 (symlink exe (string-append bin "/opencode-desktop")))))
           (add-after 'install-bin 'install-desktop
@@ -515,10 +556,13 @@ release verbatim and only patches the bundled zsh to run under Guix.")
                     (,(string-append #$(this-package-input "fontconfig-minimal")
                                      "/etc/fonts/fonts.conf")))
                   `("XDG_DATA_DIRS" prefix
-                    (,(string-append out "/share"))))))))))
+                    (,(string-append out "/share")))))))
+          (add-after 'wrap-program 'prefer-wayland
+            #$(prefer-electron-wayland-phase "opencode-desktop")))))
     (native-inputs (list binutils patchelf tar xz))
     (inputs `(("alsa-lib" ,alsa-lib)
               ("at-spi2-core" ,at-spi2-core)
+              ("bash-minimal" ,bash-minimal)
               ("cups" ,cups)
               ("dbus" ,dbus)
               ("eudev" ,eudev)
@@ -593,6 +637,8 @@ coding experience with context awareness.")
                 (copy-recursively "opt/Orca"
                                   (string-append out "/lib/orca-ide"))
                 #t)))
+          (add-after 'install 'disable-electron-updater
+            #$(disable-electron-updater-phase "orca-ide"))
           (add-after 'install 'patch-elf
             (lambda* (#:key inputs #:allow-other-keys)
               (let* ((ld.so (string-append #$(this-package-input "glibc")
@@ -663,7 +709,9 @@ coding experience with context awareness.")
                     (,(string-append #$(this-package-input "fontconfig-minimal")
                                      "/etc/fonts/fonts.conf")))
                   `("XDG_DATA_DIRS" prefix
-                    (,(string-append out "/share"))))))))))
+                    (,(string-append out "/share")))))))
+          (add-after 'wrap-program 'prefer-wayland
+            #$(prefer-electron-wayland-phase "orca-ide")))))
     (native-inputs (list binutils patchelf tar xz))
     (inputs `(("alsa-lib" ,alsa-lib)
               ("at-spi2-core" ,at-spi2-core)
@@ -745,8 +793,11 @@ agent orchestration.")
                      (ld.so (string-append (assoc-ref inputs "glibc")
                                            #$(glibc-dynamic-linker)))
                      (lib-path (string-join
-                                (list (string-append (assoc-ref inputs "glibc") "/lib")
-                                      (string-append (assoc-ref inputs "gcc:lib") "/lib"))
+                                (list
+                                 (string-append (assoc-ref inputs "glibc")
+                                                "/lib")
+                                 (string-append (assoc-ref inputs "gcc:lib")
+                                                "/lib"))
                                 ":")))
                 (mkdir-p libexec)
                 (install-file "omp" libexec)
@@ -754,7 +805,9 @@ agent orchestration.")
                 (call-with-output-file (string-append bin "/omp")
                   (lambda (port)
                     (format port
-                            "#!~a\nexec ~a --argv0 ~a/omp --library-path ~a ~a/omp \"$@\"\n"
+                            (string-append
+                             "#!~a\nexec ~a --argv0 ~a/omp "
+                             "--library-path ~a ~a/omp \"$@\"\n")
                             #$(file-append bash-minimal "/bin/sh")
                             ld.so
                             libexec
@@ -825,8 +878,11 @@ the prebuilt binary release.")
                      (ld.so (string-append (assoc-ref inputs "glibc")
                                            #$(glibc-dynamic-linker)))
                      (lib-path (string-join
-                                (list (string-append (assoc-ref inputs "glibc") "/lib")
-                                      (string-append (assoc-ref inputs "gcc:lib") "/lib"))
+                                (list
+                                 (string-append (assoc-ref inputs "glibc")
+                                                "/lib")
+                                 (string-append (assoc-ref inputs "gcc:lib")
+                                                "/lib"))
                                 ":")))
                 (mkdir-p libexec)
                 (install-file "kimi" libexec)
@@ -834,7 +890,9 @@ the prebuilt binary release.")
                 (call-with-output-file (string-append bin "/kimi")
                   (lambda (port)
                     (format port
-                            "#!~a\nexec ~a --argv0 ~a/kimi --library-path ~a ~a/kimi \"$@\"\n"
+                            (string-append
+                             "#!~a\nexec ~a --argv0 ~a/kimi "
+                             "--library-path ~a ~a/kimi \"$@\"\n")
                             #$(file-append bash-minimal "/bin/sh")
                             ld.so
                             libexec
@@ -966,7 +1024,8 @@ release.")
     (synopsis "DeepSeek-native AI coding agent for the terminal")
     (description
      "Reasonix is a config- and plugin-driven AI coding agent written in Go,
-designed around DeepSeek's prefix cache to keep token costs low across long sessions.
+designed around DeepSeek's prefix cache to keep token costs low across long
+sessions.
 It supports multi-model composition, external tools via MCP-compatible JSON-RPC,
 and ships as a single static binary with no runtime dependencies.")
     (license license:expat)
@@ -1016,10 +1075,12 @@ and ships as a single static binary with no runtime dependencies.")
                      (glib-lib (string-append (assoc-ref inputs "glib") "/lib"))
                      (gtk-lib (string-append (assoc-ref inputs "gtk+") "/lib"))
                      (gtk-share (string-append (assoc-ref inputs "gtk+") "/share"))
-                     (webkitgtk-lib (string-append (assoc-ref inputs "webkitgtk-for-gtk3")
-                                                   "/lib"))
-                     (webkitgtk-share (string-append (assoc-ref inputs "webkitgtk-for-gtk3")
-                                                     "/share"))
+                     (webkitgtk-lib
+                      (string-append
+                       (assoc-ref inputs "webkitgtk-for-gtk3") "/lib"))
+                     (webkitgtk-share
+                      (string-append
+                       (assoc-ref inputs "webkitgtk-for-gtk3") "/share"))
                      (gdk-pixbuf (assoc-ref inputs "gdk-pixbuf")))
                 (mkdir-p libexec)
                 (copy-file "usr/bin/reasonix-desktop"
@@ -1031,15 +1092,21 @@ and ships as a single static binary with no runtime dependencies.")
                     (display
                      (string-append
                       "#!" #$(this-package-input "bash-minimal") "/bin/sh\n"
-                      "export FONTCONFIG_FILE=" #$(this-package-input "fontconfig-minimal") "/etc/fonts/fonts.conf\n"
-                      "export XDG_DATA_DIRS=" out "/share:" gtk-share ":" webkitgtk-share "${XDG_DATA_DIRS:+:$XDG_DATA_DIRS}\n"
+                      "export FONTCONFIG_FILE="
+                      #$(this-package-input "fontconfig-minimal")
+                      "/etc/fonts/fonts.conf\n"
+                      "export XDG_DATA_DIRS=" out "/share:" gtk-share ":"
+                      webkitgtk-share
+                      "${XDG_DATA_DIRS:+:$XDG_DATA_DIRS}\n"
                       "export GI_TYPELIB_PATH=" glib-lib "/girepository-1.0:"
                       gtk-lib "/girepository-1.0:"
                       webkitgtk-lib "/girepository-1.0:"
                       gdk-pixbuf "/lib/girepository-1.0\n"
                       "export GIO_EXTRA_MODULES=" glib-lib "/gio/modules\n"
-                      "exec " ld.so " --argv0 " libexec "/reasonix-desktop"
-                      " --library-path " lib-path " " libexec "/reasonix-desktop \"$@\"\n"))))
+                      "exec " ld.so " --argv0 "
+                      libexec "/reasonix-desktop"
+                      " --library-path " lib-path " " libexec
+                      "/reasonix-desktop \"$@\"\n"))))
                 (chmod (string-append bin "/reasonix-desktop") #o755))))
           (add-after 'install 'install-desktop-entry
             (lambda _
@@ -1070,7 +1137,8 @@ and ships as a single static binary with no runtime dependencies.")
     (synopsis "DeepSeek-native AI coding agent with desktop GUI")
     (description
      "Reasonix is a DeepSeek-native AI coding agent for your terminal,
-tuned around DeepSeek's prefix cache so token costs stay low across long sessions.
+tuned around DeepSeek's prefix cache so token costs stay low across long
+sessions.
 This is the desktop version with a graphical interface built with Wails
 (Go + WebKitGTK).  It provides a config- and plugin-driven harness with
 support for multiple LLM providers.")
@@ -1115,6 +1183,8 @@ support for multiple LLM providers.")
                 (copy-recursively "opt/ZCode"
                                   (string-append out "/lib/zcode"))
                 #t)))
+          (add-after 'install 'disable-electron-updater
+            #$(disable-electron-updater-phase "zcode"))
           (add-after 'install 'patch-elf
             (lambda* (#:key inputs #:allow-other-keys)
               (let* ((ld.so (string-append #$(this-package-input "glibc")
@@ -1199,7 +1269,9 @@ support for multiple LLM providers.")
                   `("FONTCONFIG_FILE" =
                     (,fontconfig-file))
                   `("XDG_DATA_DIRS" prefix
-                    (,(string-append out "/share"))))))))))
+                    (,(string-append out "/share")))))))
+          (add-after 'wrap-program 'prefer-wayland
+            #$(prefer-electron-wayland-phase "zcode")))))
     (native-inputs (list binutils patchelf tar xz))
     (inputs `(("alsa-lib" ,alsa-lib)
               ("at-spi2-core" ,at-spi2-core)
@@ -1224,7 +1296,7 @@ support for multiple LLM providers.")
               ("mesa" ,mesa)
               ("nss" ,nss)))
     (home-page "https://zcode.z.ai/")
-    (synopsis "ZCode Desktop App")
+    (synopsis "Desktop application for agent-assisted development")
     (description
      "Simple, Fast, Vibe‑Ready ! -- ZCode combines the best AI agents
 with your existing tools so you can plan, code, review, and deploy

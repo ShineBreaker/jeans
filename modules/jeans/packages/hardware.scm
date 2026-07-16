@@ -21,12 +21,13 @@
     (version "0.6.7")
     (source
       (origin
-        (method url-fetch)
-        (uri (string-append
-               "https://github.com/OpenTabletDriver/OpenTabletDriver"
-               "/archive/refs/tags/v" version ".tar.gz"))
+        (method git-fetch)
+        (uri (git-reference
+              (url "https://github.com/OpenTabletDriver/OpenTabletDriver")
+              (commit (string-append "v" version))))
+        (file-name (git-file-name name version))
         (sha256
-          (base32 "0vvr72vs0h9g3cxs4mjk1infqr9jrqr28zs7lmyykkngdijgxs4m"))))
+          (base32 "0q3wc7zv7fadc0w7iihzysc0g4xwalv6mfmk0qwpzxnq73advgcc"))))
     (build-system gnu-build-system)
     (arguments
       (list #:modules '((guix build utils)

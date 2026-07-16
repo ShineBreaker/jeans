@@ -86,18 +86,49 @@
            (dereference! cfg-file)
            (chmod cfg-file #o644)
            (substitute* cfg-file
-                        (("defaultPref\\(\"extensions\\.getAddons\\.search\\.browseURL\", .*")
-                         "defaultPref(\"extensions.getAddons.search.browseURL\", \"https://addons.mozilla.org/%LOCALE%/firefox/search?q=%TERMS%&platform=%OS%&appver=%VERSION%\");\n")
-                        (("defaultPref\\(\"extensions\\.getAddons\\.get\\.url\", .*")
-                         "defaultPref(\"extensions.getAddons.get.url\", \"https://services.addons.mozilla.org/api/v4/addons/search/?guid=%IDS%&lang=%LOCALE%\");\n")
-                        (("defaultPref\\(\"extensions\\.getAddons\\.link\\.url\", .*")
-                         "defaultPref(\"extensions.getAddons.link.url\", \"https://addons.mozilla.org/%LOCALE%/firefox/\");\n")
-                        (("defaultPref\\(\"extensions\\.getAddons\\.discovery\\.api_url\", .*")
-                         "defaultPref(\"extensions.getAddons.discovery.api_url\", \"https://services.addons.mozilla.org/api/v4/discovery/?lang=%LOCALE%&edition=%DISTRIBUTION%\");\n")
-                        (("defaultPref\\(\"extensions\\.getAddons\\.langpacks\\.url\", .*")
-                         "defaultPref(\"extensions.getAddons.langpacks.url\", \"https://services.addons.mozilla.org/api/v4/addons/language-tools/?app=firefox&type=language&appversion=%VERSION%\");\n")
-                        (("defaultPref\\(\"lightweightThemes\\.getMoreURL\", .*")
-                         "defaultPref(\"lightweightThemes.getMoreURL\", \"https://addons.mozilla.org/%LOCALE%/firefox/themes\");\n"))
+                        (((string-append
+                           "defaultPref\\(\"extensions\\.getAddons\\."
+                           "search\\.browseURL\", .*"))
+                         (string-append
+                          "defaultPref(\"extensions.getAddons.search.browseURL\", "
+                          "\"https://addons.mozilla.org/%LOCALE%/firefox/search?"
+                          "q=%TERMS%&platform=%OS%&appver=%VERSION%\");\n"))
+                        (((string-append
+                           "defaultPref\\(\"extensions\\.getAddons\\.get\\."
+                           "url\", .*"))
+                         (string-append
+                          "defaultPref(\"extensions.getAddons.get.url\", "
+                          "\"https://services.addons.mozilla.org/api/v4/"
+                          "addons/search/?guid=%IDS%&lang=%LOCALE%\");\n"))
+                        (((string-append
+                           "defaultPref\\(\"extensions\\.getAddons\\.link\\."
+                           "url\", .*"))
+                         (string-append
+                          "defaultPref(\"extensions.getAddons.link.url\", "
+                          "\"https://addons.mozilla.org/%LOCALE%/firefox/\");\n"))
+                        (((string-append
+                           "defaultPref\\(\"extensions\\.getAddons\\."
+                           "discovery\\.api_url\", .*"))
+                         (string-append
+                          "defaultPref(\"extensions.getAddons.discovery."
+                          "api_url\", \"https://services.addons.mozilla.org/"
+                          "api/v4/discovery/?lang=%LOCALE%&"
+                          "edition=%DISTRIBUTION%\");\n"))
+                        (((string-append
+                           "defaultPref\\(\"extensions\\.getAddons\\."
+                           "langpacks\\.url\", .*"))
+                         (string-append
+                          "defaultPref(\"extensions.getAddons.langpacks.url\", "
+                          "\"https://services.addons.mozilla.org/api/v4/addons/"
+                          "language-tools/?app=firefox&type=language&"
+                          "appversion=%VERSION%\");\n"))
+                        (((string-append
+                           "defaultPref\\(\"lightweightThemes\\.getMoreURL\", "
+                           ".*"))
+                         (string-append
+                          "defaultPref(\"lightweightThemes.getMoreURL\", "
+                          "\"https://addons.mozilla.org/%LOCALE%/firefox/"
+                          "themes\");\n")))
            (chmod cfg-file #o444))
 
          ;; 2.1 修正 app cslication.ini 中带发行版后缀的版本号，
@@ -133,15 +164,25 @@
            (chmod browser-omni-file #o444))
 
          ;; 3. Patch policies.json: 允许安装语言包，并显示语言切换 UI
-         (let ((policies-file (string-append out "/lib/librewolf/distribution/policies.json")))
+         (let ((policies-file
+                (string-append
+                 out "/lib/librewolf/distribution/policies.json")))
            (dereference! policies-file)
            (chmod policies-file #o644)
            (substitute* policies-file
-                        (("\"allowed_types\": \\[\"dictionary\", \"extension\", \"sitepermission\", \"theme\"\\]")
-                         "\"allowed_types\": [\"dictionary\", \"extension\", \"locale\", \"sitepermission\", \"theme\"]"))
+                        (((string-append
+                           "\"allowed_types\": \\[\"dictionary\", "
+                           "\"extension\", \"sitepermission\", \"theme\"\\]"))
+                         (string-append
+                          "\"allowed_types\": [\"dictionary\", \"extension\", "
+                          "\"locale\", \"sitepermission\", \"theme\"]")))
            (substitute* policies-file
-                        (("\"blocked_install_message\": \"LibreWolf does not allow installing Language Packs\\.\"")
-                         "\"blocked_install_message\": \"LibreWolf allows installing language packs from Mozilla Add-ons.\""))
+                        (((string-append
+                           "\"blocked_install_message\": \"LibreWolf does not "
+                           "allow installing Language Packs\\.\""))
+                         (string-append
+                          "\"blocked_install_message\": \"LibreWolf allows "
+                          "installing language packs from Mozilla Add-ons.\"")))
            (substitute* policies-file
                         (("\"SkipTermsOfUse\": true,")
                          (string-append "\"Preferences\": {\n"
@@ -174,15 +215,12 @@
     (list librewolf))
    (native-inputs (list python))
    (home-page "https://librewolf.net/")
-       (synopsis
-        "Custom version of Firefox, focused on privacy, security and freedom. (revert guix patch)")
+       (synopsis "LibreWolf with Mozilla language pack support restored")
        (description
         "LibreWolf is designed to increase protection against tracking and
-   fingerprinting techniques, while also including a few security improvements.
-   This is achieved through our privacy and security oriented settings and
-   patches.  LibreWolf also aims to remove all the telemetry, data collection and
-   annoyances, as well as disabling anti-freedom features like DRM. (revert guix patch).
-This package reverts the upstream Guix patch.")
+fingerprinting while including additional security improvements.  This package
+restores access to Mozilla's official add-on and language pack services and
+keeps the language selection interface enabled.")
        (license license:mpl2.0)))
 
 (define-public zen-browser-bin
@@ -200,6 +238,7 @@ This package reverts the upstream Guix patch.")
     (build-system copy-build-system)
     (arguments
      (list
+      #:tests? #f
       #:install-plan
       #~'(("." "lib/zen"))
       #:validate-runpath? #f
@@ -313,8 +352,9 @@ This package reverts the upstream Guix patch.")
                           (append (map (lambda (binary)
                                          (string-append #$output "/lib/zen/"
                                                         binary))
-                                       '("glxtest" "updater" "vaapitest" "vulkantest" "zen"
-                                         "zen-bin" "pingsender"))
+                                       '("glxtest" "updater" "vaapitest"
+                                         "vulkantest" "zen" "zen-bin"
+                                         "pingsender"))
                                   (find-files (string-append #$output
                                                              "/lib/zen")
                                               ".*\\.so.*"))))))
@@ -342,7 +382,9 @@ This package reverts the upstream Guix patch.")
                                                       "Browser" "Web"
                                                       "Explorer")
                                          #:categories '("Network" "Browser")
-                                         ;; #:actions '("new-window" "new-private-window" "profilemanager")
+                                         ;; Upstream also defines new-window,
+                                         ;; new-private-window and profile
+                                         ;; manager actions.
                                          #:mime-type '("text/html" "text/xml"
                                                        "application/xhtml+xml"
                                                        "x-scheme-handler/http"
@@ -379,7 +421,8 @@ This package reverts the upstream Guix patch.")
                                                             "/zen.png")))))
                             icons))))))))
     (native-inputs (list patchelf))
-    (inputs (list alsa-lib
+    (inputs (list bash-minimal
+                  alsa-lib
                   eudev
                   gcc-toolchain
                   icu4c
@@ -394,7 +437,7 @@ This package reverts the upstream Guix patch.")
                   pipewire
                   pulseaudio))
     (home-page "https://zen-browser.app/")
-    (synopsis "Experience tranquillity while browsing the web without people tracking you!")
+    (synopsis "Privacy-focused web browser with a calm interface")
     (description
      "Beautifully designed, privacy-focused, and packed with features.
 We care about your experience, not your data.")

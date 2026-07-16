@@ -18,19 +18,19 @@
 | `mimocode-bin`         | Terminal-native AI coding agent from Xiaomi                  |
 | `oh-my-pi-bin`         | AI coding agent with IDE integration                         |
 | `open-interpreter-bin` | AI coding agent that runs code on your machine               |
-| `opencode-bin`         | The open source AI coding agent.                             |
+| `opencode-bin`         | Open source AI coding agent                                  |
 | `opencode-desktop-bin` | AI coding agent desktop application                          |
 | `orca-ide-bin`         | AI orchestrator desktop app for parallel agentic development |
 | `reasonix-bin`         | DeepSeek-native AI coding agent for the terminal             |
 | `reasonix-desktop-bin` | DeepSeek-native AI coding agent with desktop GUI             |
-| `zcode`                | ZCode Desktop App                                            |
+| `zcode`                | Desktop application for agent-assisted development           |
 
 ### (jeans packages browser)
 
-| Package            | Description                                                                              |
-| ------------------ | ---------------------------------------------------------------------------------------- |
-| `librewolf-nongnu` | Custom version of Firefox, focused on privacy, security and freedom. (revert guix patch) |
-| `zen-browser-bin`  | Experience tranquillity while browsing the web without people tracking you!              |
+| Package            | Description                                           |
+| ------------------ | ----------------------------------------------------- |
+| `librewolf-nongnu` | LibreWolf with Mozilla language pack support restored |
+| `zen-browser-bin`  | Privacy-focused web browser with a calm interface     |
 
 ### (jeans packages desktop)
 
@@ -52,12 +52,12 @@
 
 ### (jeans packages fonts)
 
-| Package                  | Description                                                                        |
-| ------------------------ | ---------------------------------------------------------------------------------- |
-| `font-maple-font-nf-cn`  | Maple Mono is an open source monospace font focused on smoothing your coding flow. |
-| `font-misans`            | MiSans is a font family for Xiaomi HyperOS.                                        |
-| `font-nerd-font-iosevka` | Iconic font aggregator.                                                            |
-| `font-nerd-symbols`      | Iconic font aggregator                                                             |
+| Package                  | Description                                               |
+| ------------------------ | --------------------------------------------------------- |
+| `font-maple-font-nf-cn`  | Rounded monospace font with ligatures and Nerd Font icons |
+| `font-misans`            | Font family for Xiaomi HyperOS                            |
+| `font-nerd-font-iosevka` | Iosevka font patched with Nerd Font icons                 |
+| `font-nerd-symbols`      | Iconic font collection                                    |
 
 ### (jeans packages games)
 
@@ -82,11 +82,11 @@
 
 | Package                | Description                                                                 |
 | ---------------------- | --------------------------------------------------------------------------- |
-| `colloid-gtk-theme`    | Colloid gtk theme for linux.                                                |
-| `colloid-kde-themes`   | Orchis Kvantum themes for KDE Plasma                                        |
-| `orchis-kde-themes`    | Orchis Kvantum themes for KDE Plasma                                        |
+| `colloid-gtk-theme`    | Colloid GTK theme for Linux                                                 |
+| `colloid-kde-themes`   | Colloid themes for KDE Plasma                                               |
+| `orchis-kde-themes`    | Orchis themes for KDE Plasma                                                |
 | `vimix-gtk-themes`     | Vimix is a flat Material Design theme for GTK 3, GTK 2 and Gnome-Shell etc. |
-| `vimix-kvantum-themes` | Build from Vimix kde.                                                       |
+| `vimix-kvantum-themes` | Vimix Kvantum themes for KDE Plasma                                         |
 
 ### (jeans packages tools)
 

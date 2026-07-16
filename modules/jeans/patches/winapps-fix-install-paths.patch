@@ -1,3 +1,9 @@
+Keep WinApps inside its immutable Guix package tree instead of cloning or
+updating itself at runtime.  Also use the Guix System libvirt group name and
+store paths for generated launchers.
+
+Upstream-status: Not submitted; Guix-specific filesystem integration.
+
 --- a/setup.sh	2026-06-06 03:31:22.729091179 +0800
 +++ b/setup.sh	2026-06-06 03:34:34.107241286 +0800
 @@ -39,8 +39,8 @@
@@ -56,15 +62,6 @@
  }
  
  # Name: 'waCheckInput'
-@@ -895,7 +876,7 @@
-     # Identify groups the current user belongs to.
-     USER_GROUPS=$(groups "$(whoami)")
- 
--    if ! (echo "$USER_GROUPS" | grep -q -E "\blibvirt\b") || ! (echo "$USER_GROUPS" | grep -q -E "\bkvm\b"); then
-+    if ! (echo "$USER_GROUPS" | grep -q -E "\blibvirtd\b") || ! (echo "$USER_GROUPS" | grep -q -E "\bkvm\b"); then
-         # Complete the previous line.
-         echo -e "${FAIL_TEXT}Failed!${CLEAR_TEXT}\n"
- 
 @@ -1331,11 +1331,11 @@
      # Populate variables.
      WIN_BASH="\

@@ -5,6 +5,7 @@
 
 (define-module (jeans packages desktop)
   #:use-module (gnu packages)
+  #:use-module (gnu packages bash)        ; bash-minimal
   #:use-module (gnu packages glib)        ; gobject-introspection, python-pygobject
   #:use-module (gnu packages gtk)         ; gtk+
   #:use-module (gnu packages networking)  ; socat
@@ -14,6 +15,7 @@
   #:use-module (guix build-system python)
   #:use-module (guix download)
   #:use-module (guix gexp)
+  #:use-module (guix git-download)
   #:use-module (guix packages)
   #:use-module ((guix licenses)
                 #:prefix license:))
@@ -44,12 +46,13 @@ physical screens in multi-monitor setups.")
     (version "2.8")
     (source
      (origin
-       (method url-fetch)
-       (uri (string-append
-             "https://github.com/anufrievroman/waypaper/archive/refs/tags/"
-             version ".tar.gz"))
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/anufrievroman/waypaper")
+             (commit version)))
+       (file-name (git-file-name name version))
        (sha256
-        (base32 "0jb8884ibylk9n8dzcm7zm9pxgz6v42gyhynpba704asv4gvx6kd"))))
+        (base32 "0xd37qr6m2icjl0w0saq3318nw4g7i7zna5m1yr6ym3zp2byjdh5"))))
     (build-system python-build-system)
     (arguments
      (list
@@ -66,6 +69,7 @@ physical screens in multi-monitor setups.")
                     (,gi-path)))))))))
     (native-inputs (list python-setuptools-scm pkg-config
                          gobject-introspection))
+    (inputs `(("bash-minimal" ,bash-minimal)))
     (propagated-inputs (list gtk+
                              python-pygobject
                              python-platformdirs

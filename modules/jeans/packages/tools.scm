@@ -10,8 +10,10 @@
   #:use-module (guix git-download)
   #:use-module (guix build-system gnu)
   #:use-module (guix gexp)
+  #:use-module (guix utils)
   #:use-module ((guix licenses) #:prefix license:)
   #:use-module ((nonguix licenses) #:prefix license:)
+  #:use-module (gnu packages)
   #:use-module (gnu packages bash)
   #:use-module (gnu packages python)
   #:use-module (gnu packages java)
@@ -44,8 +46,12 @@
              (url "https://github.com/winapps-org/winapps")
              (commit "7f6b6abf575e3f93614aeeacb75b609372e7f1a6")))
        (file-name (git-file-name name version))
-       (sha256 (base32 "0af98psazy2w8fmb3933hzi0shzhj1abj4lcwhz6nbc1w9hi4agk"))
-       (patches (list (local-file (search-path %load-path "jeans/patches/WinApps.patch"))))))
+       (sha256
+        (base32 "0af98psazy2w8fmb3933hzi0shzhj1abj4lcwhz6nbc1w9hi4agk"))
+       (patches
+        (map canonicalize-path
+             (search-patches
+              "jeans/patches/winapps-fix-install-paths.patch")))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -61,7 +67,8 @@
               (substitute* '("bin/winapps" "setup.sh")
                 (("@out@") #$output))
               (substitute* "install/inquirer.sh"
-                (("#!/bin/bash") (string-append "#!" #$bash "/bin/bash")))))
+                (("#!/bin/bash")
+                 (string-append "#!" #$bash-minimal "/bin/bash")))))
           (replace 'install
             (lambda _
               (let ((bin (string-append #$output "/bin"))
@@ -77,7 +84,7 @@
                 (call-with-output-file (string-append bin "/xfreerdp3")
                   (lambda (port)
                     (format port "#!~a/bin/bash~%exec ~a/bin/xfreerdp \"$@\"~%"
-                            #$bash #$freerdp-3)))
+                            #$bash-minimal #$freerdp-3)))
                 (chmod (string-append bin "/xfreerdp3") #o755))))
           (add-after 'install 'wrap-programs
             (lambda _
@@ -88,7 +95,7 @@
                      `("LIBVIRT_DEFAULT_URI" = ("qemu:///system"))
                      `("PATH" ":" prefix
                        ,(list bin
-                              (string-append #$bash "/bin")
+                              (string-append #$bash-minimal "/bin")
                               (string-append #$freerdp-3 "/bin")
                               (string-append #$libnotify "/bin")
                               (string-append #$dialog "/bin")
@@ -96,7 +103,12 @@
                               (string-append #$iproute "/bin")))))
                  '("winapps" "winapps-setup"))))))))
     (inputs
-     (list bash freerdp-3 dialog libnotify netcat-openbsd iproute))
+     `(("bash-minimal" ,bash-minimal)
+       ("freerdp" ,freerdp-3)
+       ("dialog" ,dialog)
+       ("libnotify" ,libnotify)
+       ("netcat-openbsd" ,netcat-openbsd)
+       ("iproute2" ,iproute)))
     (home-page "https://github.com/winapps-org/winapps")
     (synopsis "Run Windows applications on GNU/Linux")
     (description "Run Windows applications (including Microsoft 365
@@ -123,6 +135,8 @@
     (arguments
       (list
         #:tests? #f
+        #:validate-runpath? #f
+        #:strip-binaries? #f
         #:phases
         #~(modify-phases %standard-phases
             (delete 'configure)
@@ -153,12 +167,14 @@
                   (mkdir-p (string-append #$output "/bin"))
                   (symlink (string-append share "/bin/jdtls")
                            (string-append #$output "/bin/jdtls"))))))))
-    (inputs (list openjdk python bash))
+    (inputs `(("openjdk" ,openjdk)
+              ("python" ,python)
+              ("bash-minimal" ,bash-minimal)))
     (synopsis "Java language server")
-    (description "The Eclipse JDT Language Server is a Java language specific implementation of
-the Language Server Protocol and can be used with any editor that supports the
-protocol, to offer good support for the Java Language.")
-    (home-page "https://github.com/eclipse/eclipse.jdt.ls")
+    (description "The Eclipse JDT Language Server is a Java-specific
+implementation of the Language Server Protocol.  It can be used with any
+editor that supports the protocol to provide Java language features.")
+    (home-page "https://github.com/eclipse-jdtls/eclipse.jdt.ls")
     (license license:expat)))
 
 ;;; Motrix-Next: prebuilt binary download manager (Tauri/WebKitGTK app).
@@ -338,6 +354,8 @@ binary release.")
     (arguments
      (list
       #:tests? #f
+      #:validate-runpath? #f
+      #:strip-binaries? #f
       #:modules '((guix build gnu-build-system)
                   (guix build utils))
       #:phases
@@ -432,7 +450,6 @@ Gemini CLI.  It offers provider management, proxy configuration, session
 handling, and usage monitoring.  This package provides the prebuilt
 binary release.")
      (license license:expat)))
-
 (define-public git-credential-keepassxc
   (package
     (name "git-credential-keepassxc")
@@ -542,7 +559,9 @@ enables command-line applications to interact with @code{keepassxc} databases.")
 
                   (copy-recursively "src/var/lib/apm" varlib)
 
-                  (let ((completions (string-append out "/share/bash-completion/completions")))
+                  (let ((completions
+                         (string-append
+                          out "/share/bash-completion/completions")))
                     (mkdir-p completions)
                     (install-file "src/usr/share/bash-completion/completions/apm"
                                   completions))
@@ -574,7 +593,8 @@ if [ ! -d \"$APM_SEED\" ]; then
   exit 1
 fi
 
-if [ -d \"$APM_TARGET/apm\" ] && [ -f \"$APM_TARGET/apm/files/ace-env.tar.xz\" ]; then
+if [ -d \"$APM_TARGET/apm\" ] && \\
+   [ -f \"$APM_TARGET/apm/files/ace-env.tar.xz\" ]; then
   echo \"APM data already initialised at $APM_TARGET — skipping.\"
   echo \"To reinitialise, remove $APM_TARGET and run again.\"
   exit 0
@@ -585,7 +605,8 @@ mkdir -p \"$APM_TARGET\"
 cp -rv \"$APM_SEED/\"* \"$APM_TARGET/\"
 
 # ace-init expects to run inside the container; instead decompress here.
-if [ -f \"$APM_TARGET/apm/files/ace-env.tar.xz\" ] && [ ! -d \"$APM_TARGET/apm/files/ace-env\" ]; then
+if [ -f \"$APM_TARGET/apm/files/ace-env.tar.xz\" ] && \\
+   [ ! -d \"$APM_TARGET/apm/files/ace-env\" ]; then
   echo \"Decompressing ace-env.tar.xz ...\"
   tar -xJf \"$APM_TARGET/apm/files/ace-env.tar.xz\" -C \"$APM_TARGET/apm/files/\"
 fi

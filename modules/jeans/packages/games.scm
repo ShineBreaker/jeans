@@ -75,6 +75,7 @@
      (list
       #:tests? #f
       #:validate-runpath? #f
+      #:strip-binaries? #f
       #:modules '((guix build gnu-build-system)
                   (guix build utils))
       #:phases
@@ -122,13 +123,17 @@ for Linux x86_64, containing the JavaFX runtime libraries
      (origin
        (method url-fetch)
        (uri (string-append
-             "https://github.com/seraxis/lr2oraja-endlessdream/releases/download/v" version "/lr2oraja-0.8.8-endlessdream-linux-" version ".jar"))
+             "https://github.com/seraxis/lr2oraja-endlessdream/"
+             "releases/download/v" version
+             "/lr2oraja-0.8.8-endlessdream-linux-" version ".jar"))
        (sha256
         (base32 "13njyxgav869i4i0xrkk1iqgplvmp09dbx5ywz2m1hz1aniwq8sn"))))
     (build-system gnu-build-system)
     (arguments
      (list
       #:tests? #f
+      #:validate-runpath? #f
+      #:strip-binaries? #f
       #:modules '((guix build gnu-build-system)
                   (guix build utils))
       #:phases
@@ -150,15 +155,31 @@ for Linux x86_64, containing the JavaFX runtime libraries
                   (call-with-output-file wrapper
                     (lambda (port)
                       (format port "#!~a/bin/bash~%" #$bash-minimal)
-                      (format port "DATA_DIR=\"${XDG_DATA_HOME:-$HOME/.local/share}/lr2oraja-endlessdream\"~%")
+                      (format port
+                              (string-append
+                               "DATA_DIR=\"${XDG_DATA_HOME:-$HOME/.local/"
+                               "share}/lr2oraja-endlessdream\"~%"))
                       ;; Ensure essential writable directories exist.
-                      (format port "mkdir -p \"$DATA_DIR/table\" \"$DATA_DIR/skin/default\" || exit 1~%")
+                      (format port
+                              (string-append
+                               "mkdir -p \"$DATA_DIR/table\" "
+                               "\"$DATA_DIR/skin/default\" || exit 1~%"))
                       ;; The ImGui mod menu loads VL-Gothic-Regular.ttf from
                       ;; skin/default/.  Symlink it from font/ when the user
                       ;; has extracted the base distribution but hasn't placed
                       ;; the font manually.
-                      (format port "if [ -f \"$DATA_DIR/font/VL-Gothic-Regular.ttf\" ] && [ ! -e \"$DATA_DIR/skin/default/VL-Gothic-Regular.ttf\" ]; then~%")
-                      (format port "  ln -sf \"$DATA_DIR/font/VL-Gothic-Regular.ttf\" \"$DATA_DIR/skin/default/VL-Gothic-Regular.ttf\"~%")
+                      (format port
+                              (string-append
+                               "if [ -f \"$DATA_DIR/font/"
+                               "VL-Gothic-Regular.ttf\" ] && "
+                               "[ ! -e \"$DATA_DIR/skin/default/"
+                               "VL-Gothic-Regular.ttf\" ]; then~%"))
+                      (format port
+                              (string-append
+                               "  ln -sf \"$DATA_DIR/font/"
+                               "VL-Gothic-Regular.ttf\" "
+                               "\"$DATA_DIR/skin/default/"
+                               "VL-Gothic-Regular.ttf\"~%"))
                       (format port "fi~%")
                       (format port "cd \"$DATA_DIR\" || exit 1~%")
                       (format port "exec ~a/bin/java \
@@ -212,10 +233,6 @@ for Linux x86_64, containing the JavaFX runtime libraries
                 (wrap-program wrapper
                   `("LD_LIBRARY_PATH" ":" prefix
                     ,(cons jfx-lib lib-dirs))
-                  `("GDK_PIXBUF_MODULE_FILE" =
-                    (,(string-append
-                        #$gdk-pixbuf
-                        "/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache")))
                   `("XDG_DATA_DIRS" ":" prefix
                     (,(string-append #$output "/share")
                      ,(string-append #$gdk-pixbuf "/share")
@@ -268,7 +285,10 @@ fonts, IR jars, and other assets at runtime.  The game requires OpenGL
           (base32 "074a389462ciqgj6l3xzrqlz6hlpf1p78v9lxrjfmxfv5d83j81b"))))
     (build-system copy-build-system)
     (arguments
-      (list #:install-plan
+     (list #:tests? #f
+           #:validate-runpath? #f
+           #:strip-binaries? #f
+           #:install-plan
             #~'(("usr/share/" "share/")
                 ("usr/bin/" "lib/osu/")
                 ("osu!.desktop" "share/applications/"))
@@ -311,7 +331,8 @@ fonts, IR jars, and other assets at runtime.  The game requires OpenGL
                             (lambda (binary)
                               (string-append #$output "/lib/osu/" binary))
                             '("osu!"))
-                          (find-files (string-append #$output "/lib/osu") ".*\\.so.*"))))))
+                          (find-files (string-append #$output "/lib/osu")
+                                      ".*\\.so.*"))))))
                 (add-after 'patch-elf 'wrap-program
                   (lambda _
                     (let* ((bin (string-append #$output "/lib/osu/osu!"))
@@ -320,13 +341,15 @@ fonts, IR jars, and other assets at runtime.  The game requires OpenGL
                       (symlink bin wrapper)
                       (wrap-program wrapper
                         `("OSU_EXTERNAL_UPDATE_PROVIDER" = ("1"))
-                        `("SDL_VIDEODRIVER" = ("wayland"))
-                        `("LD_LIBRARY_PATH" prefix (,(string-append #$output "/lib/osu")))))))
+                        `("LD_LIBRARY_PATH" prefix
+                          (,(string-append #$output "/lib/osu")))))))
                 (add-after 'wrap-program 'fix-so
                   (lambda _
-                    (symlink (string-append #$(this-package-input "lttng-ust") "/lib/liblttng-ust.so")
-                             (string-append #$output "/lib/osu/liblttng-ust.so.0"))
-                    (symlink (string-append #$(this-package-input "eudev") "/lib/libudev.so.1.6.3")
+                    (symlink #$(file-append lttng-ust
+                                            "/lib/liblttng-ust.so")
+                             (string-append
+                              #$output "/lib/osu/liblttng-ust.so.0"))
+                    (symlink #$(file-append eudev "/lib/libudev.so.1")
                              (string-append #$output "/lib/osu/libudev.so.0"))))
                 (add-after 'wrap-program 'make-files-executable
                   (lambda _
@@ -339,14 +362,18 @@ fonts, IR jars, and other assets at runtime.  The game requires OpenGL
                 (add-after 'install 'install-udev-rules
                   (lambda _
                     (let* ((relative-rules.d "/lib/udev/rules.d")
-                           (otd-rules (string-append #$(this-package-native-input "opentabletdriver-udev-rules")
+                           (rules-package
+                            #$(this-package-native-input
+                               "opentabletdriver-udev-rules"))
+                           (otd-rules (string-append rules-package
                                                      relative-rules.d
                                                      "/70-opentabletdriver.rules"))
                            (rules.d (string-append #$output relative-rules.d)))
                       (install-file otd-rules rules.d)))))))
     (native-inputs (list p7zip patchelf opentabletdriver-udev-rules))
     (inputs
-      (list alsa-lib
+      (list bash-minimal
+            alsa-lib
             dbus
             elfutils
             eudev
@@ -366,8 +393,8 @@ fonts, IR jars, and other assets at runtime.  The game requires OpenGL
             zlib))
     (home-page "https://osu.ppy.sh/")
     (synopsis "rhythm is just a *click* away!")
-    (description "A free-to-win rhythm game. This is the future – and final
-– iteration of the osu! game client which marks the beginning of an open era!
-Currently known by and released under the release codename lazer. As in
-sharper than cutting-edge.")
+    (description "A free-to-win rhythm game.  This is the future and final
+iteration of the osu! game client, which marks the beginning of an open era.
+It is currently known by and released under the codename lazer, as in sharper
+than cutting-edge.")
     (license license:expat)))

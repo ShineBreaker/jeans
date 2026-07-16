@@ -22,7 +22,7 @@
      (origin
        (method git-fetch)
        (uri (git-reference
-             (url "https://github.com/Mic92/nix-ld")
+             (url "https://github.com/nix-community/nix-ld")
              (commit (string-append version))))
        (file-name (git-file-name name version))
        (sha256
@@ -90,7 +90,7 @@
                          (string-append libexec "/nix-ld"))))))))
     (inputs (cargo-inputs 'nix-ld
                       #:module '(jeans packages rust-crates)))
-    (home-page "https://github.com/Mic92/nix-ld")
+    (home-page "https://github.com/nix-community/nix-ld")
     (synopsis "Run unpatched dynamic binaries on non-FHS systems")
     (description
      "nix-ld is a minimal ELF dynamic linker shim that allows pre-compiled

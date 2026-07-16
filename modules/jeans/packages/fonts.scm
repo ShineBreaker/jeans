@@ -48,9 +48,11 @@
                 "1b3wbgd9gngwv61ybinwxkpmyam2b7fdxxmfzvgiah6g68lm525b"))))
     (build-system font-build-system)
     (home-page "https://font.subf.dev/")
-    (synopsis "Maple Mono is an open source monospace font focused on smoothing your coding flow.")
+    (synopsis "Rounded monospace font with ligatures and Nerd Font icons")
     (description
-     "Maple Mono: Open source monospace font with round corner, ligatures and Nerd-Font icons for IDE and terminal, fine-grained customization options.")
+     "Maple Mono is an open source monospace font with rounded corners,
+ligatures, Nerd Font icons for editors and terminals, and fine-grained
+customization options.")
     (license license:silofl1.1)))
 
 (define-public font-misans
@@ -69,7 +71,10 @@
     (native-inputs
      (list
       (list "font-license"
-            (local-file (search-path %load-path "jeans/licenses/misans.txt")))))
+            (local-file
+             (canonicalize-path
+              (search-path %load-path "jeans/licenses/misans.txt"))
+             "misans.txt"))))
 
     (arguments
      (list
@@ -81,10 +86,11 @@
                          "LICENSE"))))))
 
     (home-page "https://hyperos.mi.com/font/")
-    (synopsis "MiSans is a font family for Xiaomi HyperOS.")
+    (synopsis "Font family for Xiaomi HyperOS")
     (description
      "MiSans is a font family for Xiaomi HyperOS, introduced in 2021 with MIUI 13.
-A precursor, Mi Lanting, was launched with MIUI 8 in 2016. MiSans Global debuted in 2023.")
+A precursor, Mi Lanting, was launched with MIUI 8 in 2016.  MiSans Global
+debuted in 2023.")
     (license (license:nonfree "file://LICENSE"))))
 
 (define-public font-nerd-symbols
@@ -94,34 +100,43 @@ A precursor, Mi Lanting, was launched with MIUI 8 in 2016. MiSans Global debuted
     (source
       (origin
         (method url-fetch/zipbomb)
-        (uri (string-append "https://github.com/ryanoasis/nerd-fonts"
-                            "/releases/download/" "v" version "/NerdFontsSymbolsOnly.zip"))
+        (uri (string-append
+              "https://github.com/ryanoasis/nerd-fonts/releases/download/v"
+              version "/NerdFontsSymbolsOnly.zip"))
         (sha256
           (base32 "0iscas5bvb8bgk5pcls95nfwjl7yi23q05mili43dzl0p427jqcf"))))
     (build-system font-build-system)
     (home-page "https://github.com/ryanoasis/nerd-fonts")
-    (synopsis "Iconic font aggregator")
-    (description "Nerd Fonts is a project that patches developer targeted fonts
-with a high number of glyphs (icons). Specifically to add a high number of extra
-glyphs from popular 'iconic fonts' such as Font Awesome, Devicons, Octicons,
-and others.")
-    (license license:silofl1.1)))
+    (synopsis "Iconic font collection")
+    (description "This package provides Symbols Nerd Font and Symbols Nerd Font
+Mono, fallback fonts containing glyphs from multiple popular icon sets for
+terminals, editors, and other text interfaces.")
+    (license (list license:expat
+                   license:cc-by4.0
+                   license:unlicense
+                   license:asl2.0
+                   license:silofl1.1))))
 
 (define-public font-nerd-font-iosevka
-	(package
-		(name "font-nerd-font-iosevka")
-		(version "3.4.0")
-		(source
+  (package
+    (name "font-nerd-font-iosevka")
+    (version "3.4.0")
+    (source
      (origin
       (method url-fetch)
-      (uri (string-append "https://github.com/ryanoasis/nerd-fonts/releases/download/v" version "/Iosevka.tar.xz"))
+      (uri (string-append
+            "https://github.com/ryanoasis/nerd-fonts/releases/download/v"
+            version "/Iosevka.tar.xz"))
       (sha256
        (base32 "1ljpsdqzg2gm57l9qr93pbwvmcp8wwry2v9jm3889jlrv96f4gi1"))))
-		(build-system font-build-system)
-		(license license:expat)
-		(home-page "https://www.nerdfonts.com/")
-		(synopsis "Iconic font aggregator.")
-		(description "Nerd Fonts is a project that patches developer targeted
-fonts with a high number of glyphs (icons). Specifically to add a high number
-of extra glyphs from popular 'iconic fonts' such as Font Awesome, Devicons,
-Octicons, and others.")))
+    (build-system font-build-system)
+    (license (list license:expat
+                   license:cc-by4.0
+                   license:unlicense
+                   license:asl2.0
+                   license:silofl1.1))
+    (home-page "https://www.nerdfonts.com/")
+    (synopsis "Iosevka font patched with Nerd Font icons")
+    (description "Nerd Fonts patches developer-targeted fonts with many
+additional glyphs and icons.  This package provides its patched Iosevka font,
+including symbols from Font Awesome, Devicons, Octicons, and others.")))

@@ -5,12 +5,14 @@
 
 (define-module (jeans packages emacs-xyz)
   #:use-module (guix packages)
+  #:use-module (guix utils)
   #:use-module (guix download)
   #:use-module (guix git-download)
   #:use-module (guix gexp)
   #:use-module (guix build-system copy)
   #:use-module (guix build-system emacs)
   #:use-module (guix build-system gnu)
+  #:use-module (gnu packages)
   #:use-module (gnu packages backup)         ; libarchive (bsdtar for .zst deb)
   #:use-module (gnu packages base)           ; glibc
   #:use-module (gnu packages bash)
@@ -40,21 +42,18 @@
 ;; origin as if it were the package source.  Hoisting the supporting
 ;; origins to module top level keeps the emacs-ghostel package definition
 ;; block free of nested (origin ...) forms.
-(define %ghostel-local-patch
-  (lambda (name)
-    (local-file
-     (search-path %load-path
-                  (string-append "jeans/patches/" name)))))
-
 (define %ghostel-patches
-  (list (%ghostel-local-patch "emacs-ghostel-build.zig.patch")))
+  (map canonicalize-path
+       (search-patches "jeans/patches/emacs-ghostel-build.zig.patch")))
 
 (define %ghostel-ghostty-patches
-  (list (%ghostel-local-patch "emacs-ghostel-ghostty-build.zig.zon.patch")
-        (%ghostel-local-patch "emacs-ghostel-ghostty-exe.zig.patch")
-        (%ghostel-local-patch "emacs-ghostel-ghostty-bench.zig.patch")
-        (%ghostel-local-patch "emacs-ghostel-ghostty-framedata.zig.patch")
-        (%ghostel-local-patch "emacs-ghostel-ghostty-resources.zig.patch")))
+  (map canonicalize-path
+       (search-patches
+        "jeans/patches/emacs-ghostel-ghostty-build.zig.zon.patch"
+        "jeans/patches/emacs-ghostel-ghostty-exe.zig.patch"
+        "jeans/patches/emacs-ghostel-ghostty-bench.zig.patch"
+        "jeans/patches/emacs-ghostel-ghostty-framedata.zig.patch"
+        "jeans/patches/emacs-ghostel-ghostty-resources.zig.patch")))
 
 (define %ghostel-ghostty-source
   (let ((commit "c41c6b81a4642ccba18d47b375d9495664de72a0"))
@@ -80,12 +79,13 @@
     (version "0.44.0")
     (source
      (origin
-       (method url-fetch)
-       (uri (string-append
-              "https://github.com/dakra/ghostel"
-              "/archive/refs/tags/v" version ".tar.gz"))
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/dakra/ghostel")
+             (commit (string-append "v" version))))
+       (file-name (git-file-name name version))
        (sha256
-        (base32 "18a6ci1m12l0ak50fv9sg3ha6f7wmw6h7qwxnq59qydl819skwb9"))
+        (base32 "1fyqpbpv62hs3hqai1j04x30miwdqkkpqfxdh4vbxc331fhrj4dx"))
        (patches %ghostel-patches)))
       (build-system emacs-build-system)
       (arguments
@@ -272,7 +272,7 @@ It includes macros for silencing messages, preserving colored output in the
              (commit version)))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "1zyjq0k2ccp3aji7x1hv1dbnziwhznm8ylbw1wfrcgzwiz1nvlm0"))))
+        (base32 "11jhr241rv0b4v6lw4532nps3c3izq62c0hf8h78d5ijwhyknlr6"))))
     (build-system emacs-build-system)
     (arguments
      (list #:tests? #f))
@@ -303,7 +303,7 @@ It requires lsp-mode, company, and several utility libraries to function.")
              "https://github.com/elisp-lsp/Ellsp/releases/download/"
              version "/ellsp_linux-x64.tar.gz"))
        (sha256
-        (base32 "13plraz5z1cyxd4n29b9y9dxmm0la97zaa37k115mrh98jvawzkp"))))
+        (base32 "15ra839lvab22dm135swygn2v4l1ib4li52p0f7mh6y9yc5nbhaj"))))
     (build-system copy-build-system)
     (arguments
      (list
@@ -327,7 +327,8 @@ It requires lsp-mode, company, and several utility libraries to function.")
                 (call-with-output-file (string-append bin "/ellsp")
                   (lambda (port)
                     (format port
-                            "#!/bin/sh\nexport ELLSP_EMACS=~a\nexec ~a \"$@\"\n"
+                            "#!~a/bin/sh\nexport ELLSP_EMACS=~a\nexec ~a \"$@\"\n"
+                            #$(this-package-input "bash-minimal")
                             emacs-bin
                             libexec)))
                 (chmod (string-append bin "/ellsp") #o755)))))))
@@ -398,7 +399,8 @@ the prebuilt proxy binary.")
                 (call-with-output-file (string-append bin "/eask")
                   (lambda (port)
                     (format port
-                            "#!/bin/sh\nexport EMACS=~a\nexec ~a \"$@\"\n"
+                            "#!~a/bin/sh\nexport EMACS=~a\nexec ~a \"$@\"\n"
+                            #$(this-package-input "bash-minimal")
                             emacs-bin
                             (string-append libexec "/eask"))))
                 (chmod (string-append bin "/eask") #o755)))))))

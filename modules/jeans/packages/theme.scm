@@ -50,15 +50,19 @@
        (modules '((guix build utils)))
        (snippet
         '(for-each (lambda (file)
-                     (let ((css (string-append (substring file 0 (- (string-length file) 5)) ".css")))
+                     (let ((css
+                            (string-append
+                             (substring file 0 (- (string-length file) 5))
+                             ".css")))
                        (when (file-exists? css)
                          (delete-file css))))
                    (find-files "." "\\.scss$")))))
     (build-system gnu-build-system)
     (arguments
-     `(#:configure-flags (list "--dest"
-                               (string-append (assoc-ref %outputs "out")
-                                              "/share/themes") "--theme" "all")
+     `(#:configure-flags
+       (list "--dest"
+             (string-append (assoc-ref %outputs "out") "/share/themes")
+             "--theme" "all")
        #:tests? #f ;no tests
        #:phases (modify-phases %standard-phases
                   (delete 'bootstrap)
@@ -73,8 +77,7 @@
     (native-inputs (list ;("coreutils" ,coreutils)
                          gtk+ sassc))
     (home-page "https://github.com/vinceliuice/Colloid-gtk-theme")
-    (synopsis
-     "Colloid gtk theme for linux.")
+    (synopsis "Colloid GTK theme for Linux")
     (description
      "Colloid gtk theme for linux.")
     (license (list ;According to COPYING.
@@ -162,8 +165,8 @@
        #:phases (modify-phases %standard-phases
                   (delete 'build))))
     (inputs (list kvantum))
-    (home-page "https://github.com/vinceliuice/Vimix-gtk-themes")
-    (synopsis "Build from Vimix kde.")
+    (home-page "https://github.com/vinceliuice/Vimix-kde")
+    (synopsis "Vimix Kvantum themes for KDE Plasma")
     (description
      "Vimix kde is a flat Design theme for KDE Plasma desktop.
       This package provides only the Kvantum themes, as full
@@ -196,11 +199,11 @@
                   (delete 'build))))
     (inputs (list kvantum))
     (home-page "https://github.com/vinceliuice/Orchis-kde")
-    (synopsis "Orchis Kvantum themes for KDE Plasma")
+    (synopsis "Orchis themes for KDE Plasma")
     (description
-     "Orchis is a Material Design theme for KDE Plasma desktop.
-      This package provides only the Kvantum themes, as full
-      KDE support is not available in Guix.")
+     "Orchis is a Material Design theme for the KDE Plasma desktop.  This
+package provides its Aurorae, color scheme, Kvantum, Plasma desktop, and look
+and feel components.")
     (license (list license:gpl3 license:lgpl2.1 license:cc-by-sa4.0))))
 
 (define-public colloid-kde-themes
@@ -228,10 +231,10 @@
        #:phases (modify-phases %standard-phases
                   (delete 'build))))
     (inputs (list kvantum))
-    (home-page "https://github.com/vinceliuice/Orchis-kde")
-    (synopsis "Orchis Kvantum themes for KDE Plasma")
+    (home-page "https://github.com/vinceliuice/Colloid-kde")
+    (synopsis "Colloid themes for KDE Plasma")
     (description
-     "Orchis is a Material Design theme for KDE Plasma desktop.
-      This package provides only the Kvantum themes, as full
-      KDE support is not available in Guix.")
+     "Colloid is a Material Design theme for the KDE Plasma desktop.  This
+package provides its Aurorae, color scheme, Kvantum, Plasma desktop, look and
+feel, and wallpaper components.")
     (license (list license:gpl3 license:lgpl2.1 license:cc-by-sa4.0))))
