@@ -856,6 +856,76 @@ compatible providers.  This package provides the prebuilt binary release.")
     (supported-systems '("x86_64-linux"))))
 
 
+;;; CodeWhale: multi-provider AI coding agent for the terminal (Rust).
+;;;
+;;; The upstream tar.gz ships three statically-linked (static-pie) Rust
+;;; ELF binaries with no interpreter and no NEEDED entries:
+;;;   - codewhale      ; the entrypoint launcher
+;;;   - codewhale-tui  ; the interactive TUI runtime
+;;;   - codew          ; short alias of codewhale
+;;;
+;;; Being fully static, no patchelf or ld-linux wrapper is needed — just
+;;; unpack the archive, restore the executable bit (the tarball stores the
+;;; binaries as 0644) and install all three into bin/.
+
+(define-public codewhale-bin
+  (package
+    (name "codewhale-bin")
+    (version "0.8.67")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://github.com/Hmbown/CodeWhale/releases/download/"
+             "v" version "/codewhale-linux-x64.tar.gz"))
+       (sha256
+        (base32 "1j6fd44hk7kyqa7vpkw37fzyx356kbchdsxff5kzqnl8nk8himgw"))))
+    (build-system gnu-build-system)
+    (arguments
+     (list
+      #:tests? #f
+      #:validate-runpath? #f
+      #:strip-binaries? #f
+      #:modules '((guix build gnu-build-system)
+                  (guix build utils))
+      #:phases
+      #~(modify-phases %standard-phases
+          (delete 'configure)
+          (delete 'build)
+          (replace 'unpack
+            (lambda _
+              (invoke "tar" "xzf" #$source)
+              ;; The archive stores the three binaries as 0644; restore the
+              ;; executable bit so install-file (and the user) can run them.
+              (for-each (lambda (b) (chmod b #o755))
+                        '("codewhale-linux-x64/codewhale"
+                          "codewhale-linux-x64/codewhale-tui"
+                          "codewhale-linux-x64/codew"))))
+          (replace 'install
+            (lambda _
+              (let ((bin (string-append #$output "/bin")))
+                (mkdir-p bin)
+                (for-each (lambda (b)
+                            (install-file b bin))
+                          '("codewhale-linux-x64/codewhale"
+                            "codewhale-linux-x64/codewhale-tui"
+                            "codewhale-linux-x64/codew"))))))))
+    (home-page "https://codewhale.net")
+    (synopsis "Multi-provider AI coding agent for the terminal")
+    (description
+     "CodeWhale is a coding agent for the terminal that works with any model.
+It reads code, edits files, runs commands, checks the results, and keeps going
+until a task is done or it needs you.  It ships a TUI for interactive work and
+@code{codewhale exec} for scripts and CI, supports 30+ providers (DeepSeek,
+Claude, GPT, Kimi, GLM, OpenRouter, vLLM, Ollama, ...) through one runtime,
+runs durable multi-worker fleets, and gates risk with OS sandboxing,
+per-tool-call hooks and side-git snapshots.  Written in Rust, MIT-licensed,
+and runs entirely on your machine.  This package provides the prebuilt binary
+release.")
+    (license license:expat)
+    (supported-systems '("x86_64-linux"))))
+
+
 ;;; Reasonix: DeepSeek-native AI coding agent (Go static binary).
 ;;;
 ;;; The upstream tar.gz ships a single statically-linked Go ELF binary:

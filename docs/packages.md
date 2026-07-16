@@ -11,11 +11,13 @@
 
 | Package                | Description                                                  |
 | ---------------------- | ------------------------------------------------------------ |
+| `codewhale-bin`        | Multi-provider AI coding agent for the terminal              |
 | `crush-bin`            | AI-powered coding assistant for the CLI                      |
 | `github-copilot`       | Agent-native GitHub Copilot desktop application              |
 | `kimi-code-bin`        | Terminal-native AI coding agent from Moonshot AI             |
 | `mimocode-bin`         | Terminal-native AI coding agent from Xiaomi                  |
 | `oh-my-pi-bin`         | AI coding agent with IDE integration                         |
+| `open-interpreter-bin` | AI coding agent that runs code on your machine               |
 | `opencode-bin`         | The open source AI coding agent.                             |
 | `opencode-desktop-bin` | AI coding agent desktop application                          |
 | `orca-ide-bin`         | AI orchestrator desktop app for parallel agentic development |
@@ -95,5 +97,4 @@
 | `git-credential-keepassxc` | Use KeePassXC as a command-line credential store         |
 | `jdtls-bin`                | Java language server                                     |
 | `motrix-next-bin`          | Full-featured download manager                           |
-| `open-interpreter-bin`     | AI coding agent that runs code on your machine           |
 | `winapps`                  | Run Windows applications on GNU/Linux                    |
