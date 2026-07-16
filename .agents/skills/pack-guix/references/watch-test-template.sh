@@ -1,54 +1,60 @@
 #!/usr/bin/env bash
-
 # SPDX-FileCopyrightText: 2026 BrokenShine <xchai404@gmail.com>
 #
 # SPDX-License-Identifier: MIT
-
-# pack-guix — 持续测试脚本
-# 用法: ./watch-test.sh [package.scm] [test-command]
+#
+# Re-run the focused package checks when the definition changes.
+# Usage: ./watch-test.sh [package.scm] [package-name] [test-arg ...]
 
 set -euo pipefail
 
-PACKAGE_FILE="${1:-package.scm}"
-TEST_CMD="${2:---version}"
+PACKAGE_FILE="package.scm"
+if [[ $# -ge 1 ]]; then
+  PACKAGE_FILE="$1"
+  shift
+fi
 
-PKG_NAME=$(grep -oP '^\s*\(name\s+"([^"]+)"' "$PACKAGE_FILE" | head -1 | grep -oP '"\K[^"]+' || echo "unknown")
+PACKAGE_NAME=""
+if [[ $# -ge 1 ]]; then
+  PACKAGE_NAME="$1"
+  shift
+fi
 
-echo "═══════════════════════════════════════"
-echo "  Pack-Guix 持续测试: $PKG_NAME"
-echo "  监控文件: $PACKAGE_FILE"
-echo "  Ctrl+C 退出"
-echo "═══════════════════════════════════════"
+TEST_ARGS=("$@")
+if [[ $# -eq 0 ]]; then
+  TEST_ARGS=(--version)
+fi
 
-run_test() {
-	echo ""
-	echo "[$(date '+%H:%M:%S')] 触发测试..."
-
-	echo ">>> Dry-run..."
-	if ! guix build -f "$PACKAGE_FILE" --dry-run >/dev/null 2>&1; then
-		echo "  ✗ Dry-run 失败"
-		return 1
-	fi
-	echo "  ✓ Dry-run 通过"
-
-	echo ">>> 构建..."
-	if ! guix build -f "$PACKAGE_FILE" >/dev/null 2>&1; then
-		echo "  ✗ 构建失败"
-		return 1
-	fi
-	echo "  ✓ 构建成功"
-
-	echo ">>> 运行测试..."
-	guix shell -f "$PACKAGE_FILE" -- "$PKG_NAME" $TEST_CMD 2>&1 | tail -1
-	echo "--- 完成 ---"
+if [[ -z "$PACKAGE_NAME" ]]; then
+  PACKAGE_NAME="$(sed -n 's/^[[:space:]]*(name[[:space:]]*"\([^"]*\)".*/\1/p' "$PACKAGE_FILE" | head -1)"
+fi
+if [[ -z "$PACKAGE_NAME" ]]; then
+  echo "Cannot determine package name; pass it as the second argument." >&2
+  exit 2
+fi
+command -v inotifywait >/dev/null || {
+  echo "inotifywait is required for watch mode." >&2
+  exit 127
 }
 
-# 首次运行
-run_test
+run_test() {
+  printf '[%s] dry-run: %s\n' "$(date '+%H:%M:%S')" "$PACKAGE_NAME"
+  guix build -f "$PACKAGE_FILE" --dry-run >/dev/null
 
-# 监控文件变化
-inotifywait -m -e modify -e create -e delete \
-	--format '%w%f' "$PACKAGE_FILE" 2>/dev/null | while read changed; do
-	sleep 0.5
-	run_test
-done
+  printf '[%s] build\n' "$(date '+%H:%M:%S')"
+  output="$(guix build -f "$PACKAGE_FILE")"
+  test -d "$output"
+
+  printf '[%s] lint\n' "$(date '+%H:%M:%S')"
+  guix lint -f "$PACKAGE_FILE" >/dev/null
+
+  printf '[%s] runtime\n' "$(date '+%H:%M:%S')"
+  guix shell -f "$PACKAGE_FILE" -- "$PACKAGE_NAME" "${TEST_ARGS[@]}"
+  printf '[%s] passed: %s\n' "$(date '+%H:%M:%S')" "$output"
+}
+
+run_test
+while IFS= read -r changed; do
+  sleep 0.5
+  run_test
+done < <(inotifywait -m -e modify -e create -e delete --format '%w%f' "$PACKAGE_FILE")

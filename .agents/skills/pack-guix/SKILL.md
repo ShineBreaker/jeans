@@ -1,506 +1,184 @@
 ---
 name: pack-guix
-description: 'Auto-generate Guix package definitions from binary URLs and source repositories. Handles FHS compatibility for precompiled binaries, generates build scripts, and supports continuous testing. Triggers: "guix package", "打包 guix", "create guix package", "guix define", "guix 打包", "binary to guix".'
+description: "Use when creating, updating, or reviewing a GNU Guix package in this channel, especially precompiled binaries, .deb/AppImage/tarball extraction, ELF/FHS compatibility, package naming, hashes, wrappers, lint, or build verification."
 ---
 
-# Pack-Guix — 自动 Guix 打包 Skill
+# Pack-Guix
 
-从预编译 binary 链接和源码仓库链接自动生成 Guix package 定义。
-核心能力：源码分析 → hash 计算 → package.scm 生成 → FHS 兼容处理 → 构建验证 → 持续测试。
+把上游软件变成可审查、可复现、可验证的 Guix package。这个 skill 的目标是稳定的过程，不是只生成一段能加载的 Scheme。
 
-## 工作流
+完成标准：包名和许可证有上游证据；源码 hash 已验证；模块能加载；构建和 lint 已执行；运行时验证与包类型匹配；channel 文档、自动更新配置和模块导出已同步；没有未解释的 lint finding。网络失败要明确记录，不能用“代码看起来没问题”代替验证。
 
-```
-0. 创建隔离工作目录（避免并行 agent 抢夺 /tmp 路径）
-1. 接收输入（binary URL + repo URL）
-2. 下载并分析 binary（patchelf --print-interpreter / --print-needed）
-3. 克隆仓库分析构建系统（CMake/Meson/Makefile/Gradle 等）
-4. 计算 hash（guix hash / sha256sum）
-5. 生成 package.scm
-6. 处理 FHS 兼容性（patchelf 或 wrapper）
-7. 构建验证（guix build）
-8. Lint 检查（guix lint，强制）
-9. 运行时验证（guix shell + 功能测试）
-10. 生成测试脚本
-```
+## Runbook
 
-## ⚠ 工作目录隔离（步骤 0，必须先做）
+### 0. Preflight
 
-**并行运行多个 pack-guix agent 时，固定路径（如 `/tmp/pack-guix-binary`）会被互相覆盖**，导致 hash 错误、解压失败、文件类型异常等诡异问题。因此**每次会话必须先创建一个唯一的工作目录**，后续所有临时文件（下载的 binary、解压目录、源码 clone）都放在该目录下。
+1. 读取仓库根目录的 AGENTS.md 和目标分类文件，先理解本地约定。
+2. 按仓库要求先执行 git pull，再执行 git status --short；保留用户已有修改。
+3. 创建唯一临时目录，并把下载、解压、clone 和 hash 中间物都放进去：
 
 ```bash
-# 用包名 + PID 作为后缀，既唯一又便于调试（出错时可 ls 查看对应目录）
-PKG_NAME="${PKG_NAME:-$(basename "<REPO_URL>" .git)}"
-WORK_DIR=$(mktemp -d "/tmp/pack-guix-${PKG_NAME}-XXXXXX")
-echo "工作目录: $WORK_DIR"
-
-# 后续所有路径都用 $WORK_DIR 下的子路径，绝不再写固定的 /tmp/pack-guix-* 路径：
-#   下载的 binary      → "$WORK_DIR/binary"
-#   解压目录           → "$WORK_DIR/extract"
-#   源码 clone         → "$WORK_DIR/src"
-#   源码归档（源码包） → "$WORK_DIR/source.tar.gz"
+PKG_NAME="package"
+WORK_DIR="$(mktemp -d "/tmp/pack-guix-$PKG_NAME-XXXXXX")"
+trap 'rm -rf "$WORK_DIR"' EXIT
 ```
 
-> 关键：**下载 binary 后立即校验文件类型**（`file` 命令）。如果预期是 `.deb`/`tar.gz` 却得到 `gzip compressed data` 或大小明显不符，极可能是工作目录被别的进程覆盖——这种情况在用了 `$WORK_DIR` 隔离后就不会再发生，但若仍出现，说明 `$WORK_DIR` 变量未生效，需检查。
+4. 搜索已有定义、同名包、旧包名和 jeans.scm 导出列表，选择现有分类；只有没有合适归属时才新建文件。
 
-## 输入格式
+完成标准：知道要修改的模块、包名候选、上游仓库、release 资产和验证命令；没有把临时文件写进仓库或共享固定目录。
 
-```
-pack-guix --binary <URL> --repo <URL> [--name <pkg-name>] [--test-cmd <cmd>]
-```
+### 1. Naming and license decision
 
-| 参数         | 必需 | 说明                                          |
-| ------------ | ---- | --------------------------------------------- |
-| `--repo`     | 是   | 源码仓库链接（GitHub/GitLab/Codeberg）        |
-| `--binary`   | 否   | 预编译 binary 下载链接（tar.gz/zip/AppImage） |
-| `--name`     | 否   | 包名（默认从 repo 名推断）                    |
-| `--test-cmd` | 否   | 测试命令（默认 `<pkg-name> --version`）       |
+先看上游 LICENSE、源码仓库和 release 资产，再决定命名。不要用“有 ELF”“用了 .deb”或 Guix build system 代替许可证判断。
 
-注意：
+| 软件状态                                 | 本通道直接分发           | 命名                             |
+| ---------------------------------------- | ------------------------ | -------------------------------- |
+| MIT/GPL/Apache/MPL 等开源软件            | 预编译产物，未从源码构建 | 加 -bin                          |
+| 同一软件已有源码包                       | 预编译变体               | 用 -bin 区分                     |
+| 闭源软件                                 | 只有预编译产物           | 不加 -bin                        |
+| 源码可见但 FSL 或其他非自由/限制性许可证 | 预编译产物               | 加 -bin，使用 nonguix 的 nonfree |
+| 从源码构建                               | 源码包                   | 不因构建结果含二进制而添加 -bin  |
 
-- 假如没有传入 `--binary` 参数，则尝试从源码构建
-- 假如传入了 `--binary` 参数，则需要在包名后面加一个 `-bin` 后缀
+记录证据：许可证文件 URL、源码仓库 URL、使用的 release 资产 URL。-bin 是软件许可状态和本次打包来源的结论，不是文件格式的别名。
 
-## 步骤详解
+完成标准：define-public 名称、name 字段、docs 名称、自动更新配置名称和测试命令全部一致；许可证与上游证据一致。
 
-### （如果传入了 `binary` 参数）步骤 1 ：下载分析 Binary
+### 2. Acquire and inspect the source
+
+根据来源选择唯一分支：
+
+- Git tag/commit：使用 git-fetch、git-reference、git-file-name；固定 commit 并用 checkout 内容算 hash。
+- 稳定源码归档：使用 url-fetch；下载后立即用 file 检查类型。
+- GitHub 自动生成的源码 tarball：优先改用 git-fetch，避免同一 tag 的归档内容漂移。
+- .deb：ar x 后解压 data.tar.*，检查 opt/、usr/bin、desktop 文件和资源路径。
+- AppImage：使用 7z x，再检查所有 ELF 和 .so；不要把 AppImage 自带更新器带进 Guix runtime。
+
+预编译产物至少执行：
 
 ```bash
-# 下载 binary 到隔离工作目录（WORK_DIR 在步骤 0 创建）
-curl -fsSL -o "$WORK_DIR/binary" "<BINARY_URL>"
-
-# 判断文件类型（归档 vs raw binary）
-file "$WORK_DIR/binary"
-# 输出示例：
-#   "ELF 64-bit LSB executable"  → raw ELF binary，无需解压
-#   "gzip compressed data"       → tar.gz 归档，需要 tar 解压
-#   "Zip archive data"           → zip 归档，需要 unzip 解压
-#   "POSIX tar archive"          → tar 归档
-
-# 如果是归档，解压分析
-if file "$WORK_DIR/binary" | grep -qE 'gzip|zip|tar|archive'; then
-    EXTRACT_DIR="$WORK_DIR/extract"
-    mkdir -p "$EXTRACT_DIR"
-    if [[ "$BINARY_URL" == *.tar.gz ]] || [[ "$BINARY_URL" == *.tgz ]]; then
-        tar xzf "$WORK_DIR/binary" -C "$EXTRACT_DIR"
-    elif [[ "$BINARY_URL" == *.zip ]]; then
-        unzip -q "$WORK_DIR/binary" -d "$EXTRACT_DIR"
-    elif [[ "$BINARY_URL" == *.deb ]]; then
-        # .deb：用 ar 解包，再 tar 解出 data.tar.*
-        (cd "$EXTRACT_DIR" && ar x "$WORK_DIR/binary" && tar xf data.tar.*)
-    else
-        # 尝试自动检测
-        tar xf "$WORK_DIR/binary" -C "$EXTRACT_DIR" 2>/dev/null || \
-            unzip -q "$WORK_DIR/binary" -d "$EXTRACT_DIR" 2>/dev/null
-    fi
-    BINARY_DIR="$EXTRACT_DIR"
-else
-    # raw binary，直接分析
-    BINARY_DIR="$WORK_DIR"
-fi
-
-# 分析动态链接器依赖
-find "$BINARY_DIR" -type f -executable | while read bin; do
-  echo "=== $bin ==="
-  file "$bin"
-  patchelf --print-interpreter "$bin" 2>/dev/null || echo "(no interpreter)"
-  patchelf --print-needed "$bin" 2>/dev/null || echo "(no NEEDED)"
-done
+file "$BINARY"
+readelf -l "$BINARY" | rg 'interpreter' || true
+patchelf --print-needed "$BINARY" || true
+find "$EXTRACT_DIR" -type f \( -name '*.so*' -o -name '*.node' \) -print
 ```
 
-关键判断：
+同时搜索运行时动态加载线索：dlopen、.node、native、sidecar、Electron resources、Tauri externalBin。readelf 没有 NEEDED 不等于运行时没有依赖。
 
-- 如果 binary 需要 `/lib64/ld-linux-x86-64.so.2` → **需要 FHS 兼容处理**
-- 记录所有 `NEEDED` 库 → 映射到 Guix 包
+完成标准：已列出入口文件、资源/sidecar 位置、ELF interpreter、NEEDED 库、动态 addon 和用户可写数据目录。
 
-注意：
+### 3. Compute and verify hashes
 
-- **即使 `NEEDED` 为空，也要警惕**：Rust/C++ 二进制可能通过 `dlopen` 在运行时加载 native addon（如 `.node`、`.so`），这些 addon 可能依赖 `libgcc_s.so.1` → 需要 gcc 的 `lib` 子输出（写法见步骤 4 的 input label 规范：`("gcc:lib" ,gcc "lib")`）
-
-### 步骤 2：分析源码仓库
+不要手写或猜 hash。使用 Guix 工具：
 
 ```bash
-# 克隆仓库到隔离工作目录
-git clone --depth 1 "<REPO_URL>" "$WORK_DIR/src"
-cd "$WORK_DIR/src"
+# url-fetch：直接对最终下载文件/URL 计算 Guix base32 hash
+guix download "$URL"
 
-# 检测构建系统
-if [ -f CMakeLists.txt ]; then
-  BUILD_SYSTEM="cmake"
-elif [ -f meson.build ]; then
-  BUILD_SYSTEM="meson"
-elif [ -f Makefile ] || [ -f GNUmakefile ]; then
-  BUILD_SYSTEM="make"
-elif [ -f configure.ac ] || [ -f configure.in ]; then
-  BUILD_SYSTEM="autoconf"
-elif [ -f Cargo.toml ]; then
-  BUILD_SYSTEM="cargo"
-elif [ -f package.json ]; then
-  BUILD_SYSTEM="npm"
-elif [ -f go.mod ]; then
-  BUILD_SYSTEM="go"
-elif [ -f build.gradle ] || [ -f build.gradle.kts ]; then
-  BUILD_SYSTEM="gradle"
-elif [ -f pyproject.toml ] || [ -f setup.py ]; then
-  BUILD_SYSTEM="python"
-else
-  BUILD_SYSTEM="unknown"
-fi
+# git-fetch：对固定 checkout 的递归内容计算 hash
+guix hash -rx "$WORK_DIR/src"
 ```
 
-### 步骤 3：计算 Hash
+如果上游同版本资产发生 hash mismatch，先确认 URL、版本和实际内容，再重新计算；不要为了通过构建盲目替换 hash。保留 placeholder hash 的 git 包必须在提交前完成一次真实构建。
 
-- 如果提供了binary:
+完成标准：origin 的 hash 来自当前 URL 或固定 checkout；无 placeholder、旧版本 hash 或未经解释的 mismatch。
 
-```bash
-# 计算 Guix 格式的 base32 hash
-guix hash <binary>
-# 或 fallback:
-sha256sum <binary> | xxd -r -p | base32 | tr '[:lower:]' '[:upper:]' | sed 's/=*$//'
-```
+### 4. Write the package definition
 
-- 如果只提供了源代码：
+先读按需参考：
 
-```bash
-# 下载源码归档到隔离工作目录
-SOURCE_URL="<REPO_URL>/archive/refs/tags/v<VERSION>.tar.gz"
-curl -fsSL -o "$WORK_DIR/source.tar.gz" "$SOURCE_URL"
+- references/package-template.scm：最小的源码、归档 binary、raw ELF/wrapper 结构。
+- references/test-template.sh：单次验证脚本。
+- references/watch-test-template.sh：需要持续迭代时才使用。
 
-# 计算 Guix 格式的 base32 hash
-guix hash "$WORK_DIR/source.tar.gz"
-# 或 fallback:
-sha256sum "$WORK_DIR/source.tar.gz" | xxd -r -p | base32 | tr '[:lower:]' '[:upper:]' | sed 's/=*$//'
-```
+遵循仓库现有风格：模块导入按类别组织；私有 helper 用 define；新模块必须加入 modules/jeans.scm 的 %public-modules。
 
-### 步骤 4：生成 Package Definition
-
-参见 `references/package-template.scm`。
-
-**Binary 包（raw ELF 或单文件下载）：**
+预编译包默认使用：
 
 ```scheme
-(define-public <package-name>
-  (package
-    (name "<name>")
-    (version "<version>")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append
-                    "<binary-url-prefix>"
-                    "v" version "/<binary-file-name>"))
-              (sha256 (base32 "<hash>"))))
-    (build-system gnu-build-system)
-    (arguments
-     (list
-      #:tests? #f
-      #:validate-runpath? #f
-      #:strip-binaries? #f
-      #:modules '((guix build gnu-build-system)
-                  (guix build utils))
-      #:phases
-      #~(modify-phases %standard-phases
-          (delete 'configure)
-          (delete 'build)
-          (replace 'unpack
-            (lambda _
-              (copy-file #$source "<binary-name>")
-              (chmod "<binary-name>" #o755)))
-          (replace 'install
-            <ld-linux-wrapper-or-patchelf>))))
-    (inputs `(("bash-minimal" ,bash-minimal)
-              ("glibc" ,glibc)
-              ("gcc:lib" ,gcc "lib")))
-    (home-page "<home-page>")
-    (synopsis "<one-line description>")
-    (description "<detailed description>")
-    (license <license>)
-    (supported-systems '("x86_64-linux"))))
+#:tests? #f
+#:validate-runpath? #f
+#:strip-binaries? #f
 ```
 
-**归档 binary 包（tar.gz 含多个文件）：**
+inputs 使用实际包名作为 label；带子输出必须使用 quasiquote alist：
 
 ```scheme
-(define-public <package-name>
-  (package
-    (name "<name>")
-    (version "<version>")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append
-                    "<binary-url-prefix>"
-                    "v" version "/<archive-name>.tar.gz"))
-              (sha256 (base32 "<hash>"))))
-    (build-system copy-build-system)
-    (arguments
-     (list
-      #:tests? #f
-      #:validate-runpath? #f
-      #:strip-binaries? #f
-      #:install-plan
-      '("(" ("bin/<binary-name>" "bin/<pkg-name>"))
-      ...))
-    ...))
+(inputs (quasiquote
+         (("bash-minimal" unquote bash-minimal)
+          ("glibc" unquote glibc)
+          ("gcc:lib" unquote gcc "lib"))))
 ```
 
-**源码构建包：**
+fontconfig 变量的实际包名是 fontconfig-minimal，openjdk17 变量的实际包名是 openjdk。build phase 的 assoc-ref、this-package-input 和 gexp 引用必须使用同一个 label；不要写不存在的 gexp 变量 gcc:lib。
 
-```scheme
-(define-public <package-name>
-  (package
-    (name "<name>")
-    (version "<version>")
-    (source (origin
-              (method git-fetch)
-              (uri (git-reference
-                    (url "<repo-url>")
-                    (commit (string-append "v" version))))
-              (file-name (git-file-name name version))
-              (sha256 (base32 "<hash>"))))
-    (build-system <build-system>)
-    (inputs `(<dependencies>))           ; quasiquote alist，如 ("dep" ,dep)
-    (home-page "<home-page>")
-    (synopsis "<one-line description>")
-    (description "<detailed description>")
-    (license <license>)))
-```
+选择运行策略：
 
-**注意**：
+- 能安全修改 ELF：patchelf --set-interpreter + RPATH，遍历所有实际 ELF，不只 patch 主入口。
+- 不能修改或需要保持自定位：安装到 libexec/<pkg>，用 Guix ld-linux wrapper，并传 --argv0 和 --library-path。
+- wrapper 中所有路径类环境变量使用 prefix/追加语义。手写 GTK wrapper 的 XDG_DATA_DIRS 必须保留原值；不要设置有害的单数 GDK_PIXBUF_MODULE_FILE。
+- shell wrapper 使用 store 中的 bash-minimal，不写宿主 /bin/sh 或 /usr/bin/env。
+- Electron 包删除会触发 electron-updater 的 resources/package-type；Wayland 会话可在 wrapper 中注入 Ozone 参数，并提供 ELECTRON_OZONE_PLATFORM_HINT=x11 回退。
 
-- Binary 包用 `url-fetch` + `gnu-build-system`（raw ELF）或 `copy-build-system`（归档）
-- 源码包用 `git-fetch` + 对应的 `build-system`
+完成标准：构建阶段不依赖网络更新、不写入 store 外的源码目录；wrapper、desktop 文件、资源和可写数据路径都指向正确位置；所有输入 label 可由 guix show 证明。
 
-### 步骤 5：FHS 兼容处理
+### 5. Load, build, and lint
 
-预编译 binary 的必需构建参数：
-
-```scheme
-(arguments
- (list
-  #:tests? #f                  ; 无源码，不运行测试
-  #:validate-runpath? #f      ; 跳过 RUNPATH 验证（binary 依赖 FHS ld-linux）
-  #:strip-binaries? #f        ; 避免 strip 破坏嵌入资源
-  ...))
-```
-
-**方案 A：patchelf（推荐用于从源码构建的包）**
-
-```scheme
-(add-after 'install 'patch-binaries
-  (lambda* (#:key outputs #:allow-other-keys)
-    (let ((out (assoc-ref outputs "out")))
-      (for-each (lambda (bin)
-                  (invoke "patchelf"
-                          "--set-interpreter"
-                          (string-append (assoc-ref inputs "glibc")
-                                         "/lib/ld-linux-x86-64.so.2")
-                          bin))
-                (find-files (string-append out "/bin") ".*")))))
-```
-
-**方案 B：ld-linux Wrapper（推荐用于预编译 binary 包）**
-
-不修改 binary，通过 Guix 的 `ld-linux` 动态链接器启动 binary：
-
-```scheme
-(replace 'install
-  (lambda* (#:key inputs #:allow-other-keys)
-    (let* ((out #$output)
-           (bin (string-append out "/bin"))
-           (libexec (string-append out "/libexec"))
-           (ld.so (string-append (assoc-ref inputs "glibc")
-                                 #$(glibc-dynamic-linker)))
-           ;; 拼接 library-path，可包含多个路径
-           (lib-path (string-join
-                      (list (string-append (assoc-ref inputs "glibc") "/lib")
-                            (string-append (assoc-ref inputs "gcc") "/lib"))
-                      ":")))
-      (mkdir-p libexec)
-      (install-file "<binary-name>" libexec)
-      (mkdir-p bin)
-      (call-with-output-file (string-append bin "/<pkg-name>")
-        (lambda (port)
-          (format port
-                  "#!~a\nexec ~a --argv0 ~a/<binary-name> --library-path ~a ~a/<binary-name> \"$@\"\n"
-                  #$(file-append bash-minimal "/bin/sh")
-                  ld.so
-                  libexec
-                  lib-path
-                  libexec)))
-      (chmod (string-append bin "/<pkg-name>") #o755))))
-```
-
-注意：
-
-- `--argv0` 确保 binary 通过 `argv[0]` 自定位时能正确找到自身路径
-- `--library-path` 为运行时 `dlopen` 加载的 native addon（如 `.node` 文件）提供库搜索路径
-- 即使 binary 本身 `NEEDED` 为空，只要它加载了外部 native addon，就需要包含 `gcc` 的 lib 路径（提供 `libgcc_s.so.1`、`libstdc++.so.6`）
-
-### 步骤 6：构建验证
+先做低成本检查，再做实际构建：
 
 ```bash
-# 在 Guix 环境中测试构建
-guix build -f package.scm --dry-run    # 先 dry-run
-guix build -f package.scm              # 实际构建
+guix package -L modules -A >/dev/null
+guix build -L modules <package-name> --dry-run
+guix build -L modules <package-name>
+
+guix lint -L modules \
+  --checkers=name,tests-true,description,inputs-should-be-native,\
+inputs-should-not-be-input,inputs-should-be-minimal,input-labels,\
+wrapper-inputs,license,optional-tests,misplaced-flags,\
+profile-collisions,patch-file-names,patch-headers,formatting,\
+synopsis,gnu-description <package-name>
 ```
 
-### 步骤 7：Lint 检查（强制）
+网络型 source、home-page、github-url checker 如果被远端 HTTP/镜像故障中断，记录具体错误并单独重试；不能把网络错误写成包已通过全部 lint。
 
-构建成功后，**必须**运行 `guix lint` 检查包定义质量。修复所有报告的问题后再继续。
+完成标准：实际构建退出码为 0；lint 没有 package finding；所有 warning 都有解释或修复；git diff --check 通过。
 
-```bash
-# 对 jeans 通道中的包运行 lint
-guix lint -L modules <package-name>
+### 6. Runtime verification
 
-# 如果包定义在文件中但未加入通道
-guix lint -f package.scm
-```
+根据包类型选择真实命令：
 
-`guix lint` 检查项包括：
+- CLI：guix shell -L modules <package> -- <command> --version 或 --help。
+- GUI：在真实图形会话中启动；至少检查 wrapper bash -n、ELF interpreter/RPATH、desktop Exec 和资源路径。
+- Electron：分别记录 Wayland/X11 会话、WAYLAND_DISPLAY、缩放变量和 wrapper 实际参数；用 ELECTRON_OZONE_PLATFORM_HINT=x11 做对照实验。
+- GTK/Tauri：检查 XDG_DATA_DIRS、GI_TYPELIB_PATH、GUIX_GDK_PIXBUF_MODULE_FILES 和 tray/native addon；不要只以“进程启动未立即退出”判定成功。
 
-- **synopsis**：是否为单行、无句号、不以包名开头
-- **description**：是否多行、无冗余措辞（"this package provides"）
-- **license**：许可证标识是否有效
-- **home-page**：URL 是否可达
-- **inputs**：是否有不必要的依赖
-- **source**：源码 URL 是否有效
-- **formatting**：缩进和格式是否规范
+如果无法访问图形会话，完成 CLI/静态验证即可，但要明确写出“GUI 未复现”，不要宣称已经证明用户报告的根因。
 
-如果 lint 报错，回到步骤 4 修正包定义，然后重新执行步骤 6-7。
+完成标准：每个已宣称支持的入口都有对应证据；无法运行的测试标记为环境限制，而不是成功。
 
-### 步骤 8：运行时验证
+### 7. Integrate and hand off
 
-```bash
-# 验证安装后 binary 基础运行
-guix shell -f package.scm -- <pkg-name> --version
+1. 新包文件加入 modules/jeans.scm；不要手动编辑 rust-crates.scm。
+2. 同步 scripts/check-updates/config.json 的包名、tag prefix 和预发布设置。
+3. 运行 blue gen-docs 更新 docs/packages.md，确认旧名、别名和 docs 没有漂移。
+4. 检查 git status --short、git diff --check 和所有测试输出。
+5. 汇报修改、验证、网络限制和未完成项；除非用户明确要求，不执行 git commit。
 
-# 运行时二次验证（关键！）
-# 某些依赖只在运行时通过 dlopen 暴露，build 阶段无法发现。
-# 如果 binary 加载 native addon（如 .node、.so），确保：
-#   1. addon 能被正确找到（可能需要 LD_LIBRARY_PATH 或 --library-path）
-#   2. addon 的 NEEDED 库（如 libgcc_s.so.1）在 library-path 覆盖范围内
-#   3. 如果报错 "cannot open shared object file"，补充对应的 Guix 包到 inputs
-```
+完成标准：代码、文档、自动更新配置和模块导出彼此一致；工作区没有运行中的构建进程；交接报告能区分“通过”“未测试”和“网络阻塞”。
 
-### 步骤 9：生成测试脚本
+## Hard guards
 
-参见 `references/test-template.sh`。
+- 不把开源预编译包和闭源包统一命名；先看许可证。
+- 不用固定 /tmp 路径；每次运行使用唯一 WORK_DIR。
+- 不用手工 SHA256 转换替代 guix download/guix hash -rx。
+- 不用现代 list + output 的表达式表示带 output 的 input；使用 quasiquote alist。
+- 不覆盖系统 XDG_DATA_DIRS，不指向包内不完整的 gdk-pixbuf loader cache。
+- 不把网络故障、GUI 不可用或只完成 dry-run 写成构建/运行时成功。
 
-测试脚本包含：
+## Channel references
 
-1. 包定义加载验证
-2. 构建测试（dry-run + 实际构建）
-3. Binary 运行测试
-4. FHS 兼容性验证（动态链接器检查）
-5. 持续测试循环（可选）
-
-## 持续测试
-
-用户要求支持持续测试。生成以下文件：
-
-### `test.sh` — 单次测试
-
-```bash
-#!/usr/bin/env bash
-set -euo pipefail
-
-PACKAGE_FILE="${1:-package.scm}"
-TEST_CMD="${2:-<pkg-name> --version}"
-
-echo "=== 加载验证 ==="
-guix build -f "$PACKAGE_FILE" --dry-run
-
-echo "=== 构建测试 ==="
-guix build -f "$PACKAGE_FILE"
-
-echo "=== 运行测试 ==="
-guix shell -f "$PACKAGE_FILE" -- $TEST_CMD
-```
-
-### `watch-test.sh` — 持续测试
-
-```bash
-#!/usr/bin/env bash
-set -euo pipefail
-
-PACKAGE_FILE="${1:-package.scm}"
-TEST_CMD="${2:-<pkg-name> --version}"
-
-echo "持续测试模式：监控 package.scm 变化自动重建"
-
-inotifywait -m -e modify -e create -e delete \
-  --format '%w%f' "$PACKAGE_FILE" | while read changed; do
-  echo "[$(date '+%H:%M:%S')] 检测到变化: $changed"
-  echo ">>> 重新构建..."
-  guix build -f "$PACKAGE_FILE" 2>&1 | tail -5
-  echo ">>> 运行测试..."
-  guix shell -f "$PACKAGE_FILE" -- $TEST_CMD 2>&1 | tail -3
-  echo "--- 完成 ---"
-done
-```
-
-## 依赖映射表
-
-Binary 的 `patchelf --print-needed` 输出 → Guix 包映射：
-
-| 库名                     | Guix 包              |
-| ------------------------ | -------------------- |
-| libc.so.6                | glibc                |
-| libstdc++.so.6           | gcc:lib              |
-| libm.so.6                | glibc                |
-| libpthread.so.0          | glibc                |
-| libdl.so.2               | glibc                |
-| libz.so.1                | zlib                 |
-| libssl.so / libcrypto.so | openssl              |
-| libcurl.so.4             | curl                 |
-| libfuse.so.2             | fuse                 |
-| libX11.so.6              | libx11               |
-| libGL.so.1               | libglvnd             |
-| libasound.so.2           | alsa-lib             |
-| libpulse.so.0            | pulseaudio           |
-| libfontconfig.so.1       | fontconfig-minimal ⚠ |
-| libfreetype.so.6         | freetype             |
-| libnss3.so               | nss                  |
-
-> ⚠ **变量名 ≠ 包名（label 陷阱）**：写 input 的 label 时必须用包的**实际 `name`**，而非变量名。已知不符：`fontconfig` 变量 → `name: "fontconfig-minimal"`；`openjdk17` 变量 → `name: "openjdk"`。在 quasiquote alist 里 label 写错会同时触发 lint 警告**并**让 build-side 的 `(assoc-ref inputs "fontconfig")` 返回 `#f`（因为实际 label 是 `"fontconfig-minimal"`）。拿不准就 `guix show <var>` 查 `name:` 字段。
-
-## 输出文件清单
-
-执行完成后产出：
-
-| 文件              | 说明                      |
-| ----------------- | ------------------------- |
-| `package.scm`     | Guix 包定义（核心产出）   |
-| `test.sh`         | 单次测试脚本              |
-| `watch-test.sh`   | 持续测试脚本              |
-| `BUILD-NOTES.org` | 构建笔记（Org mode 格式） |
-
-**注意**: `package.scm` 生成并测试完成之后，需要在 `modules/jeans/packages` 中寻找到一个合适的分类，并将其拼合进去
-
-## 注意事项
-
-1. **许可证检测**：从仓库 LICENSE 文件自动检测。闭源/专有软件用 `nonfree` 许可证，但注意三点：
-   - `(guix licenses)` **不含** `nonfree`，它来自 `(nonguix licenses)` 模块
-   - 必须额外导入：`#:use-module ((nonguix licenses) #:prefix license:)`（与 guix licenses 共用 `license:` prefix）
-   - `nonfree` 是**带参数的过程**，调用形式为 `(license (license:nonfree "https://项目URL/"))`，不能写成裸符号 `license:nonfree`
-2. **版本推断**：优先使用 git tag，其次 binary URL 路径或文件名中的版本号
-3. **架构限制**：如果 binary 仅 x86_64，添加 `(supported-systems '("x86_64-linux"))`
-4. **预编译 binary 包的构建系统选择**：
-   - **raw ELF 单文件**（如 `omp-linux-x64`）→ `gnu-build-system` + `replace 'unpack` 用 `copy-file`
-   - **归档文件**（tar.gz / zip / AppImage）→ `copy-build-system` 或 `gnu-build-system` + 解压逻辑
-   - 避免盲目使用 `trivial-build-system`，它不适合需要复杂 install 阶段的 binary
-5. **FHS 警告**：如果检测到 `/lib64/ld-linux-x86-64.so.2` 依赖，必须在 package.scm 中处理（wrapper 或 patchelf）
-6. **运行时依赖陷阱**：即使 `patchelf --print-needed` 返回空，运行时通过 `dlopen` 加载的 native addon（常见：Rust 二进制里的 N-API `.node` 文件、Electron app 的 `.so`）仍可能依赖 `libgcc_s.so.1` 或 `libstdc++.so.6`。构建成功后务必运行一次完整的功能测试。
-7. **input label 规范（必须遵守以通过 `guix lint`，全通道统一）**：
-   - **inputs 字段用 quasiquote alist 形式**，不要用现代 `(list ...)`：``(inputs `(("pkg-name" ,pkg) ...))``。
-   - **带子输出的 input**（如 gcc 的 lib）：label 必须是 `"name:output"`，即 `("gcc:lib" ,gcc "lib")`。现代 `(list ... `(,gcc "lib"))`只会生成裸`"gcc"` label，**永远过不了 lint**（`check-input-labels`要求带 output 的 label =`name:output`）。
-   - **label 必须用包的实际 `name` 字段**，不是变量名。已知不符：`fontconfig` 变量 → `name: "fontconfig-minimal"`；`openjdk17` 变量 → `name: "openjdk"`。拿不准就 `guix show <var>` 查 `name:`。
-   - **build-side 查询与 label 必须一致**：`(assoc-ref inputs "gcc:lib")`、`(this-package-input "fontconfig-minimal")` 等。label 写错会让查询返回 `#f`，导致构建期 `wrong-type-arg: Wrong type (expecting string): #f`。
-   - 详见 `AGENTS.md` 的「input label 规范」与「变量名 ≠ 包名」陷阱。
-8. **`#$<symbol>` gexp 引用必须是已导出的绑定**：`(gnu packages gcc)` 导出 `gcc` 但**不导出** `gcc:lib`——写 `#$gcc:lib` 是未绑定符号。gexp 惰性求值，模块加载期不报错，**只在构建时爆**，是危险的潜伏 bug。正确写法：`#$(this-package-input "gcc:lib")` 或 `#$(gcc "lib")`。
-
-## 与知识库联动
-
-打包完成后：
-
-1. `kb search "guix package"` 检查是否已有类似经验
-2. 如有新发现（特殊依赖、特殊构建步骤）→ `kb add` 记录
+- 仓库约定：../../../AGENTS.md
+- jeans 通道特定约定（命名、-bin 决策、input label、裸 ELF、trivial-build-system、XDG_DATA_DIRS 等）：references/jeans-conventions.md
+- 通用 Guix 打包参考（包结构、构建系统、输入类型、阶段修改、最佳实践）：references/guix-reference.md
+- Guix package templates：references/package-template.scm
+- Single-run test：references/test-template.sh
+- Watch test：references/watch-test-template.sh

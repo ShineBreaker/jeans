@@ -1,0 +1,175 @@
+# jeans 通道打包约定
+
+jeans 仓库的特定约定，补充通用 Guix 知识（见 `guix-reference.md`）。所有新包与修改包都应符合这些规则。
+
+## 命名规范（按许可证/源码状态，而非构建系统）
+
+判断 `-bin` 后缀的依据是上游**源码可见性 + 许可证**，不是本地 build-system 或文件格式。
+
+| 软件状态                                 | 本通道直接分发           | 命名                                 |
+| ---------------------------------------- | ------------------------ | ------------------------------------ |
+| MIT/GPL/Apache/MPL 等开源软件            | 预编译产物，未从源码构建 | 加 `-bin`（`opencode-bin` 等）       |
+| 同一软件已有源码包                       | 预编译变体               | 用 `-bin` 区分                       |
+| 闭源软件                                 | 只有预编译产物           | 不加 `-bin`（`zcode` 等）            |
+| 源码可见但 FSL 或其他非自由/限制性许可证 | 预编译产物               | 加 `-bin`，使用 nonguix 的 `nonfree` |
+| 从源码构建                               | 源码包                   | 不因构建结果含二进制而添加 `-bin`    |
+
+示例：`opencode-bin`、`orca-ide-bin`、`zen-browser-bin`、`osu-lazer-bin`（开源预编译）；`zcode`、`github-copilot`（闭源）。
+
+## Rust 打包（双文件模式）
+
+Rust 包使用双文件结构：
+
+1. **`modules/jeans/packages/rust-crates.scm`** —— `crate-source` 定义 + `define-cargo-inputs` 映射。**由 `guix import crate --lockfile` 或 `blue import-crate` 管理，禁止手动编辑。** 自动更新脚本完全跳过此文件。
+2. **包文件**（如 `desktop.scm`、`tools.scm`）—— `package` 定义，通过 `(cargo-inputs '<name> #:module '(jeans packages rust-crates))` 引用依赖。
+
+关键参数：
+
+- 应用 crate 总是指定 `#:rust rust-1.88`（或当前版本）和 `#:install-source? #f`。
+- crate 根为 workspace 根时使用 `#:cargo-install-paths ''(".")`。
+- Rust 包可能需要自定义 `unpack` 阶段来改写 `Cargo.toml` 条目（去除 `git =`、`rev =` 行，替换为 `version = "*"` 以支持 vendored 依赖）。
+
+```scheme
+(build-system cargo-build-system)
+(arguments
+ `(#:install-source? #f
+   #:cargo-test-flags '("--release" "--"
+     "--skip=failing_test")))
+(inputs (cargo-inputs '<name> #:module '(jeans packages rust-crates)))
+```
+
+## 预编译二进制包
+
+预编译包有三种常见形态，处理方式不同。
+
+### AppImage 包
+
+用 `7z x` 提取，对所有 ELF 二进制和 `.so` 文件执行 `patchelf`。使用 `copy-build-system` 配合 `#:install-plan`：
+
+```scheme
+(build-system copy-build-system)
+(arguments
+ (list
+  #:tests? #f
+  #:validate-runpath? #f
+  #:strip-binaries? #f
+  #:install-plan
+  #~'(("bin/%upstream-program%" "bin/"))))
+(native-inputs (list patchelf))
+```
+
+### tar.gz / .deb 等归档包
+
+`gnu-build-system`，删除 `configure`/`build` 阶段，自定义 `install`。
+
+### 裸 ELF 可执行文件
+
+`gnu-build-system`，`replace 'unpack` 阶段用 `copy-file` 直接复制原始二进制。安装到 `lib/<pkg>/`，然后从 `bin/` 创建 ld-linux wrapper。**裸 ELF 的陷阱**：即使 `readelf -d` 显示 NEEDED 为空，运行时仍可能通过 `dlopen` 加载 native addon（如 oh-my-pi 的 `pi_natives.linux-x64-modern.node`）。这些 addon 可能依赖 `libgcc_s.so.1`，因此 inputs 中需要包含 gcc 的 `lib` 子输出。
+
+完整模板见 `references/package-template.scm`。
+
+### 所有预编译包的通用规则
+
+- `patchelf` 用于设置 ELF 解释器（`ld-linux`）和 RPATH（指向 Guix store 路径）。
+- 设置 `#:tests? #f`（无源码 → 无测试）。
+- 设置 `#:validate-runpath? #f`（预编译二进制无法通过 Guix 的 runpath 校验）。
+- 设置 `#:strip-binaries? #f`（预编译二进制不支持 Guix 的 strip，会导致损坏）。
+- 二进制安装到 `lib/<pkg>/`，然后从 `bin/` 创建符号链接，使 patchelf 能找到同目录的 `.so` 文件。
+- 自动更新 CI 会对本次更新的所有包运行构建测试；预编译包同样需要验证解包、patchelf 和 wrapper 阶段。
+
+## input label 规范（必须遵守以通过 `guix lint`）
+
+`guix lint` 的 `check-input-labels` 检查要求 input 的 label（标签）与包的**实际 `name` 字段**完全一致——带子输出时还要附加 `:output`。本通道因此统一采用**旧式 quasiquote alist** 写法，而非现代的 `(list ...)`：
+
+```scheme
+;; ✅ 正确：quasiquote alist，label 与 package name 一致
+(inputs `(("bash-minimal" ,bash-minimal)
+          ("glibc" ,glibc)
+          ("gcc:lib" ,gcc "lib")))           ; ← 带 output 的 input，label 必须是 name:output
+
+;; ❌ 错误：现代 (list ...) 形式无法为带 output 的 input 生成满足 lint 的 label
+(inputs (list bash-minimal glibc `(,gcc "lib")))   ; 会触发 "label 'gcc' does not match 'gcc:lib'"
+```
+
+关键规则：
+
+- **带子输出的 input**（如 `gcc "lib"`）：label 必须是 `"name:output"`（即 `"gcc:lib"`）。`(,pkg "lib")` 在现代形式下只会生成裸 `"gcc"`，永远过不了 lint。
+- **label 必须用包的实际 `name`，而非变量名**：见下方「变量名 ≠ 包名」陷阱。
+- **build-side 查询要同步**：`(assoc-ref inputs "gcc:lib")`、`(this-package-input "gcc:lib")` 必须与 label 一致；否则返回 `#f` 导致构建期 `wrong-type-arg` 错误。
+- 上游 Guix 的官方惯例也是 quasiquote alist（见 `gnu/packages/elf.scm` 的 `` `(("gcc:lib" ,gcc "lib")) ``）。
+- `references/package-template.scm` 使用 `quasiquote` + `unquote` 形式以兼容 lint。
+
+## `trivial-build-system` 包装模式
+
+`librewolf-nongnu` 使用一种特殊模式，仅在确实需要复用上游 Guix 包输出时才使用：
+
+- `source #f` + `trivial-build-system` 配合 `#:builder` —— 操作继承包的 store 输出。
+- `(inherit librewolf)` 包装上游 Guix 包。
+- `dereference!` 辅助函数在补丁前将符号链接替换为实际副本（Guix store 路径是只读的符号链接）。
+- `chmod` 舞蹈：`#o644` → 补丁 → `#o444`（先写权限，修改，再恢复只读）。
+- 通过嵌入式 Python 脚本进行 `omni.ja` 补丁 —— 解压、修改 JS 模块、重新打包。
+
+## Git-Fetch 固定提交包
+
+- 滚动提交包的版本格式：`0-unstable-YYYY-MM-DD`。
+- 更新脚本对 git-fetch 包使用占位 hash（`000...000`）；你必须重新构建以获取正确的 hash。
+- 固定提交包：`(let ((commit "...") (revision "0")) ...)` 配合 `(git-version ...)`。
+
+```scheme
+(source
+ (origin
+   (method git-fetch)
+   (uri (git-reference
+         (url "https://github.com/user/repo")
+         (commit (string-append "v" version))))
+   (file-name (git-file-name name version))
+   (sha256 (base32 "hash"))))
+```
+
+## 通用构建阶段模式
+
+- **`wrap-program`**：总是包装以设置 `PATH`、`LD_LIBRARY_PATH`、`GI_TYPELIB_PATH`、`XDG_DATA_DIRS` 等。
+- **`substitute*`**：用于补丁 `.desktop` 文件、配置文件和源码文件。
+- **选择包的子输出**（如 gcc 的 lib）：用 quasiquote alist 形式 `("gcc:lib" ,gcc "lib")`（label 必须是 `name:output`，详见上方「input label 规范」）。**禁止**在现代 `(list ...)` 里写 `(,gcc "lib")`——会触发 lint 警告且无法清除。
+- **私有辅助包**：仅在同一文件内使用的包用 `define`（而非 `define-public`）。
+
+## 字体包
+
+- 标准字体归档使用 `font-build-system`。
+- 单文件字体下载使用 `copy-build-system`。
+- 本地许可证文件使用 `(local-file "../../../licenses/<file>")`，路径相对于 `.scm` 文件而非仓库根目录。
+
+## 服务定义
+
+模式：`define-record-type*` → 带扩展的 `service-type` → 便捷包装函数。
+
+服务扩展：
+
+- `udev-service-type` 用于 udev 规则
+- `kernel-module-loader-service-type` 用于内核模块
+
+## 输入 label 的具体陷阱
+
+### 变量名 ≠ 包名（input label 陷阱）
+
+写 input 的 label 时必须用包的**实际 `name` 字段**，而非 import 进来的变量名。已知不符的包：
+
+- `fontconfig`（变量名）→ `name` 是 `"fontconfig-minimal"`
+- `openjdk17`（变量名）→ `name` 是 `"openjdk"`
+
+拿不准时先 `guix show <var>` 看 `name:` 字段，或 `(package-name <var>)` 在 repl 里查。quasiquote alist 里 label 写错会同时触发 lint 警告**并**让 build-side 的 `(assoc-ref inputs ...)` / `(this-package-input ...)` 返回 `#f`。
+
+### `#$<symbol>` gexp 引用必须是已导出的绑定
+
+在 gexp（`#$`）里引用包时，符号必须真实存在于 import 的模块里。例如 `(gnu packages gcc)` 导出的是 `gcc`，不导出 `gcc:lib`——写 `#$gcc:lib` 会成为未绑定符号，但因 gexp 是惰性求值，**只在构建时才爆**（模块加载期不报错），是危险的潜伏 bug。
+
+正确写法：
+
+- `#$(this-package-input "gcc:lib")` —— 按 label 查
+- `#$(gcc "lib")` —— 显式 output
+
+### XDG_DATA_DIRS / gdk-pixbuf 陷阱
+
+在手写 wrapper 脚本（`with-output-to-file`）里设置 `XDG_DATA_DIRS` 时，**必须**用追加语法 `"${XDG_DATA_DIRS:+:$XDG_DATA_DIRS}"`，保留系统原有的 `~/.guix-home/profile/share`、`/run/current-system/profile/share` 等路径。如果用 `export XDG_DATA_DIRS=...`（精确替换）覆盖掉系统路径，gdk-pixbuf 会找不到 loaders cache 和 mime 数据 → GTK 加载 PNG 图标时崩溃（`Gtk:ERROR ... Unrecognized image file format (gdk-pixbuf-error-quark, 3)` SIGABRT）。这个 bug 极其隐蔽：构建正常、`guix lint` 通过、纯 gdk-pixbuf 程序（不调 `gtk_init`）正常，只有完整 GTK 应用才崩。
+
+同样适用于 `GDK_PIXBUF_MODULE_FILE`：Guix 的 gdk-pixbuf 用补丁加了 `GUIX_GDK_PIXBUF_MODULE_FILES`（复数），上游的 `GDK_PIXBUF_MODULE_FILE`（单数）在 Guix 环境下指向的 store cache 通常只有部分 loader（无 PNG/JPEG，因为它们是内建的），设置它反而有害——应让 gdk-pixbuf 从 profile 继承。
