@@ -7,15 +7,16 @@ description: "Use when creating, updating, or reviewing a GNU Guix package in th
 
 把上游软件变成可审查、可复现、可验证的 Guix package。这个 skill 的目标是稳定的过程，不是只生成一段能加载的 Scheme。
 
-完成标准：包名和许可证有上游证据；源码 hash 已验证；模块能加载；构建和 lint 已执行；运行时验证与包类型匹配；channel 文档、自动更新配置和模块导出已同步；没有未解释的 lint finding。网络失败要明确记录，不能用“代码看起来没问题”代替验证。
+完成标准：包名和许可证有上游证据；源码 hash 已验证；模块能加载；构建和 lint 已执行；运行时验证与包类型匹配；自动更新 properties（upstream-name 等）已设置且 guix refresh dry-run 确认 updater 识别；channel 文档和模块导出已同步；没有未解释的 lint finding。网络失败要明确记录，不能用“代码看起来没问题”代替验证。
 
 ## Runbook
 
 ### 0. Preflight
 
 1. 读取仓库根目录的 AGENTS.md 和目标分类文件，先理解本地约定。
-2. 按仓库要求先执行 git pull，再执行 git status --short；保留用户已有修改。
-3. 创建唯一临时目录，并把下载、解压、clone 和 hash 中间物都放进去：
+2. 读 jeans-conventions.md 的「自动更新 properties」章节——新包必须根据上游情况设置 `upstream-name`/`release-tag-prefix` 等属性，否则无法被 guix refresh 自动更新。
+3. 按仓库要求先执行 git pull，再执行 git status --short；保留用户已有修改。
+4. 创建唯一临时目录，并把下载、解压、clone 和 hash 中间物都放进去：
 
 ```bash
 PKG_NAME="package"
@@ -41,7 +42,7 @@ trap 'rm -rf "$WORK_DIR"' EXIT
 
 记录证据：许可证文件 URL、源码仓库 URL、使用的 release 资产 URL。-bin 是软件许可状态和本次打包来源的结论，不是文件格式的别名。
 
-完成标准：define-public 名称、name 字段、docs 名称、自动更新配置名称和测试命令全部一致；许可证与上游证据一致。
+完成标准：define-public 名称、name 字段、docs 名称、自动更新 properties 和测试命令全部一致；许可证与上游证据一致；已确认 release 资产文件名前缀（决定 upstream-name 的值）。
 
 ### 2. Acquire and inspect the source
 
@@ -158,12 +159,18 @@ synopsis,gnu-description <package-name>
 ### 7. Integrate and hand off
 
 1. 新包文件加入 modules/jeans.scm；不要手动编辑 rust-crates.scm。
-2. 同步 scripts/check-updates/config.json 的包名、tag prefix 和预发布设置。
-3. 运行 blue gen-docs 更新 docs/packages.md，确认旧名、别名和 docs 没有漂移。
-4. 检查 git status --short、git diff --check 和所有测试输出。
-5. 汇报修改、验证、网络限制和未完成项；除非用户明确要求，不执行 git commit。
+2. 根据包类型设置自动更新 properties（见 jeans-conventions.md「自动更新 properties」）：
+   - **GitHub release 的 `-bin` 包**：几乎必需 `(upstream-name . "<repo-name>")`，否则 guix refresh 报 "no updater"。
+   - **多 tag 系列 repo**：加 `(release-tag-prefix . "^<prefix>")`。
+   - **跟踪预发布**：加 `(accept-pre-releases? . #t)`。
+   - **上游无 tag 的 git-fetch 包**：用 `let`+`git-version` 结构 + `(with-latest-git-commit . #t)`。
+   - 仅 guix refresh 力不能及的包（非 GitHub 源、npm scoped tag 等）才在 config.json 配 tag_prefix。
+3. 用 dry-run 验证 guix refresh 能识别新包：`GUIX_GITHUB_TOKEN="$(gh auth token)" guix refresh -L modules -L /tmp/nonguix <package>`，确认输出"已是最新"或"would be upgraded"而非"no updater"。
+4. 运行 blue gen-docs 更新 docs/packages.md，确认旧名、别名和 docs 没有漂移。
+5. 检查 git status --short、git diff --check 和所有测试输出。
+6. 汇报修改、验证、网络限制和未完成项；除非用户明确要求，不执行 git commit。
 
-完成标准：代码、文档、自动更新配置和模块导出彼此一致；工作区没有运行中的构建进程；交接报告能区分“通过”“未测试”和“网络阻塞”。
+完成标准：代码、文档、自动更新 properties 和模块导出彼此一致；guix refresh dry-run 确认 updater 识别；工作区没有运行中的构建进程；交接报告能区分“通过”“未测试”和“网络阻塞”。
 
 ## Hard guards
 
@@ -173,11 +180,12 @@ synopsis,gnu-description <package-name>
 - 不用现代 list + output 的表达式表示带 output 的 input；使用 quasiquote alist。
 - 不覆盖系统 XDG_DATA_DIRS，不指向包内不完整的 gdk-pixbuf loader cache。
 - 不把网络故障、GUI 不可用或只完成 dry-run 写成构建/运行时成功。
+- 不提交缺少 `upstream-name` 的 GitHub release `-bin` 包；否则 guix refresh 会报 "no updater" 且包永远收不到自动更新。交付前必须用 `guix refresh` dry-run 确认 updater 识别。
 
 ## Channel references
 
 - 仓库约定：../../../AGENTS.md
-- jeans 通道特定约定（命名、-bin 决策、input label、裸 ELF、trivial-build-system、XDG_DATA_DIRS 等）：references/jeans-conventions.md
+- jeans 通道特定约定（命名、-bin 决策、自动更新 properties、input label、git-fetch 无 tag 结构、裸 ELF、trivial-build-system、XDG_DATA_DIRS 等）：references/jeans-conventions.md
 - 通用 Guix 打包参考（包结构、构建系统、输入类型、阶段修改、最佳实践）：references/guix-reference.md
 - Guix package templates：references/package-template.scm
 - Single-run test：references/test-template.sh

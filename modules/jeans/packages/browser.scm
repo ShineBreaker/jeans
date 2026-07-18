@@ -436,6 +436,7 @@ keeps the language selection interface enabled.")
                   libpciaccess
                   pipewire
                   pulseaudio))
+    (properties `((upstream-name . "zen")))
     (home-page "https://zen-browser.app/")
     (synopsis "Privacy-focused web browser with a calm interface")
     (description

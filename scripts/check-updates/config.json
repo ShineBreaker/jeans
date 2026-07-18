@@ -3,15 +3,13 @@
   "skip_packages": [],
   "skip_files": ["rust-crates.scm"],
   "tag_prefix": {
-    "reasonix-bin": "v",
-    "reasonix-desktop-bin": "desktop-v",
-    "open-interpreter-bin": "rust-v"
+    "reasonix-desktop-bin": "desktop-v"
   },
   "notes": {
-    "check_pre_release": "这个列表中的包会检查包括pre-release在内的所有版本",
+    "check_pre_release": "这个列表中的包会检查包括pre-release在内的所有版本。注意：emacs-ellsp/ellsp-bin 的 accept-pre-releases? property 已写在包定义里供 guix refresh 使用，此处保留给 Python updater 兜底",
     "skip_packages": "这个列表中的包会被跳过更新检查",
-    "skip_files": "这个列表中的文件不会被检查或更新。rust-crates.scm 由 guix import crate 管理，禁止手动编辑",
-    "tag_prefix": "当同一个 GitHub repo 有多个 release 系列（如 v* 和 desktop-v*）时，指定每个包跟踪的 tag 前缀。脚本会只匹配以此前缀开头的 release tag，并据此前缀剥离得到纯版本号",
+    "skip_files": "这个列表中的文件不会被检查或更新。rust-crates.scm 现由 guix refresh -t crate 管理（CI 的 refresh 步骤），Python updater 仍跳过它",
+    "tag_prefix": "当同一个 GitHub repo 有多个 release 系列（如 v* 和 desktop-v*）时，指定每个包跟踪的 tag 前缀。注意：reasonix-bin/open-interpreter-bin 的 release-tag-prefix property 已写在包定义里供 guix refresh 使用；reasonix-desktop-bin 因 refresh 的 URL 重建无法处理 desktop-v 前缀，仍由此处 Python 规则管理",
     "示例配置": "在数组中添加或删除包名来自定义行为"
   }
 }

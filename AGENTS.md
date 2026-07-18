@@ -92,23 +92,53 @@ blueprint.scm                     # BLUE 蓝图：任务运行器（build/upgrad
 
 ## 更新工作流
 
-1. 运行 `blue upgrade` —— 脚本扫描 `modules/jeans/packages/` 中的所有 `.scm` 文件，通过正则解析 `define-public` 块，检查 GitHub releases/tags/commits API。
-2. **url-fetch 包**：通过 `guix download <url>` 自动计算正确的 `base32`。
-3. **git-fetch 包**：`git clone --depth=1` + `guix hash -rx <dir>` 计算 hash。部分包设置占位 hash；你必须重新构建以获取真实 hash。
-4. 版本规范化：去除 GitHub 标签的 `v` 前缀（Guix 约定：不带 `v` 前缀）。
-5. `scripts/check-updates/config.json` 中的配置：
-   - `check_pre_release`：同时检查预发布版本的包。
-   - `skip_packages`：完全跳过的包。记得用中文来撰写
-   - `skip_files`：跳过的文件（如 `rust-crates.scm`）。
-6. 退出码：0 = 无更新，1 = 已应用更新，2 = 出错。
-7. 更新后，`test_updated_packages.py` 对所有更新包运行 `guix build`；不要通过包名后缀跳过闭源或预编译包。
+自动更新采用 **guix refresh 主力 + Python 脚本兜底** 的分层架构。两层都在 CI 的同一个 job 内串行执行，先 refresh 后 Python，最后合并两路的更新集合统一构建测试。
+
+### 第 1 层：guix refresh（主力）
+
+`guix refresh -u` 接管大部分包的上游版本检测和源码改写（version + base32）。要让 refresh 正确识别一个包，包定义需要带合适的 `properties`：
+
+- **`upstream-name`**：几乎对所有 `-bin` 包必需。github updater 用它匹配 release 资产文件名前缀（如 `crush-bin` 的 upstream-name 是 `crush`，因为资产文件名是 `crush_*.deb` 而非 `crush-bin_*`）。
+- **`release-tag-prefix`**：正则，当 repo 有多个 tag 系列时指定跟踪哪个（如 reasonix-bin 用 `"^v"`）。
+- **`accept-pre-releases?`**：布尔，允许 refresh 考虑预发布版本。
+
+refresh 覆盖：GitHub release 包（带 upstream-name）、git-fetch 有 tag 包（generic-git updater）、rust-crates（crate updater）。
+
+### 第 2 层：Python 脚本（兜底）
+
+`scripts/check-updates/update_versions.py` 处理 guix refresh 力不能及的包：
+- **非 GitHub 源**：`zcode`（z.ai CDN）、`font-misans`（无 version URL）、`amber-pm`（gitee）
+- **npm scoped tag**：`kimi-code-bin`（`@scope/name@version` 模式）
+- **refresh URL 重建失败的边缘 case**：`reasonix-desktop-bin`（`desktop-v` 前缀 + 文件名不标准）
+- **无 tag 固定 commit 包**：`winapps`/`orchis-kde-themes`/`colloid-kde-themes`（用 `let`+`git-version` 结构，Python 脚本追踪 main 分支 commit 并更新 let 绑定的 commit + 自增 revision；`with-latest-git-commit` property 已写入但本机 Guix 尚未实现该功能）
+
+Python 脚本也用 `config.json` 的 `tag_prefix`/`check_pre_release` 作为兜底规则。
+
+### 合并与构建测试
+
+- `refresh-changed-packages.sh` 从 git diff 提取 refresh 改动的包名 → `refresh-updates.json`
+- `test_updated_packages.py` 合并 Python 的 `report.json`（`status == "updated"`）和 `refresh-updates.json`，对并集逐个 `guix build`
+- 不要通过包名后缀跳过闭源或预编译包
+
+### 版本号约定
+
+- 版本格式完全遵从 Guix 上游规定。`generic-git` updater 会把日期 tag（如 `2025-07-31`）规范化为 `2025.07.31`，这是预期行为。
+- 无 tag 包用 `(git-version base revision commit)` 生成版本号（如 `0-0.7f6b6ab`），格式为 `base-revision.commit前7位`。
+- GitHub 标签的 `v` 前缀会被去除（Guix 约定：不带 `v` 前缀）。
+
+### 退出码（Python updater）
+
+0 = 无更新，1 = 已应用更新，2 = 出错。
 
 ## CI 流水线
 
 `auto-update.yml` 工作流每周运行（周二、四、六 02:00 UTC）或手动触发：
 
-1. 运行更新脚本 → 检测变更
-2. 安装 Guix 并 `guix pull` 更新到最新版本
-3. 构建测试所有更新的包
-4. 全部通过后 GPG 签名提交 → 推送到 GitHub → 镜像到 Codeberg
-5. 构建失败则阻止提交，并创建 GitHub Issue 通知
+1. 安装 Guix + `guix pull` + checkout nonguix（提前、无条件，供 refresh 使用）
+2. **guix refresh**（主力）：改写 GitHub release 包 + git-fetch 包 + rust-crates；记录改动的包到 `refresh-updates.json`
+3. **Python updater**（兜底）：处理 refresh 力不能及的包，写 `report.json`
+4. 检测变更 → 合并两路更新集合 → 构建测试所有更新的包
+5. 全部通过后 GPG 签名提交 → 推送到 GitHub → 镜像到 Codeberg
+6. 构建失败则阻止提交，并创建 GitHub Issue 通知
+
+关键环境变量：`GUIX_GITHUB_TOKEN`（映射自 `GITHUB_TOKEN`）是 guix refresh 读 GitHub API 的专属变量名，必须单独设置。

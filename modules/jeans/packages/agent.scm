@@ -170,6 +170,7 @@
        ("git" ,git)
        ("coreutils-minimal" ,coreutils-minimal)
        ("go" ,go)))
+    (properties `((upstream-name . "crush")))
     (home-page "https://github.com/charmbracelet/crush")
     (synopsis "AI-powered coding assistant for the CLI")
     (description "Crush is an AI-powered coding assistant that runs in the terminal.
@@ -241,6 +242,7 @@ This package provides the prebuilt binary release.")
     (inputs `(("bash-minimal" ,bash-minimal)
               ("glibc" ,glibc)
               ("gcc:lib" ,gcc "lib")))
+    (properties `((upstream-name . "opencode")))
     (home-page "https://opencode.ai")
     (synopsis "Open source AI coding agent")
     (description "OpenCode is an open source agent that helps you
@@ -316,6 +318,7 @@ This package provides the prebuilt binary release.")
     (inputs `(("bash-minimal" ,bash-minimal)
               ("glibc" ,glibc)
               ("gcc:lib" ,gcc "lib")))
+    (properties `((upstream-name . "mimocode")))
     (home-page "https://mimo.xiaomi.com/coder")
     (synopsis "Terminal-native AI coding agent from Xiaomi")
     (description "MiMoCode is a terminal-native AI coding assistant.  It can
@@ -433,6 +436,7 @@ rewrite that bundles a sandboxed shell (zsh), ripgrep and bubblewrap in its
 package layout so it can execute commands and search files without external
 runtime dependencies.  This package installs the official prebuilt musl
 release verbatim and only patches the bundled zsh to run under Guix.")
+    (properties `((upstream-name . "open-interpreter") (release-tag-prefix . "^rust-v")))
     (license license:asl2.0)
     (supported-systems '("x86_64-linux"))))
 
@@ -582,6 +586,7 @@ release verbatim and only patches the bundled zsh to run under Guix.")
               ("libxrandr" ,libxrandr)
               ("mesa" ,mesa)
               ("nss" ,nss)))
+    (properties `((upstream-name . "opencode-desktop")))
     (home-page "https://opencode.ai")
     (synopsis "AI coding agent desktop application")
     (description
@@ -735,6 +740,7 @@ coding experience with context awareness.")
               ("libxrandr" ,libxrandr)
               ("mesa" ,mesa)
               ("nss" ,nss)))
+    (properties `((upstream-name . "orca-ide")))
     (home-page "https://onorca.dev")
     (synopsis "AI orchestrator desktop app for parallel agentic development")
     (description
@@ -817,6 +823,7 @@ agent orchestration.")
     (inputs `(("bash-minimal" ,bash-minimal)
               ("glibc" ,glibc)
               ("gcc:lib" ,gcc "lib")))
+    (properties `((upstream-name . "omp")))
     (home-page "https://omp.sh")
     (synopsis "AI coding agent with IDE integration")
     (description "oh-my-pi (OMP) is a coding agent with deep IDE integration,
@@ -903,6 +910,7 @@ the prebuilt binary release.")
     (inputs `(("bash-minimal" ,bash-minimal)
               ("glibc" ,glibc)
               ("gcc:lib" ,gcc "lib")))
+    (properties `((upstream-name . "kimi-code")))
     (home-page "https://github.com/MoonshotAI/kimi-code")
     (synopsis "Terminal-native AI coding agent from Moonshot AI")
     (description "Kimi Code is a terminal-native AI coding agent.  It can read
@@ -968,6 +976,7 @@ compatible providers.  This package provides the prebuilt binary release.")
                           '("codewhale-linux-x64/codewhale"
                             "codewhale-linux-x64/codewhale-tui"
                             "codewhale-linux-x64/codew"))))))))
+    (properties `((upstream-name . "codewhale")))
     (home-page "https://codewhale.net")
     (synopsis "Multi-provider AI coding agent for the terminal")
     (description
@@ -1028,6 +1037,7 @@ designed around DeepSeek's prefix cache to keep token costs low across long
 sessions.
 It supports multi-model composition, external tools via MCP-compatible JSON-RPC,
 and ships as a single static binary with no runtime dependencies.")
+    (properties `((upstream-name . "reasonix") (release-tag-prefix . "^v")))
     (license license:expat)
     (supported-systems '("x86_64-linux"))))
 
@@ -1142,6 +1152,7 @@ sessions.
 This is the desktop version with a graphical interface built with Wails
 (Go + WebKitGTK).  It provides a config- and plugin-driven harness with
 support for multiple LLM providers.")
+    (properties `((upstream-name . "Reasonix") (release-tag-prefix . "^desktop-v")))
     (license license:expat)
     (supported-systems '("x86_64-linux"))))
 
@@ -1469,6 +1480,7 @@ without friction.")
               ("openssl" ,openssl)
               ("pulseaudio" ,pulseaudio)
               ("webkitgtk-for-gtk3" ,webkitgtk-for-gtk3)))
+    (properties `((upstream-name . "GitHub-Copilot")))
     (home-page "https://github.com/github/app")
     (synopsis "Agent-native GitHub Copilot desktop application")
     (description

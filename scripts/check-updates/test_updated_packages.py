@@ -22,6 +22,7 @@ from typing import Any, Dict, List
 import requests
 
 REPORT_FILE = Path(__file__).parent / "report.json"
+REFRESH_UPDATES_FILE = Path(__file__).parent / "refresh-updates.json"
 BUILD_REPORT_FILE = Path(__file__).parent / "build-report.json"
 
 
@@ -33,6 +34,49 @@ def load_report(path: Path) -> Dict[str, Any]:
 def select_updated_packages(report: Dict[str, Any]) -> List[Dict[str, Any]]:
     packages = report.get("packages", [])
     return [pkg for pkg in packages if pkg.get("status") == "updated"]
+
+
+def load_refresh_updates() -> List[Dict[str, Any]]:
+    """读取 guix refresh 步骤产出的更新包列表（refresh-updates.json）。
+
+    refresh-updates.json 由 CI 的 refresh-changed-packages.sh 从 git diff
+    提取，记录被 guix refresh 改写的包名。这些包不在 Python updater 的
+    report.json 里，需要合并进构建测试集合。
+    """
+    if not REFRESH_UPDATES_FILE.exists():
+        return []
+    try:
+        with open(REFRESH_UPDATES_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except (json.JSONDecodeError, OSError) as e:
+        print(f"⚠️  读取 refresh-updates.json 失败: {e}")
+        return []
+    return [
+        {
+            "name": name,
+            "status": "updated",
+            "old_version": "(refresh)",
+            "new_version": "(refresh)",
+            "source": "refresh",
+        }
+        for name in data.get("packages", [])
+    ]
+
+
+def merge_updated_packages(
+    python_packages: List[Dict[str, Any]],
+    refresh_packages: List[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    """合并 Python updater 和 guix refresh 两个来源的更新集合（按包名去重）。
+
+    Python updater 的结果优先（含具体版本信息），refresh 只补 Python 未覆盖的包。
+    """
+    merged = list(python_packages)
+    seen = {pkg["name"] for pkg in merged}
+    for pkg in refresh_packages:
+        if pkg["name"] not in seen:
+            merged.append(pkg)
+    return merged
 
 
 def summarize_output(stdout: str, stderr: str, limit_lines: int = 80, limit_chars: int = 6000) -> str:
@@ -152,7 +196,11 @@ def main() -> int:
         return 2
 
     report = load_report(REPORT_FILE)
-    packages = select_updated_packages(report)
+    python_updated = select_updated_packages(report)
+    refresh_updated = load_refresh_updates()
+    packages = merge_updated_packages(python_updated, refresh_updated)
+    if refresh_updated:
+        print(f"📋 合并更新来源: Python updater {len(python_updated)} 个 + guix refresh {len(refresh_updated)} 个")
     build_report: Dict[str, Any] = {
         "timestamp": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "tested_count": len(packages),

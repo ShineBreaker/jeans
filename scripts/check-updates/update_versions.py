@@ -497,6 +497,29 @@ def parse_package_definitions(content: str, _file_path: Path) -> list[dict[str, 
         git_url = extract_git_reference_url(uri_expr) if is_git and uri_expr else None
         commit_expr = extract_commit_expr(uri_expr) if is_git and uri_expr else None
 
+        # 识别 let-绑定的 git-version 结构（无 tag 追踪 commit 模式）。
+        # 结构形如：(let ((commit "...") (revision "...")) (package (version (git-version ...)) ...))
+        # 此时 version 字段是表达式而非字面量，commit 在 let 绑定里而非 git-reference。
+        let_commit_match = re.search(
+            r'\(let\s+\(\((?:commit|rev)\s+"([0-9a-f]{40})"\)\s*'
+            r'(?:\((?:revision|rev)\s+"(\d+)"\)\s*)?\)',
+            package_content,
+        )
+        is_let_git_version = (
+            let_commit_match is not None
+            and version is None
+            and re.search(r'\(version\s+\(git-version\b', package_content) is not None
+        )
+        let_commit = let_commit_match.group(1) if let_commit_match else None
+        let_revision_val = let_commit_match.group(2) if let_commit_match else None
+        # git-version 的 base（用于重建 version 字符串）
+        git_version_base = None
+        if is_let_git_version:
+            gv_match = re.search(
+                r'\(version\s+\(git-version\s+"([^"]*)"', package_content
+            )
+            git_version_base = gv_match.group(1) if gv_match else ""
+
         packages.append(
             {
                 "name": package_name,
@@ -507,6 +530,11 @@ def parse_package_definitions(content: str, _file_path: Path) -> list[dict[str, 
                 "is_git": is_git,
                 "git_url": git_url,
                 "commit_expr": commit_expr,
+                # let-绑定 git-version 结构（最新 commit 追踪模式）
+                "is_let_git_version": is_let_git_version,
+                "let_commit": let_commit,
+                "let_revision_val": let_revision_val,
+                "git_version_base": git_version_base,
                 "content": package_content,
                 "start_pos": start_pos,
                 "end_pos": end_pos,
@@ -683,6 +711,47 @@ def update_package_in_file(
         return None
 
 
+def build_let_git_version_change(
+    file_path: Path,
+    package: dict[str, Any],
+    new_commit: str,
+    new_base32: str,
+) -> Optional[Dict[str, Any]]:
+    """为 let-绑定 git-version 结构（无 tag 追踪 commit 模式）构建更新描述。
+
+    与 update_package_in_file 不同，这里需要：
+    1. 替换 let 绑定里的 commit 字面值
+    2. 自增 revision（0→1→2...）
+    version 字符串由 (git-version base revision commit) 在求值时生成，
+    无需在文件里写字面 version。
+    """
+    try:
+        old_commit = package["let_commit"]
+        old_revision_val = package["let_revision_val"] or "0"
+        new_revision_val = str(int(old_revision_val) + 1)
+        return {
+            "file_path": file_path,
+            "package": package["name"],
+            "old_version": f"{package['git_version_base']}-{old_revision_val}.{old_commit[:7]}",
+            "new_version": f"{package['git_version_base']}-{new_revision_val}.{new_commit[:7]}",
+            "new_base32": new_base32,
+            "new_commit": new_commit,
+            "new_revision": new_revision_val,
+            "content": package["content"],
+            "start_pos": package["start_pos"],
+            "end_pos": package["end_pos"],
+            "old_commit_expr": None,
+            "old_base32": package.get("base32"),
+            # let 结构专用字段
+            "is_let_git_version": True,
+            "old_let_commit": old_commit,
+            "old_let_revision": old_revision_val,
+        }
+    except Exception as e:
+        print(f"  ❌ 构建 let-git-version 更新失败: {e}")
+        return None
+
+
 def apply_pending_updates(pending: List[Dict[str, Any]]) -> bool:
     """应用所有待写入更新（按文件聚合，每个文件写入一次）"""
     try:
@@ -700,6 +769,50 @@ def apply_pending_updates(pending: List[Dict[str, Any]]) -> bool:
                 start_pos = change["start_pos"]
                 end_pos = change["end_pos"]
                 package_content = file_content[start_pos:end_pos]
+
+                # let-绑定 git-version 结构（无 tag 追踪 commit 模式）：
+                # 替换 let 绑定的 commit 字面值 + 自增 revision + base32，
+                # version 字段是 (git-version ...) 表达式，无需写字面值。
+                if change.get("is_let_git_version"):
+                    old_commit = change["old_let_commit"]
+                    old_revision = change["old_let_revision"]
+                    new_commit = change["new_commit"]
+                    new_revision = change["new_revision"]
+                    # 替换 let 绑定的 commit
+                    old_commit_pattern = rf'(\({re.escape("commit")}\s+)"{re.escape(old_commit)}"'
+                    package_content = re.sub(
+                        old_commit_pattern,
+                        lambda m: m.group(1) + f'"{new_commit}"',
+                        package_content,
+                        count=1,
+                    )
+                    # 自增 let 绑定的 revision（仅当 revision 绑定存在时）
+                    if new_revision is not None and old_revision is not None:
+                        old_rev_pattern = (
+                            rf'(\(revision\s+)"{re.escape(old_revision)}"'
+                        )
+                        package_content = re.sub(
+                            old_rev_pattern,
+                            lambda m: m.group(1) + f'"{new_revision}"',
+                            package_content,
+                            count=1,
+                        )
+                    # 替换 base32
+                    if change.get("old_base32"):
+                        old_base32_pattern = (
+                            rf'\(base32\s+"{re.escape(change["old_base32"])}"\)'
+                        )
+                        new_base32_str = f'(base32 "{change["new_base32"]}")'
+                        package_content = re.sub(
+                            old_base32_pattern,
+                            new_base32_str,
+                            package_content,
+                            count=1,
+                        )
+                    file_content = (
+                        file_content[:start_pos] + package_content + file_content[end_pos:]
+                    )
+                    continue
 
                 old_version_pattern = rf'\(version\s+"{re.escape(change["old_version"])}"\)'
                 new_version_str = f'(version "{change["new_version"]}")'
@@ -1018,6 +1131,90 @@ def main():
                 if include_pre_release:
                     print(f"     🔍 包含pre-release检查")
                 pkg_tag_prefix = tag_prefix_map.get(package_name)
+
+                # --- let-绑定 git-version 结构：上游无 tag，追踪 main 分支最新 commit ---
+                # 这些包的 version 是 (git-version base revision commit) 表达式，
+                # commit 在 let 绑定里。由于本机 Guix 的 with-latest-git-commit
+                # property 尚未实现，由本脚本直接追踪 commit 并更新 let 绑定。
+                if package.get("is_let_git_version"):
+                    current_commit = package["let_commit"]
+                    print(f"     📌 let-绑定 git-version，追踪最新 commit...")
+                    print(f"     当前 commit: {current_commit[:12]}")
+
+                    try:
+                        result = with_retry(
+                            get_latest_commit,
+                            github_repo,
+                            max_retries=2,
+                            base_delay=5,
+                        )
+                        add_retries("get_latest_commit")
+                    except Exception as e:
+                        result = None
+                        print(f"     ⚠️  无法获取最新 commit: {e}")
+                        package_report["status"] = "failed"
+                        package_report["error"] = f"无法获取最新 commit: {e}"
+                        has_errors = True
+                        finalize_package_report()
+                        continue
+
+                    if result:
+                        new_sha, new_date = result
+                        print(f"     最新 commit: {new_sha[:12]}... ({new_date})")
+
+                        if new_sha != current_commit:
+                            print(f"     ✅ 发现新提交")
+
+                            try:
+                                new_base32 = with_retry(
+                                    get_base32_for_git,
+                                    git_url,
+                                    new_sha,
+                                    max_retries=2,
+                                    base_delay=5,
+                                )
+                                add_retries("get_base32_for_git")
+                            except Exception as e:
+                                new_base32 = None
+                                add_retries("get_base32_for_git")
+                                package_report["error"] = f"无法计算 hash: {e}"
+
+                            if new_base32 and re.fullmatch(r"[0-9a-z]{52}", new_base32) and not re.fullmatch(r"0{52}", new_base32):
+                                print(f"     ✓ 计算得到 base32: {new_base32}")
+                            else:
+                                print(f"     ❌ 无法计算 git-fetch base32，已标记为失败并跳过更新")
+                                has_errors = True
+                                package_report["status"] = "failed"
+                                package_report["error"] = "无法计算 hash"
+                                finalize_package_report()
+                                continue
+
+                            change = build_let_git_version_change(
+                                scm_file, package, new_sha, new_base32,
+                            )
+                            if change:
+                                pending_updates.append(change)
+                                print(f"     ✓ 已更新: {package_name}")
+                                has_updates = True
+                                package_report["status"] = "updated"
+                                finalize_package_report()
+                                continue
+                            else:
+                                print(f"     ❌ 更新失败")
+                                has_errors = True
+                                package_report["status"] = "failed"
+                                package_report["error"] = "更新文件失败"
+                        else:
+                            print(f"     ✓ commit 已是最新")
+                            package_report["status"] = "uptodate"
+                    else:
+                        print(f"     ⚠️  无法获取最新 commit")
+                        package_report["status"] = "failed"
+                        package_report["error"] = "无法获取最新 commit"
+                        has_errors = True
+
+                    finalize_package_report()
+                    continue
 
                 # --- commit 引用 version 变量：走 release/tag 流程 ---
                 if is_version_ref(package["commit_expr"]):

@@ -16,11 +16,87 @@ jeans 仓库的特定约定，补充通用 Guix 知识（见 `guix-reference.md`
 
 示例：`opencode-bin`、`orca-ide-bin`、`zen-browser-bin`、`osu-lazer-bin`（开源预编译）；`zcode`、`github-copilot`（闭源）。
 
+## 自动更新 properties（决定包能否被 guix refresh 接管）
+
+`guix refresh` 是 CI 自动更新的主力。要让 refresh 正确识别并更新一个包，包定义需要带合适的 `properties` 字段。**新建包时必须根据以下规则设置 properties**，否则包将无法被自动更新，或被误判为"无 updater"。
+
+### upstream-name（GitHub release 包几乎必需）
+
+github updater 用 release 资产 URL 的文件名前缀匹配包。`package-upstream-name`（无此 property 时回退到 package name）必须出现在文件名中。
+
+对 `-bin` 包，Guix 包名（如 `crush-bin`）通常**不等于**上游 repo 名（`crush`），而 release 资产文件名（如 `crush_0.85.0_amd64.deb`）用的是 repo 名。不加 `upstream-name` 会导致 `guix refresh` 报 "no updater"（静默失败，不报具体原因）。
+
+**规则**：upstream-name 的值 = release 资产文件名里 version 之前的前缀。判断方法：看 `releases/download/{tag}/` 后面的文件名，去掉 version 部分，剩下的就是 upstream-name。
+
+```scheme
+;; crush-bin 的资产是 crush_{version}_amd64.deb → upstream-name = "crush"
+(properties `((upstream-name . "crush")))
+
+;; 不需要 upstream-name 的情况：资产文件名恰好以 Guix 包全名开头
+;; 如 mypackage-1.0.tar.gz 且 Guix 包名就是 mypackage → 不加
+```
+
+多个 property 用 alist 合并：
+```scheme
+(properties `((upstream-name . "reasonix") (release-tag-prefix . "^v")))
+```
+
+### release-tag-prefix（多 tag 系列时必需）
+
+当同一个 GitHub repo 有多个 release tag 系列（如 `v1.0`/`v2.0` 和 `desktop-v1.0`/`desktop-v2.0`），用正则指定跟踪哪个系列。值是**正则表达式**：
+
+```scheme
+(properties `((release-tag-prefix . "^v")))           ; 只匹配 v 开头的 tag
+(properties `((release-tag-prefix . "^desktop-v")))   ; 只匹配 desktop-v 开头
+(properties `((release-tag-prefix . "^rust-v")))      ; 只匹配 rust-v 开头
+```
+
+### accept-pre-releases?（跟踪预发布版本）
+
+允许 guix refresh 考虑预发布版本（alpha/beta/rc）。**注意 property 名带问号**：
+
+```scheme
+(properties `((accept-pre-releases? . #t)))
+```
+
+### with-latest-git-commit（无 tag 仓库追踪 commit）
+
+见下方「Git-Fetch 固定提交包 → 上游无 tag」章节。仅用于上游不打 tag 的 git-fetch 包，配合 `let`+`git-version` 结构。
+
+### properties 写在哪里
+
+`(properties ...)` 是 package 的一个字段，放在 `(license ...)` 之前（作为倒数第二个字段）。用 quasiquote（反引号）+ alist：
+
+```scheme
+(package
+  ...
+  (properties `((upstream-name . "foo") (release-tag-prefix . "^v")))
+  (license license:expat))
+```
+
+### 验证 properties 是否生效
+
+加完 properties 后，用 dry-run 验证 guix refresh 能否识别（带 `GUIX_GITHUB_TOKEN` 避免匿名限流）：
+
+```bash
+GUIX_GITHUB_TOKEN="$(gh auth token)" guix refresh -L modules -L /tmp/nonguix <package-name>
+# "已是最新" 或 "would be upgraded" = 识别成功
+# "no updater" = properties 配置有误，检查 upstream-name 是否匹配文件名前缀
+```
+
+### Python updater 兜底（guix refresh 力不能及的包）
+
+少数包 guix refresh 无法处理，仍由 `update_versions.py` + `config.json` 兜底：
+- **非 GitHub 源**：CDN（zcode）、gitee（amber-pm）、无 version URL（font-misans）
+- **npm scoped tag**：kimi-code-bin（`@scope/name@version` 模式）
+- **refresh URL 重建失败的边缘 case**：reasonix-desktop-bin（`desktop-v` 前缀 + 文件名不标准）
+- 这些包的 tag_prefix / pre-release 规则保留在 `config.json`，不写入 properties。
+
 ## Rust 打包（双文件模式）
 
 Rust 包使用双文件结构：
 
-1. **`modules/jeans/packages/rust-crates.scm`** —— `crate-source` 定义 + `define-cargo-inputs` 映射。**由 `guix import crate --lockfile` 或 `blue import-crate` 管理，禁止手动编辑。** 自动更新脚本完全跳过此文件。
+1. **`modules/jeans/packages/rust-crates.scm`** —— `crate-source` 定义 + `define-cargo-inputs` 映射。**由 `guix import crate --lockfile` 或 `blue import-crate` 管理，禁止手动编辑。** Python updater 跳过此文件；CI 的 guix refresh 步骤用 `-t crate` 单独处理它的依赖更新。
 2. **包文件**（如 `desktop.scm`、`tools.scm`）—— `package` 定义，通过 `(cargo-inputs '<name> #:module '(jeans packages rust-crates))` 引用依赖。
 
 关键参数：
@@ -75,7 +151,7 @@ Rust 包使用双文件结构：
 - 设置 `#:validate-runpath? #f`（预编译二进制无法通过 Guix 的 runpath 校验）。
 - 设置 `#:strip-binaries? #f`（预编译二进制不支持 Guix 的 strip，会导致损坏）。
 - 二进制安装到 `lib/<pkg>/`，然后从 `bin/` 创建符号链接，使 patchelf 能找到同目录的 `.so` 文件。
-- 自动更新 CI 会对本次更新的所有包运行构建测试；预编译包同样需要验证解包、patchelf 和 wrapper 阶段。
+- 自动更新 CI（guix refresh 主力 + Python 兜底）会对本次更新的所有包运行构建测试；预编译包同样需要验证解包、patchelf 和 wrapper 阶段。
 
 ## input label 规范（必须遵守以通过 `guix lint`）
 
@@ -111,20 +187,59 @@ Rust 包使用双文件结构：
 
 ## Git-Fetch 固定提交包
 
-- 滚动提交包的版本格式：`0-unstable-YYYY-MM-DD`。
-- 更新脚本对 git-fetch 包使用占位 hash（`000...000`）；你必须重新构建以获取正确的 hash。
-- 固定提交包：`(let ((commit "...") (revision "0")) ...)` 配合 `(git-version ...)`。
+git-fetch 包按上游是否打 tag 分两种写法，直接影响能否被 `guix refresh` 自动更新。
+
+### 上游有 tag：`(commit version)` 或 `(commit (string-append "v" version))`
+
+generic-git updater 能直接处理。version 字段是字面字符串，commit 表达式引用 version 变量：
 
 ```scheme
-(source
- (origin
-   (method git-fetch)
-   (uri (git-reference
-         (url "https://github.com/user/repo")
-         (commit (string-append "v" version))))
-   (file-name (git-file-name name version))
-   (sha256 (base32 "hash"))))
+(define-public colloid-gtk-theme
+  (package
+    (name "colloid-gtk-theme")
+    (version "2025-07-31")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/vinceliuice/Colloid-gtk-theme")
+             (commit version)))          ; tag 名 == version 字符串
+       (file-name (git-file-name name version))
+       (sha256 (base32 "hash"))))         ; tag 包的 hash；更新时需重算
+    ...))
 ```
+
+若 tag 带 `v` 前缀：`(commit (string-append "v" version))`。
+
+### 上游无 tag（追踪 main HEAD）：`let` + `git-version` + `with-latest-git-commit`
+
+上游不打 tag 时，用 `let` 绑定 commit/revision，version 由 `(git-version base revision commit)` 求值生成（格式 `base-revision.commit前7位`，如 `0-0.7f6b6ab`）。**必须**加 `with-latest-git-commit` property：
+
+```scheme
+(define-public winapps
+  (let ((commit "7f6b6abf575e3f93614aeeacb75b609372e7f1a6")
+        (revision "0"))                  ; 首次为 "0"，每次追踪到新 commit 自增
+    (package
+      (name "winapps")
+      (version (git-version "0" revision commit))   ; → "0-0.7f6b6ab"
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://github.com/winapps-org/winapps")
+               (commit commit)))         ; 引用 let 的 commit 符号，不是字面量
+         (file-name (git-file-name name version))
+         (sha256 (base32 "hash"))))
+      ...
+      (properties `((with-latest-git-commit . #t)))  ; 触发 latest-git-commit updater
+      (license ...))))
+```
+
+**注意**：`with-latest-git-commit` 在 Guix ≤ 9e068cc0（截至 2026-07）**尚未实现**（bug#53144 设计但未合入）。property 写入待上游支持后自动生效；在此之前，这些包的 commit 追踪由 `update_versions.py` 的 let-git-version 适配逻辑负责（解析 let 绑定的 commit，追踪 main HEAD，自增 revision，重算 hash）。`revision` 初值统一用 `"0"`。
+
+### 更新时重算 hash
+
+git-fetch 包更新版本/commit 后，必须重新构建以获取正确的 base32。占位 hash（`000...000`）只用于占位，不能提交。
 
 ## 通用构建阶段模式
 

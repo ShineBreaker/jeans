@@ -36,85 +36,90 @@
   )
 
 (define-public winapps
-  (package
-    (name "winapps")
-    (version "0-unstable-2026-07-15")
-    (source
-     (origin
-       (method git-fetch)
-       (uri (git-reference
-             (url "https://github.com/winapps-org/winapps")
-             (commit "7f6b6abf575e3f93614aeeacb75b609372e7f1a6")))
-       (file-name (git-file-name name version))
-       (sha256
-        (base32 "0af98psazy2w8fmb3933hzi0shzhj1abj4lcwhz6nbc1w9hi4agk"))
-       (patches
-        (map canonicalize-path
-             (search-patches
-              "jeans/patches/winapps-fix-install-paths.patch")))))
-    (build-system gnu-build-system)
-    (arguments
-     (list
-      #:tests? #f
-      #:modules '((guix build gnu-build-system)
-                  (guix build utils))
-      #:phases
-      #~(modify-phases %standard-phases
-          (delete 'configure)
-          (delete 'build)
-          (add-after 'unpack 'patch-paths
-            (lambda _
-              (substitute* '("bin/winapps" "setup.sh")
-                (("@out@") #$output))
-              (substitute* "install/inquirer.sh"
-                (("#!/bin/bash")
-                 (string-append "#!" #$bash-minimal "/bin/bash")))))
-          (replace 'install
-            (lambda _
-              (let ((bin (string-append #$output "/bin"))
-                    (src (string-append #$output "/src")))
-                (mkdir-p bin)
-                (mkdir-p src)
-                (copy-recursively "." src)
-                (install-file "bin/winapps" bin)
-                (copy-file "setup.sh" (string-append bin "/winapps-setup"))
-                (chmod (string-append bin "/winapps") #o755)
-                (chmod (string-append bin "/winapps-setup") #o755)
+  ;; 上游不打 tag，追踪 main 分支 HEAD；由 guix refresh 的
+  ;; latest-git-commit updater 自动更新 commit 和 revision。
+  (let ((commit "7f6b6abf575e3f93614aeeacb75b609372e7f1a6")
+        (revision "0"))
+    (package
+      (name "winapps")
+      (version (git-version "0" revision commit))
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://github.com/winapps-org/winapps")
+               (commit commit)))
+         (file-name (git-file-name name version))
+         (sha256
+          (base32 "0af98psazy2w8fmb3933hzi0shzhj1abj4lcwhz6nbc1w9hi4agk"))
+         (patches
+          (map canonicalize-path
+               (search-patches
+                "jeans/patches/winapps-fix-install-paths.patch")))))
+      (build-system gnu-build-system)
+      (arguments
+       (list
+        #:tests? #f
+        #:modules '((guix build gnu-build-system)
+                    (guix build utils))
+        #:phases
+        #~(modify-phases %standard-phases
+            (delete 'configure)
+            (delete 'build)
+            (add-after 'unpack 'patch-paths
+              (lambda _
+                (substitute* '("bin/winapps" "setup.sh")
+                  (("@out@") #$output))
+                (substitute* "install/inquirer.sh"
+                  (("#!/bin/bash")
+                   (string-append "#!" #$bash-minimal "/bin/bash")))))
+            (replace 'install
+              (lambda _
+                (let ((bin (string-append #$output "/bin"))
+                      (src (string-append #$output "/src")))
+                  (mkdir-p bin)
+                  (mkdir-p src)
+                  (copy-recursively "." src)
+                  (install-file "bin/winapps" bin)
+                  (copy-file "setup.sh" (string-append bin "/winapps-setup"))
+                  (chmod (string-append bin "/winapps") #o755)
+                  (chmod (string-append bin "/winapps-setup") #o755)
 
-                (call-with-output-file (string-append bin "/xfreerdp3")
-                  (lambda (port)
-                    (format port "#!~a/bin/bash~%exec ~a/bin/xfreerdp \"$@\"~%"
-                            #$bash-minimal #$freerdp-3)))
-                (chmod (string-append bin "/xfreerdp3") #o755))))
-          (add-after 'install 'wrap-programs
-            (lambda _
-              (let ((bin (string-append #$output "/bin")))
-                (for-each
-                 (lambda (prog)
-                   (wrap-program (string-append bin "/" prog)
-                     `("LIBVIRT_DEFAULT_URI" = ("qemu:///system"))
-                     `("PATH" ":" prefix
-                       ,(list bin
-                              (string-append #$bash-minimal "/bin")
-                              (string-append #$freerdp-3 "/bin")
-                              (string-append #$libnotify "/bin")
-                              (string-append #$dialog "/bin")
-                              (string-append #$netcat-openbsd "/bin")
-                              (string-append #$iproute "/bin")))))
-                 '("winapps" "winapps-setup"))))))))
-    (inputs
-     `(("bash-minimal" ,bash-minimal)
-       ("freerdp" ,freerdp-3)
-       ("dialog" ,dialog)
-       ("libnotify" ,libnotify)
-       ("netcat-openbsd" ,netcat-openbsd)
-       ("iproute2" ,iproute)))
-    (home-page "https://github.com/winapps-org/winapps")
-    (synopsis "Run Windows applications on GNU/Linux")
-    (description "Run Windows applications (including Microsoft 365
-     and Adobe Creative Cloud) on GNU/Linux with KDE, GNOME or XFCE,
-     integrated seamlessly as if they were native to the OS.")
-    (license license:agpl3+)))
+                  (call-with-output-file (string-append bin "/xfreerdp3")
+                    (lambda (port)
+                      (format port "#!~a/bin/bash~%exec ~a/bin/xfreerdp \"$@\"~%"
+                              #$bash-minimal #$freerdp-3)))
+                  (chmod (string-append bin "/xfreerdp3") #o755))))
+            (add-after 'install 'wrap-programs
+              (lambda _
+                (let ((bin (string-append #$output "/bin")))
+                  (for-each
+                   (lambda (prog)
+                     (wrap-program (string-append bin "/" prog)
+                       `("LIBVIRT_DEFAULT_URI" = ("qemu:///system"))
+                       `("PATH" ":" prefix
+                         ,(list bin
+                                (string-append #$bash-minimal "/bin")
+                                (string-append #$freerdp-3 "/bin")
+                                (string-append #$libnotify "/bin")
+                                (string-append #$dialog "/bin")
+                                (string-append #$netcat-openbsd "/bin")
+                                (string-append #$iproute "/bin")))))
+                   '("winapps" "winapps-setup"))))))))
+      (inputs
+       `(("bash-minimal" ,bash-minimal)
+         ("freerdp" ,freerdp-3)
+         ("dialog" ,dialog)
+         ("libnotify" ,libnotify)
+         ("netcat-openbsd" ,netcat-openbsd)
+         ("iproute2" ,iproute)))
+      (home-page "https://github.com/winapps-org/winapps")
+      (synopsis "Run Windows applications on GNU/Linux")
+      (description "Run Windows applications (including Microsoft 365
+       and Adobe Creative Cloud) on GNU/Linux with KDE, GNOME or XFCE,
+       integrated seamlessly as if they were native to the OS.")
+      (properties `((with-latest-git-commit . #t)))
+      (license license:agpl3+))))
 
 (define-public jdtls-bin
   (package
@@ -321,6 +326,7 @@ editor that supports the protocol to provide Java language features.")
         ("libsoup" ,libsoup)
         ("openssl" ,openssl)
         ("libappindicator" ,libappindicator)))
+    (properties `((upstream-name . "MotrixNext")))
     (home-page "https://github.com/AnInsomniacy/motrix-next")
     (synopsis "Full-featured download manager")
     (description "Motrix-Next is a full-featured download manager that supports
@@ -442,7 +448,8 @@ binary release.")
         ("openssl" ,openssl)
         ("xz" ,xz)
         ("libappindicator" ,libappindicator)))
-     (home-page "https://github.com/farion1231/cc-switch")
+     (properties `((upstream-name . "CC-Switch")))
+    (home-page "https://github.com/farion1231/cc-switch")
      (synopsis "All-in-One assistant for Claude Code, Codex & Gemini CLI")
      (description "CC-Switch is a desktop application that provides an all-in-one
 management tool for AI coding assistants including Claude Code, Codex, and
@@ -628,4 +635,5 @@ providing desktop integration.
 APM requires a writable @file{/var/lib/apm} directory at runtime.
 The seed data is installed under @file{share/apm/var-lib/} in the Guix
 store and must be copied to @file{/var/lib/apm} before first use.")
+      (properties `((with-latest-git-commit . #t)))
       (license license:agpl3+))))

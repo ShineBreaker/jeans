@@ -256,6 +256,7 @@ for Linux x86_64, containing the JavaFX runtime libraries
               ("libffi" ,libffi)
               ("alsa-lib" ,alsa-lib)
               ("gcc:lib" ,gcc "lib")))
+    (properties `((upstream-name . "lr2oraja")))
     (home-page "https://github.com/seraxis/lr2oraja-endlessdream")
     (synopsis "Community fork of beatoraja BMS rhythm game with QoL improvements")
     (description "LR2oraja Endless Dream is a community fork and drop-in
@@ -391,6 +392,7 @@ fonts, IR jars, and other assets at runtime.  The game requires OpenGL
             vulkan-loader
             wayland
             zlib))
+    (properties `((upstream-name . "osu")))
     (home-page "https://osu.ppy.sh/")
     (synopsis "rhythm is just a *click* away!")
     (description "A free-to-win rhythm game.  This is the future and final

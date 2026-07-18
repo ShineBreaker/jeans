@@ -174,67 +174,77 @@
     (license (list license:gpl3 license:lgpl2.1 license:cc-by-sa4.0))))
 
 (define-public orchis-kde-themes
-  (package
-    (name "orchis-kde-themes")
-    (version "2025-10-18")
-    (source
-     (origin
-       (method git-fetch)
-       (uri (git-reference
-             (url "https://github.com/vinceliuice/Orchis-kde")
-             (commit "b2a96919eee40264e79db402b915f926436100ad")))
-       (file-name (git-file-name name version))
-       (sha256
-        (base32
-         "0jn0n8187nn1d1j2w3qj32nd3zvr2v2d2qzv8lvxhdfpp5b41vcq"))))
-    (build-system copy-build-system)
-    (arguments
-     `(#:install-plan '(
-       ("aurorae" "share/aurorae/themes")
-       ("color-schemes" "share/color-schemes")
-       ("Kvantum" "share/Kvantum")
-       ("plasma/desktoptheme" "share/plasma/desktoptheme")
-       ("plasma/look-and-feel" "share/plasma/look-and-feel"))
-       #:phases (modify-phases %standard-phases
-                  (delete 'build))))
-    (inputs (list kvantum))
-    (home-page "https://github.com/vinceliuice/Orchis-kde")
-    (synopsis "Orchis themes for KDE Plasma")
-    (description
-     "Orchis is a Material Design theme for the KDE Plasma desktop.  This
+  ;; 上游不打 tag，追踪 main 分支 HEAD；由 guix refresh 的
+  ;; latest-git-commit updater 自动更新 commit 和 revision。
+  (let ((commit "b2a96919eee40264e79db402b915f926436100ad")
+        (revision "0"))
+    (package
+      (name "orchis-kde-themes")
+      (version (git-version "2025-10-18" revision commit))
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://github.com/vinceliuice/Orchis-kde")
+               (commit commit)))
+         (file-name (git-file-name name version))
+         (sha256
+          (base32
+           "0jn0n8187nn1d1j2w3qj32nd3zvr2v2d2qzv8lvxhdfpp5b41vcq"))))
+      (build-system copy-build-system)
+      (arguments
+       `(#:install-plan '(
+         ("aurorae" "share/aurorae/themes")
+         ("color-schemes" "share/color-schemes")
+         ("Kvantum" "share/Kvantum")
+         ("plasma/desktoptheme" "share/plasma/desktoptheme")
+         ("plasma/look-and-feel" "share/plasma/look-and-feel"))
+         #:phases (modify-phases %standard-phases
+                    (delete 'build))))
+      (inputs (list kvantum))
+      (home-page "https://github.com/vinceliuice/Orchis-kde")
+      (synopsis "Orchis themes for KDE Plasma")
+      (description
+       "Orchis is a Material Design theme for the KDE Plasma desktop.  This
 package provides its Aurorae, color scheme, Kvantum, Plasma desktop, and look
 and feel components.")
-    (license (list license:gpl3 license:lgpl2.1 license:cc-by-sa4.0))))
+      (properties `((with-latest-git-commit . #t)))
+      (license (list license:gpl3 license:lgpl2.1 license:cc-by-sa4.0)))))
 
 (define-public colloid-kde-themes
-  (package
-    (name "colloid-kde-themes")
-    (version "2025-07-06")
-    (source
-     (origin
-       (method git-fetch)
-       (uri (git-reference
-             (url "https://github.com/vinceliuice/Colloid-kde")
-             (commit "b768904d10ba9fcb95abfb59538eab100b1fed1e")))
-       (file-name (git-file-name name version))
-       (sha256
-         (base32 "0c4nhc9nh8mb17iyi5vzqd4r3365sqggzxwyhyiqvlqgfcgblrh9"))))
-    (build-system copy-build-system)
-    (arguments
-     `(#:install-plan '(
-       ("aurorae" "share/aurorae/themes")
-       ("color-schemes" "share/color-schemes")
-       ("Kvantum" "share/Kvantum")
-       ("plasma/desktoptheme" "share/plasma/desktoptheme")
-       ("plasma/look-and-feel" "share/plasma/look-and-feel")
-       ("wallpapers" "share/wallpapers"))
-       #:phases (modify-phases %standard-phases
-                  (delete 'build))))
-    (inputs (list kvantum))
-    (home-page "https://github.com/vinceliuice/Colloid-kde")
-    (synopsis "Colloid themes for KDE Plasma")
-    (description
-     "Colloid is a Material Design theme for the KDE Plasma desktop.  This
+  ;; 上游不打 tag，追踪 main 分支 HEAD；由 guix refresh 的
+  ;; latest-git-commit updater 自动更新 commit 和 revision。
+  (let ((commit "b768904d10ba9fcb95abfb59538eab100b1fed1e")
+        (revision "0"))
+    (package
+      (name "colloid-kde-themes")
+      (version (git-version "2025-07-06" revision commit))
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://github.com/vinceliuice/Colloid-kde")
+               (commit commit)))
+         (file-name (git-file-name name version))
+         (sha256
+           (base32 "0c4nhc9nh8mb17iyi5vzqd4r3365sqggzxwyhyiqvlqgfcgblrh9"))))
+      (build-system copy-build-system)
+      (arguments
+       `(#:install-plan '(
+         ("aurorae" "share/aurorae/themes")
+         ("color-schemes" "share/color-schemes")
+         ("Kvantum" "share/Kvantum")
+         ("plasma/desktoptheme" "share/plasma/desktoptheme")
+         ("plasma/look-and-feel" "share/plasma/look-and-feel")
+         ("wallpapers" "share/wallpapers"))
+         #:phases (modify-phases %standard-phases
+                    (delete 'build))))
+      (inputs (list kvantum))
+      (home-page "https://github.com/vinceliuice/Colloid-kde")
+      (synopsis "Colloid themes for KDE Plasma")
+      (description
+       "Colloid is a Material Design theme for the KDE Plasma desktop.  This
 package provides its Aurorae, color scheme, Kvantum, Plasma desktop, look and
 feel, and wallpaper components.")
-    (license (list license:gpl3 license:lgpl2.1 license:cc-by-sa4.0))))
+      (properties `((with-latest-git-commit . #t)))
+      (license (list license:gpl3 license:lgpl2.1 license:cc-by-sa4.0)))))

@@ -290,6 +290,7 @@ It includes macros for silencing messages, preserving colored output in the
 This package provides the Emacs Lisp backend that implements completion,
 hover, signature help, and code actions for Elisp files via the LSP protocol.
 It requires lsp-mode, company, and several utility libraries to function.")
+    (properties `((accept-pre-releases? . #t)))
     (license license:gpl3+)))
 
 (define-public ellsp-bin
@@ -343,6 +344,7 @@ It consists of a Node.js proxy that communicates with LSP clients via
 stdin/stdout, and an Emacs Lisp backend that provides completion, hover,
 signature help, and code actions for Elisp files.  This package provides
 the prebuilt proxy binary.")
+    (properties `((upstream-name . "ellsp") (accept-pre-releases? . #t)))
     (license license:gpl3+)
     (supported-systems '("x86_64-linux"))))
 
@@ -406,6 +408,7 @@ the prebuilt proxy binary.")
                 (chmod (string-append bin "/eask") #o755)))))))
     (inputs (list bash-minimal emacs))
     (propagated-inputs '())
+    (properties `((upstream-name . "eask")))
     (home-page "https://github.com/emacs-eask/cli")
     (synopsis "CLI tool for building, testing and managing Emacs packages")
     (description
@@ -622,6 +625,7 @@ of Emacs Lisp projects.  This package provides the prebuilt binary release.")
               ("libxcb" ,libxcb)
               ("libxi" ,libxi)
               ("libxcursor" ,libxcursor)))
+    (properties `((upstream-name . "neomacs")))
     (home-page "https://github.com/eval-exec/neomacs")
     (synopsis "Extensible text editor built on Emacs Lisp and the Neovim VM")
     (description

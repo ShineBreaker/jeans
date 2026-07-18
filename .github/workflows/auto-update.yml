@@ -29,6 +29,114 @@ jobs:
         shell: bash
         run: pip install requests
 
+      # ── Guix 环境准备（提前到 updater 之前，供 guix refresh 使用）──
+      # 原先这些步骤受 has_changes 条件控制，因为只有 Python updater 产生
+      # 变更后才需要 Guix 做构建测试。现在引入 guix refresh 作为主力 updater，
+      # 它本身就需要 Guix，所以 Guix 安装必须提前、且无条件执行。
+
+      - name: Prepare /etc/gitconfig for Guix sandbox
+        shell: bash
+        run: |
+          # GitHub Actions runner 的 /etc/gitconfig 可能含 safe.directory 等条目
+          # 且权限受限（非 world-readable）。Guix 构建沙箱内的 git init 会尝试
+          # 读取它，若文件存在但不可读则返回 EACCES → git 退出 128。
+          # GIT_CONFIG_NOSYSTEM 环境变量无法穿透 guix-daemon 的构建沙箱，因此
+          # 必须从文件系统层面解决：在 daemon 启动前彻底移除该文件。
+          # 如果文件不存在，git 会静默跳过（ENOENT），不影响构建。
+          if [ -f /etc/gitconfig ]; then
+            echo "Removing /etc/gitconfig before Guix daemon starts..."
+            sudo rm -f /etc/gitconfig
+          else
+            echo "/etc/gitconfig does not exist, nothing to remove."
+          fi
+
+      - name: Install Guix
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL https://guix.gnu.org/install.sh -o /tmp/install-guix.sh
+          { yes "" 2>/dev/null || true; } | sudo -E bash /tmp/install-guix.sh
+          if [ -f /var/guix/current/etc/profile ]; then
+            . /var/guix/current/etc/profile
+          fi
+          if [ -f "$HOME/.config/guix/current/etc/profile" ]; then
+            . "$HOME/.config/guix/current/etc/profile"
+          fi
+          guix pull --verbosity=0
+          hash guix
+          guix --version
+
+      - name: Checkout nonguix channel
+        shell: bash
+        run: |
+          git clone --depth=1 \
+            https://gitlab.com/nonguix/nonguix.git \
+            /tmp/nonguix
+
+      # ── guix refresh（主力 updater）：改写 GitHub release 包 + git-fetch 包 ──
+      # guix refresh 作为主力 updater 接管 GitHub release 包（需 upstream-name
+      # property）和 git-fetch 有 tag 包。Python updater 随后只处理 guix 力所
+      # 不及的少数派（zcode CDN、kimi-code npm tag、reasonix-desktop-bin 等）。
+      # GUIX_GITHUB_TOKEN 是 guix refresh 读 GitHub API 的专属环境变量名
+      # （不是 GITHUB_TOKEN），必须单独映射。
+
+      - name: Run guix refresh
+        id: refresh
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GUIX_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set +e
+          if [ -f /var/guix/current/etc/profile ]; then
+            . /var/guix/current/etc/profile
+          fi
+          if [ -f "$HOME/.config/guix/current/etc/profile" ]; then
+            . "$HOME/.config/guix/current/etc/profile"
+          fi
+
+          echo "=== guix refresh: GitHub release + git-fetch 包 ==="
+          # 显式列出归 refresh 管的包（不用 -s module:jeans，避免误伤
+          # librewolf-nongnu 等 inherit 包，也避免模块加载敏感问题）。
+          # 不交给 refresh 的包：zcode（z.ai CDN）、font-misans（无 version URL）、
+          # kimi-code-bin（npm scoped tag）、jdtls-bin（Eclipse + 日期戳）、
+          # librewolf-nongnu（inherit）、reasonix-desktop-bin（desktop-v 前缀
+          # URL 重建失败）——这些留给 Python updater。
+          guix refresh -L modules -L /tmp/nonguix -u \
+            crush-bin opencode-bin mimocode-bin orca-ide-bin oh-my-pi-bin \
+            codewhale-bin reasonix-bin github-copilot \
+            ellsp-bin eask-bin neomacs-bin motrix-next-bin cc-switch-bin \
+            font-maple-font-nf-cn font-nerd-symbols font-nerd-font-iosevka \
+            lr2oraja-endlessdream-bin osu-lazer-bin zen-browser-bin \
+            emacs-ghostel emacs-msgu emacs-ellsp \
+            colloid-gtk-theme vimix-gtk-themes vimix-kvantum-themes \
+            nix-ld opentabletdriver-udev-rules waypaper \
+            git-credential-keepassxc python-screeninfo \
+            2>&1 | tee /tmp/refresh.log
+          # guix refresh 对"无更新"返回 0，对个别包失败不阻塞整体；
+          # 不用 set -e，让后续步骤继续。
+
+          echo "=== guix refresh: rust-crates（crate updater）==="
+          # rust-crates.scm 用 crate-source 结构，需要 crate updater 单独处理。
+          # 提取所有 rust-* crate 名交给 crate updater。
+          crates=$(grep -oE 'rust-[a-z0-9_-]+' modules/jeans/packages/rust-crates.scm | sort -u | tr '\n' ' ')
+          if [ -n "$crates" ]; then
+            # shellcheck disable=SC2086
+            guix refresh -L modules -L /tmp/nonguix -t crate -u $crates \
+              2>&1 | tee -a /tmp/refresh.log
+          fi
+
+      - name: Record refresh-changed packages
+        shell: bash
+        run: |
+          # 从 git diff 提取 refresh 改动的包名，供构建测试合并使用
+          scripts/check-updates/refresh-changed-packages.sh \
+            > scripts/check-updates/refresh-updates.json
+          echo "Refresh updated packages:"
+          cat scripts/check-updates/refresh-updates.json
+
+      # ── Python updater（兜底）：处理 guix refresh 力不能及的包 ──
+
       - name: Run auto-update script
         id: updater
         shell: bash
@@ -53,48 +161,6 @@ jobs:
           else
             echo "has_changes=true" >> "$GITHUB_OUTPUT"
           fi
-
-      - name: Prepare /etc/gitconfig for Guix sandbox
-        if: steps.changes.outputs.has_changes == 'true'
-        shell: bash
-        run: |
-          # GitHub Actions runner 的 /etc/gitconfig 可能含 safe.directory 等条目
-          # 且权限受限（非 world-readable）。Guix 构建沙箱内的 git init 会尝试
-          # 读取它，若文件存在但不可读则返回 EACCES → git 退出 128。
-          # GIT_CONFIG_NOSYSTEM 环境变量无法穿透 guix-daemon 的构建沙箱，因此
-          # 必须从文件系统层面解决：在 daemon 启动前彻底移除该文件。
-          # 如果文件不存在，git 会静默跳过（ENOENT），不影响构建。
-          if [ -f /etc/gitconfig ]; then
-            echo "Removing /etc/gitconfig before Guix daemon starts..."
-            sudo rm -f /etc/gitconfig
-          else
-            echo "/etc/gitconfig does not exist, nothing to remove."
-          fi
-
-      - name: Install Guix
-        if: steps.changes.outputs.has_changes == 'true'
-        shell: bash
-        run: |
-          set -euo pipefail
-          curl -fsSL https://guix.gnu.org/install.sh -o /tmp/install-guix.sh
-          { yes "" 2>/dev/null || true; } | sudo -E bash /tmp/install-guix.sh
-          if [ -f /var/guix/current/etc/profile ]; then
-            . /var/guix/current/etc/profile
-          fi
-          if [ -f "$HOME/.config/guix/current/etc/profile" ]; then
-            . "$HOME/.config/guix/current/etc/profile"
-          fi
-          guix pull --verbosity=0
-          hash guix
-          guix --version
-
-      - name: Checkout nonguix channel
-        if: steps.changes.outputs.has_changes == 'true'
-        shell: bash
-        run: |
-          git clone --depth=1 \
-            https://gitlab.com/nonguix/nonguix.git \
-            /tmp/nonguix
 
       - name: Build test updated packages
         if: steps.changes.outputs.has_changes == 'true'
