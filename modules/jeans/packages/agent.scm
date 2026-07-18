@@ -185,7 +185,7 @@ This package provides the prebuilt binary release.")
 (define-public opencode-bin
   (package
     (name "opencode-bin")
-    (version "1.18.2")
+    (version "1.18.3")
     (source
      (origin
        (method url-fetch)
@@ -193,7 +193,7 @@ This package provides the prebuilt binary release.")
              "https://github.com/anomalyco/opencode/releases/download/"
              "v" version "/opencode-linux-x64.tar.gz"))
        (sha256
-        (base32 "1dpi1janadwqy3wfvsnwp0i4xsim0sz37sjpz4wj0gdp9c05xjcp"))))
+        (base32 "10s5m1y5237ahn149qk6kj6zbyla8h17xy9rcldm22phg4k7pwk0"))))
     (build-system copy-build-system)
     (arguments
      (list
@@ -350,7 +350,7 @@ package provides the prebuilt binary release.")
 (define-public open-interpreter-bin
   (package
     (name "open-interpreter-bin")
-    (version "0.0.25")
+    (version "0.0.34")
     (source
      (origin
        (method url-fetch)
@@ -359,7 +359,7 @@ package provides the prebuilt binary release.")
              "rust-v" version
              "/open-interpreter-package-x86_64-unknown-linux-musl.tar.gz"))
        (sha256
-        (base32 "0xys1vra2p9by6d0vjas7iih1mp175dchmaglywby1zn821mmcpi"))))
+        (base32 "13rb4p1f269y15mr2npryr4mallf389chp7xvwxan302vxqqlz16"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -443,7 +443,7 @@ release verbatim and only patches the bundled zsh to run under Guix.")
 (define-public opencode-desktop-bin
   (package
     (name "opencode-desktop-bin")
-    (version "1.18.2")
+    (version "1.18.3")
     (source
      (origin
        (method url-fetch)
@@ -451,7 +451,7 @@ release verbatim and only patches the bundled zsh to run under Guix.")
              "https://github.com/anomalyco/opencode/releases/download/"
              "v" version "/opencode-desktop-linux-amd64.deb"))
        (sha256
-        (base32 "06bqqpkd7n7n7s06x7hmqbcsmfmqalam8km6hsig3f81mp6748pr"))))
+        (base32 "1bp3g0liq8grbfs4pnlyccbybgz5w1r08zfhffksjn211861h61i"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -608,7 +608,7 @@ coding experience with context awareness.")
 (define-public orca-ide-bin
   (package
     (name "orca-ide-bin")
-    (version "1.4.143")
+    (version "1.4.145")
     (source
      (origin
        (method url-fetch)
@@ -616,7 +616,7 @@ coding experience with context awareness.")
              "https://github.com/stablyai/orca/releases/download/"
              "v" version "/orca-ide_" version "_amd64.deb"))
        (sha256
-        (base32 "134yn0bz4z824yl042b28xsa495z59yccfkbxr6dcgnqn2wlwqda"))))
+        (base32 "051gnxwyyr0d52b15s04126bbw05w34990c4zbs270j5lafl1fmc"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -766,7 +766,7 @@ agent orchestration.")
 (define-public oh-my-pi-bin
   (package
     (name "oh-my-pi-bin")
-    (version "17.0.1")
+    (version "17.0.3")
     (source
      (origin
        (method url-fetch)
@@ -774,7 +774,7 @@ agent orchestration.")
              "https://github.com/can1357/oh-my-pi/releases/download/"
              "v" version "/omp-linux-x64"))
        (sha256
-        (base32 "05c2ndzy0551jhigd38f503fq75ry3qnpim0qhf71vxln11qfyj2"))))
+        (base32 "1zlshh9ysxvbs07yj938faq5v4w66vky1ga6c7h1c8q9z71xjq3b"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -851,7 +851,7 @@ the prebuilt binary release.")
 (define-public kimi-code-bin
   (package
     (name "kimi-code-bin")
-    (version "0.25.0")
+    (version "0.27.0")
     (source
      (origin
        (method url-fetch)
@@ -860,7 +860,7 @@ the prebuilt binary release.")
              "%40moonshot-ai%2Fkimi-code%40" version
              "/kimi-code-linux-x64.zip"))
        (sha256
-        (base32 "0z4mpz35rh96kvz6livyv9l9gs5p9qywzr4r04k6zc0mh0q06v3r"))))
+        (base32 "00lszzmw4q6hacm7vcmrabyym2nhp2qiv1i9s2q1vs1akb57h4zh"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -937,7 +937,7 @@ compatible providers.  This package provides the prebuilt binary release.")
 (define-public codewhale-bin
   (package
     (name "codewhale-bin")
-    (version "0.8.67")
+    (version "0.9.0")
     (source
      (origin
        (method url-fetch)
@@ -945,7 +945,7 @@ compatible providers.  This package provides the prebuilt binary release.")
              "https://github.com/Hmbown/CodeWhale/releases/download/"
              "v" version "/codewhale-linux-x64.tar.gz"))
        (sha256
-        (base32 "1j6fd44hk7kyqa7vpkw37fzyx356kbchdsxff5kzqnl8nk8himgw"))))
+        (base32 "1z1c2xh5lrdxzj4q0h8f1cs614i302zglb9w3iyg2d9i89py12hf"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -993,6 +993,63 @@ release.")
     (supported-systems '("x86_64-linux"))))
 
 
+;;; Herdr: terminal workspace manager that orchestrates multiple AI
+;;; coding agents (Rust static-pie binary).
+;;;
+;;; The upstream release ships a single statically-linked (static-pie)
+;;; Rust ELF binary with no interpreter and no NEEDED entries.  Being
+;;; fully static, no patchelf or ld-linux wrapper is needed — just copy
+;;; the raw binary to bin/ and make it executable (same approach as
+;;; codewhale-bin / reasonix-bin).
+
+(define-public herdr-bin
+  (package
+    (name "herdr-bin")
+    (version "0.7.4")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://github.com/ogulcancelik/herdr/releases/download/"
+             "v" version "/herdr-linux-x86_64"))
+       (sha256
+        (base32 "0n9h20yaq3q5iqvmbsx6rig7hdp0gzk46fimqb5gj0559cnw03xw"))))
+    (build-system gnu-build-system)
+    (arguments
+     (list
+      #:tests? #f
+      #:validate-runpath? #f
+      #:strip-binaries? #f
+      #:modules '((guix build gnu-build-system)
+                  (guix build utils))
+      #:phases
+      #~(modify-phases %standard-phases
+          (delete 'configure)
+          (delete 'build)
+          (replace 'unpack
+            (lambda _
+              ;; The source is a raw ELF, not an archive: copy it in
+              ;; place and restore the executable bit.
+              (copy-file #$source "herdr")
+              (chmod "herdr" #o755)))
+          (replace 'install
+            (lambda _
+              (let ((bin (string-append #$output "/bin")))
+                (mkdir-p bin)
+                (install-file "herdr" bin)))))))
+    (home-page "https://herdr.dev")
+    (synopsis "Terminal workspace manager for AI coding agents")
+    (description
+     "Herdr is an agent multiplexer that lives in your terminal, orchestrating
+multiple AI coding agents (Claude Code, Codex, and others) from a single
+tmux-style session.  It owns persistent PTYs so sessions survive restarts and
+can be reattached locally or over SSH, and exposes a Unix-domain socket API so
+agents can spawn panes, run commands, read output and wait on each other.
+This package provides the prebuilt binary release.")
+    (license license:agpl3+)
+    (supported-systems '("x86_64-linux"))))
+
+
 ;;; Reasonix: DeepSeek-native AI coding agent (Go static binary).
 ;;;
 ;;; The upstream tar.gz ships a single statically-linked Go ELF binary:
@@ -1003,7 +1060,7 @@ release.")
 (define-public reasonix-bin
   (package
     (name "reasonix-bin")
-    (version "1.17.13")
+    (version "1.17.15")
     (source
      (origin
        (method url-fetch)
@@ -1011,7 +1068,7 @@ release.")
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
              "v" version "/reasonix-linux-amd64.tar.gz"))
        (sha256
-        (base32 "0gk89y2i6nvkckdpxanjzbfdbykh6vv05ax6gvc8rw7j24a9vm77"))))
+        (base32 "023hsf89yk6rkaggfp0as9vv7gds1vdn5wgq5yj63mz0zws8njk8"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -1045,7 +1102,7 @@ and ships as a single static binary with no runtime dependencies.")
 (define-public reasonix-desktop-bin
   (package
     (name "reasonix-desktop-bin")
-    (version "1.17.13")
+    (version "1.17.15")
     (source
      (origin
        (method url-fetch)
@@ -1053,7 +1110,7 @@ and ships as a single static binary with no runtime dependencies.")
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
              "desktop-v" version "/Reasonix-linux-amd64.deb"))
        (sha256
-        (base32 "18q92h46lizdh3kjwmz10qwcfvwaa0pns2v6lw3l5aw10fv1zws9"))))
+        (base32 "0zhylmyah8q3izswxqg0jhfcgfzmamywhdfc41gj85nam8cwrk13"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -1334,7 +1391,7 @@ without friction.")
 (define-public github-copilot
   (package
     (name "github-copilot")
-    (version "1.0.23")
+    (version "1.0.25")
     (source
      (origin
        (method url-fetch)
@@ -1342,7 +1399,7 @@ without friction.")
              "https://github.com/github/app/releases/download/"
              "v" version "/GitHub-Copilot-linux-x64.deb"))
        (sha256
-        (base32 "1n9azy5xx37kxbdnrgkcz62a4nlzcx1hgzd4issri0kzsy2bwsvs"))))
+        (base32 "1q2w2gkkzpznjal600h7dc4kls6zlqjgdlvjrsq2r0q6rfrcrgyb"))))
     (build-system gnu-build-system)
     (arguments
      (list

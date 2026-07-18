@@ -14,6 +14,7 @@
 | `codewhale-bin`        | Multi-provider AI coding agent for the terminal              |
 | `crush-bin`            | AI-powered coding assistant for the CLI                      |
 | `github-copilot`       | Agent-native GitHub Copilot desktop application              |
+| `herdr-bin`            | Terminal workspace manager for AI coding agents              |
 | `kimi-code-bin`        | Terminal-native AI coding agent from Moonshot AI             |
 | `mimocode-bin`         | Terminal-native AI coding agent from Xiaomi                  |
 | `oh-my-pi-bin`         | AI coding agent with IDE integration                         |
