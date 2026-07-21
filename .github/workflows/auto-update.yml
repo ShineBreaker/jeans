@@ -29,6 +29,10 @@ jobs:
         shell: bash
         run: pip install requests
 
+      - name: Test updater release tag prefixes
+        shell: bash
+        run: python3 scripts/check-updates/test_tag_prefix.py
+
       # ── Guix 环境准备（提前到 updater 之前，供 guix refresh 使用）──
       # 原先这些步骤受 has_changes 条件控制，因为只有 Python updater 产生
       # 变更后才需要 Guix 做构建测试。现在引入 guix refresh 作为主力 updater，
@@ -104,7 +108,7 @@ jobs:
           # URL 重建失败）——这些留给 Python updater。
           guix refresh -L modules -L /tmp/nonguix -u \
             crush-bin opencode-bin mimocode-bin orca-ide-bin oh-my-pi-bin \
-            codewhale-bin reasonix-bin github-copilot \
+            codewhale-bin reasonix-bin open-interpreter-bin github-copilot \
             ellsp-bin eask-bin neomacs-bin motrix-next-bin cc-switch-bin \
             font-maple-font-nf-cn font-nerd-symbols font-nerd-font-iosevka \
             lr2oraja-endlessdream-bin osu-lazer-bin zen-browser-bin \

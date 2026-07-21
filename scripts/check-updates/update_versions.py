@@ -384,6 +384,26 @@ def normalize_tag_to_version(tag: str, tag_prefix: Optional[str] = None) -> str:
     return tag.lstrip("v")
 
 
+def package_tag_prefix(package: dict[str, Any], configured_prefixes: dict[str, str]) -> Optional[str]:
+    """Return the literal release prefix used by the package's upstream tags.
+
+    ``release-tag-prefix`` in a Guix package is a regular expression (for
+    example ``^rust-v``), while the updater needs the literal text to remove
+    from a release tag.  The JSON config remains an override for cases where
+    the package property cannot be used (such as ``reasonix-desktop-bin``).
+    """
+    configured = configured_prefixes.get(package["name"])
+    if configured:
+        return configured
+
+    property_prefix = package.get("release_tag_prefix")
+    if property_prefix:
+        # The package properties use an anchored prefix regex.  All current
+        # channel values are literal prefixes, so only remove the anchor.
+        return property_prefix[1:] if property_prefix.startswith("^") else property_prefix
+    return None
+
+
 def get_latest_github_tag(repo: str) -> Optional[str]:
     """获取GitHub仓库的最新tag（当没有release时的备用方案）"""
     headers = {}
@@ -512,6 +532,12 @@ def parse_package_definitions(content: str, _file_path: Path) -> list[dict[str, 
         )
         let_commit = let_commit_match.group(1) if let_commit_match else None
         let_revision_val = let_commit_match.group(2) if let_commit_match else None
+        release_tag_prefix_match = re.search(
+            r'\(release-tag-prefix\s+\.\s+"([^"]+)"\)', package_content
+        )
+        release_tag_prefix = (
+            release_tag_prefix_match.group(1) if release_tag_prefix_match else None
+        )
         # git-version 的 base（用于重建 version 字符串）
         git_version_base = None
         if is_let_git_version:
@@ -535,6 +561,7 @@ def parse_package_definitions(content: str, _file_path: Path) -> list[dict[str, 
                 "let_commit": let_commit,
                 "let_revision_val": let_revision_val,
                 "git_version_base": git_version_base,
+                "release_tag_prefix": release_tag_prefix,
                 "content": package_content,
                 "start_pos": start_pos,
                 "end_pos": end_pos,
@@ -1130,7 +1157,7 @@ def main():
                 include_pre_release = package_name in check_pre_release_packages
                 if include_pre_release:
                     print(f"     🔍 包含pre-release检查")
-                pkg_tag_prefix = tag_prefix_map.get(package_name)
+                pkg_tag_prefix = package_tag_prefix(package, tag_prefix_map)
 
                 # --- let-绑定 git-version 结构：上游无 tag，追踪 main 分支最新 commit ---
                 # 这些包的 version 是 (git-version base revision commit) 表达式，
@@ -1423,7 +1450,7 @@ def main():
                     include_pre_release = package_name in check_pre_release_packages
                     if include_pre_release:
                         print(f"     🔍 包含pre-release检查")
-                    pkg_tag_prefix = tag_prefix_map.get(package_name)
+                    pkg_tag_prefix = package_tag_prefix(package, tag_prefix_map)
 
                     # 获取最新release
                     try:
