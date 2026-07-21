@@ -116,16 +116,6 @@ jobs:
           # guix refresh 对"无更新"返回 0，对个别包失败不阻塞整体；
           # 不用 set -e，让后续步骤继续。
 
-          echo "=== guix refresh: rust-crates（crate updater）==="
-          # rust-crates.scm 用 crate-source 结构，需要 crate updater 单独处理。
-          # 提取所有 rust-* crate 名交给 crate updater。
-          crates=$(grep -oE 'rust-[a-z0-9_-]+' modules/jeans/packages/rust-crates.scm | sort -u | tr '\n' ' ')
-          if [ -n "$crates" ]; then
-            # shellcheck disable=SC2086
-            guix refresh -L modules -L /tmp/nonguix -t crate -u $crates \
-              2>&1 | tee -a /tmp/refresh.log
-          fi
-
       - name: Record refresh-changed packages
         shell: bash
         run: |

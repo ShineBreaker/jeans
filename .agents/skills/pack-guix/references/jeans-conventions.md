@@ -96,7 +96,7 @@ GUIX_GITHUB_TOKEN="$(gh auth token)" guix refresh -L modules -L /tmp/nonguix <pa
 
 Rust 包使用双文件结构：
 
-1. **`modules/jeans/packages/rust-crates.scm`** —— `crate-source` 定义 + `define-cargo-inputs` 映射。**由 `guix import crate --lockfile` 或 `blue import-crate` 管理，禁止手动编辑。** Python updater 跳过此文件；CI 的 guix refresh 步骤用 `-t crate` 单独处理它的依赖更新。
+1. **`modules/jeans/packages/rust-crates.scm`** —— `crate-source` 定义 + `define-cargo-inputs` 映射。**由 `guix import crate --lockfile` 或 `blue import-crate` 管理，禁止手动编辑。** 这些定义是私有 origin，不是 package，不能交给 `guix refresh -t crate`；Python updater 和 CI refresh 都跳过此文件。
 2. **包文件**（如 `desktop.scm`、`tools.scm`）—— `package` 定义，通过 `(cargo-inputs '<name> #:module '(jeans packages rust-crates))` 引用依赖。
 
 关键参数：

@@ -102,7 +102,7 @@ blueprint.scm                     # BLUE 蓝图：任务运行器（build/upgrad
 - **`release-tag-prefix`**：正则，当 repo 有多个 tag 系列时指定跟踪哪个（如 reasonix-bin 用 `"^v"`）。
 - **`accept-pre-releases?`**：布尔，允许 refresh 考虑预发布版本。
 
-refresh 覆盖：GitHub release 包（带 upstream-name）、git-fetch 有 tag 包（generic-git updater）、rust-crates（crate updater）。
+refresh 覆盖：GitHub release 包（带 upstream-name）和 git-fetch 有 tag 包（generic-git updater）。`rust-crates.scm` 中是私有 `crate-source` origin，不是可供 `guix refresh -t crate` 更新的 package；依赖更新必须通过 `blue import-crate` / `guix import crate --lockfile` 重新生成。
 
 ### 第 2 层：Python 脚本（兜底）
 
@@ -135,7 +135,7 @@ Python 脚本也用 `config.json` 的 `tag_prefix`/`check_pre_release` 作为兜
 `auto-update.yml` 工作流每周运行（周二、四、六 02:00 UTC）或手动触发：
 
 1. 安装 Guix + `guix pull` + checkout nonguix（提前、无条件，供 refresh 使用）
-2. **guix refresh**（主力）：改写 GitHub release 包 + git-fetch 包 + rust-crates；记录改动的包到 `refresh-updates.json`
+2. **guix refresh**（主力）：改写 GitHub release 包 + git-fetch 包；记录改动的包到 `refresh-updates.json`
 3. **Python updater**（兜底）：处理 refresh 力不能及的包，写 `report.json`
 4. 检测变更 → 合并两路更新集合 → 构建测试所有更新的包
 5. 全部通过后 GPG 签名提交 → 推送到 GitHub → 镜像到 Codeberg

@@ -15,7 +15,7 @@ set -eu
 
 PACKAGES_DIR="modules/jeans/packages"
 
-# 收集所有改动的 .scm 文件（排除 rust-crates.scm —— 它由独立的 crate updater 处理）
+# 收集所有改动的 .scm 文件（排除由 guix import 管理的 rust-crates.scm）
 changed_files=""
 for f in $(git diff --name-only -- "$PACKAGES_DIR" 2>/dev/null); do
     case "$f" in
