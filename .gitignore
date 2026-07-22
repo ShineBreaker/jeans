@@ -6,3 +6,4 @@ scripts/check-updates/report.json
 
 # BLUE 任务运行器的本地缓存（编译产物、store、锁文件）
 .blue-store/
+.zcode/plans
