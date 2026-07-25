@@ -86,7 +86,7 @@
 (define-public crush-bin
   (package
     (name "crush-bin")
-    (version "0.86.0")
+    (version "0.87.0")
     (source
      (origin
        (method url-fetch)
@@ -94,7 +94,7 @@
              "https://github.com/charmbracelet/crush/releases/download/"
              "v" version "/crush_" version "_amd64.deb"))
        (sha256
-        (base32 "1nrbxl9pxjhnqm2y76f6bbhb211l8f5vpg53fg5s4i4ih90w44hp"))))
+        (base32 "13dkmvn53pd6aixvyf93afs4jgl4bsi5s8xfxk6ina6xyagig82k"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -185,7 +185,7 @@ This package provides the prebuilt binary release.")
 (define-public opencode-bin
   (package
     (name "opencode-bin")
-    (version "1.18.4")
+    (version "1.18.5")
     (source
      (origin
        (method url-fetch)
@@ -193,7 +193,7 @@ This package provides the prebuilt binary release.")
              "https://github.com/anomalyco/opencode/releases/download/"
              "v" version "/opencode-linux-x64.tar.gz"))
        (sha256
-        (base32 "0x51admqi7dlik7d5kz21g7zjgbh70zxdykwpf4d691jzg1n7d5s"))))
+        (base32 "1qpaq5s8lhp645hqpnmy6jxqhcypx3mmf0jwrckhymfnldbjajnd"))))
     (build-system copy-build-system)
     (arguments
      (list
@@ -261,7 +261,7 @@ This package provides the prebuilt binary release.")
 (define-public mimocode-bin
   (package
     (name "mimocode-bin")
-    (version "0.1.7")
+    (version "0.1.9")
     (source
      (origin
        (method url-fetch)
@@ -269,7 +269,7 @@ This package provides the prebuilt binary release.")
              "https://github.com/XiaomiMiMo/MiMo-Code/releases/download/"
              "v" version "/mimocode-linux-x64.tar.gz"))
        (sha256
-        (base32 "0508k31ij8l2aipfngqpf3a1vhkd2nffv73hfd1ws8jmfh765sqz"))))
+        (base32 "0wy65amdc6l001xapkz2hkkdy2351ydk3h3apfvhvn1mcaif1bcr"))))
     (build-system copy-build-system)
     (arguments
      (list
@@ -443,7 +443,7 @@ release verbatim and only patches the bundled zsh to run under Guix.")
 (define-public opencode-desktop-bin
   (package
     (name "opencode-desktop-bin")
-    (version "1.18.4")
+    (version "1.18.5")
     (source
      (origin
        (method url-fetch)
@@ -451,7 +451,7 @@ release verbatim and only patches the bundled zsh to run under Guix.")
              "https://github.com/anomalyco/opencode/releases/download/"
              "v" version "/opencode-desktop-linux-amd64.deb"))
        (sha256
-        (base32 "16b59lml6l0lm4nj6lndjrcvb034w6ijzwx8wxsh5lfyk1xc8yx6"))))
+        (base32 "1bq1ls0fikvsck6gphzgn408f09bglx23a4j8r7vqqf5hr8kfwvz"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -608,7 +608,7 @@ coding experience with context awareness.")
 (define-public orca-ide-bin
   (package
     (name "orca-ide-bin")
-    (version "1.4.152")
+    (version "1.4.155")
     (source
      (origin
        (method url-fetch)
@@ -616,7 +616,7 @@ coding experience with context awareness.")
              "https://github.com/stablyai/orca/releases/download/"
              "v" version "/orca-ide_" version "_amd64.deb"))
        (sha256
-        (base32 "0b05nz3gic8mpfffix7r5iikv5a29x4yym01x9654gasvvhkmy1n"))))
+        (base32 "0g7cih0j69qba2j5y1819cy4q0d2zaqx6c1b78jz47cmq5mk39ry"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -766,7 +766,7 @@ agent orchestration.")
 (define-public oh-my-pi-bin
   (package
     (name "oh-my-pi-bin")
-    (version "17.0.8")
+    (version "17.1.3")
     (source
      (origin
        (method url-fetch)
@@ -774,7 +774,7 @@ agent orchestration.")
              "https://github.com/can1357/oh-my-pi/releases/download/"
              "v" version "/omp-linux-x64"))
        (sha256
-        (base32 "0sbvai1m0kd9v4qrnzzgzn7bz4j3hvz41nw54zs5k5d4019pxxhf"))))
+        (base32 "0bj2m9p8p2f1jmrasp1z0mfm86mxvs6g9yr9kq90kg4wqkhy59qp"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -851,7 +851,7 @@ the prebuilt binary release.")
 (define-public kimi-code-bin
   (package
     (name "kimi-code-bin")
-    (version "0.29.0")
+    (version "0.29.1")
     (source
      (origin
        (method url-fetch)
@@ -860,7 +860,7 @@ the prebuilt binary release.")
              "%40moonshot-ai%2Fkimi-code%40" version
              "/kimi-code-linux-x64.zip"))
        (sha256
-        (base32 "0022v09zs9s5l0dnmklcfv6mq945gmk2x6vw541mn1qv25a0n9dv"))))
+        (base32 "1i7klkfymzbmdpwx1ia128gpq8dwd3ics7jhxcxb8yc11xwpx2rb"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -937,7 +937,7 @@ compatible providers.  This package provides the prebuilt binary release.")
 (define-public codewhale-bin
   (package
     (name "codewhale-bin")
-    (version "0.9.0")
+    (version "0.9.1")
     (source
      (origin
        (method url-fetch)
@@ -945,7 +945,7 @@ compatible providers.  This package provides the prebuilt binary release.")
              "https://github.com/Hmbown/CodeWhale/releases/download/"
              "v" version "/codewhale-linux-x64.tar.gz"))
        (sha256
-        (base32 "1z1c2xh5lrdxzj4q0h8f1cs614i302zglb9w3iyg2d9i89py12hf"))))
+        (base32 "0d3dk9yh57w5p3x35ydgyhfd0y6cbq90jnlvkn7a3l9brfhxql14"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -1060,7 +1060,7 @@ This package provides the prebuilt binary release.")
 (define-public reasonix-bin
   (package
     (name "reasonix-bin")
-    (version "1.17.19")
+    (version "1.17.21")
     (source
      (origin
        (method url-fetch)
@@ -1068,7 +1068,7 @@ This package provides the prebuilt binary release.")
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
              "v" version "/reasonix-linux-amd64.tar.gz"))
        (sha256
-        (base32 "1sfc62iyz521b8p4ddhf21n8b9ps93ga9vlch1dvizsim5mj4wh2"))))
+        (base32 "17c2zvcd8yzgydx0za9a84pz2a258vjpny1lr946gafdm7fqy9zs"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -1102,7 +1102,7 @@ and ships as a single static binary with no runtime dependencies.")
 (define-public reasonix-desktop-bin
   (package
     (name "reasonix-desktop-bin")
-    (version "1.17.19")
+    (version "1.17.20")
     (source
      (origin
        (method url-fetch)
@@ -1110,7 +1110,7 @@ and ships as a single static binary with no runtime dependencies.")
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
              "desktop-v" version "/Reasonix-linux-amd64.deb"))
        (sha256
-        (base32 "0xq4ff3a1r5xcwg4ynzs2rq07g2wfr9xd16v5bb4vgq4c32gg6q9"))))
+        (base32 "1n4zqd3a13xr8s428sm0ksf9dssfbhz414pz84rgz0jhjdvyy0vz"))))
     (build-system gnu-build-system)
     (arguments
      (list
