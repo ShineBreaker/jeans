@@ -182,15 +182,108 @@ editor that supports the protocol to provide Java language features.")
     (home-page "https://github.com/eclipse-jdtls/eclipse.jdt.ls")
     (license license:expat)))
 
+;;; aria2-next: prebuilt binary of a maintained aria2 fork (GPL-2.0, same as aria2).
+;;; This is the standalone CLI build; motrix-next-bin also wires it in as its
+;;; download engine (placing it at lib/MotrixNext/binaries/motrix-next-engine).
+;;;
+;;; The upstream release ships a single raw ELF executable (dynamically linked
+;;; against libssl/libcrypto/libstdc++/libgcc_s), so we use the bare-ELF pattern:
+;;; install under lib/aria2-next/ with a bin/ symlink so patchelf's RPATH finds
+;;; the store libs and the entry point is on PATH.
+
+(define-public aria2-next-bin
+  (package
+    (name "aria2-next-bin")
+    (version "2.5.2")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://github.com/AnInsomniacy/aria2-next/releases/download/"
+             "v" version "/aria2-next-" version "-linux-x86_64"))
+       (sha256
+        (base32 "04q2qh5s153b7m9y7ry5inwqv4rb0nc8bira56fqkmc70js4ix73"))))
+    (build-system gnu-build-system)
+    (arguments
+     (list
+      #:tests? #f
+      #:validate-runpath? #f
+      #:strip-binaries? #f
+      #:modules '((guix build gnu-build-system)
+                  (guix build utils))
+      #:phases
+      #~(modify-phases %standard-phases
+          (delete 'configure)
+          (delete 'build)
+          (replace 'unpack
+            (lambda _
+              ;; Source is a single raw ELF executable; just copy it into the
+              ;; build dir so the install phase can place and patch it.
+              (copy-file #$source "aria2-next")))
+          (replace 'install
+            (lambda* (#:key inputs #:allow-other-keys)
+              (let* ((out #$output)
+                     (bin (string-append out "/bin"))
+                     (libexec (string-append out "/lib/aria2-next"))
+                     (patchelf-bin
+                      (string-append (assoc-ref inputs "patchelf")
+                                     "/bin/patchelf"))
+                     (ldso (string-append (assoc-ref inputs "glibc")
+                                          "/lib/ld-linux-x86-64.so.2"))
+                     (rpath
+                      (string-join
+                       (map (lambda (pkg)
+                              (string-append (assoc-ref inputs pkg) "/lib"))
+                            '("openssl" "glibc" "gcc:lib"))
+                       ":")))
+                ;; Install the real binary under libexec/ so RPATH lookups find
+                ;; sibling libs, and expose it on PATH via a bin/ symlink.
+                ;; install-file preserves the (read-only) source mode, so we
+                ;; must chmod before patchelf can rewrite the ELF.
+                (mkdir-p libexec)
+                (install-file "aria2-next" libexec)
+                (chmod (string-append libexec "/aria2-next") #o755)
+                (mkdir-p bin)
+                (symlink (string-append libexec "/aria2-next")
+                         (string-append bin "/aria2-next"))
+
+                ;; Patch ELF interpreter and RPATH.
+                (invoke patchelf-bin "--set-interpreter" ldso
+                        (string-append libexec "/aria2-next"))
+                (invoke patchelf-bin "--set-rpath" rpath
+                        (string-append libexec "/aria2-next"))))))))
+     (native-inputs (list patchelf binutils))
+     (inputs
+      `(("bash-minimal" ,bash-minimal)
+        ("glibc" ,glibc)
+        ("gcc:lib" ,gcc "lib")
+        ("openssl" ,openssl)))
+     (properties `((upstream-name . "aria2-next")))
+     (home-page "https://github.com/AnInsomniacy/aria2-next")
+     (synopsis "Maintained aria2 fork with bug fixes and modernized architecture")
+     (description "aria2-next is a maintained fork of aria2, the lightweight
+multi-protocol & multi-source command-line download utility.  It supports
+HTTP/HTTPS, FTP, SFTP, BitTorrent and Metalink.  This package provides the
+prebuilt binary release.")
+     (license license:gpl2)))
+
 ;;; Motrix-Next: prebuilt binary download manager (Tauri/WebKitGTK app).
 ;;;
-;;; The upstream .deb ships two ELF binaries:
+;;; The upstream .deb ships:
 ;;;   - motrix-next        (Tauri app, dynamically linked to webkit2gtk-4.1, gtk3, etc.)
-;;;   - motrix-next-engine (statically linked aria2 RPC helper, renamed from motrixnext-aria2c in v3.9.0)
+;;;   - motrix-next-engine (aria2 RPC helper; we replace it with aria2-next-bin, see below)
+;;;   - lib/MotrixNext/{binaries,data}/ resource tree (aria2.conf, GeoIP db, ED2K bootstrap)
 ;;;
 ;;; Because this is a prebuilt binary compiled on Ubuntu, we must:
 ;;;   1. Use patchelf to set the ELF interpreter to Guix's ld-linux.
 ;;;   2. Use patchelf to set RPATH so the binary finds all shared libs in the store.
+;;;
+;;; The app resolves its resource dir via Tauri's resource_dir() (= lib/MotrixNext/),
+;;; then loads `binaries/aria2.conf`, `data/dbip-country-lite.mmdb`,
+;;; `data/ed2k-bootstrap/{server.met,nodes.dat}` relative to it.  Missing any of
+;;; these data files crashes the engine at startup (see ED2K/GeoIP errors).
+;;; The engine itself is located at `binaries/motrix-next-engine` under the same
+;;; resource dir — so we install aria2-next-bin there under that exact name.
 
 (define-public motrix-next-bin
   (package
@@ -254,32 +347,46 @@ editor that supports the protocol to provide Java language features.")
                 (mkdir-p bin)
                 (install-file "usr/bin/motrix-next" bin)
 
-                ;; Place the aria2c sidecar in bin/ as well.  Tauri sidecar
-                ;; resolution takes the basename of the externalBin entry and
-                ;; searches in the executable's directory (exe_dir = bin/).
-                (install-file "usr/bin/motrix-next-engine" bin)
+                ;; Install the entire deb resource tree (binaries/ + data/) under
+                ;; lib/MotrixNext/ so every bundled asset is available relative to
+                ;; resource_dir().  This is the fix for the runtime crashes:
+                ;;   - data/dbip-country-lite.mmdb      (GeoIP db)
+                ;;   - data/ed2k-bootstrap/server.met   (ED2K bootstrap)
+                ;;   - data/ed2k-bootstrap/nodes.dat    (ED2K DHT nodes)
+                ;;   - binaries/aria2.conf              (engine config)
+                ;; copy-recursively preserves the dir structure; :keep-mode? #t is
+                ;; unnecessary (these are data files, not executables).
+                (mkdir-p lib-resource)
+                (copy-recursively "usr/lib/MotrixNext" lib-resource)
 
-                ;; Install aria2.conf into lib/MotrixNext/binaries/.
-                ;; Tauri resolves BaseDirectory::Resource to resource_dir()
-                ;; (= lib/MotrixNext/), then appends "binaries/aria2.conf".
-                (mkdir-p lib-binaries)
-                (install-file "usr/lib/MotrixNext/binaries/aria2.conf"
-                              lib-binaries)
+                ;; The app locates its aria2 engine at `binaries/motrix-next-engine`
+                ;; *under the resource dir* (lib/MotrixNext/binaries/), not in bin/.
+                ;; Replace the bundled engine (v2.4.9) with the standalone aria2-next-bin
+                ;; (v2.5.2): copy its binary into the resource binaries dir under the
+                ;; exact name the app expects.  The deb does NOT ship a pre-named
+                ;; motrix-next-engine in lib/MotrixNext/, only in usr/bin/, so we
+                ;; place it here ourselves.
+                (let ((engine-src
+                       (string-append (assoc-ref inputs "aria2-next-bin")
+                                      "/lib/aria2-next/aria2-next"))
+                      (engine-dst
+                       (string-append lib-binaries "/motrix-next-engine")))
+                  (copy-file engine-src engine-dst)
+                  ;; copy-file preserves the read-only source mode; patchelf
+                  ;; needs write access to rewrite the ELF.
+                  (chmod engine-dst #o755)
+                  ;; Patch the engine copy's interpreter/RPATH.  It links against
+                  ;; libssl/libcrypto/libstdc++/libgcc_s (same as the main binary's
+                  ;; RPATH set, minus the GUI/webkit libs — but extra RPATH entries
+                  ;; are harmless, so we reuse the same rpath).
+                  (invoke patchelf-bin "--set-interpreter" ldso engine-dst)
+                  (invoke patchelf-bin "--set-rpath" rpath engine-dst))
 
                 ;; Patch ELF interpreter and RPATH for motrix-next.
                 (invoke patchelf-bin "--set-interpreter" ldso
                         (string-append bin "/motrix-next"))
                 (invoke patchelf-bin "--set-rpath" rpath
                         (string-append bin "/motrix-next"))
-
-                ;; Patch ELF interpreter and RPATH for motrix-next-engine
-                ;; (aria2 sidecar).  It is dynamically linked against
-                ;; libssl, libcrypto, libstdc++ and libgcc_s, so it needs
-                ;; the same interpreter/RPATH as the main binary.
-                (invoke patchelf-bin "--set-interpreter" ldso
-                        (string-append bin "/motrix-next-engine"))
-                (invoke patchelf-bin "--set-rpath" rpath
-                        (string-append bin "/motrix-next-engine"))
 
                 ;; wrap-program renames the real binary to .motrix-next-real
                 ;; and creates a bash wrapper that sets env vars before exec.
@@ -325,14 +432,17 @@ editor that supports the protocol to provide Java language features.")
         ("gdk-pixbuf" ,gdk-pixbuf)
         ("libsoup" ,libsoup)
         ("openssl" ,openssl)
-        ("libappindicator" ,libappindicator)))
+        ("libappindicator" ,libappindicator)
+        ;; aria2-next-bin provides the download engine, installed into the
+        ;; resource dir as binaries/motrix-next-engine (see install phase).
+        ("aria2-next-bin" ,aria2-next-bin)))
     (properties `((upstream-name . "MotrixNext")))
     (home-page "https://github.com/AnInsomniacy/motrix-next")
     (synopsis "Full-featured download manager")
     (description "Motrix-Next is a full-featured download manager that supports
 downloading HTTP, FTP, BitTorrent, and Magnet links.  It is built with Tauri
-and uses aria2 as the download backend.  This package provides the prebuilt
-binary release.")
+and uses aria2-next as the download backend.  This package provides the prebuilt
+binary release of the Tauri app and wires in aria2-next-bin as its engine.")
      (license license:expat)))
 
 ;;; CC-Switch: prebuilt binary for AI coding assistant manager (Tauri/WebKitGTK).
