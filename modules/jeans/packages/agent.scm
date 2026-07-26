@@ -608,7 +608,7 @@ coding experience with context awareness.")
 (define-public orca-ide-bin
   (package
     (name "orca-ide-bin")
-    (version "1.4.155")
+    (version "1.4.156")
     (source
      (origin
        (method url-fetch)
@@ -616,7 +616,7 @@ coding experience with context awareness.")
              "https://github.com/stablyai/orca/releases/download/"
              "v" version "/orca-ide_" version "_amd64.deb"))
        (sha256
-        (base32 "0g7cih0j69qba2j5y1819cy4q0d2zaqx6c1b78jz47cmq5mk39ry"))))
+        (base32 "0bxdw3hfl20vgac9yp4a8dd92763m9ybbanl2m8pww22ag0wb7ja"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -1102,7 +1102,7 @@ and ships as a single static binary with no runtime dependencies.")
 (define-public reasonix-desktop-bin
   (package
     (name "reasonix-desktop-bin")
-    (version "1.17.20")
+    (version "1.17.21")
     (source
      (origin
        (method url-fetch)
@@ -1110,7 +1110,7 @@ and ships as a single static binary with no runtime dependencies.")
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
              "desktop-v" version "/Reasonix-linux-amd64.deb"))
        (sha256
-        (base32 "1n4zqd3a13xr8s428sm0ksf9dssfbhz414pz84rgz0jhjdvyy0vz"))))
+        (base32 "07p2v8qy8sxawpckiadf51a9rf6wln2ilpncv9asq5fsvvq5avr8"))))
     (build-system gnu-build-system)
     (arguments
      (list
