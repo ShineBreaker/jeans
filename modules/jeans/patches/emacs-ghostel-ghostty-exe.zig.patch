@@ -1,15 +1,13 @@
 Guix build sandbox workaround: drop the heavy deps.add() call from the
 ghostty executable target since ghostel only consumes libghostty-vt, so GTK
-and other GUI deps should never be pulled into the build graph.  Generated
-against ghostty commit 6246c288ae1087c8d67f75432a59da004b30bf25.
+and other GUI deps should never be pulled into the build graph.  Regenerated
+against ghostty commit ab0b9da9e88fcb4b0533a1854e84628f663930af.
 
 Upstream-Status: Inappropriate [Guix-specific build environment]
 
-diff --git a/src/build/GhosttyExe.zig b/src/build/GhosttyExe.zig
-index caa564b..96784ad 100644
 --- a/src/build/GhosttyExe.zig
 +++ b/src/build/GhosttyExe.zig
-@@ -31,7 +31,7 @@ pub fn init(b: *std.Build, cfg: *const Config, deps: *const SharedDeps) !Ghostty
+@@ -31,7 +31,7 @@
  
      // Add the shared dependencies. When building only lib-vt we skip
      // heavy deps so cross-compilation doesn't pull in GTK, etc.

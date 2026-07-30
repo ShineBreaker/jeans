@@ -1,14 +1,12 @@
 Guix build sandbox workaround: stub GhosttyFrameData with empty inline
 data since ghostel does not embed the renderer frame animation table.
-Generated against ghostty commit 6246c288ae1087c8d67f75432a59da004b30bf25.
+Regenerated against ghostty commit ab0b9da9e88fcb4b0533a1854e84628f663930af.
 
 Upstream-Status: Inappropriate [Guix-specific build environment]
 
-diff --git a/src/build/GhosttyFrameData.zig b/src/build/GhosttyFrameData.zig
-index 8469759..2a9c60a 100644
 --- a/src/build/GhosttyFrameData.zig
 +++ b/src/build/GhosttyFrameData.zig
-@@ -1,75 +1,44 @@
+@@ -1,75 +1,45 @@
 -//! GhosttyFrameData generates a compressed file and zig module which contains (and exposes) the
 -//! Ghostty animation frames for use in `ghostty +boo`
 +//! GhosttyFrameData handles the compressed frame data blob used by the
@@ -37,7 +35,7 @@ index 8469759..2a9c60a 100644
 +        "framedata.zig",
 +        "pub const compressed = \"\";\n",
      );
--
+ 
      return .{ .output = zig_file };
  }
  
@@ -65,16 +63,16 @@ index 8469759..2a9c60a 100644
 -        .name = "framegen",
 -        .root_module = b.createModule(.{
 -            .target = b.graph.host,
+-            .link_libc = true,
 -        }),
 -    });
--    exe.addCSourceFile(.{
+-    exe.root_module.addCSourceFile(.{
 -        .file = b.path("src/build/framegen/main.c"),
 -        .flags = &.{},
 -    });
--    exe.linkLibC();
 -
 -    if (b.systemIntegrationOption("zlib", .{})) {
--        exe.linkSystemLibrary2("zlib", .{
+-        exe.root_module.linkSystemLibrary("zlib", .{
 -            .preferred_link_mode = .dynamic,
 -            .search_strategy = .mode_first,
 -        });
@@ -83,7 +81,7 @@ index 8469759..2a9c60a 100644
 -            .target = b.graph.host,
 -            .optimize = .ReleaseFast,
 -        })) |zlib_dep| {
--            exe.linkLibrary(zlib_dep.artifact("z"));
+-            exe.root_module.linkLibrary(zlib_dep.artifact("z"));
 -        }
 -    }
 -

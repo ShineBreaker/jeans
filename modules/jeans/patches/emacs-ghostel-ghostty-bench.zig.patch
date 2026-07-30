@@ -1,14 +1,12 @@
 Guix build sandbox workaround: stub GhosttyBench so no benchmark helper
-binaries are produced.  Ghostel only needs libghostty-vt.  Generated against
-ghostty commit 6246c288ae1087c8d67f75432a59da004b30bf25.
+binaries are produced.  Ghostel only needs libghostty-vt.  Regenerated
+against ghostty commit ab0b9da9e88fcb4b0533a1854e84628f663930af.
 
 Upstream-Status: Inappropriate [Guix-specific build environment]
 
-diff --git a/src/build/GhosttyBench.zig b/src/build/GhosttyBench.zig
-index 27dda88..7630bdb 100644
 --- a/src/build/GhosttyBench.zig
 +++ b/src/build/GhosttyBench.zig
-@@ -10,46 +10,15 @@ pub fn init(
+@@ -10,46 +10,15 @@
      b: *std.Build,
      deps: *const SharedDeps,
  ) !GhosttyBench {
@@ -25,9 +23,9 @@ index 27dda88..7630bdb 100644
 -                // We always want our datagen to be fast because it
 -                // takes awhile to run.
 -                .optimize = .ReleaseFast,
+-                .link_libc = true,
 -            }),
 -        });
--        exe.linkLibC();
 -        _ = try deps.add(exe);
 -        try steps.append(b.allocator, exe);
 -    }
@@ -41,9 +39,9 @@ index 27dda88..7630bdb 100644
 -                .target = deps.config.target,
 -                // We always want our benchmarks to be in release mode.
 -                .optimize = .ReleaseFast,
+-                .link_libc = true,
 -            }),
 -        });
--        exe.linkLibC();
 -        _ = try deps.add(exe);
 -        try steps.append(b.allocator, exe);
 -    }

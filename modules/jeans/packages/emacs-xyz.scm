@@ -56,27 +56,33 @@
         "jeans/patches/emacs-ghostel-ghostty-resources.zig.patch")))
 
 (define %ghostel-ghostty-source
-  (let ((commit "c41c6b81a4642ccba18d47b375d9495664de72a0"))
+  (let ((commit "ab0b9da9e88fcb4b0533a1854e84628f663930af"))
     (origin
       (method url-fetch)
       (uri (string-append
              "https://github.com/ghostty-org/ghostty"
              "/archive/" commit ".tar.gz"))
       (sha256
-       (base32 "1lyr0s4vc1xvcqilini0hi8g73gfj0jzy7jcm3fdnynzjayn1riv"))
+       (base32 "02ymjk7qw8c9bbc5fn96xfc9kyvibysclky0m90vqq40x5kzl7v5"))
       (patches %ghostel-ghostty-patches))))
 
+;; uucode is pinned to commit 2826a37a (not the v0.2.0 tag) because that is
+;; the exact revision ghostty's build.zig.zon vendors for ghostel 0.46.0; its
+;; build.zig was rewritten for the zig 0.16 API, while the v0.2.0 tag still
+;; targets zig 0.15 and fails to compile under zig-0.16.
 (define %ghostel-uucode-source
   (origin
     (method url-fetch)
-    (uri "https://github.com/jacobsandlund/uucode/archive/refs/tags/v0.2.0.tar.gz")
+    (uri (string-append
+          "https://github.com/jacobsandlund/uucode/archive/"
+          "2826a37a4562284fdacd8fa029d49509cc9bffcd.tar.gz"))
     (sha256
-     (base32 "15az8qzp0rg5qj8ma0dam9j8jbf4wwb7wxsiq3iymmlb9w7yxayh"))))
+     (base32 "17mwjh2ha4yb9cdgxixz3a23kimqwnrvnd9bqllcfyhymdzzqxky"))))
 
 (define-public emacs-ghostel
   (package
     (name "emacs-ghostel")
-    (version "0.45.0")
+    (version "0.48.0")
     (source
      (origin
        (method git-fetch)
@@ -85,7 +91,7 @@
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "143f59m2vmb15gr6m0dzixwmpdadz80vy0jqyvw571man8bjv3s9"))
+        (base32 "0wagk9rzsyp910ch3nx57546fpzb8m27il7xvwf31nqzihpir4ms"))
        (patches %ghostel-patches)))
       (build-system emacs-build-system)
       (arguments
@@ -221,7 +227,7 @@
                   (copy-file (string-append out "/ghostel-module.version")
                              (string-append elpa-dir
                                             "/ghostel-module.version"))))))))
-      (native-inputs (list zig-0.15))
+      (native-inputs (list zig-0.16))
       (home-page "https://github.com/dakra/ghostel")
       (synopsis "Terminal emulator powered by libghostty")
       (description
