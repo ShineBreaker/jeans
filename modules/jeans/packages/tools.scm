@@ -282,8 +282,11 @@ prebuilt binary release.")
 ;;; then loads `binaries/aria2.conf`, `data/dbip-country-lite.mmdb`,
 ;;; `data/ed2k-bootstrap/{server.met,nodes.dat}` relative to it.  Missing any of
 ;;; these data files crashes the engine at startup (see ED2K/GeoIP errors).
-;;; The engine itself is located at `binaries/motrix-next-engine` under the same
-;;; resource dir — so we install aria2-next-bin there under that exact name.
+;;;
+;;; The engine is a Tauri shell-plugin sidecar, resolved from the EXECUTABLE
+;;; directory (bin/, via exe_dir of the real binary) by basename
+;;; "motrix-next-engine" — NOT from the resource dir.  So we install
+;;; aria2-next-bin into bin/ as motrix-next-engine (see install phase).
 
 (define-public motrix-next-bin
   (package
@@ -359,18 +362,20 @@ prebuilt binary release.")
                 (mkdir-p lib-resource)
                 (copy-recursively "usr/lib/MotrixNext" lib-resource)
 
-                ;; The app locates its aria2 engine at `binaries/motrix-next-engine`
-                ;; *under the resource dir* (lib/MotrixNext/binaries/), not in bin/.
-                ;; Replace the bundled engine (v2.4.9) with the standalone aria2-next-bin
-                ;; (v2.5.2): copy its binary into the resource binaries dir under the
-                ;; exact name the app expects.  The deb does NOT ship a pre-named
-                ;; motrix-next-engine in lib/MotrixNext/, only in usr/bin/, so we
-                ;; place it here ourselves.
+                ;; Engine placement: the app uses Tauri's shell plugin to spawn its
+                ;; aria2 sidecar, resolved from the EXECUTABLE directory (exe_dir =
+                ;; bin/, because wrap-program execs bin/.motrix-next-real) by the
+                ;; basename motrix-next-engine.  So the engine MUST live next to the
+                ;; main binary in bin/, NOT under the resource dir.  Placing it under
+                ;; lib/MotrixNext/binaries/ makes the spawn fail with os error 2
+                ;; (confirmed by the live runtime log).  Replace the bundled engine
+                ;; (v2.4.9) with aria2-next-bin (v2.5.x): copy its binary into bin/
+                ;; under the sidecar name the app expects.
                 (let ((engine-src
                        (string-append (assoc-ref inputs "aria2-next-bin")
                                       "/lib/aria2-next/aria2-next"))
                       (engine-dst
-                       (string-append lib-binaries "/motrix-next-engine")))
+                       (string-append bin "/motrix-next-engine")))
                   (copy-file engine-src engine-dst)
                   ;; copy-file preserves the read-only source mode; patchelf
                   ;; needs write access to rewrite the ELF.
