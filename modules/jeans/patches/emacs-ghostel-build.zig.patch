@@ -1,16 +1,19 @@
-Guix build sandbox workaround: disable ghostty's SIMD code path to keep the
-libghostty-vt target compatible with the baseline CPU used by zig build.
-Regenerated against ghostel 0.46.0 (zig 0.16 API).
+Guix build sandbox workaround: force ghostty's SIMD code path off so the
+libghostty-vt target stays compatible with the baseline CPU used by zig
+build.  In 0.48.0 ghostel gates SIMD via the ghostty_simd build option
+(true on non-Termux); pin the local binding to false rather than touching
+the ghostty dependency block.
 
 Upstream-Status: Inappropriate [Guix-specific build environment]
 
 --- a/build.zig
 +++ b/build.zig
-@@ -27,6 +27,7 @@
+@@ -30,7 +30,7 @@
+ 
+     // On-device Termux builds have no NDK, whose sysroot ghostty's vendored
+     // simdutf/highway C++ builds require; use ghostty's scalar path there.
+-    const ghostty_simd = if (android_libc) |libc| libc.source != .termux else true;
++    const ghostty_simd = false;
      const ghostty_dep = b.dependency("ghostty", .{
          .target = target,
          .optimize = ghostty_optimize,
-+        .simd = false,
-         .@"emit-lib-vt" = true,
-     });
- 
