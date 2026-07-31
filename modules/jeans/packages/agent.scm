@@ -1174,7 +1174,11 @@ and ships as a single static binary with no runtime dependencies.")
                       libexec "/reasonix-desktop"
                       " --library-path " lib-path " " libexec
                       "/reasonix-desktop \"$@\"\n"))))
-                (chmod (string-append bin "/reasonix-desktop") #o755))))
+                (chmod (string-append bin "/reasonix-desktop") #o755)
+                ;; reasonix-guard is a static Go binary (no ld-linux wrapper
+                ;; needed); the desktop entry launches it, and it locates
+                ;; reasonix-desktop next to itself in bin/.
+                (install-file "usr/bin/reasonix-guard" bin))))
           (add-after 'install 'install-desktop-entry
             (lambda _
               (let* ((out #$output)
@@ -1185,8 +1189,8 @@ and ships as a single static binary with no runtime dependencies.")
                 (copy-file "usr/share/applications/reasonix.desktop"
                            (string-append apps "/reasonix-desktop.desktop"))
                 (substitute* (string-append apps "/reasonix-desktop.desktop")
-                  (("Exec=reasonix-desktop")
-                   (string-append "Exec=" out "/bin/reasonix-desktop")))
+                  (("Exec=reasonix-guard")
+                   (string-append "Exec=" out "/bin/reasonix-guard")))
                 (copy-file "usr/share/pixmaps/reasonix-desktop.png"
                            (string-append pixmaps "/reasonix-desktop.png"))))))))
     (native-inputs (list libarchive tar gzip))
