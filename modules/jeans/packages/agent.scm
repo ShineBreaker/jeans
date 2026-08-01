@@ -86,7 +86,7 @@
 (define-public crush-bin
   (package
     (name "crush-bin")
-    (version "0.87.0")
+    (version "0.88.0")
     (source
      (origin
        (method url-fetch)
@@ -94,7 +94,7 @@
              "https://github.com/charmbracelet/crush/releases/download/"
              "v" version "/crush_" version "_amd64.deb"))
        (sha256
-        (base32 "13dkmvn53pd6aixvyf93afs4jgl4bsi5s8xfxk6ina6xyagig82k"))))
+        (base32 "16fz2g3mfi5m4m2w1qlgihs0p9b2c16x7kiph90njr97lf2a063m"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -185,7 +185,7 @@ This package provides the prebuilt binary release.")
 (define-public opencode-bin
   (package
     (name "opencode-bin")
-    (version "1.18.9")
+    (version "1.18.11")
     (source
      (origin
        (method url-fetch)
@@ -193,7 +193,7 @@ This package provides the prebuilt binary release.")
              "https://github.com/anomalyco/opencode/releases/download/"
              "v" version "/opencode-linux-x64.tar.gz"))
        (sha256
-        (base32 "0nqva3x1cc2zfsx9d8iyrm2vadhd4ba6jpwsww9x1jysidxlpym0"))))
+        (base32 "18arzglpsp6dpvsa2lnvcksjh19jhk4s0snhddn2b4ss1b0grpx4"))))
     (build-system copy-build-system)
     (arguments
      (list
@@ -443,7 +443,7 @@ release verbatim and only patches the bundled zsh to run under Guix.")
 (define-public opencode-desktop-bin
   (package
     (name "opencode-desktop-bin")
-    (version "1.18.9")
+    (version "1.18.11")
     (source
      (origin
        (method url-fetch)
@@ -451,7 +451,7 @@ release verbatim and only patches the bundled zsh to run under Guix.")
              "https://github.com/anomalyco/opencode/releases/download/"
              "v" version "/opencode-desktop-linux-amd64.deb"))
        (sha256
-        (base32 "16p5zmwg04f3gd5h1z2hvqjiqqvjbawgh6cl4v5mw10gpjph9iz3"))))
+        (base32 "0mvfdyyif1f60wyhzb97mll3jdnpw0pa3040460j33v0x1zfgrl0"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -608,7 +608,7 @@ coding experience with context awareness.")
 (define-public orca-ide-bin
   (package
     (name "orca-ide-bin")
-    (version "1.4.162")
+    (version "1.4.163")
     (source
      (origin
        (method url-fetch)
@@ -616,7 +616,7 @@ coding experience with context awareness.")
              "https://github.com/stablyai/orca/releases/download/"
              "v" version "/orca-ide_" version "_amd64.deb"))
        (sha256
-        (base32 "0ggim2np2hjch22zgf5c20amw49cc6w27gsbhp1j5cna464xh7n9"))))
+        (base32 "01fvklcj3w76cq8xjpkj4scwm7ivpky9428k3w731ljcmgljjcvy"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -766,7 +766,7 @@ agent orchestration.")
 (define-public oh-my-pi-bin
   (package
     (name "oh-my-pi-bin")
-    (version "17.2.0")
+    (version "17.2.2")
     (source
      (origin
        (method url-fetch)
@@ -774,7 +774,7 @@ agent orchestration.")
              "https://github.com/can1357/oh-my-pi/releases/download/"
              "v" version "/omp-linux-x64"))
        (sha256
-        (base32 "0iiq1b3xywzkv533ghx64xh44f811d0q1bw6lkwmq4524y38kdqz"))))
+        (base32 "1pi2sqz7xhab60ghg345kww59q57in8gxcpz1kccwgfn6xb5avrh"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -851,7 +851,7 @@ the prebuilt binary release.")
 (define-public kimi-code-bin
   (package
     (name "kimi-code-bin")
-    (version "0.31.0")
+    (version "0.31.1")
     (source
      (origin
        (method url-fetch)
@@ -860,7 +860,7 @@ the prebuilt binary release.")
              "%40moonshot-ai%2Fkimi-code%40" version
              "/kimi-code-linux-x64.zip"))
        (sha256
-        (base32 "07xxg3iakbl6mby60gvcv090922n2y6hvkzbipsaw03bgy4fkpz1"))))
+        (base32 "0gqysg08gcf7nxvg6iyi441k73w3a6spraz8x83xia02n14fjy6s"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -937,7 +937,7 @@ compatible providers.  This package provides the prebuilt binary release.")
 (define-public codewhale-bin
   (package
     (name "codewhale-bin")
-    (version "0.9.2")
+    (version "0.9.3")
     (source
      (origin
        (method url-fetch)
@@ -945,7 +945,7 @@ compatible providers.  This package provides the prebuilt binary release.")
              "https://github.com/Hmbown/CodeWhale/releases/download/"
              "v" version "/codewhale-linux-x64.tar.gz"))
        (sha256
-        (base32 "0wxivvx0v30rs0vhki3vh279zim0l97gf99lh9waq7czyjrpxszw"))))
+        (base32 "0k3ixrnlsc9wf2mbgbvlsrgy2c2p5kgfyfimwyv4nf7854yj764i"))))
     (build-system gnu-build-system)
     (arguments
      (list
