@@ -71,6 +71,75 @@
             "esac\n"
             "exec -a "))))))
 
+;;; CodeWhale: multi-provider AI coding agent for the terminal (Rust).
+;;;
+;;; The upstream tar.gz ships three statically-linked (static-pie) Rust
+;;; ELF binaries with no interpreter and no NEEDED entries:
+;;;   - codewhale      ; the entrypoint launcher
+;;;   - codewhale-tui  ; the interactive TUI runtime
+;;;   - codew          ; short alias of codewhale
+;;;
+;;; Being fully static, no patchelf or ld-linux wrapper is needed — just
+;;; unpack the archive, restore the executable bit (the tarball stores the
+;;; binaries as 0644) and install all three into bin/.
+
+(define-public codewhale-bin
+  (package
+    (name "codewhale-bin")
+    (version "0.9.3")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://github.com/Hmbown/CodeWhale/releases/download/"
+             "v" version "/codewhale-linux-x64.tar.gz"))
+       (sha256
+        (base32 "0k3ixrnlsc9wf2mbgbvlsrgy2c2p5kgfyfimwyv4nf7854yj764i"))))
+    (build-system gnu-build-system)
+    (arguments
+     (list
+      #:tests? #f
+      #:validate-runpath? #f
+      #:strip-binaries? #f
+      #:modules '((guix build gnu-build-system)
+                  (guix build utils))
+      #:phases
+      #~(modify-phases %standard-phases
+          (delete 'configure)
+          (delete 'build)
+          (replace 'unpack
+            (lambda _
+              (invoke "tar" "xzf" #$source)
+              ;; The archive stores the three binaries as 0644; restore the
+              ;; executable bit so install-file (and the user) can run them.
+              (for-each (lambda (b) (chmod b #o755))
+                        '("codewhale-linux-x64/codewhale"
+                          "codewhale-linux-x64/codewhale-tui"
+                          "codewhale-linux-x64/codew"))))
+          (replace 'install
+            (lambda _
+              (let ((bin (string-append #$output "/bin")))
+                (mkdir-p bin)
+                (for-each (lambda (b)
+                            (install-file b bin))
+                          '("codewhale-linux-x64/codewhale"
+                            "codewhale-linux-x64/codewhale-tui"
+                            "codewhale-linux-x64/codew"))))))))
+    (properties `((upstream-name . "codewhale")))
+    (home-page "https://codewhale.net")
+    (synopsis "Multi-provider AI coding agent for the terminal")
+    (description
+     "CodeWhale is a coding agent for the terminal that works with any model.
+It reads code, edits files, runs commands, checks the results, and keeps going
+until a task is done or it needs you.  It ships a TUI for interactive work and
+@code{codewhale exec} for scripts and CI, supports 30+ providers (DeepSeek,
+Claude, GPT, Kimi, GLM, OpenRouter, vLLM, Ollama, ...) through one runtime,
+runs durable multi-worker fleets, and gates risk with OS sandboxing,
+per-tool-call hooks and side-git snapshots.  Written in Rust, MIT-licensed,
+and runs entirely on your machine.  This package provides the prebuilt binary
+release.")
+    (license license:expat)
+    (supported-systems '("x86_64-linux"))))
 
 ;;; Crush: AI-powered coding assistant (Go TUI binary).
 ;;;
@@ -181,73 +250,240 @@ This package provides the prebuilt binary release.")
      (license:nonfree
       "https://github.com/charmbracelet/crush/blob/main/LICENSE.md"))))
 
+;;; GitHub Copilot app: agent-native desktop client (Tauri + WebKitGTK).
+;;;
+;;; The upstream .deb bundles a 668 MB Tauri ELF (`github') plus a small
+;;; `git-credential-copilot' helper, resources under usr/lib/GitHub Copilot/
+;;; (onnxruntime .so, pulse audio plugin, copilot-sdk JS, terminal
+;;; integration scripts, icons, sounds), and a .desktop entry + hicolor
+;;; icons.  The data.tar is zstd-compressed, hence libarchive (bsdtar) is
+;;; used for unpacking.
+;;;
+;;; Same approach as reasonix-desktop-bin: do not patchelf the giant
+;;; binary, instead launch it via the Guix ld-linux wrapper with a
+;;; --library-path assembled from every input's /lib.  WebKitGTK,
+;;; libsoup, javascriptcore and the rest come transitively from
+;;; webkitgtk-for-gtk3.
 
-(define-public opencode-bin
+(define-public github-copilot
   (package
-    (name "opencode-bin")
-    (version "1.18.11")
+    (name "github-copilot")
+    (version "1.1.2")
     (source
      (origin
        (method url-fetch)
        (uri (string-append
-             "https://github.com/anomalyco/opencode/releases/download/"
-             "v" version "/opencode-linux-x64.tar.gz"))
+             "https://github.com/github/app/releases/download/"
+             "v" version "/GitHub-Copilot-linux-x64.deb"))
        (sha256
-        (base32 "18arzglpsp6dpvsa2lnvcksjh19jhk4s0snhddn2b4ss1b0grpx4"))))
-    (build-system copy-build-system)
+        (base32 "1x4zvjrhlzmcb679i3cvy3xdgghiy4s8ax9k3issykk2isdkg06z"))))
+    (build-system gnu-build-system)
     (arguments
      (list
       #:tests? #f
       #:validate-runpath? #f
       #:strip-binaries? #f
-      #:install-plan
-      #~'(("opencode" "libexec/opencode"))
+      #:modules '((guix build gnu-build-system)
+                  (guix build utils))
       #:phases
       #~(modify-phases %standard-phases
-          (delete 'install-license-files)
-          (add-after 'unpack 'patch-proc-self-exe
+          (delete 'configure)
+          (delete 'build)
+          (replace 'unpack
             (lambda _
-              ;; Replace /proc/self/exe with /proc/self/ex_ to force Bun
-              ;; to fall back to argv[0] for finding the embedded modules.
-              (invoke "sed" "-i" "s|/proc/self/exe|/proc/self/ex_|g"
-                      "opencode")))
-          (add-after 'install 'make-binary-executable
-            (lambda _
-              (chmod (string-append #$output "/libexec/opencode") #o555)))
-          (add-after 'make-binary-executable 'create-wrapper
+              (invoke "bsdtar" "xf" #$source)
+              (invoke "bsdtar" "xf" "data.tar.zst")))
+          (replace 'install
             (lambda* (#:key inputs #:allow-other-keys)
-              (let ((bin (string-append #$output "/bin"))
-                    (libexec (string-append #$output "/libexec/opencode"))
-                    (ld.so (string-append (assoc-ref inputs "glibc")
-                                          #$(glibc-dynamic-linker)))
-                    (lib-path (string-join (list (string-append (assoc-ref
-                                                                 inputs
-                                                                 "glibc")
-                                                                "/lib")
-                                                 (string-append (assoc-ref
-                                                                 inputs "gcc:lib")
-                                                                "/lib")) ":")))
+              (let* ((out #$output)
+                     (libexec (string-append out "/libexec/github-copilot"))
+                     (bin (string-append out "/bin"))
+                     ;; ld-linux dynamic loader from glibc.
+                     (ld.so (string-append (assoc-ref inputs "glibc")
+                                           #$(glibc-dynamic-linker)))
+                     ;; Flat library-path of every input's /lib.
+                     (lib-path (string-join
+                                (map (lambda (input)
+                                       (string-append (cdr input) "/lib"))
+                                     inputs)
+                                ":"))
+                     (glib-lib (string-append (assoc-ref inputs "glib") "/lib"))
+                     (gtk-lib (string-append (assoc-ref inputs "gtk+") "/lib"))
+                     (gtk-share (string-append (assoc-ref inputs "gtk+") "/share"))
+                     (webkitgtk-lib (string-append
+                                     (assoc-ref inputs "webkitgtk-for-gtk3")
+                                     "/lib"))
+                     (webkitgtk-share (string-append
+                                       (assoc-ref inputs "webkitgtk-for-gtk3")
+                                       "/share"))
+                     (gdk-pixbuf (assoc-ref inputs "gdk-pixbuf"))
+                     (fontconf #$(this-package-input "fontconfig-minimal"))
+                     (sh #$(this-package-input "bash-minimal")))
+                ;; Main binary + credential helper.
+                (mkdir-p libexec)
+                (copy-file "usr/bin/github"
+                           (string-append libexec "/github"))
+                (chmod (string-append libexec "/github") #o755)
+                (copy-file "usr/bin/git-credential-copilot"
+                           (string-append libexec "/git-credential-copilot"))
+                (chmod (string-append libexec "/git-credential-copilot") #o755)
+                ;; Runtime resources (onnxruntime, native plugins, copilot-sdk,
+                ;; terminal integration, icons, sounds).
+                (copy-recursively "usr/lib/GitHub Copilot"
+                                  (string-append libexec "/resources"))
+                ;; ld-linux wrapper for the main app.
                 (mkdir-p bin)
-                (call-with-output-file (string-append bin "/opencode")
-                  (lambda (port)
-                    (format port
-                            "#!~a\nexec ~a --argv0 ~a --library-path ~a ~a \"$@\"\n"
-                            #$(file-append bash-minimal "/bin/sh")
-                            ld.so
-                            libexec
-                            lib-path
-                            libexec)))
-                (chmod (string-append bin "/opencode") #o755)))))))
-    (native-inputs (list sed))
-    (inputs `(("bash-minimal" ,bash-minimal)
+                (with-output-to-file (string-append bin "/github")
+                  (lambda ()
+                    (display
+                     (string-append
+                      "#!" sh "/bin/sh\n"
+                      "export FONTCONFIG_FILE=" fontconf
+                      "/etc/fonts/fonts.conf\n"
+                      ;; Use prefix (not =) so the system XDG_DATA_DIRS
+                      ;; (guix-home, current-system, shared-mime-info, ...)
+                      ;; is preserved.  Overwriting it breaks gdk-pixbuf's
+                      ;; loader/mime resolution: GTK aborts with
+                      ;; "Unrecognized image file format (gdk-pixbuf-error-quark, 3)"
+                      ;; before any window appears.
+                      "export XDG_DATA_DIRS=" out "/share:"
+                      gtk-share ":" webkitgtk-share
+                      "${XDG_DATA_DIRS:+:$XDG_DATA_DIRS}\n"
+                      "export GI_TYPELIB_PATH=" glib-lib "/girepository-1.0:"
+                      gtk-lib "/girepository-1.0:"
+                      webkitgtk-lib "/girepository-1.0:"
+                      gdk-pixbuf "/lib/girepository-1.0\n"
+                      "export GIO_EXTRA_MODULES=" glib-lib "/gio/modules\n"
+                      ;; Let gdk-pixbuf pick up loaders via the Guix profile
+                      ;; hook (GUIX_GDK_PIXBUF_MODULE_FILES) inherited from
+                      ;; the environment, rather than pointing the upstream
+                      ;; GDK_PIXBUF_MODULE_FILE at this package's partial
+                      ;; 11-loader cache (no png/jpeg).
+                      ;; The app dlopens native plugins / onnxruntime from its
+                      ;; resource dir; keep it on the library path too.
+                      "export LD_LIBRARY_PATH=" libexec "/resources"
+                      "${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}\n"
+                      "exec " ld.so " --argv0 " libexec "/github"
+                      " --library-path " lib-path ":" libexec "/resources"
+                      " " libexec "/github \"$@\"\n"))))
+                (chmod (string-append bin "/github") #o755)
+                ;; git-credential-copilot also needs ld-linux + libgcc_s.
+                (with-output-to-file (string-append bin "/git-credential-copilot")
+                  (lambda ()
+                    (display
+                     (string-append
+                      "#!" sh "/bin/sh\n"
+                      "exec " ld.so " --argv0 " libexec "/git-credential-copilot"
+                      " --library-path " lib-path
+                      " " libexec "/git-credential-copilot \"$@\"\n"))))
+                (chmod (string-append bin "/git-credential-copilot") #o755))))
+          (add-after 'install 'install-desktop-entry
+            (lambda _
+              (let* ((out #$output)
+                     (apps (string-append out "/share/applications")))
+                (mkdir-p apps)
+                (copy-file "usr/share/applications/GitHub Copilot.desktop"
+                           (string-append apps "/github-copilot.desktop"))
+                (substitute* (string-append apps "/github-copilot.desktop")
+                  (("Exec=github")
+                   (string-append "Exec=" out "/bin/github"))
+                  (("Icon=github")
+                   "Icon=github")))))
+          (add-after 'install-desktop-entry 'install-icons
+            (lambda _
+              (let* ((out #$output)
+                     (icon-src "usr/share/icons/hicolor")
+                     (icon-dst (string-append out "/share/icons/hicolor")))
+                (copy-recursively icon-src icon-dst)))))))
+    (native-inputs (list libarchive))
+    (inputs `(("gcc:lib" ,gcc "lib")
+              ("alsa-lib" ,alsa-lib)
+              ("bash-minimal" ,bash-minimal)
+              ("fontconfig-minimal" ,fontconfig)
               ("glibc" ,glibc)
-              ("gcc:lib" ,gcc "lib")))
-    (properties `((upstream-name . "opencode")))
-    (home-page "https://opencode.ai")
-    (synopsis "Open source AI coding agent")
-    (description "OpenCode is an open source agent that helps you
- write code in your terminal.")
-    (license license:expat)))
+              ("glib" ,glib)
+              ("gtk+" ,gtk+)
+              ("gdk-pixbuf" ,gdk-pixbuf)
+              ;; tray-icon (used by Tauri for the taskbar tray) dlopens
+              ;; libayatana-appindicator3.so.1 / libappindicator3.so.1 at
+              ;; startup; missing it panics the whole app before any window
+              ;; appears (see ~/.copilot/crash-reports/*).
+              ("libappindicator" ,libappindicator)
+              ("libsoup" ,libsoup)
+              ("mesa" ,mesa)
+              ("openssl" ,openssl)
+              ("pulseaudio" ,pulseaudio)
+              ("webkitgtk-for-gtk3" ,webkitgtk-for-gtk3)))
+    (properties `((upstream-name . "GitHub-Copilot")))
+    (home-page "https://github.com/github/app")
+    (synopsis "Agent-native GitHub Copilot desktop application")
+    (description
+     "The GitHub Copilot app is an agent-native desktop experience for
+finding, running, steering, and landing software work across your GitHub
+repositories.  It provides a single control center for starting and
+steering local and cloud agent sessions, reviewing progress on shared
+canvases, and tracking issues and pull requests.  Each local session runs
+in its own isolated git worktree so multiple agents can work in parallel.
+This is the unofficial Guix packaging of the prebuilt Linux x86_64
+release; the application itself is proprietary.")
+    (license (license:nonfree "https://github.com/github/app"))
+    (supported-systems '("x86_64-linux"))))
+
+;;; Herdr: terminal workspace manager that orchestrates multiple AI
+;;; coding agents (Rust static-pie binary).
+;;;
+;;; The upstream release ships a single statically-linked (static-pie)
+;;; Rust ELF binary with no interpreter and no NEEDED entries.  Being
+;;; fully static, no patchelf or ld-linux wrapper is needed — just copy
+;;; the raw binary to bin/ and make it executable (same approach as
+;;; codewhale-bin / reasonix-bin).
+
+(define-public herdr-bin
+  (package
+    (name "herdr-bin")
+    (version "0.7.5")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://github.com/ogulcancelik/herdr/releases/download/"
+             "v" version "/herdr-linux-x86_64"))
+       (sha256
+        (base32 "0lwjqnajw50rjaxxn5zxqr0r3jmwjyzffc4scwy2sk1y0y435j1x"))))
+    (build-system gnu-build-system)
+    (arguments
+     (list
+      #:tests? #f
+      #:validate-runpath? #f
+      #:strip-binaries? #f
+      #:modules '((guix build gnu-build-system)
+                  (guix build utils))
+      #:phases
+      #~(modify-phases %standard-phases
+          (delete 'configure)
+          (delete 'build)
+          (replace 'unpack
+            (lambda _
+              ;; The source is a raw ELF, not an archive: copy it in
+              ;; place and restore the executable bit.
+              (copy-file #$source "herdr")
+              (chmod "herdr" #o755)))
+          (replace 'install
+            (lambda _
+              (let ((bin (string-append #$output "/bin")))
+                (mkdir-p bin)
+                (install-file "herdr" bin)))))))
+    (home-page "https://herdr.dev")
+    (synopsis "Terminal workspace manager for AI coding agents")
+    (description
+     "Herdr is an agent multiplexer that lives in your terminal, orchestrating
+multiple AI coding agents (Claude Code, Codex, and others) from a single
+tmux-style session.  It owns persistent PTYs so sessions survive restarts and
+can be reattached locally or over SSH, and exposes a Unix-domain socket API so
+agents can spawn panes, run commands, read output and wait on each other.
+This package provides the prebuilt binary release.")
+    (license license:agpl3+)
+    (supported-systems '("x86_64-linux"))))
 
 (define-public opencode-desktop-bin
   (package
@@ -403,63 +639,6 @@ This package provides the prebuilt binary release.")
 with Electron.  It supports multiple LLM providers and offers an interactive
 coding experience with context awareness.")
     (license license:expat)))
-
-;;; Herdr: terminal workspace manager that orchestrates multiple AI
-;;; coding agents (Rust static-pie binary).
-;;;
-;;; The upstream release ships a single statically-linked (static-pie)
-;;; Rust ELF binary with no interpreter and no NEEDED entries.  Being
-;;; fully static, no patchelf or ld-linux wrapper is needed — just copy
-;;; the raw binary to bin/ and make it executable (same approach as
-;;; codewhale-bin / reasonix-bin).
-
-(define-public herdr-bin
-  (package
-    (name "herdr-bin")
-    (version "0.7.5")
-    (source
-     (origin
-       (method url-fetch)
-       (uri (string-append
-             "https://github.com/ogulcancelik/herdr/releases/download/"
-             "v" version "/herdr-linux-x86_64"))
-       (sha256
-        (base32 "0lwjqnajw50rjaxxn5zxqr0r3jmwjyzffc4scwy2sk1y0y435j1x"))))
-    (build-system gnu-build-system)
-    (arguments
-     (list
-      #:tests? #f
-      #:validate-runpath? #f
-      #:strip-binaries? #f
-      #:modules '((guix build gnu-build-system)
-                  (guix build utils))
-      #:phases
-      #~(modify-phases %standard-phases
-          (delete 'configure)
-          (delete 'build)
-          (replace 'unpack
-            (lambda _
-              ;; The source is a raw ELF, not an archive: copy it in
-              ;; place and restore the executable bit.
-              (copy-file #$source "herdr")
-              (chmod "herdr" #o755)))
-          (replace 'install
-            (lambda _
-              (let ((bin (string-append #$output "/bin")))
-                (mkdir-p bin)
-                (install-file "herdr" bin)))))))
-    (home-page "https://herdr.dev")
-    (synopsis "Terminal workspace manager for AI coding agents")
-    (description
-     "Herdr is an agent multiplexer that lives in your terminal, orchestrating
-multiple AI coding agents (Claude Code, Codex, and others) from a single
-tmux-style session.  It owns persistent PTYs so sessions survive restarts and
-can be reattached locally or over SSH, and exposes a Unix-domain socket API so
-agents can spawn panes, run commands, read output and wait on each other.
-This package provides the prebuilt binary release.")
-    (license license:agpl3+)
-    (supported-systems '("x86_64-linux"))))
-
 
 ;;; Reasonix: DeepSeek-native AI coding agent (Go static binary).
 ;;;
@@ -785,184 +964,4 @@ support for multiple LLM providers.")
 with your existing tools so you can plan, code, review, and deploy
 without friction.")
     (license (license:nonfree "https://zcode.z.ai/"))
-    (supported-systems '("x86_64-linux"))))
-
-
-;;; GitHub Copilot app: agent-native desktop client (Tauri + WebKitGTK).
-;;;
-;;; The upstream .deb bundles a 668 MB Tauri ELF (`github') plus a small
-;;; `git-credential-copilot' helper, resources under usr/lib/GitHub Copilot/
-;;; (onnxruntime .so, pulse audio plugin, copilot-sdk JS, terminal
-;;; integration scripts, icons, sounds), and a .desktop entry + hicolor
-;;; icons.  The data.tar is zstd-compressed, hence libarchive (bsdtar) is
-;;; used for unpacking.
-;;;
-;;; Same approach as reasonix-desktop-bin: do not patchelf the giant
-;;; binary, instead launch it via the Guix ld-linux wrapper with a
-;;; --library-path assembled from every input's /lib.  WebKitGTK,
-;;; libsoup, javascriptcore and the rest come transitively from
-;;; webkitgtk-for-gtk3.
-
-(define-public github-copilot
-  (package
-    (name "github-copilot")
-    (version "1.1.2")
-    (source
-     (origin
-       (method url-fetch)
-       (uri (string-append
-             "https://github.com/github/app/releases/download/"
-             "v" version "/GitHub-Copilot-linux-x64.deb"))
-       (sha256
-        (base32 "1x4zvjrhlzmcb679i3cvy3xdgghiy4s8ax9k3issykk2isdkg06z"))))
-    (build-system gnu-build-system)
-    (arguments
-     (list
-      #:tests? #f
-      #:validate-runpath? #f
-      #:strip-binaries? #f
-      #:modules '((guix build gnu-build-system)
-                  (guix build utils))
-      #:phases
-      #~(modify-phases %standard-phases
-          (delete 'configure)
-          (delete 'build)
-          (replace 'unpack
-            (lambda _
-              (invoke "bsdtar" "xf" #$source)
-              (invoke "bsdtar" "xf" "data.tar.zst")))
-          (replace 'install
-            (lambda* (#:key inputs #:allow-other-keys)
-              (let* ((out #$output)
-                     (libexec (string-append out "/libexec/github-copilot"))
-                     (bin (string-append out "/bin"))
-                     ;; ld-linux dynamic loader from glibc.
-                     (ld.so (string-append (assoc-ref inputs "glibc")
-                                           #$(glibc-dynamic-linker)))
-                     ;; Flat library-path of every input's /lib.
-                     (lib-path (string-join
-                                (map (lambda (input)
-                                       (string-append (cdr input) "/lib"))
-                                     inputs)
-                                ":"))
-                     (glib-lib (string-append (assoc-ref inputs "glib") "/lib"))
-                     (gtk-lib (string-append (assoc-ref inputs "gtk+") "/lib"))
-                     (gtk-share (string-append (assoc-ref inputs "gtk+") "/share"))
-                     (webkitgtk-lib (string-append
-                                     (assoc-ref inputs "webkitgtk-for-gtk3")
-                                     "/lib"))
-                     (webkitgtk-share (string-append
-                                       (assoc-ref inputs "webkitgtk-for-gtk3")
-                                       "/share"))
-                     (gdk-pixbuf (assoc-ref inputs "gdk-pixbuf"))
-                     (fontconf #$(this-package-input "fontconfig-minimal"))
-                     (sh #$(this-package-input "bash-minimal")))
-                ;; Main binary + credential helper.
-                (mkdir-p libexec)
-                (copy-file "usr/bin/github"
-                           (string-append libexec "/github"))
-                (chmod (string-append libexec "/github") #o755)
-                (copy-file "usr/bin/git-credential-copilot"
-                           (string-append libexec "/git-credential-copilot"))
-                (chmod (string-append libexec "/git-credential-copilot") #o755)
-                ;; Runtime resources (onnxruntime, native plugins, copilot-sdk,
-                ;; terminal integration, icons, sounds).
-                (copy-recursively "usr/lib/GitHub Copilot"
-                                  (string-append libexec "/resources"))
-                ;; ld-linux wrapper for the main app.
-                (mkdir-p bin)
-                (with-output-to-file (string-append bin "/github")
-                  (lambda ()
-                    (display
-                     (string-append
-                      "#!" sh "/bin/sh\n"
-                      "export FONTCONFIG_FILE=" fontconf
-                      "/etc/fonts/fonts.conf\n"
-                      ;; Use prefix (not =) so the system XDG_DATA_DIRS
-                      ;; (guix-home, current-system, shared-mime-info, ...)
-                      ;; is preserved.  Overwriting it breaks gdk-pixbuf's
-                      ;; loader/mime resolution: GTK aborts with
-                      ;; "Unrecognized image file format (gdk-pixbuf-error-quark, 3)"
-                      ;; before any window appears.
-                      "export XDG_DATA_DIRS=" out "/share:"
-                      gtk-share ":" webkitgtk-share
-                      "${XDG_DATA_DIRS:+:$XDG_DATA_DIRS}\n"
-                      "export GI_TYPELIB_PATH=" glib-lib "/girepository-1.0:"
-                      gtk-lib "/girepository-1.0:"
-                      webkitgtk-lib "/girepository-1.0:"
-                      gdk-pixbuf "/lib/girepository-1.0\n"
-                      "export GIO_EXTRA_MODULES=" glib-lib "/gio/modules\n"
-                      ;; Let gdk-pixbuf pick up loaders via the Guix profile
-                      ;; hook (GUIX_GDK_PIXBUF_MODULE_FILES) inherited from
-                      ;; the environment, rather than pointing the upstream
-                      ;; GDK_PIXBUF_MODULE_FILE at this package's partial
-                      ;; 11-loader cache (no png/jpeg).
-                      ;; The app dlopens native plugins / onnxruntime from its
-                      ;; resource dir; keep it on the library path too.
-                      "export LD_LIBRARY_PATH=" libexec "/resources"
-                      "${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}\n"
-                      "exec " ld.so " --argv0 " libexec "/github"
-                      " --library-path " lib-path ":" libexec "/resources"
-                      " " libexec "/github \"$@\"\n"))))
-                (chmod (string-append bin "/github") #o755)
-                ;; git-credential-copilot also needs ld-linux + libgcc_s.
-                (with-output-to-file (string-append bin "/git-credential-copilot")
-                  (lambda ()
-                    (display
-                     (string-append
-                      "#!" sh "/bin/sh\n"
-                      "exec " ld.so " --argv0 " libexec "/git-credential-copilot"
-                      " --library-path " lib-path
-                      " " libexec "/git-credential-copilot \"$@\"\n"))))
-                (chmod (string-append bin "/git-credential-copilot") #o755))))
-          (add-after 'install 'install-desktop-entry
-            (lambda _
-              (let* ((out #$output)
-                     (apps (string-append out "/share/applications")))
-                (mkdir-p apps)
-                (copy-file "usr/share/applications/GitHub Copilot.desktop"
-                           (string-append apps "/github-copilot.desktop"))
-                (substitute* (string-append apps "/github-copilot.desktop")
-                  (("Exec=github")
-                   (string-append "Exec=" out "/bin/github"))
-                  (("Icon=github")
-                   "Icon=github")))))
-          (add-after 'install-desktop-entry 'install-icons
-            (lambda _
-              (let* ((out #$output)
-                     (icon-src "usr/share/icons/hicolor")
-                     (icon-dst (string-append out "/share/icons/hicolor")))
-                (copy-recursively icon-src icon-dst)))))))
-    (native-inputs (list libarchive))
-    (inputs `(("gcc:lib" ,gcc "lib")
-              ("alsa-lib" ,alsa-lib)
-              ("bash-minimal" ,bash-minimal)
-              ("fontconfig-minimal" ,fontconfig)
-              ("glibc" ,glibc)
-              ("glib" ,glib)
-              ("gtk+" ,gtk+)
-              ("gdk-pixbuf" ,gdk-pixbuf)
-              ;; tray-icon (used by Tauri for the taskbar tray) dlopens
-              ;; libayatana-appindicator3.so.1 / libappindicator3.so.1 at
-              ;; startup; missing it panics the whole app before any window
-              ;; appears (see ~/.copilot/crash-reports/*).
-              ("libappindicator" ,libappindicator)
-              ("libsoup" ,libsoup)
-              ("mesa" ,mesa)
-              ("openssl" ,openssl)
-              ("pulseaudio" ,pulseaudio)
-              ("webkitgtk-for-gtk3" ,webkitgtk-for-gtk3)))
-    (properties `((upstream-name . "GitHub-Copilot")))
-    (home-page "https://github.com/github/app")
-    (synopsis "Agent-native GitHub Copilot desktop application")
-    (description
-     "The GitHub Copilot app is an agent-native desktop experience for
-finding, running, steering, and landing software work across your GitHub
-repositories.  It provides a single control center for starting and
-steering local and cloud agent sessions, reviewing progress on shared
-canvases, and tracking issues and pull requests.  Each local session runs
-in its own isolated git worktree so multiple agents can work in parallel.
-This is the unofficial Guix packaging of the prebuilt Linux x86_64
-release; the application itself is proprietary.")
-    (license (license:nonfree "https://github.com/github/app"))
     (supported-systems '("x86_64-linux"))))
