@@ -124,7 +124,7 @@
 (define-public jdtls-bin
   (package
     (name "jdtls-bin")
-    (version "1.57.0")
+    (version "1.60.0")
     (source
       (origin
         (method url-fetch)
@@ -133,9 +133,9 @@
               version
               "/jdt-language-server-"
               version
-              "-202602261110.tar.gz"))
+              "-202606262232.tar.gz"))
         (sha256
-          (base32 "07k008iypk0dv9c75dkdwpb85i95rp6rgp8kmifskgmvw4zskzzp"))))
+          (base32 "07ggh6mb28pj1d0pha29qm98rl8zfww2fn03129pgycqh4yk0k79"))))
     (build-system gnu-build-system)
     (arguments
       (list

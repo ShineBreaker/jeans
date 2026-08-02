@@ -9,22 +9,16 @@
 
 ### (jeans packages agent)
 
-| Package                | Description                                                  |
-| ---------------------- | ------------------------------------------------------------ |
-| `codewhale-bin`        | Multi-provider AI coding agent for the terminal              |
-| `crush-bin`            | AI-powered coding assistant for the CLI                      |
-| `github-copilot`       | Agent-native GitHub Copilot desktop application              |
-| `herdr-bin`            | Terminal workspace manager for AI coding agents              |
-| `kimi-code-bin`        | Terminal-native AI coding agent from Moonshot AI             |
-| `mimocode-bin`         | Terminal-native AI coding agent from Xiaomi                  |
-| `oh-my-pi-bin`         | AI coding agent with IDE integration                         |
-| `open-interpreter-bin` | AI coding agent that runs code on your machine               |
-| `opencode-bin`         | Open source AI coding agent                                  |
-| `opencode-desktop-bin` | AI coding agent desktop application                          |
-| `orca-ide-bin`         | AI orchestrator desktop app for parallel agentic development |
-| `reasonix-bin`         | DeepSeek-native AI coding agent for the terminal             |
-| `reasonix-desktop-bin` | DeepSeek-native AI coding agent with desktop GUI             |
-| `zcode`                | Desktop application for agent-assisted development           |
+| Package                | Description                                        |
+| ---------------------- | -------------------------------------------------- |
+| `crush-bin`            | AI-powered coding assistant for the CLI            |
+| `github-copilot`       | Agent-native GitHub Copilot desktop application    |
+| `herdr-bin`            | Terminal workspace manager for AI coding agents    |
+| `opencode-bin`         | Open source AI coding agent                        |
+| `opencode-desktop-bin` | AI coding agent desktop application                |
+| `reasonix-bin`         | DeepSeek-native AI coding agent for the terminal   |
+| `reasonix-desktop-bin` | DeepSeek-native AI coding agent with desktop GUI   |
+| `zcode`                | Desktop application for agent-assisted development |
 
 ### (jeans packages browser)
 
