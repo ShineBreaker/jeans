@@ -86,7 +86,7 @@
 (define-public crush-bin
   (package
     (name "crush-bin")
-    (version "0.87.0")
+    (version "0.88.0")
     (source
      (origin
        (method url-fetch)
@@ -94,7 +94,7 @@
              "https://github.com/charmbracelet/crush/releases/download/"
              "v" version "/crush_" version "_amd64.deb"))
        (sha256
-        (base32 "13dkmvn53pd6aixvyf93afs4jgl4bsi5s8xfxk6ina6xyagig82k"))))
+        (base32 "16fz2g3mfi5m4m2w1qlgihs0p9b2c16x7kiph90njr97lf2a063m"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -185,7 +185,7 @@ This package provides the prebuilt binary release.")
 (define-public opencode-bin
   (package
     (name "opencode-bin")
-    (version "1.18.9")
+    (version "1.18.11")
     (source
      (origin
        (method url-fetch)
@@ -193,7 +193,7 @@ This package provides the prebuilt binary release.")
              "https://github.com/anomalyco/opencode/releases/download/"
              "v" version "/opencode-linux-x64.tar.gz"))
        (sha256
-        (base32 "0nqva3x1cc2zfsx9d8iyrm2vadhd4ba6jpwsww9x1jysidxlpym0"))))
+        (base32 "18arzglpsp6dpvsa2lnvcksjh19jhk4s0snhddn2b4ss1b0grpx4"))))
     (build-system copy-build-system)
     (arguments
      (list
@@ -252,7 +252,7 @@ This package provides the prebuilt binary release.")
 (define-public opencode-desktop-bin
   (package
     (name "opencode-desktop-bin")
-    (version "1.18.9")
+    (version "1.18.11")
     (source
      (origin
        (method url-fetch)
@@ -260,7 +260,7 @@ This package provides the prebuilt binary release.")
              "https://github.com/anomalyco/opencode/releases/download/"
              "v" version "/opencode-desktop-linux-amd64.deb"))
        (sha256
-        (base32 "16p5zmwg04f3gd5h1z2hvqjiqqvjbawgh6cl4v5mw10gpjph9iz3"))))
+        (base32 "0mvfdyyif1f60wyhzb97mll3jdnpw0pa3040460j33v0x1zfgrl0"))))
     (build-system gnu-build-system)
     (arguments
      (list
