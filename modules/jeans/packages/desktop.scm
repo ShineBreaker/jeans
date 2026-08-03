@@ -10,8 +10,8 @@
   #:use-module (gnu packages gtk)         ; gtk+
   #:use-module (gnu packages networking)  ; socat
   #:use-module (gnu packages pkg-config)
-  #:use-module (gnu packages python-build) ; python-setuptools, python-setuptools-scm
-  #:use-module (gnu packages python-xyz)  ; python-platformdirs, python-pillow, python-imageio, ...
+  #:use-module (gnu packages python-build) ; python-setuptools-scm
+  #:use-module (gnu packages python-xyz)  ; python-screeninfo, python-platformdirs, python-pillow, ...
   #:use-module (guix build-system python)
   #:use-module (guix download)
   #:use-module (guix gexp)
@@ -19,26 +19,6 @@
   #:use-module (guix packages)
   #:use-module ((guix licenses)
                 #:prefix license:))
-
-(define-public python-screeninfo
-  (package
-    (name "python-screeninfo")
-    (version "0.8.1")
-    (source
-     (origin
-       (method url-fetch)
-       (uri ((@ (guix build-system pyproject) pypi-uri) "screeninfo" version))
-       (sha256
-        (base32 "1l9frlckb9zbwx5kngxv5byi353jyfmpskcy38m40d3yrimhg0wr"))))
-    (build-system python-build-system)
-    (native-inputs (list python-setuptools))
-    (arguments (list #:tests? #f))
-    (home-page "https://github.com/rr-/screeninfo")
-    (synopsis "Fetch location and size of physical screens")
-    (description
-     "Screeninfo is a Python package to fetch the location and size of
-physical screens in multi-monitor setups.")
-    (license license:expat)))
 
 (define-public waypaper
   (package

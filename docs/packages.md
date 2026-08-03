@@ -29,10 +29,9 @@
 
 ### (jeans packages desktop)
 
-| Package             | Description                                              |
-| ------------------- | -------------------------------------------------------- |
-| `python-screeninfo` | Fetch location and size of physical screens              |
-| `waypaper`          | GUI wallpaper manager for Wayland and Xorg Linux systems |
+| Package    | Description                                              |
+| ---------- | -------------------------------------------------------- |
+| `waypaper` | GUI wallpaper manager for Wayland and Xorg Linux systems |
 
 ### (jeans packages emacs-xyz)
 
