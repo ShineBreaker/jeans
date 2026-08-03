@@ -40,6 +40,7 @@
     (jeans packages games)
     (jeans packages hardware)
     (jeans packages nix-ld)
+    (jeans packages python-xyz)
     (jeans packages theme)
     (jeans packages tools)))
 

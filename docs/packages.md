@@ -73,6 +73,12 @@
 | -------- | ------------------------------------------------- |
 | `nix-ld` | Run unpatched dynamic binaries on non-FHS systems |
 
+### (jeans packages python-xyz)
+
+| Package        | Description                       |
+| -------------- | --------------------------------- |
+| `python-jieba` | Chinese text segmentation library |
+
 ### (jeans packages theme)
 
 | Package                | Description                                                                 |
