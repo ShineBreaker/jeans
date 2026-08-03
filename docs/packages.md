@@ -11,10 +11,10 @@
 
 | Package                | Description                                        |
 | ---------------------- | -------------------------------------------------- |
+| `codewhale-bin`        | Multi-provider AI coding agent for the terminal    |
 | `crush-bin`            | AI-powered coding assistant for the CLI            |
 | `github-copilot`       | Agent-native GitHub Copilot desktop application    |
 | `herdr-bin`            | Terminal workspace manager for AI coding agents    |
-| `opencode-bin`         | Open source AI coding agent                        |
 | `opencode-desktop-bin` | AI coding agent desktop application                |
 | `reasonix-bin`         | DeepSeek-native AI coding agent for the terminal   |
 | `reasonix-desktop-bin` | DeepSeek-native AI coding agent with desktop GUI   |
@@ -39,6 +39,7 @@
 | --------------- | ------------------------------------------------------------ |
 | `eask-bin`      | CLI tool for building, testing and managing Emacs packages   |
 | `ellsp-bin`     | Elisp Language Server Protocol server                        |
+| `emacs-agenote` | Emacs integration for the agenote knowledge-base CLI         |
 | `emacs-ellsp`   | Elisp Language Server Protocol server (Emacs backend)        |
 | `emacs-ghostel` | Terminal emulator powered by libghostty                      |
 | `emacs-msgu`    | Utility functions for message output in Emacs                |
@@ -92,6 +93,7 @@
 
 | Package                    | Description                                                      |
 | -------------------------- | ---------------------------------------------------------------- |
+| `agenote`                  | Cross-agent experience platform CLI                              |
 | `amber-pm`                 | Container-based package manager using fuse-overlayfs             |
 | `aria2-next-bin`           | Maintained aria2 fork with bug fixes and modernized architecture |
 | `cc-switch-bin`            | All-in-One assistant for Claude Code, Codex & Gemini CLI         |

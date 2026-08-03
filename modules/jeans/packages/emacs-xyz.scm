@@ -33,6 +33,7 @@
   #:use-module (gnu packages emacs)
   #:use-module (gnu packages emacs-xyz)
   #:use-module (gnu packages emacs-build)
+  #:use-module (jeans packages tools)          ; agenote (propagated by emacs-agenote)
   #:use-module ((guix licenses) #:prefix license:))
 
 ;; Ghostel vendors ghostty and uucode as build-time git sources.  Earlier
@@ -643,3 +644,52 @@ terminals, and play media through GStreamer.  This package wraps the
 official prebuilt Linux x86_64 release.")
     (license license:gpl3+)
     (supported-systems '("x86_64-linux"))))
+
+;;; agenote-el is the Emacs integration for the agenote "跨 Agent 经验平台"
+;;; (cross-Agent experience platform) knowledge-base CLI.  It ships five
+;;; root-level .el files (agenote, agenote-knowledge, agenote-health,
+;;; agenote-dashboard, agenote-keybinds) with no third-party Elisp
+;;; dependencies (only cl-lib/json/org, all built in).
+;;;
+;;; Upstream does not publish releases or tags, so this package follows the
+;;; main-branch HEAD with the let + git-version structure and the
+;;; with-latest-git-commit property.  The agenote CLI is the hard runtime
+;;; dependency (agenote.el resolves it on every call via
+;; (executable-find "agenote") so a long-lived daemon picks up a new agenote
+;;; after a Guix profile switch); it is propagated so the CLI lands on the
+;;; profile PATH.  Re-resolution is not defeated: propagate only guarantees
+;;; presence on PATH, the lookup itself stays dynamic.
+
+(define-public emacs-agenote
+  (let ((commit "ec127222dd3831dd2f11aa3fd71a853a515c0ba3")
+        (revision "0"))
+    (package
+      (name "emacs-agenote")
+      (version (git-version "0" revision commit))
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://github.com/ShineBreaker/agenote-el")
+               (commit commit)))
+         (file-name (git-file-name name version))
+         (sha256
+          (base32 "10bhsaxw9x1rpcyd56wp7k2qv9hsm9l63fmr917b17x4wp9jr50l"))))
+      (build-system emacs-build-system)
+      (arguments
+       (list #:tests? #f))
+      (propagated-inputs (list agenote))
+      (home-page "https://github.com/ShineBreaker/agenote-el")
+      (synopsis "Emacs integration for the agenote knowledge-base CLI")
+      (description
+       "Agenote-el integrates the @command{agenote} cross-Agent experience
+platform CLI with Emacs.  It provides interactive commands for knowledge-card
+capture, search (by text and tag), inbox management, curation, a health panel,
+and stateless dashboard data functions, plus a bare keymap
+(@code{agenote-command-map}) that hosts can bind to a prefix of their choice.
+All file-system operations are delegated to the @command{agenote} CLI through
+the @code{agenote-call} adapter layer, so no logic drifts between the Emacs
+frontend and the CLI.  The @command{agenote} CLI is propagated so it lands on
+the profile PATH; @code{agenote-call} still re-resolves it on every call.")
+      (properties `((with-latest-git-commit . #t)))
+      (license license:expat))))
