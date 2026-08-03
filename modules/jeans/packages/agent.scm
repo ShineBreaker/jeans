@@ -807,19 +807,18 @@ support for multiple LLM providers.")
     (license license:expat)
     (supported-systems '("x86_64-linux"))))
 
-
 (define-public zcode
   (package
     (name "zcode")
-    (version "3.3.5")
+    (version "3.6.5")
     (source
      (origin
        (method url-fetch)
        (uri (string-append
              "https://cdn-zcode.z.ai/zcode/electron/releases/"
-             version "/ZCode-" version "-linux-x64.deb"))
+             version "/linux-x64/ZCode-" version "-linux-x64.deb"))
        (sha256
-        (base32 "10nkkd77nxlr6ccp7havpp86f0y5dd7yc6qgpmi497i2ssx51vp8"))))
+        (base32 "011j8pcbb3iaxdx1pvpi5wbwr9qzzpfpmqk1xnrc1ka6ik6h7674"))))
     (build-system gnu-build-system)
     (arguments
      (list
