@@ -58,6 +58,7 @@
 
 | Package                     | Description                                                       |
 | --------------------------- | ----------------------------------------------------------------- |
+| `inso-bin`                  | Performant osu! clone with Lua and GLSL shader support            |
 | `lr2oraja-endlessdream-bin` | Community fork of beatoraja BMS rhythm game with QoL improvements |
 | `osu-lazer-bin`             | rhythm is just a _click_ away!                                    |
 

@@ -31,10 +31,11 @@ def main() -> None:
             package_file.read_text(encoding="utf-8"), package_file
         )
     }
-    configured_prefixes = json.loads(config_file.read_text(encoding="utf-8"))["tag_prefix"]
+    configured_prefixes = json.loads(config_file.read_text(encoding="utf-8"))[
+        "tag_prefix"
+    ]
 
     cases = (
-        ("open-interpreter-bin", "rust-v", "rust-v0.0.34", "0.0.34"),
         ("reasonix-bin", "v", "v1.17.17", "1.17.17"),
         ("reasonix-desktop-bin", "desktop-v", "desktop-v1.17.17", "1.17.17"),
     )

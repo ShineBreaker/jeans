@@ -4,6 +4,7 @@
 
 (define-module (jeans packages games)
   #:use-module ((guix licenses) #:prefix license:)
+  #:use-module ((nonguix licenses) #:prefix license:)
   #:use-module (gnu packages base)
   #:use-module (gnu packages bash)
   #:use-module (gnu packages bootstrap)
@@ -400,3 +401,181 @@ iteration of the osu! game client, which marks the beginning of an open era.
 It is currently known by and released under the codename lazer, as in sharper
 than cutting-edge.")
     (license license:expat)))
+
+;; inso ships no LICENSE file in its source repository, so by default
+;; copyright it is nonfree.  Distributed only as a prebuilt Linux archive.
+(define-public inso-bin
+  (package
+    (name "inso-bin")
+    (version "0.3.5")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://github.com/isakvik/inso/releases/download/v" version
+             "/inso-" version "-linux-x64.zip"))
+       (sha256
+        (base32 "0sv5psw8zaabxmvvhzpl1j5fgk58wd6w6bh73fjpr5db0j3pqb1i"))))
+    (build-system copy-build-system)
+    (arguments
+     (list
+      #:tests? #f
+      #:validate-runpath? #f
+      #:strip-binaries? #f
+      #:install-plan
+      ;; Place the binary and bundled runtime libraries side-by-side under
+      ;; lib/inso so the binary's $ORIGIN rpath can locate them.  Read-only
+      ;; assets go under share/inso for the launch wrapper to expose.
+      #~'(("inso" "lib/inso/")
+          ("libbass.so" "lib/inso/")
+          ("libbass_fx.so" "lib/inso/")
+          ("libbassmix.so" "lib/inso/")
+          ("libSDL3.so" "lib/inso/")
+          ("libSDL3.so.0" "lib/inso/")
+          ("data/" "share/inso/data/")
+          ("shaders/" "share/inso/shaders/")
+          ("skins/" "share/inso/skins/")
+          ("songs/" "share/inso/songs/")
+          ("docs/" "share/inso/docs/"))
+      #:modules '((guix build utils)
+                  (guix build copy-build-system)
+                  (ice-9 format))
+      #:phases
+      #~(modify-phases %standard-phases
+          (delete 'install-license-files)
+          ;; The default unpack chdirs into a subdirectory named after one of
+          ;; the archive's top-level entries; replace it so the flat tree
+          ;; stays at the build root and the install-plan resolves.
+          (replace 'unpack
+            (lambda _
+              (invoke "unzip" #$source)))
+          (add-after 'install 'patch-elf
+            (lambda* (#:key inputs #:allow-other-keys)
+              (let* ((ld.so (string-append (assoc-ref inputs "glibc")
+                                           #$(glibc-dynamic-linker)))
+                     (lib-dir (string-append #$output "/lib/inso"))
+                     ;; Only the directories that actually provide the
+                     ;; NEEDED/dlopened libraries: bundled .so (lib-dir),
+                     ;; glibc, gcc libstdc++/libgcc_s, mesa's GL/EGL, and
+                     ;; alsa-lib — libbass.so dlopen()s libasound.so.2
+                     ;; (not a NEEDED entry) and BASS_Init fails with
+                     ;; BASS_ERROR_UNKNOWN (23) when it can't be found.
+                     ;; Build-side `inputs' preserves the sub-output path
+                     ;; for "gcc:lib", unlike the host-side gexp which
+                     ;; would resolve to gcc's default output.
+                     (rpath
+                      (string-join
+                       (cons lib-dir
+                              (map (lambda (label)
+                                     (string-append
+                                      (assoc-ref inputs label) "/lib"))
+                                   '("glibc" "gcc:lib" "mesa" "alsa-lib")))
+                       ":")))
+                (define (patch-elf file)
+                  (format #t "Patching ~a ..." file)
+                  (unless (string-contains file ".so")
+                    (invoke "patchelf" "--set-interpreter" ld.so file))
+                  (invoke "patchelf" "--set-rpath" rpath file)
+                  (display " done\n"))
+                (for-each patch-elf
+                          (cons (string-append lib-dir "/inso")
+                                (find-files lib-dir ".*\\.so.*"))))))
+          (add-after 'patch-elf 'make-executable
+            (lambda _
+              (for-each (lambda (f) (chmod f #o555))
+                        (find-files (string-append #$output "/lib/inso")
+                                    ".*\\.so.*"))
+              (chmod (string-append #$output "/lib/inso/inso") #o555)))
+          (add-after 'patch-elf 'build-wrapper
+            (lambda _
+              ;; inso resolves its read-only assets (shaders/, data/,
+              ;; skins/_default/) and its writable state (songs/, custom
+              ;; skins) relative to its working directory.  Run it from a
+              ;; per-user data directory and seed it with symlinks back to
+              ;; the store assets on first launch.
+              (let* ((bin (string-append #$output "/bin"))
+                     (wrapper (string-append bin "/inso"))
+                     (data-root (string-append #$output "/share/inso")))
+                (mkdir-p bin)
+                (call-with-output-file wrapper
+                  (lambda (port)
+                    (format port "#!~a/bin/bash~%" #$bash-minimal)
+                    (format port "set -e~%")
+                    (format port "DATA_DIR=\"${INSO_DATA_DIR:-")
+                    (format port "${XDG_DATA_HOME:-$HOME/.local/share}/inso}\"~%")
+                    (format port "STORE=\"~a\"~%" data-root)
+                    (format port "mkdir -p \"$DATA_DIR\"~%")
+                    ;; Expose read-only store assets by symlinking them into
+                    ;; the per-user data dir when absent (-n leaves an
+                    ;; existing real directory untouched).
+                    (format port "for sub in shaders data docs; do~%")
+                    (format port
+                            "  [ -e \"$DATA_DIR/$sub\" ] || ")
+                    (format port "ln -sn \"$STORE/$sub\" \"$DATA_DIR/$sub\"~%")
+                    (format port "done~%")
+                    ;; Seed the default skin (read-only) and the songs dir.
+                    (format port "mkdir -p \"$DATA_DIR/skins\"~%")
+                    (format port "[ -e \"$DATA_DIR/skins/_default\" ] || ")
+                    (format port
+                            "ln -sn \"$STORE/skins/_default\" ")
+                    (format port "\"$DATA_DIR/skins/_default\"~%")
+                    (format port "mkdir -p \"$DATA_DIR/songs\"~%")
+                    (format port "cd \"$DATA_DIR\"~%")
+                    (format port "exec -a inso ~a/lib/inso/inso \"$@\"~%"
+                            #$output)))
+                (chmod wrapper #o755))))
+          (add-after 'build-wrapper 'wrap-program
+            (lambda* (#:key inputs #:allow-other-keys)
+              ;; RPATH already covers the bundled .so, glibc, gcc:lib,
+              ;; mesa and alsa-lib, but add LD_LIBRARY_PATH for the
+              ;; dlopen-loaded GL/EGL and ALSA libraries as a belt-and-
+              ;; suspenders fallback.  Use build-side `inputs' so "gcc:lib"
+              ;; resolves to the lib sub-output path.
+              (let ((wrapper (string-append #$output "/bin/inso")))
+                (wrap-program wrapper
+                  `("LD_LIBRARY_PATH" ":" prefix
+                    (,(string-append #$output "/lib/inso")
+                     ,@(map (lambda (label)
+                              (string-append
+                               (assoc-ref inputs label) "/lib"))
+                            '("gcc:lib" "mesa" "alsa-lib"))))))))
+          (add-after 'wrap-program 'install-desktop-entry
+            (lambda _
+              (let ((apps (string-append #$output "/share/applications")))
+                (mkdir-p apps)
+                (call-with-output-file
+                    (string-append apps "/inso.desktop")
+                  (lambda (port)
+                    (format port "[Desktop Entry]~%")
+                    (format port "Name=inso~%")
+                    (format port "Comment=osu! clone with Lua and GLSL shader support~%")
+                    (format port "Exec=~a/bin/inso~%" #$output)
+                    (format port "Icon=inso~%")
+                    (format port "Terminal=false~%")
+                    (format port "Type=Application~%")
+                    (format port "Categories=Game;ArcadeGame;~%")))))))))
+    (native-inputs (list unzip patchelf))
+    (inputs
+     `(("bash-minimal" ,bash-minimal)
+       ("glibc" ,glibc)
+       ("gcc:lib" ,gcc "lib")
+       ("mesa" ,mesa)
+       ("alsa-lib" ,alsa-lib)))
+    ;; Release assets are named "inso-<version>-linux-x64.zip"; upstream-name
+    ;; is the filename prefix before the version.  accept-pre-releases? so
+    ;; guix refresh considers pre-release tags (v0.3.5 is marked pre-release).
+    (properties `((upstream-name . "inso")
+                  (accept-pre-releases? . #t)))
+    (home-page "https://github.com/isakvik/inso")
+    (synopsis "Performant osu! clone with Lua and GLSL shader support")
+    (description "inso is a performant osu! clone written in Odin, featuring
+Lua scripting and GLSL shader support for beatmaps.  It integrates with
+existing osu! beatmap collections and was originally built for the YEAST3
+sightreading tournament.
+
+On first launch the wrapper seeds a per-user data directory
+(@file{~/.local/share/inso} or @env{INSO_DATA_DIR}) with symlinks to the
+bundled default skin, shaders and fonts; drop osu! beatmaps into
+@file{songs/} to play them.")
+    (license (license:nonfree "https://github.com/isakvik/inso"))
+    (supported-systems '("x86_64-linux"))))
