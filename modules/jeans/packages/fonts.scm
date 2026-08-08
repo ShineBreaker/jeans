@@ -96,7 +96,7 @@ debuted in 2023.")
 (define-public font-nerd-symbols
   (package
     (name "font-nerd-symbols")
-    (version "3.4.0")
+    (version "3.5.0")
     (source
       (origin
         (method url-fetch/zipbomb)
@@ -104,7 +104,7 @@ debuted in 2023.")
               "https://github.com/ryanoasis/nerd-fonts/releases/download/v"
               version "/NerdFontsSymbolsOnly.zip"))
         (sha256
-          (base32 "0iscas5bvb8bgk5pcls95nfwjl7yi23q05mili43dzl0p427jqcf"))))
+          (base32 "0zwddwnsij5bbv93ciil2p17rmwn4vl9ifxd3myjrcv1rm828dj9"))))
     (build-system font-build-system)
     (home-page "https://github.com/ryanoasis/nerd-fonts")
     (synopsis "Iconic font collection")
@@ -120,7 +120,7 @@ terminals, editors, and other text interfaces.")
 (define-public font-nerd-font-iosevka
   (package
     (name "font-nerd-font-iosevka")
-    (version "3.4.0")
+    (version "3.5.0")
     (source
      (origin
       (method url-fetch)
@@ -128,7 +128,7 @@ terminals, editors, and other text interfaces.")
             "https://github.com/ryanoasis/nerd-fonts/releases/download/v"
             version "/Iosevka.tar.xz"))
       (sha256
-       (base32 "1ljpsdqzg2gm57l9qr93pbwvmcp8wwry2v9jm3889jlrv96f4gi1"))))
+       (base32 "0jngfgnv7brgnmwgr97dc70i93aw8m9sb96czgwjp1bk2q9wsgxl"))))
     (build-system font-build-system)
     (license (list license:expat
                    license:cc-by4.0

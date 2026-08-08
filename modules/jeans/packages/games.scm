@@ -275,7 +275,7 @@ fonts, IR jars, and other assets at runtime.  The game requires OpenGL
 (define-public osu-lazer-bin
   (package
     (name "osu-lazer-bin")
-    (version "2026.726.0-lazer")
+    (version "2026.804.2-lazer")
     (source
       (origin
         (method url-fetch)
@@ -284,7 +284,7 @@ fonts, IR jars, and other assets at runtime.  The game requires OpenGL
                          version
                          "/osu.AppImage"))
         (sha256
-          (base32 "18197gyldp59574mn95n018m2a2ryw1jcr80gc1zvps3jmh2hc1x"))))
+          (base32 "0dmyikzb8a7h9m7av38rs4jjgncll8h0qn7cf5rm1bihyb5dvbyh"))))
     (build-system copy-build-system)
     (arguments
      (list #:tests? #f
@@ -407,7 +407,7 @@ than cutting-edge.")
 (define-public inso-bin
   (package
     (name "inso-bin")
-    (version "0.3.5")
+    (version "0.3.6")
     (source
      (origin
        (method url-fetch)
@@ -415,7 +415,7 @@ than cutting-edge.")
              "https://github.com/isakvik/inso/releases/download/v" version
              "/inso-" version "-linux-x64.zip"))
        (sha256
-        (base32 "0sv5psw8zaabxmvvhzpl1j5fgk58wd6w6bh73fjpr5db0j3pqb1i"))))
+        (base32 "1w636vslg1gnd9ix8rivbb4rjw3a49nga1laf1qhwkm5mwwdx8j9"))))
     (build-system copy-build-system)
     (arguments
      (list

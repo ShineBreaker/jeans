@@ -155,7 +155,7 @@ release.")
 (define-public crush-bin
   (package
     (name "crush-bin")
-    (version "0.88.0")
+    (version "0.88.1")
     (source
      (origin
        (method url-fetch)
@@ -163,7 +163,7 @@ release.")
              "https://github.com/charmbracelet/crush/releases/download/"
              "v" version "/crush_" version "_amd64.deb"))
        (sha256
-        (base32 "16fz2g3mfi5m4m2w1qlgihs0p9b2c16x7kiph90njr97lf2a063m"))))
+        (base32 "16sz0qhvkb56h7javld7f63d5r3x5br0hb9926axldzn2hmbd1w5"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -268,7 +268,7 @@ This package provides the prebuilt binary release.")
 (define-public github-copilot
   (package
     (name "github-copilot")
-    (version "1.1.2")
+    (version "1.1.5")
     (source
      (origin
        (method url-fetch)
@@ -276,7 +276,7 @@ This package provides the prebuilt binary release.")
              "https://github.com/github/app/releases/download/"
              "v" version "/GitHub-Copilot-linux-x64.deb"))
        (sha256
-        (base32 "1x4zvjrhlzmcb679i3cvy3xdgghiy4s8ax9k3issykk2isdkg06z"))))
+        (base32 "12jlygyqiidqcl22qi4gba8jjx986qcqfd6m5n6xxzf70jyzxklz"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -441,7 +441,7 @@ release; the application itself is proprietary.")
 (define-public herdr-bin
   (package
     (name "herdr-bin")
-    (version "0.7.5")
+    (version "0.8.0")
     (source
      (origin
        (method url-fetch)
@@ -449,7 +449,7 @@ release; the application itself is proprietary.")
              "https://github.com/ogulcancelik/herdr/releases/download/"
              "v" version "/herdr-linux-x86_64"))
        (sha256
-        (base32 "0lwjqnajw50rjaxxn5zxqr0r3jmwjyzffc4scwy2sk1y0y435j1x"))))
+        (base32 "0a6dk9p5zczmyg9ga8n60fsbfvgj3cmvdjbshmzb2b7s81zflwmq"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -483,12 +483,13 @@ can be reattached locally or over SSH, and exposes a Unix-domain socket API so
 agents can spawn panes, run commands, read output and wait on each other.
 This package provides the prebuilt binary release.")
     (license license:agpl3+)
+    (properties `((upstream-name . "herdr")))
     (supported-systems '("x86_64-linux"))))
 
 (define-public opencode-desktop-bin
   (package
     (name "opencode-desktop-bin")
-    (version "1.18.11")
+    (version "1.18.15")
     (source
      (origin
        (method url-fetch)
@@ -496,7 +497,7 @@ This package provides the prebuilt binary release.")
              "https://github.com/anomalyco/opencode/releases/download/"
              "v" version "/opencode-desktop-linux-amd64.deb"))
        (sha256
-        (base32 "0mvfdyyif1f60wyhzb97mll3jdnpw0pa3040460j33v0x1zfgrl0"))))
+        (base32 "1rrz62qpcwpw0n2nbi7jk6mp55q1inhk6h416z23xx9pi1fqqwz4"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -650,7 +651,7 @@ coding experience with context awareness.")
 (define-public reasonix-bin
   (package
     (name "reasonix-bin")
-    (version "1.18.0")
+    (version "1.21.2")
     (source
      (origin
        (method url-fetch)
@@ -658,7 +659,7 @@ coding experience with context awareness.")
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
              "v" version "/reasonix-linux-amd64.tar.gz"))
        (sha256
-        (base32 "1lr77jpbi9jrm6gkc80hjf2vvbcig4j98g10rkvmhp7dlafr753j"))))
+        (base32 "0ppyq0ljdqbfy7z6dj3yk42bprbrp4hzgy3fhgz3gcmx0xzar54z"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -692,7 +693,7 @@ and ships as a single static binary with no runtime dependencies.")
 (define-public reasonix-desktop-bin
   (package
     (name "reasonix-desktop-bin")
-    (version "1.18.0")
+    (version "1.21.2")
     (source
      (origin
        (method url-fetch)
@@ -700,7 +701,7 @@ and ships as a single static binary with no runtime dependencies.")
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
              "desktop-v" version "/Reasonix-linux-amd64.deb"))
        (sha256
-        (base32 "16zsg7pralcy29y49rffgjbsprcvnv9bwbslvqdv5cv2v637zspa"))))
+        (base32 "07q1qjbwas789qnfpsr1g7dn52xvcj9whnajdhi8lgrmb315nvxv"))))
     (build-system gnu-build-system)
     (arguments
      (list
