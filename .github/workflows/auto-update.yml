@@ -106,16 +106,18 @@ jobs:
           # kimi-code-bin（npm scoped tag）、jdtls-bin（Eclipse + 日期戳）、
           # librewolf-nongnu（inherit）、reasonix-desktop-bin（desktop-v 前缀
           # URL 重建失败）——这些留给 Python updater。
+          # git-credential-keepassxc 也暂不交 refresh：0.14.3 的 sysinfo-0.39.1
+          # 需要 rustc >= 1.95，Guix 上游尚未打包 rust-1.95，升级后会卡死
+          # build-test；先固定 0.14.2，等 Guix 有了 rust-1.95 再恢复。
           guix refresh -L modules -L /tmp/nonguix -u \
-            crush-bin opencode-bin mimocode-bin orca-ide-bin oh-my-pi-bin \
-            codewhale-bin reasonix-bin open-interpreter-bin github-copilot \
+            crush-bin opencode-desktop-bin herdr-bin \
+            codewhale-bin reasonix-bin github-copilot \
             ellsp-bin eask-bin neomacs-bin motrix-next-bin cc-switch-bin \
             font-maple-font-nf-cn font-nerd-symbols font-nerd-font-iosevka \
-            lr2oraja-endlessdream-bin osu-lazer-bin zen-browser-bin \
+            lr2oraja-endlessdream-bin osu-lazer-bin inso-bin zen-browser-bin \
             emacs-ghostel emacs-msgu emacs-ellsp \
             colloid-gtk-theme vimix-gtk-themes vimix-kvantum-themes \
             nix-ld opentabletdriver-udev-rules waypaper \
-            git-credential-keepassxc python-screeninfo \
             2>&1 | tee /tmp/refresh.log
           # guix refresh 对"无更新"返回 0，对个别包失败不阻塞整体；
           # 不用 set -e，让后续步骤继续。

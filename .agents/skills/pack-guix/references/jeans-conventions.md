@@ -114,6 +114,41 @@ Rust 包使用双文件结构：
 (inputs (cargo-inputs '<name> #:module '(jeans packages rust-crates)))
 ```
 
+### 更新现有 cargo 包的依赖（升级 crate 版本）
+
+cargo 包升级时，`guix refresh` 只能改写包文件里的 `version`/`hash`，**不会**碰 `rust-crates.scm`。新版本的传递依赖必须重新 import 并合并。完整流程（记录于 git-credential-keepassxc 0.14.2→0.14.3 的升级事故）：
+
+1. **先查 MSRV，否则白干。** 新版 `Cargo.lock` 里某个依赖的 `rust-version` 可能高于 Guix 已打包的 rust（`guix show rust | grep version`）。例：sysinfo 0.39.1 要求 rustc 1.95，而 Guix 当时最新只有 1.93。**这种升级必须整体跳过**——合并脚本能重写定义，但变不出更新的 rustc。查 MSRV：下载新 crate 源码，`grep -r rust-version Cargo.lock` 或看构建报错 `requires Rust 1.X`。
+
+2. **导入新依赖集：**
+   ```bash
+   WORK="$(mktemp -d /tmp/<pkg>-XXXXXX)"
+   guix download "$(crate-uri '<pkg>' '<new-ver>')" -o "$WORK/src.tar.gz"
+   tar xf "$WORK/src.tar.gz" -C "$WORK"
+   guix import crate --lockfile "$WORK/<pkg>-<new-ver>/Cargo.lock" \
+     > "$WORK/import.scm"
+   ```
+   `import.scm` 是扁平的 `(define rust-... (crate-source ...))` 列表，**它的全部 define 就是新的 input 列表**（已用 0.14.2 的 266 个 input 全部能在现有 define 中找到验证过）。
+
+3. **用 `scripts/check-updates/merge_crate_inputs.py` 合并**（不要手写脚本，历史事故都来自这里）：
+   ```bash
+   python3 scripts/check-updates/merge_crate_inputs.py \
+     <pkg> modules/jeans/packages/rust-crates.scm "$WORK/import.scm" --dry-run
+   # dry-run 报告 OK 后去掉 --dry-run 正式执行
+   ```
+   脚本做三件事：在 `ssss-separator` 前插入缺失的 crate-source 定义；用括号深度匹配替换 `<pkg>` 的 input 列表；断言每个 input 变量都有定义。
+
+   **这个脚本修正了旧脚本的两个致命 bug**：
+   - 正则 `rust-[a-z0-9.+-]+` 必须含 `-`（crate 名如 `objc2-open-directory`）和 `+`（版本如 `1.0.3+wasi-0.2.9`）。旧的 `rust-[\w.+]+` 在连字符处截断，静默漏掉一半定义 → 文件被清空。
+   - input 列表的 `(list ...)` 必须保留**内层**右括号（`scm[list_close-1:]`，不是 `scm[list_close:]`），否则 `(key => (list ...))` 项的外层括号丢失 → 整个 `define-cargo-inputs` 块语法错误。
+
+4. **验证只信 guix，不信 wrapper 退出码。** `blue build`/shell 的 `$?` 反映的是 wrapper 是否成功调用 guix，**不是**构建是否成功。必须读 guix 输出里的字样：
+   ```bash
+   guix build -L modules <pkg> --dry-run    # 先确认模块能加载（语法/括号）
+   blue build <pkg>                          # 再真实构建，grep 输出里的 "失败"/"error"
+   ```
+   guile 能 `use-modules` 加载不代表语法正确（可能命中 `.go` cache）；`guix build --dry-run` 报 `unexpected end of input` 才是真相。
+
 ## 预编译二进制包
 
 预编译包有三种常见形态，处理方式不同。
