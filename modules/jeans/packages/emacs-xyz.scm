@@ -438,25 +438,69 @@ of Emacs Lisp projects.  This package provides the prebuilt binary release.")
 ;;; (neomacs.pdump) and the full Lisp/Etc data tree
 ;;; (usr/share/neomacs/{lisp,etc,leim}).
 ;;;
-;;; Upstream's self-locator logic is FHS-specific, so we must respect it:
+;;; == Upstream runtime path resolution (neovm-core load.rs) ==
 ;;;
-;;;   * The .pdump for an executable lives NEXT TO the executable, named
-;;;     "<exe-name>.pdump" (see neovm-core load.rs:
-;;;     runtime_image_path_for_executable => exe.parent().join(exe+".pdump")).
-;;;   * The Lisp/Etc runtime root is resolved as
-;;;     exe.parent().parent().join("share/neomacs") (load.rs:
-;;;     runtime_project_root), i.e. <prefix>/share/neomacs where <prefix>
-;;;     is two levels up from the binary.
+;;;   * runtime_project_root() (3-tier fallback): the env var
+;;;     NEOMACS_RUNTIME_ROOT, then the compile-time source tree, then
+;;;     current_exe().parent().parent().join("share/neomacs") (FHS
+;;;     self-locator).  A candidate must contain both lisp/ and etc/ to
+;;;     be accepted (is_runtime_root).
+;;;   * The .pdump lives NEXT TO the executable as "<stem>.pdump"
+;;;     (runtime_image_path_for_executable).  No env var overrides its
+;;;     *location* (only the --dump-file CLI flag); the self-locator's
+;;;     exe-sibling requirement must be honoured.
+;;;   * EMACSLOADPATH is honoured with GNU init_lread semantics: an empty
+;;;     element expands to the built-in load path, and the built-in
+;;;     lisp/ tree is appended if no empty element is present.
 ;;;
-;;; Consequence: an ld-linux wrapper CANNOT be used, because it makes
-;;; /proc/self/exe point at the wrapper script and breaks the
-;;; self-locator.  We therefore patchelf every ELF in place (set
-;;; interpreter + RPATH) and lay them out as:
+;;; == Why neither wrap-program nor the old same-dir layout works ==
 ;;;
-;;;   out/bin/neomacs            (patchelf'd)
-;;;   out/bin/neomacs.pdump      (sibling pdump, see above)
-;;;   out/bin/neomacsclient ...
-;;;   out/share/neomacs/         (<prefix>=out, two levels: bin/../ = out)
+;;; (1) wrap-program is UNUSABLE here.  It hard-links the real binary as
+;;;     ".<name>-real" and writes a shell wrapper over <name>.  neomacs
+;;;     derives its runtime mode from current_exe()'s basename; a name
+;;;     of ".neomacs-real" is not recognised as the neomacs/temacs/
+;;;     bootstrap-neomacs role, so the binary re-execs itself in an
+;;;     infinite loop (verified: timeout/124 under strace, repeated
+;;;     execve of ".neomacs-real").  Renaming the real binary to any
+;;;     non-".X-real" name (e.g. libexec/neomacs/neomacs) works.
+;;;
+;;; (2) The previous same-directory layout put ELFs in out/bin so the
+;;;     self-locator's parent().parent() reached <out> and found
+;;;     <out>/share/neomacs.  Now that ELFs live in out/libexec/neomacs,
+;;;     parent().parent() reaches <out>/libexec, so the self-locator
+;;;     probes <out>/libexec/share/neomacs and fails.  We therefore set
+;;;     NEOMACS_RUNTIME_ROOT=<out>/share/neomacs explicitly in the
+;;;     wrapper — the only correct lever, since it also fixes the
+;;;     data-directory / charset / image paths that all derive from the
+;;;     runtime root.
+;;;
+;;; == Final layout ==
+;;;
+;;;   out/libexec/neomacs/neomacs            (patchelf'd real ELF)
+;;;   out/libexec/neomacs/neomacs.pdump      (exe-sibling, see above)
+;;;   out/libexec/neomacs/libtinfo.so.6      (compat symlink, on RPATH)
+;;;   out/libexec/neomacs/{neomacsclient,neomacs-temacs,...}
+;;;   out/bin/neomacs                        (hand-written wrapper)
+;;;   out/bin/neomacsclient                  (hand-written wrapper)
+;;;   out/share/neomacs/{lisp,etc,leim}      (runtime root)
+;;;
+;;; Only neomacs and neomacsclient get bin/ wrappers (the user-facing
+;;; entry points); neomacs-temacs/bootstrap-neomacs/mock-display are
+;;; developer/role binaries kept in libexec only.
+;;;
+;;; == Emacs environment-variable migration (from gnu/packages/emacs.scm) ==
+;;;
+;;; GNU Emacs sets, at build time via wrap-emacs-paths, PATH (coreutils,
+;;; gzip — Tramp subprocesses) and EMACSLOADPATH, and declares
+;;; native-search-paths for EMACSLOADPATH/EMACSNATIVELOADPATH/INFOPATH/
+;;; TREE_SITTER_GRAMMAR_PATH.  We migrate the subset that applies to
+;;; neomacs:
+;;;   * wrapper sets PATH=prefix [coreutils, gzip] and
+;;;     EMACSLOADPATH=<out>/share/neomacs/lisp (prefix), so profile
+;;;     site-lisp is still seen;
+;;;   * native-search-paths declares EMACSLOADPATH (share/neomacs/
+;;;     site-lisp), INFOPATH and TREE_SITTER_GRAMMAR_PATH.  We omit
+;;;     EMACSNATIVELOADPATH: neomacs has no native-comp .eln output.
 ;;;
 ;;; The deb's data.tar is zstd-compressed, hence libarchive's bsdtar.
 ;;;
@@ -501,8 +545,7 @@ of Emacs Lisp projects.  This package provides the prebuilt binary release.")
           (replace 'install
             (lambda* (#:key inputs #:allow-other-keys)
               (let* ((out #$output)
-                     (bin (string-append out "/bin"))
-                     (lib (string-append out "/lib"))
+                     (libexec (string-append out "/libexec/neomacs"))
                      (share (string-append out "/share/neomacs"))
                      (ldso (string-append (assoc-ref inputs "glibc")
                                           #$(glibc-dynamic-linker)))
@@ -519,9 +562,9 @@ of Emacs Lisp projects.  This package provides the prebuilt binary release.")
                      ;; "gexp default-output" footgun documented in AGENTS.md.
                      (gcc-lib (string-append (assoc-ref inputs "gcc:lib") "/lib"))
                      (ncurses-lib (string-append (assoc-ref inputs "ncurses") "/lib"))
-                     ;; RPATH over every runtime library input + our own lib/
-                     ;; (which carries the libtinfo.so.6 compatibility symlink,
-                     ;; see below).
+                     ;; RPATH over every runtime library input + our own
+                     ;; libexec/ (which carries the libtinfo.so.6 compatibility
+                     ;; symlink, see below).
                      ;;
                      ;; IMPORTANT: this includes the GUI windowing/GPU stack
                      ;; (wayland, mesa, vulkan-loader, libxkbcommon, the X11
@@ -532,7 +575,7 @@ of Emacs Lisp projects.  This package provides the prebuilt binary release.")
                      ;; them on RUNPATH lets dlopen find them, since the dynamic
                      ;; loader searches RUNPATH for dlopen too.
                      (rpath (string-join
-                             (list lib
+                             (list libexec
                                    (string-append (assoc-ref inputs "glibc") "/lib")
                                    gcc-lib
                                    ncurses-lib
@@ -567,20 +610,22 @@ of Emacs Lisp projects.  This package provides the prebuilt binary release.")
                 ;; in the store (cf. haskell.scm's GHC bootstrap, which uses
                 ;; the same workaround).  libtinfo is an ABI-compatible subset
                 ;; of libncursesw, so we ship a symlink in the package's own
-                ;; lib/ directory and put it on RUNPATH.
-                (mkdir-p lib)
+                ;; libexec/ directory and put it on RUNPATH.
+                (mkdir-p libexec)
                 (symlink (string-append ncurses-lib "/libncursesw.so.6")
-                         (string-append lib "/libtinfo.so.6"))
-                ;; Binaries + sibling pdump.
-                (mkdir-p bin)
+                         (string-append libexec "/libtinfo.so.6"))
+                ;; All ELFs go to libexec (the bin/ wrappers are written in
+                ;; a later phase).  The .pdump MUST be a sibling of neomacs,
+                ;; so it lands in libexec too.
                 (for-each
                  (lambda (f)
-                   (install-file (string-append "usr/bin/" f) bin))
+                   (install-file (string-append "usr/bin/" f) libexec))
                  '("neomacs" "neomacsclient" "neomacs-temacs"
                    "bootstrap-neomacs" "mock-display"))
-                ;; neomacs.pdump is NOT executable; copy as data.
+                ;; neomacs.pdump is NOT executable; copy as data, sibling to
+                ;; the neomacs ELF (see runtime_image_path_for_executable).
                 (copy-file "usr/bin/neomacs.pdump"
-                           (string-append bin "/neomacs.pdump"))
+                           (string-append libexec "/neomacs.pdump"))
                 ;; Runtime data tree (lisp, etc, leim).
                 (mkdir-p share)
                 (copy-recursively "usr/share/neomacs/." share)
@@ -589,12 +634,60 @@ of Emacs Lisp projects.  This package provides the prebuilt binary release.")
                  (lambda (elf)
                    (invoke patchelf-bin "--set-interpreter" ldso elf)
                    (invoke patchelf-bin "--set-rpath" rpath elf))
-                 (find-files bin (lambda (name stat)
-                                   (and (eq? 'regular (stat:type stat))
-                                        (executable-file? name)
-                                        (string-prefix? (string-append bin "/")
-                                                        name))))))))
-          (add-after 'install 'install-desktop-entry
+                 (find-files libexec (lambda (name stat)
+                                       (and (eq? 'regular (stat:type stat))
+                                            (executable-file? name)
+                                            (string-prefix?
+                                             (string-append libexec "/")
+                                             name))))))))
+          (add-after 'install 'wrap-binaries
+            ;; Hand-written bin/ wrappers.  We CANNOT use wrap-program here:
+            ;; it renames the real binary to ".<name>-real", and neomacs
+            ;; derives its runtime mode from current_exe()'s basename, so a
+            ;; ".neomacs-real" name is not recognised and the binary re-execs
+            ;; itself in an infinite loop (verified).  Instead we keep the real
+            ;; ELF in libexec/neomacs under its real name and write a thin sh
+            ;; wrapper in bin/.
+            (lambda* (#:key inputs #:allow-other-keys)
+              (let* ((out #$output)
+                     (bin (string-append out "/bin"))
+                     (libexec (string-append out "/libexec/neomacs"))
+                     (share (string-append out "/share/neomacs"))
+                     (sh (search-input-file inputs "bin/sh"))
+                     ;; Tramp / dired subprocess dependencies, mirroring the
+                     ;; PATH suffix that gnu/packages/emacs.scm wraps onto
+                     ;; emacs (coreutils' yes => its bin dir, gzip).
+                     (coreutils-bin
+                      (dirname (search-input-file inputs "bin/yes")))
+                     (gzip-bin
+                      (dirname (search-input-file inputs "bin/gzip"))))
+                (define (write-wrapper name argv0 real)
+                  ;; argv0 is hard-coded (NOT ${0##*/}) so that symlinks or
+                  ;; alternate invocations cannot drift the program name and
+                  ;; re-trigger the re-exec loop described above.
+                  (let ((wrapper-template
+                         (string-append
+                          "#!~a\n"
+                          "export NEOMACS_RUNTIME_ROOT=\"~a\"\n"
+                          "export EMACSLOADPATH=\"~a:${EMACSLOADPATH}\"\n"
+                          "export PATH=\"~a:~a:${PATH}\"\n"
+                          "exec -a \"~a\" \"~a\" \"$@\"\n")))
+                    (call-with-output-file (string-append bin "/" name)
+                      (lambda (port)
+                        (format port wrapper-template
+                                sh
+                                share
+                                (string-append share "/lisp")
+                                coreutils-bin gzip-bin
+                                argv0 real)))))
+                (mkdir-p bin)
+                (write-wrapper "neomacs" "neomacs"
+                               (string-append libexec "/neomacs"))
+                (write-wrapper "neomacsclient" "neomacsclient"
+                               (string-append libexec "/neomacsclient"))
+                (chmod (string-append bin "/neomacs") #o755)
+                (chmod (string-append bin "/neomacsclient") #o755))))
+          (add-after 'wrap-binaries 'install-desktop-entry
             (lambda* (#:key outputs #:allow-other-keys)
               (let* ((out (assoc-ref outputs "out"))
                      (apps (string-append out "/share/applications")))
@@ -631,7 +724,30 @@ of Emacs Lisp projects.  This package provides the prebuilt binary release.")
               ("libx11" ,libx11)
               ("libxcb" ,libxcb)
               ("libxi" ,libxi)
-              ("libxcursor" ,libxcursor)))
+              ("libxcursor" ,libxcursor)
+              ;; Wrapper-only: the bin/ wrappers run under bash-minimal's sh
+              ;; and prepend coreutils/gzip to PATH for Tramp/dired subprocesses,
+              ;; mirroring the wrap-emacs-paths PATH suffix in
+              ;; gnu/packages/emacs.scm.
+              ("bash-minimal" ,bash-minimal)
+              ("coreutils-minimal" ,coreutils-minimal)
+              ("gzip" ,gzip)))
+    ;; Mirrors the native-search-paths of gnu/packages/emacs.scm's
+    ;; emacs-minimal, adapted to neomacs' data layout.  This lets packages
+    ;; depending on neomacs contribute to EMACSLOADPATH/INFOPATH/
+    ;; TREE_SITTER_GRAMMAR_PATH automatically when co-installed in a profile.
+    ;; EMACSNATIVELOADPATH is intentionally omitted: neomacs is a Rust
+    ;; reimplementation with no native-compilation (.eln) output tree.
+    (native-search-paths
+     (list (search-path-specification
+            (variable "EMACSLOADPATH")
+            (files '("share/neomacs/site-lisp")))
+           (search-path-specification
+            (variable "INFOPATH")
+            (files '("share/info")))
+           (search-path-specification
+            (variable "TREE_SITTER_GRAMMAR_PATH")
+            (files '("lib/tree-sitter")))))
     (properties `((upstream-name . "neomacs")))
     (home-page "https://github.com/eval-exec/neomacs")
     (synopsis "Extensible text editor built on Emacs Lisp and the Neovim VM")
