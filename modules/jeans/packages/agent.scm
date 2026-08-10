@@ -765,11 +765,7 @@ and ships as a single static binary with no runtime dependencies.")
                       libexec "/reasonix-desktop"
                       " --library-path " lib-path " " libexec
                       "/reasonix-desktop \"$@\"\n"))))
-                (chmod (string-append bin "/reasonix-desktop") #o755)
-                ;; reasonix-guard is a static Go binary (no ld-linux wrapper
-                ;; needed); the desktop entry launches it, and it locates
-                ;; reasonix-desktop next to itself in bin/.
-                (install-file "usr/bin/reasonix-guard" bin))))
+                (chmod (string-append bin "/reasonix-desktop") #o755))))
           (add-after 'install 'install-desktop-entry
             (lambda _
               (let* ((out #$output)
@@ -779,12 +775,17 @@ and ships as a single static binary with no runtime dependencies.")
                 (mkdir-p pixmaps)
                 (copy-file "usr/share/applications/reasonix.desktop"
                            (string-append apps "/reasonix-desktop.desktop"))
+                ;; Upstream's desktop entry launches reasonix-launcher, a
+                ;; versioning shim that resolves the active build via
+                ;; current.json.  That mechanism is irrelevant in the
+                ;; immutable Guix store, so point straight at our wrapper.
                 (substitute* (string-append apps "/reasonix-desktop.desktop")
-                  (("Exec=reasonix-guard")
-                   (string-append "Exec=" out "/bin/reasonix-guard")))
+                  (("Exec=reasonix-launcher")
+                   (string-append "Exec=" out "/bin/reasonix-desktop")))
                 (copy-file "usr/share/pixmaps/reasonix-desktop.png"
                            (string-append pixmaps "/reasonix-desktop.png"))))))))
     (native-inputs (list libarchive tar gzip))
+    (propagated-inputs (list reasonix-bin))
     (inputs `(("gcc:lib" ,gcc "lib")
               ("bash-minimal" ,bash-minimal)
               ("fontconfig-minimal" ,fontconfig)
