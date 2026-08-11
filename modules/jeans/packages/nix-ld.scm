@@ -4,6 +4,7 @@
 
 (define-module (jeans packages nix-ld)
   #:use-module (guix packages)
+  #:use-module (gnu packages base)
   #:use-module (gnu packages gcc)
   #:use-module (gnu packages rust)
   #:use-module (guix build-system cargo)
@@ -58,7 +59,7 @@
                 (delete-file ".cargo/config"))))
 
           (add-before 'build 'set-env
-            (lambda _
+            (lambda* (#:key inputs #:allow-other-keys)
               ;; Enable unstable features (#![feature(lang_items)])
               (setenv "RUSTC_BOOTSTRAP" "1")
               ;; NIX_SYSTEM is used at compile time to determine
@@ -67,7 +68,15 @@
               (setenv "NIX_SYSTEM"
                       (string-map
                        (lambda (c) (if (char=? c #\-) #\_ c))
-                       #$(%current-system)))))
+                       #$(%current-system)))
+              ;; Bake the Guix glibc dynamic linker as the compile-time
+              ;; fallback for NIX_LD.  Without this, nix-ld falls back to
+              ;; the NixOS path /run/current-system/sw/share/nix-ld/lib/ld.so,
+              ;; which does not exist on Guix System, causing a panic
+              ;; (Posix(2) = ENOENT) at src/main.rs:187 when NIX_LD is unset.
+              (let ((glibc (assoc-ref inputs "glibc")))
+                (setenv "DEFAULT_NIX_LD"
+                        (string-append glibc "/lib/ld-linux-x86-64.so.2")))))
 
           ;; Disable stack protector hardening — nolibc does not provide
           ;; __stack_chk_fail, causing link failures.
@@ -90,6 +99,7 @@
                          (string-append libexec "/nix-ld"))))))))
     (inputs (cargo-inputs 'nix-ld
                       #:module '(jeans packages rust-crates)))
+    (native-inputs (list glibc))
     (home-page "https://github.com/nix-community/nix-ld")
     (synopsis "Run unpatched dynamic binaries on non-FHS systems")
     (description
