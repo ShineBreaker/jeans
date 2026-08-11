@@ -41,8 +41,8 @@
 (define-public winapps
   ;; 上游不打 tag，追踪 main 分支 HEAD；由 guix refresh 的
   ;; latest-git-commit updater 自动更新 commit 和 revision。
-  (let ((commit "7f6b6abf575e3f93614aeeacb75b609372e7f1a6")
-        (revision "0"))
+  (let ((commit "77f7177b623aa0ee4e8fd97cad30b260ae6b35b4")
+        (revision "1"))
     (package
       (name "winapps")
       (version (git-version "0" revision commit))
@@ -54,7 +54,7 @@
                (commit commit)))
          (file-name (git-file-name name version))
          (sha256
-          (base32 "0af98psazy2w8fmb3933hzi0shzhj1abj4lcwhz6nbc1w9hi4agk"))
+          (base32 "0pqi1fvrjipgq02jxvp2dn0h1av3wmf1kdqdk9mzglyzw16lqbqk"))
          (patches
           (map canonicalize-path
                (search-patches

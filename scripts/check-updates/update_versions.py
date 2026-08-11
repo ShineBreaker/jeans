@@ -318,17 +318,18 @@ def get_latest_github_release(
                 return tag_name
             return None
 
-        # 首先尝试获取最新的稳定版release
-        url = f"{GITHUB_API_URL}/{repo}/releases/latest"
-        response = requests.get(url, headers=headers, timeout=10)
-        if 500 <= response.status_code <= 599:
-            raise RetryableError(f"GitHub API 服务器错误: {response.status_code}")
-        response.raise_for_status()
-        data = response.json()
-        latest_release = data.get("tag_name")
-
+        # 首先尝试获取最新的稳定版release。
+        # 注意：仓库只有 pre-release 时，GitHub 的 /releases/latest 会返回
+        # 404（如 inso 上游只发 prerelease）。include_pre_release 模式下
+        # 本就不需要 latest 端点，直接走 /releases 列表。
         if not include_pre_release:
-            return latest_release
+            url = f"{GITHUB_API_URL}/{repo}/releases/latest"
+            response = requests.get(url, headers=headers, timeout=10)
+            if 500 <= response.status_code <= 599:
+                raise RetryableError(f"GitHub API 服务器错误: {response.status_code}")
+            response.raise_for_status()
+            data = response.json()
+            return data.get("tag_name")
 
         # 如果需要检查pre-release，获取所有release并找到最新的（包括pre-release）
         url_all = f"{GITHUB_API_URL}/{repo}/releases"

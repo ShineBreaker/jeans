@@ -1,12 +1,12 @@
 {
-  "check_pre_release": ["emacs-ellsp", "ellsp-bin"],
+  "check_pre_release": ["emacs-ellsp", "ellsp-bin", "inso-bin"],
   "skip_packages": ["git-credential-keepassxc"],
   "skip_files": ["rust-crates.scm"],
   "tag_prefix": {
     "reasonix-desktop-bin": "desktop-v"
   },
   "notes": {
-    "check_pre_release": "这个列表中的包会检查包括pre-release在内的所有版本。注意：emacs-ellsp/ellsp-bin 的 accept-pre-releases? property 已写在包定义里供 guix refresh 使用，此处保留给 Python updater 兜底",
+    "check_pre_release": "这个列表中的包会检查包括pre-release在内的所有版本。注意：emacs-ellsp/ellsp-bin 的 accept-pre-releases? property 已写在包定义里供 guix refresh 使用，此处保留给 Python updater 兜底。inso-bin 的上游 isakvik/inso 只发 prerelease（/releases/latest 恒 404），必须在此列表中才能被 updater 识别",
     "skip_packages": "这个列表中的包会被跳过更新检查。git-credential-keepassxc 当前固定在 0.14.2：0.14.3 的 sysinfo-0.39.1 需要 rustc >= 1.95，Guix 上游尚未打包 rust-1.95，升级会让 build-test 失败；等 Guix 有了 rust-1.95 再用 scripts/check-updates/merge_crate_inputs.py 重做依赖合并并移除此条",
     "skip_files": "这个列表中的文件不会被检查或更新。rust-crates.scm 只含 crate-source origin，由 blue import-crate / guix import crate --lockfile 管理，禁止手动编辑",
     "tag_prefix": "当同一个 GitHub repo 有多个 release 系列（如 v* 和 desktop-v*）时，指定每个包跟踪的 tag 前缀。注意：reasonix-bin 的 release-tag-prefix property 已写在包定义里供 guix refresh 使用；reasonix-desktop-bin 因 refresh 的 URL 重建无法处理 desktop-v 前缀，仍由此处 Python 规则管理",

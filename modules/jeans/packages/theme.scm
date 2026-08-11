@@ -36,7 +36,7 @@
 (define-public colloid-gtk-theme
   (package
     (name "colloid-gtk-theme")
-    (version "2025-07-31")
+    (version "2026-08-08")
     (source
      (origin
        (method git-fetch)
@@ -46,7 +46,7 @@
        (file-name (git-file-name name version))
        (sha256
 
-        (base32 "1hv8wrylnwmq1mgz5bv012np4rsr4537smihv2plx4j0w1wxp5fj"))
+        (base32 "143j57cx1gapkb148bnhpzazg0wndrsc8iixisjwwdri5vjmflyq"))
        (modules '((guix build utils)))
        (snippet
         '(for-each (lambda (file)

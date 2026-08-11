@@ -651,7 +651,7 @@ coding experience with context awareness.")
 (define-public reasonix-bin
   (package
     (name "reasonix-bin")
-    (version "1.21.2")
+    (version "1.23.0")
     (source
      (origin
        (method url-fetch)
@@ -659,7 +659,7 @@ coding experience with context awareness.")
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
              "v" version "/reasonix-linux-amd64.tar.gz"))
        (sha256
-        (base32 "0ppyq0ljdqbfy7z6dj3yk42bprbrp4hzgy3fhgz3gcmx0xzar54z"))))
+        (base32 "1z8ljr21pdhc6g45y5a0k112pjhdb2ggbqd7vzm39r87pm6l0k0f"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -693,7 +693,7 @@ and ships as a single static binary with no runtime dependencies.")
 (define-public reasonix-desktop-bin
   (package
     (name "reasonix-desktop-bin")
-    (version "1.21.2")
+    (version "1.23.0")
     (source
      (origin
        (method url-fetch)
@@ -701,7 +701,7 @@ and ships as a single static binary with no runtime dependencies.")
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
              "desktop-v" version "/Reasonix-linux-amd64.deb"))
        (sha256
-        (base32 "07q1qjbwas789qnfpsr1g7dn52xvcj9whnajdhi8lgrmb315nvxv"))))
+        (base32 "06npm2z306fzkfy8m2zgldl9fva30h361mnjh9finna836nj25w6"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -812,7 +812,7 @@ support for multiple LLM providers.")
 (define-public zcode
   (package
     (name "zcode")
-    (version "3.6.5")
+    (version "3.7.5")
     (source
      (origin
        (method url-fetch)
@@ -820,7 +820,7 @@ support for multiple LLM providers.")
              "https://cdn-zcode.z.ai/zcode/electron/releases/"
              version "/linux-x64/ZCode-" version "-linux-x64.deb"))
        (sha256
-        (base32 "011j8pcbb3iaxdx1pvpi5wbwr9qzzpfpmqk1xnrc1ka6ik6h7674"))))
+        (base32 "0gm4ipgvnh5rajl6fib1iw1jhc37mr22c92b5lfd04l5gahag9yk"))))
     (build-system gnu-build-system)
     (arguments
      (list
