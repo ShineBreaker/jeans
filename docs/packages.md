@@ -29,9 +29,11 @@
 
 ### (jeans packages desktop)
 
-| Package    | Description                                              |
-| ---------- | -------------------------------------------------------- |
-| `waypaper` | GUI wallpaper manager for Wayland and Xorg Linux systems |
+| Package                     | Description                                                |
+| --------------------------- | ---------------------------------------------------------- |
+| `open-wallpaper-engine-bin` | Wallpaper Engine plugin for the Waywallen wallpaper daemon |
+| `waypaper`                  | GUI wallpaper manager for Wayland and Xorg Linux systems   |
+| `waywallen-bin`             | Dynamic wallpaper manager for Linux desktops               |
 
 ### (jeans packages emacs-xyz)
 
