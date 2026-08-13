@@ -73,20 +73,21 @@
 
 ;;; CodeWhale: multi-provider AI coding agent for the terminal (Rust).
 ;;;
-;;; The upstream tar.gz ships three statically-linked (static-pie) Rust
+;;; The upstream tar.gz ships two statically-linked (static-pie) Rust
 ;;; ELF binaries with no interpreter and no NEEDED entries:
-;;;   - codewhale      ; the entrypoint launcher
-;;;   - codewhale-tui  ; the interactive TUI runtime
+;;;   - codewhale      ; the entrypoint launcher (also serves as the TUI)
 ;;;   - codew          ; short alias of codewhale
 ;;;
+;;; Upstream dropped the separate codewhale-tui binary in v0.9.5; the
+;;; installer only refreshes a legacy codewhale-tui if one already exists.
 ;;; Being fully static, no patchelf or ld-linux wrapper is needed — just
 ;;; unpack the archive, restore the executable bit (the tarball stores the
-;;; binaries as 0644) and install all three into bin/.
+;;; binaries as 0644) and install both into bin/.
 
 (define-public codewhale-bin
   (package
     (name "codewhale-bin")
-    (version "0.9.3")
+    (version "0.9.6")
     (source
      (origin
        (method url-fetch)
@@ -94,7 +95,7 @@
              "https://github.com/Hmbown/CodeWhale/releases/download/"
              "v" version "/codewhale-linux-x64.tar.gz"))
        (sha256
-        (base32 "0k3ixrnlsc9wf2mbgbvlsrgy2c2p5kgfyfimwyv4nf7854yj764i"))))
+        (base32 "0hmz6znj9jxx0y8z2ibp56gnzxbjwyzlpf8kv47dh8gh1ba2mxqq"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -110,11 +111,10 @@
           (replace 'unpack
             (lambda _
               (invoke "tar" "xzf" #$source)
-              ;; The archive stores the three binaries as 0644; restore the
+              ;; The archive stores the binaries as 0644; restore the
               ;; executable bit so install-file (and the user) can run them.
               (for-each (lambda (b) (chmod b #o755))
                         '("codewhale-linux-x64/codewhale"
-                          "codewhale-linux-x64/codewhale-tui"
                           "codewhale-linux-x64/codew"))))
           (replace 'install
             (lambda _
@@ -123,7 +123,6 @@
                 (for-each (lambda (b)
                             (install-file b bin))
                           '("codewhale-linux-x64/codewhale"
-                            "codewhale-linux-x64/codewhale-tui"
                             "codewhale-linux-x64/codew"))))))))
     (properties `((upstream-name . "codewhale")))
     (home-page "https://codewhale.net")
@@ -155,7 +154,7 @@ release.")
 (define-public crush-bin
   (package
     (name "crush-bin")
-    (version "0.88.1")
+    (version "0.89.0")
     (source
      (origin
        (method url-fetch)
@@ -163,7 +162,7 @@ release.")
              "https://github.com/charmbracelet/crush/releases/download/"
              "v" version "/crush_" version "_amd64.deb"))
        (sha256
-        (base32 "16sz0qhvkb56h7javld7f63d5r3x5br0hb9926axldzn2hmbd1w5"))))
+        (base32 "081q9ag4gb6sxs4lrihrzf7yp1h31c7ri1na5syxihdmhx041yk7"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -268,7 +267,7 @@ This package provides the prebuilt binary release.")
 (define-public github-copilot
   (package
     (name "github-copilot")
-    (version "1.1.5")
+    (version "1.1.8")
     (source
      (origin
        (method url-fetch)
@@ -276,7 +275,7 @@ This package provides the prebuilt binary release.")
              "https://github.com/github/app/releases/download/"
              "v" version "/GitHub-Copilot-linux-x64.deb"))
        (sha256
-        (base32 "12jlygyqiidqcl22qi4gba8jjx986qcqfd6m5n6xxzf70jyzxklz"))))
+        (base32 "0fnxkdb89khginzfg86n427zlcp5gmda2fnv6rapgj30df16ir1l"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -489,7 +488,7 @@ This package provides the prebuilt binary release.")
 (define-public opencode-desktop-bin
   (package
     (name "opencode-desktop-bin")
-    (version "1.18.15")
+    (version "1.18.18")
     (source
      (origin
        (method url-fetch)
@@ -497,7 +496,7 @@ This package provides the prebuilt binary release.")
              "https://github.com/anomalyco/opencode/releases/download/"
              "v" version "/opencode-desktop-linux-amd64.deb"))
        (sha256
-        (base32 "1rrz62qpcwpw0n2nbi7jk6mp55q1inhk6h416z23xx9pi1fqqwz4"))))
+        (base32 "12nl2bhm4n84hxr2nigw1mpic7jg113lracqy06pznbwkimn8zbv"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -651,7 +650,7 @@ coding experience with context awareness.")
 (define-public reasonix-bin
   (package
     (name "reasonix-bin")
-    (version "1.23.0")
+    (version "1.25.0")
     (source
      (origin
        (method url-fetch)
@@ -659,7 +658,7 @@ coding experience with context awareness.")
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
              "v" version "/reasonix-linux-amd64.tar.gz"))
        (sha256
-        (base32 "1z8ljr21pdhc6g45y5a0k112pjhdb2ggbqd7vzm39r87pm6l0k0f"))))
+        (base32 "0s41axc07gr9mylq0ijklp0yrw1f7f585vqc54lrnymdqba2j4xm"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -693,7 +692,7 @@ and ships as a single static binary with no runtime dependencies.")
 (define-public reasonix-desktop-bin
   (package
     (name "reasonix-desktop-bin")
-    (version "1.23.0")
+    (version "1.25.0")
     (source
      (origin
        (method url-fetch)
@@ -701,7 +700,7 @@ and ships as a single static binary with no runtime dependencies.")
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
              "desktop-v" version "/Reasonix-linux-amd64.deb"))
        (sha256
-        (base32 "06npm2z306fzkfy8m2zgldl9fva30h361mnjh9finna836nj25w6"))))
+        (base32 "1mrh07y6pz03kzsfig9mxah8dmk5s4b8m35b3chih4p522d1n8ic"))))
     (build-system gnu-build-system)
     (arguments
      (list
