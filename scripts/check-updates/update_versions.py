@@ -405,7 +405,7 @@ def package_tag_prefix(package: dict[str, Any], configured_prefixes: dict[str, s
     return None
 
 
-def get_latest_github_tag(repo: str) -> Optional[str]:
+def get_latest_github_tag(repo: str, tag_prefix: Optional[str] = None) -> Optional[str]:
     """获取GitHub仓库的最新tag（当没有release时的备用方案）"""
     headers = {}
     if GITHUB_TOKEN:
@@ -418,8 +418,11 @@ def get_latest_github_tag(repo: str) -> Optional[str]:
             raise RetryableError(f"GitHub API 服务器错误: {response.status_code}")
         response.raise_for_status()
         tags = response.json()
-        if tags:
-            return tags[0].get("name")
+        for tag in tags:
+            name = tag.get("name") or ""
+            if tag_prefix and not name.startswith(tag_prefix):
+                continue
+            return name
         return None
     except requests.exceptions.HTTPError as e:
         if is_retryable_http_error(e):
@@ -472,6 +475,317 @@ def get_latest_commit(repo: str) -> Optional[Tuple[str, str]]:
     except KeyError as e:
         print(f"     ⚠️  无法获取最新 commit: {e}")
         return None
+
+
+# ── 特殊源包处理器（guix refresh / GitHub 通用逻辑力不能及的包） ────────────────
+#
+# 这些包的版本信号不在 GitHub release/tag 上，通用 url-fetch 分支提取不到
+# GitHub 仓库就直接 skipped。每个处理器自含版本发现 + hash 计算 + 更新描述，
+# 返回与 update_package_in_file / build_let_git_version_change 同构的 dict；
+# 无更新返回 None；网络/解析异常向上抛，由 main() 标记为 failed。
+
+MISANS_URL = "https://hyperos.mi.com/font-download/MiSans.zip"
+MISANS_STATE_FILE = Path(__file__).parent / "font-misans-state.json"
+STALE_STATE_FILE = Path(__file__).parent / "stale-state.json"
+
+
+def update_zcode(package: dict[str, Any], _config: dict[str, Any], scm_file: Path) -> Optional[Dict[str, Any]]:
+    """zcode：z.ai CDN 无目录列表，官网 JS 内嵌完整版本列表。
+
+    抓 https://zcode.z.ai/cn 里的 releases/X.Y.Z，取最大版本号（semver 比较）。
+    """
+    try:
+        response = requests.get("https://zcode.z.ai/cn", timeout=30)
+        if 500 <= response.status_code <= 599:
+            raise RetryableError(f"HTTP {response.status_code}")
+        response.raise_for_status()
+    except requests.exceptions.Timeout as e:
+        raise RetryableError(f"请求超时: {e}")
+    except requests.exceptions.ConnectionError as e:
+        raise RetryableError(f"网络连接错误: {e}")
+
+    versions = sorted(
+        set(re.findall(r"releases/(\d+\.\d+\.\d+)", response.text)),
+        key=lambda v: tuple(int(x) for x in v.split(".")),
+    )
+    if not versions:
+        print(f"     ⚠️  官网未找到版本列表")
+        return None
+    latest = versions[-1]
+    print(f"     z.ai 官网最新版本: {latest}")
+    if not compare_versions(package["version"], latest):
+        return None
+    url = (f"https://cdn-zcode.z.ai/zcode/electron/releases/"
+           f"{latest}/linux-x64/ZCode-{latest}-linux-x64.deb")
+    new_base32 = with_retry(
+        get_base32_from_guix_download, url, max_retries=2, base_delay=5,
+    )
+    if not new_base32 or not re.fullmatch(r"[0-9a-z]{52}", new_base32) or re.fullmatch(r"0{52}", new_base32):
+        raise RetryableError("无法计算下载 hash")
+    return update_package_in_file(scm_file, package, latest, new_base32)
+
+
+def update_amber_pm(package: dict[str, Any], _config: dict[str, Any], scm_file: Path) -> Optional[Dict[str, Any]]:
+    """amber-pm：gitee 仓库、无 tag，let-绑定 git-version 追踪默认分支最新 commit。
+
+    通用逻辑只认 GitHub（extract_github_repo 对 gitee 返回 None），
+    这里直接用 gitee API 取 master 分支最新 commit，复用
+    build_let_git_version_change 写回 let 绑定的 commit + 自增 revision。
+    """
+    try:
+        response = requests.get(
+            "https://gitee.com/api/v5/repos/amber-ce/amber-pm/branches/master",
+            timeout=20,
+        )
+        if 500 <= response.status_code <= 599:
+            raise RetryableError(f"HTTP {response.status_code}")
+        response.raise_for_status()
+    except requests.exceptions.Timeout as e:
+        raise RetryableError(f"请求超时: {e}")
+    except requests.exceptions.ConnectionError as e:
+        raise RetryableError(f"网络连接错误: {e}")
+
+    new_sha = response.json().get("commit", {}).get("sha")
+    if not new_sha:
+        raise RetryableError("gitee API 未返回 commit sha")
+    current = package["let_commit"]
+    print(f"     当前 commit: {current[:12]}, 最新 commit: {new_sha[:12]}")
+    if new_sha == current:
+        return None
+
+    new_base32 = with_retry(
+        get_base32_for_git, "https://gitee.com/amber-ce/amber-pm", new_sha,
+        max_retries=2, base_delay=5,
+    )
+    if not new_base32 or not re.fullmatch(r"[0-9a-z]{52}", new_base32) or re.fullmatch(r"0{52}", new_base32):
+        raise RetryableError("无法计算 git-fetch hash")
+    return build_let_git_version_change(scm_file, package, new_sha, new_base32)
+
+
+def update_jdtls_bin(package: dict[str, Any], _config: dict[str, Any], scm_file: Path) -> Optional[Dict[str, Any]]:
+    """jdtls-bin：GitHub tags 发现版本 + Eclipse 目录页提取归档时间戳。
+
+    URL 模板是 milestones/<version>/jdt-language-server-<version>-<时间戳>.tar.gz，
+    时间戳是字面量，不在 version 里。发现新版本后从目录页抓取时间戳，
+    并返回 extra_replacements 让 apply_pending_updates 一并替换字面量。
+    """
+    tag = get_latest_github_tag("eclipse-jdtls/eclipse.jdt.ls", tag_prefix="v")
+    if not tag:
+        raise RetryableError("无法获取 GitHub tags")
+    latest = tag.lstrip("v")
+    print(f"     GitHub 最新 tag: {tag}")
+    if not compare_versions(package["version"], latest):
+        return None
+
+    try:
+        response = requests.get(
+            f"https://download.eclipse.org/jdtls/milestones/{latest}/", timeout=30
+        )
+        if 500 <= response.status_code <= 599:
+            raise RetryableError(f"HTTP {response.status_code}")
+        response.raise_for_status()
+    except requests.exceptions.Timeout as e:
+        raise RetryableError(f"请求超时: {e}")
+    except requests.exceptions.ConnectionError as e:
+        raise RetryableError(f"网络连接错误: {e}")
+
+    m = re.search(
+        rf"jdt-language-server-{re.escape(latest)}-(\d{{12}})\.tar\.gz", response.text
+    )
+    if not m:
+        raise RetryableError(f"目录页未找到 {latest} 的归档文件名")
+    ts = m.group(1)
+    url = (f"https://download.eclipse.org/jdtls/milestones/{latest}/"
+           f"jdt-language-server-{latest}-{ts}.tar.gz")
+    new_base32 = with_retry(
+        get_base32_from_guix_download, url, max_retries=2, base_delay=5,
+    )
+    if not new_base32 or not re.fullmatch(r"[0-9a-z]{52}", new_base32) or re.fullmatch(r"0{52}", new_base32):
+        raise RetryableError("无法计算下载 hash")
+
+    change = update_package_in_file(scm_file, package, latest, new_base32)
+    old_ts_match = re.search(r"-(\d{12})\.tar\.gz", package["uri_expr"])
+    if change and old_ts_match and old_ts_match.group(1) != ts:
+        change["extra_replacements"] = [
+            (f"-{old_ts_match.group(1)}.tar.gz", f"-{ts}.tar.gz")
+        ]
+    return change
+
+
+def update_font_misans(package: dict[str, Any], _config: dict[str, Any], scm_file: Path) -> Optional[Dict[str, Any]]:
+    """font-misans：zip 无版本号，以 Last-Modified 判断上游是否更新。
+
+    MiSans.zip 有 227MB，不能每次 CI 都下载算 hash。用 Last-Modified 作为
+    更新信号：与 font-misans-state.json 记录比较，变了才下载重算 hash。
+    state 文件随自动更新提交，首跑只记基线不动包。
+    """
+    try:
+        response = requests.head(MISANS_URL, timeout=30)
+        if 500 <= response.status_code <= 599:
+            raise RetryableError(f"HTTP {response.status_code}")
+        response.raise_for_status()
+    except requests.exceptions.Timeout as e:
+        raise RetryableError(f"请求超时: {e}")
+    except requests.exceptions.ConnectionError as e:
+        raise RetryableError(f"网络连接错误: {e}")
+
+    last_modified = response.headers.get("Last-Modified")
+    if not last_modified:
+        raise RetryableError("响应缺少 Last-Modified 头")
+    print(f"     上游 Last-Modified: {last_modified}")
+
+    state: Dict[str, Any] = {}
+    if MISANS_STATE_FILE.exists():
+        state = json.loads(MISANS_STATE_FILE.read_text(encoding="utf-8"))
+
+    if state.get("last_modified") == last_modified:
+        print(f"     ✓ 上游未变化（与记录一致）")
+        return None
+
+    if "last_modified" not in state:
+        state["last_modified"] = last_modified
+        state["base32"] = package["base32"]
+        MISANS_STATE_FILE.write_text(
+            json.dumps(state, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+        )
+        print(f"     📝 首次记录 MiSans 基线")
+        return None
+
+    new_base32 = with_retry(
+        get_base32_from_guix_download, MISANS_URL, max_retries=1, base_delay=5,
+        timeout=600,
+    )
+    if not new_base32 or not re.fullmatch(r"[0-9a-z]{52}", new_base32) or re.fullmatch(r"0{52}", new_base32):
+        raise RetryableError("无法计算下载 hash")
+
+    state["last_modified"] = last_modified
+    state["base32"] = new_base32
+    MISANS_STATE_FILE.write_text(
+        json.dumps(state, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
+
+    if new_base32 == package["base32"]:
+        print(f"     ✓ Last-Modified 变了但内容 hash 未变")
+        return None
+    print(f"     ✅ MiSans 内容有变化")
+    return update_package_in_file(scm_file, package, package["version"], new_base32)
+
+
+# 包名 → 特殊处理器映射
+SPECIAL_UPDATERS: Dict[str, Callable[[Dict[str, Any], Dict[str, Any], Path], Optional[Dict[str, Any]]]] = {
+    "zcode": update_zcode,
+    "amber-pm": update_amber_pm,
+    "jdtls-bin": update_jdtls_bin,
+    "font-misans": update_font_misans,
+}
+
+
+def _package_manually_updated(
+    pkg_name: str, since_date: str, scm_files: List[Path]
+) -> bool:
+    """判断该包定义区间在 since_date 之后是否有非自动更新的提交。
+
+    用 git log -L 精确跟随该包的定义区间（行号跟随跨提交），只统计
+    触碰该区间的提交；自动更新提交（信息以 "UPDATE: auto package
+    update" 开头）不算手动更新。文件级判定不可靠：同文件的
+    其他包（如 tools.scm 的 agenote）变动会误判。
+    """
+    for scm in scm_files:
+        try:
+            content = scm.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        if pkg_name not in content:
+            continue
+        try:
+            pkg = next(
+                (p for p in parse_package_definitions(content, scm)
+                 if p["name"] == pkg_name),
+                None,
+            )
+        except Exception:
+            return False
+        if pkg is None:
+            return False
+        start_line = content.count("\n", 0, pkg["start_pos"]) + 1
+        end_line = content.count("\n", 0, pkg["end_pos"]) + 1
+        try:
+            result = subprocess.run(
+                ["git", "log", f"--since={since_date}",
+                 "-L", f"{start_line},{end_line}:{scm}",
+                 "--pretty=format:%H%n%s%n%x00"],
+                capture_output=True, text=True, timeout=20,
+            )
+        except Exception:
+            return False
+        # 每个触碰提交输出 "hash\nsubject\n\0"，subject 在第二个字段
+        for entry in result.stdout.split("\x00"):
+            lines = [ln for ln in entry.splitlines() if ln]
+            if len(lines) >= 2 and "UPDATE: auto package update" not in lines[1]:
+                print(f"⏰ {pkg_name}: 检测到手动更新提交（{lines[1][:60]}）")
+                return True
+    return False
+
+
+def check_stale_packages(scm_files: List[Path], config: Dict[str, Any]) -> None:
+    """对 config['stale_watch'] 中的包：超 stale_days 天无手动更新则发提醒 issue。
+
+    这些包无法自动更新（继承上游 / 有意冻结），只能靠人工跟进。用
+    stale-state.json 记录上次提醒日期，避免每次 CI 重复轰炸（幂等 issue
+    标题 + 14 天周期双保险）。手动更新（该包所在 .scm 文件的非自动更新
+    提交）会重置周期。仅 CI 环境生效。
+    """
+    if not os.environ.get("CI"):
+        return
+    stale_watch = config.get("stale_watch", {})
+    if not stale_watch:
+        return
+    stale_days = int(config.get("stale_days", 14))
+
+    state: Dict[str, Any] = {}
+    if STALE_STATE_FILE.exists():
+        state = json.loads(STALE_STATE_FILE.read_text(encoding="utf-8"))
+
+    today = datetime.now().strftime("%Y-%m-%d")
+    state_changed = False
+
+    for pkg_name, reason in stale_watch.items():
+        last_checked = state.get(pkg_name, {}).get("last_checked")
+        if last_checked is None:
+            # 首次纳入监控：记基线，不动作
+            state[pkg_name] = {"last_checked": today}
+            state_changed = True
+            print(f"⏰ {pkg_name}: 首次纳入 stale 监控（{today}）")
+            continue
+        if _package_manually_updated(pkg_name, last_checked, scm_files):
+            state[pkg_name] = {"last_checked": today}
+            state_changed = True
+            print(f"⏰ {pkg_name}: 已有手动更新，重置提醒周期")
+            continue
+        days = (datetime.now() - datetime.strptime(last_checked, "%Y-%m-%d")).days
+        if days < stale_days:
+            print(f"⏰ {pkg_name}: 距上次提醒 {days} 天，未到 {stale_days} 天阈值")
+            continue
+        title = f"⏰ 包 {pkg_name} 已 {days} 天未手动更新"
+        body = (
+            f"**{pkg_name}** 属于无法自动更新的包，已 {days} 天无手动更新。\n\n"
+            f"原因：{reason}\n\n"
+            f"请手动检查并决定是否更新。若已处理，请关闭本 issue。"
+        )
+        print(f"⏰ {pkg_name}: 已 {days} 天未更新，发起提醒 issue")
+        create_ci_issue(title, body, config)
+        state[pkg_name] = {"last_checked": today}
+        state_changed = True
+
+    if state_changed:
+        try:
+            STALE_STATE_FILE.write_text(
+                json.dumps(state, indent=2, ensure_ascii=False) + "\n",
+                encoding="utf-8",
+            )
+            print(f"📝 已更新 stale-state.json")
+        except Exception as e:
+            print(f"⚠️  写入 stale-state.json 失败: {e}")
 
 
 def parse_package_definitions(content: str, _file_path: Path) -> list[dict[str, Any]]:
@@ -604,11 +918,11 @@ def construct_download_url_from_uri(uri_expr: str, version: str) -> Optional[str
     return None
 
 
-def get_base32_from_guix_download(url: str) -> Optional[str]:
+def get_base32_from_guix_download(url: str, timeout: int = 120) -> Optional[str]:
     """下载文件并计算 SHA256 → Guix base32（纯 Python，不依赖 guix 命令）"""
     try:
         print(f"     🔽 正在下载并计算 base32...")
-        response = requests.get(url, timeout=120)
+        response = requests.get(url, timeout=timeout)
         if 500 <= response.status_code <= 599:
             raise RetryableError(f"HTTP {response.status_code}")
         response.raise_for_status()
@@ -847,6 +1161,13 @@ def apply_pending_updates(pending: List[Dict[str, Any]]) -> bool:
                 package_content = re.sub(
                     old_version_pattern, new_version_str, package_content, count=1
                 )
+
+                # 特殊源（如 jdtls-bin）需要额外替换 URI 里的字面量片段
+                # （例如归档时间戳 -202606262232.tar.gz）。
+                for old_frag, new_frag in change.get("extra_replacements", []):
+                    package_content = re.sub(
+                        re.escape(old_frag), new_frag, package_content, count=1
+                    )
 
                 if change["new_commit"] and change.get("old_commit_expr"):
                     old_commit = change["old_commit_expr"].strip('"')
@@ -1122,6 +1443,40 @@ def main():
             if package_name in skip_packages:
                 print(f"     ⏭️  在跳过列表中，已跳过")
                 package_report["status"] = "skipped"
+                finalize_package_report()
+                continue
+
+            # --- 特殊源包：版本信号不在 GitHub 上，走专属处理器 ---
+            # zcode（z.ai CDN 官网 JS）、amber-pm（gitee）、jdtls-bin
+            # （Eclipse 目录页 + 日期戳）、font-misans（zip 无版本号，ETag 信号）。
+            if package_name in SPECIAL_UPDATERS:
+                print(f"     🔧 使用特殊源处理器: {package_name}")
+                try:
+                    change = SPECIAL_UPDATERS[package_name](package, config, scm_file)
+                except RetryableError as e:
+                    print(f"     ❌ 特殊源检查失败（可重试错误）: {e}")
+                    package_report["status"] = "failed"
+                    package_report["error"] = f"特殊源检查失败: {e}"
+                    has_errors = True
+                    finalize_package_report()
+                    continue
+                except Exception as e:
+                    print(f"     ❌ 特殊源检查失败: {e}")
+                    package_report["status"] = "failed"
+                    package_report["error"] = f"特殊源检查失败: {e}"
+                    has_errors = True
+                    finalize_package_report()
+                    continue
+
+                if change:
+                    pending_updates.append(change)
+                    print(f"     ✅ 发现新版本并记录更新: {package_name}")
+                    package_report["new_version"] = change["new_version"]
+                    package_report["status"] = "updated"
+                    has_updates = True
+                else:
+                    print(f"     ✓ 已是最新")
+                    package_report["status"] = "uptodate"
                 finalize_package_report()
                 continue
 
@@ -1576,6 +1931,10 @@ def main():
     except Exception as e:
         print(f"⚠️  写入 report.json 失败: {e}")
         has_errors = True
+
+    # 无法自动更新的包（继承上游 / 有意冻结）：超过 stale_days 天无手动更新
+    # 则发提醒 issue。依赖 git diff 判断"是否有手动更新"，因此放在最后。
+    check_stale_packages(scm_files, config)
 
     if failed_packages > 0:
         failed_list = [p for p in report["packages"] if p["status"] == "failed"]

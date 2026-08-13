@@ -106,13 +106,17 @@ refresh 覆盖：GitHub release 包（带 upstream-name）和 git-fetch 有 tag 
 
 ### 第 2 层：Python 脚本（兜底）
 
-`scripts/check-updates/update_versions.py` 处理 guix refresh 力不能及的包：
-- **非 GitHub 源**：`zcode`（z.ai CDN）、`font-misans`（无 version URL）、`amber-pm`（gitee）
-- **npm scoped tag**：`kimi-code-bin`（`@scope/name@version` 模式）
-- **refresh URL 重建失败的边缘 case**：`reasonix-desktop-bin`（`desktop-v` 前缀 + 文件名不标准）
-- **无 tag 固定 commit 包**：`winapps`/`orchis-kde-themes`/`colloid-kde-themes`（用 `let`+`git-version` 结构，Python 脚本追踪 main 分支 commit 并更新 let 绑定的 commit + 自增 revision；`with-latest-git-commit` property 已写入但本机 Guix 尚未实现该功能）
+`scripts/check-updates/update_versions.py` 处理 guix refresh 力不能及的包，分三类：
 
-Python 脚本也用 `config.json` 的 `tag_prefix`/`check_pre_release` 作为兜底规则。
+- **通用逻辑**（GitHub 源）：url-fetch 包（从 release 资产发现版本）和 git-fetch 包（tag / commit / let-绑定 git-version 追踪），其中无 tag 固定 commit 包（`winapps`/`orchis-kde-themes`/`colloid-kde-themes`）用 `let`+`git-version` 结构，脚本追踪 main 分支 commit 并更新 let 绑定的 commit + 自增 revision；`with-latest-git-commit` property 已写入但本机 Guix 尚未实现该功能。
+- **特殊源处理器**（`SPECIAL_UPDATERS` 映射，按包名分发，版本信号不在 GitHub 上）：
+  - `zcode`：z.ai CDN 无目录列表，从官网 `zcode.z.ai/cn` 的 JS 内嵌版本列表（`releases/X.Y.Z`）取最新
+  - `amber-pm`：gitee 仓库无 tag，用 gitee API `/branches/master` 追踪 master 最新 commit（通用逻辑只认 GitHub）
+  - `jdtls-bin`：GitHub tags 发现版本 + 抓 `download.eclipse.org/jdtls/milestones/<v>/` 目录页提取归档时间戳（`-YYYYMMDDHHMM` 不在 version 里，通过 `extra_replacements` 一并改写）
+  - `font-misans`：zip 无版本号，以 `Last-Modified` 为更新信号，基线存 `font-misans-state.json`（227MB zip 不能每次下载算 hash；`ETag/Last-Modified` 变了才下载）
+- **stale 监控**：`config.json` 的 `stale_watch` 中的包无法自动更新（继承上游 / 有意冻结），超 `stale_days`（默认 14）天无手动更新则在 CI 发提醒 issue；周期记忆存 `stale-state.json`。
+
+Python 脚本也用 `config.json` 的 `tag_prefix`/`check_pre_release` 作为兜底规则。三个状态文件（`report.json`、`font-misans-state.json`、`stale-state.json`）中只有后两个入库，且每次提交时随包改动一起更新。
 
 ### 合并与构建测试
 
@@ -136,9 +140,10 @@ Python 脚本也用 `config.json` 的 `tag_prefix`/`check_pre_release` 作为兜
 
 1. 安装 Guix + `guix pull` + checkout nonguix（提前、无条件，供 refresh 使用）
 2. **guix refresh**（主力）：改写 GitHub release 包 + git-fetch 包；记录改动的包到 `refresh-updates.json`
-3. **Python updater**（兜底）：处理 refresh 力不能及的包，写 `report.json`
-4. 检测变更 → 合并两路更新集合 → 构建测试所有更新的包
-5. 全部通过后 GPG 签名提交 → 推送到 GitHub → 镜像到 Codeberg
+3. **Python updater**（兜底）：通用逻辑 + 特殊源处理器（zcode/amber-pm/jdtls-bin/font-misans），写 `report.json`
+4. 检测变更（含未跟踪的 state 文件）→ 合并两路更新集合 → 构建测试所有更新的包
+5. 全部通过后 GPG 签名提交（含 state 文件）→ 推送到 GitHub → 镜像到 Codeberg
 6. 构建失败则阻止提交，并创建 GitHub Issue 通知
+7. **stale 监控**：无法自动更新的包（`stale_watch`）超 14 天无手动更新，发提醒 issue
 
 关键环境变量：`GUIX_GITHUB_TOKEN`（映射自 `GITHUB_TOKEN`）是 guix refresh 读 GitHub API 的专属变量名，必须单独设置。

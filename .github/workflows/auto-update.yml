@@ -102,10 +102,11 @@ jobs:
           echo "=== guix refresh: GitHub release + git-fetch 包 ==="
           # 显式列出归 refresh 管的包（不用 -s module:jeans，避免误伤
           # librewolf-nongnu 等 inherit 包，也避免模块加载敏感问题）。
-          # 不交给 refresh 的包：zcode（z.ai CDN）、font-misans（无 version URL）、
-          # kimi-code-bin（npm scoped tag）、jdtls-bin（Eclipse + 日期戳）、
-          # librewolf-nongnu（inherit）、reasonix-desktop-bin（desktop-v 前缀
-          # URL 重建失败）——这些留给 Python updater。
+          # 不交给 refresh 的包：zcode（z.ai CDN 官网 JS 版本列表）、
+          # font-misans（zip 无版本号，ETag 信号）、amber-pm（gitee 追踪
+          # master）、jdtls-bin（Eclipse 目录页 + 日期戳）、
+          # librewolf-nongnu（inherit）、reasonix-desktop-bin（desktop-v
+          # 前缀 URL 重建失败）——这些交给 Python updater 的特殊源处理器。
           # git-credential-keepassxc 也暂不交 refresh：0.14.3 的 sysinfo-0.39.1
           # 需要 rustc >= 1.95，Guix 上游尚未打包 rust-1.95，升级后会卡死
           # build-test；先固定 0.14.2，等 Guix 有了 rust-1.95 再恢复。
@@ -132,6 +133,11 @@ jobs:
           cat scripts/check-updates/refresh-updates.json
 
       # ── Python updater（兜底）：处理 guix refresh 力不能及的包 ──
+      # 特殊源处理器：zcode（z.ai CDN 官网 JS 版本列表）、amber-pm（gitee
+      # API 追踪 master）、jdtls-bin（GitHub tags + Eclipse 目录页）、
+      # font-misans（zip 无版本号，ETag/Last-Modified 信号）。
+      # stale 监控：librewolf-nongnu / git-credential-keepassxc 无法自动更新，
+      # 超 14 天无手动更新则发提醒 issue。
 
       - name: Run auto-update script
         id: updater
@@ -152,7 +158,15 @@ jobs:
         id: changes
         shell: bash
         run: |
-          if git diff --quiet; then
+          # 除已跟踪文件的 diff 外，还要检查未跟踪的 state 文件（首轮创建的
+          # font-misans-state.json / stale-state.json）。git diff --quiet 不含
+          # 未跟踪文件，不检查的话它们永远不会入库，下轮 CI 又从头开始。
+          untracked_state=""
+          for f in scripts/check-updates/font-misans-state.json \
+                   scripts/check-updates/stale-state.json; do
+            [ -f "$f" ] && [ -z "$(git ls-files -- "$f")" ] && untracked_state="$f"
+          done
+          if git diff --quiet && [ -z "$untracked_state" ]; then
             echo "has_changes=false" >> "$GITHUB_OUTPUT"
           else
             echo "has_changes=true" >> "$GITHUB_OUTPUT"
@@ -260,6 +274,13 @@ jobs:
         run: |
           set -euo pipefail
           git add modules/
+          # 状态文件必须入库：font-misans-state.json 是 MiSans ETag 基线，
+          # stale-state.json 是提醒周期记忆。不提交则 CI 每次都是全新状态，
+          # stale 提醒永不触发、且会无限触发 has_changes。
+          for f in scripts/check-updates/font-misans-state.json \
+                   scripts/check-updates/stale-state.json; do
+            [ -f "$f" ] && git add "$f"
+          done
           git commit -S -m "UPDATE: auto package update $(date -u +%Y-%m-%d)"
 
       - name: Push updates to GitHub
