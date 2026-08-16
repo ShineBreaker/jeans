@@ -21,15 +21,17 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple, TypeVar
 
+import _http as http
+from _http import ensure_public_http_url, resolve_safe_path
+
 # GitHub API配置
-GITHUB_API_URL = "https://api.github.com/repos"
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN")  # 可选，用于提高API限制
 
 # 常量
 NEW_BASE32 = "0000000000000000000000000000000000000000000000000000"
 PACKAGES_DIR = Path(__file__).parent.parent.parent / "modules" / "jeans" / "packages"
 CONFIG_FILE = Path(__file__).parent / "config.json"
-REPORT_FILE = Path(__file__).parent / "report.json"
+REPORT_FILE = Path(os.path.realpath(Path(__file__).parent / "report.json"))
 
 
 # ── Guix/Nix base32 编码 + NAR 序列化（纯 Python，不依赖 guix 命令） ──────────
@@ -297,6 +299,8 @@ def get_latest_github_release(
     Returns:
         最新版本的tag名称，如果获取失败则返回None
     """
+    if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repo):
+        return None
     headers = {}
     if GITHUB_TOKEN:
         headers["Authorization"] = f"token {GITHUB_TOKEN}"
@@ -304,8 +308,9 @@ def get_latest_github_release(
     try:
         # tag_prefix 模式：用列表 API 找匹配前缀的最新（非预）发布
         if tag_prefix:
-            url = f"{GITHUB_API_URL}/{repo}/releases?per_page=30"
-            response = requests.get(url, headers=headers, timeout=10)
+            response = http.github_api_get(
+                repo, "releases?per_page=30", headers
+            )
             if 500 <= response.status_code <= 599:
                 raise RetryableError(f"GitHub API 服务器错误: {response.status_code}")
             response.raise_for_status()
@@ -323,8 +328,7 @@ def get_latest_github_release(
         # 404（如 inso 上游只发 prerelease）。include_pre_release 模式下
         # 本就不需要 latest 端点，直接走 /releases 列表。
         if not include_pre_release:
-            url = f"{GITHUB_API_URL}/{repo}/releases/latest"
-            response = requests.get(url, headers=headers, timeout=10)
+            response = http.github_api_get(repo, "releases/latest", headers)
             if 500 <= response.status_code <= 599:
                 raise RetryableError(f"GitHub API 服务器错误: {response.status_code}")
             response.raise_for_status()
@@ -332,8 +336,7 @@ def get_latest_github_release(
             return data.get("tag_name")
 
         # 如果需要检查pre-release，获取所有release并找到最新的（包括pre-release）
-        url_all = f"{GITHUB_API_URL}/{repo}/releases"
-        response_all = requests.get(url_all, headers=headers, timeout=10)
+        response_all = http.github_api_get(repo, "releases", headers)
         if 500 <= response_all.status_code <= 599:
             raise RetryableError(f"GitHub API 服务器错误: {response_all.status_code}")
         response_all.raise_for_status()
@@ -407,13 +410,14 @@ def package_tag_prefix(package: dict[str, Any], configured_prefixes: dict[str, s
 
 def get_latest_github_tag(repo: str, tag_prefix: Optional[str] = None) -> Optional[str]:
     """获取GitHub仓库的最新tag（当没有release时的备用方案）"""
+    if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repo):
+        return None
     headers = {}
     if GITHUB_TOKEN:
         headers["Authorization"] = f"token {GITHUB_TOKEN}"
 
     try:
-        url = f"{GITHUB_API_URL}/{repo}/tags"
-        response = requests.get(url, headers=headers, timeout=10)
+        response = http.github_api_get(repo, "tags", headers)
         if 500 <= response.status_code <= 599:
             raise RetryableError(f"GitHub API 服务器错误: {response.status_code}")
         response.raise_for_status()
@@ -442,13 +446,14 @@ def get_latest_commit(repo: str) -> Optional[Tuple[str, str]]:
     Returns:
         (commit_sha, date_str) 或 None。date_str 格式为 YYYY-MM-DD。
     """
+    if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repo):
+        return None
     headers = {}
     if GITHUB_TOKEN:
         headers["Authorization"] = f"token {GITHUB_TOKEN}"
 
     try:
-        url = f"{GITHUB_API_URL}/{repo}/commits"
-        response = requests.get(url, headers=headers, timeout=10)
+        response = http.github_api_get(repo, "commits", headers)
         if 500 <= response.status_code <= 599:
             raise RetryableError(f"GitHub API 服务器错误: {response.status_code}")
         response.raise_for_status()
@@ -484,7 +489,7 @@ def get_latest_commit(repo: str) -> Optional[Tuple[str, str]]:
 # 返回与 update_package_in_file / build_let_git_version_change 同构的 dict；
 # 无更新返回 None；网络/解析异常向上抛，由 main() 标记为 failed。
 
-MISANS_URL = "https://hyperos.mi.com/font-download/MiSans.zip"
+MISANS_URL = ensure_public_http_url("https://hyperos.mi.com/font-download/MiSans.zip")
 MISANS_STATE_FILE = Path(__file__).parent / "font-misans-state.json"
 STALE_STATE_FILE = Path(__file__).parent / "stale-state.json"
 
@@ -620,7 +625,7 @@ def update_font_misans(package: dict[str, Any], _config: dict[str, Any], scm_fil
     state 文件随自动更新提交，首跑只记基线不动包。
     """
     try:
-        response = requests.head(MISANS_URL, timeout=30)
+        response = http.head(MISANS_URL, 30)
         if 500 <= response.status_code <= 599:
             raise RetryableError(f"HTTP {response.status_code}")
         response.raise_for_status()
@@ -922,7 +927,7 @@ def get_base32_from_guix_download(url: str, timeout: int = 120) -> Optional[str]
     """下载文件并计算 SHA256 → Guix base32（纯 Python，不依赖 guix 命令）"""
     try:
         print(f"     🔽 正在下载并计算 base32...")
-        response = requests.get(url, timeout=timeout)
+        response = http.get(url, timeout)
         if 500 <= response.status_code <= 599:
             raise RetryableError(f"HTTP {response.status_code}")
         response.raise_for_status()
@@ -1103,6 +1108,7 @@ def apply_pending_updates(pending: List[Dict[str, Any]]) -> bool:
             pending_by_file.setdefault(file_path, []).append(change)
 
         for file_path, changes in pending_by_file.items():
+            file_path = Path(resolve_safe_path(file_path))
             with open(file_path, "r", encoding="utf-8") as f:
                 file_content = f.read()
 
@@ -1190,8 +1196,7 @@ def apply_pending_updates(pending: List[Dict[str, Any]]) -> bool:
                     file_content[:start_pos] + package_content + file_content[end_pos:]
                 )
 
-            with open(file_path, "w", encoding="utf-8") as f:
-                f.write(file_content)
+            file_path.write_text(file_content, encoding="utf-8")
 
         return True
     except Exception as e:
@@ -1926,8 +1931,9 @@ def main():
     report["uptodate"] = uptodate_packages
 
     try:
-        with open(REPORT_FILE, "w", encoding="utf-8") as f:
-            json.dump(report, f, ensure_ascii=False, indent=2)
+        REPORT_FILE.write_text(
+            json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
     except Exception as e:
         print(f"⚠️  写入 report.json 失败: {e}")
         has_errors = True

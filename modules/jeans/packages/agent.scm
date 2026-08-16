@@ -87,7 +87,7 @@
 (define-public codewhale-bin
   (package
     (name "codewhale-bin")
-    (version "0.9.6")
+    (version "0.9.7")
     (source
      (origin
        (method url-fetch)
@@ -95,7 +95,7 @@
              "https://github.com/Hmbown/CodeWhale/releases/download/"
              "v" version "/codewhale-linux-x64.tar.gz"))
        (sha256
-        (base32 "0hmz6znj9jxx0y8z2ibp56gnzxbjwyzlpf8kv47dh8gh1ba2mxqq"))))
+        (base32 "1nny30zddvhjxll7yrcv4hzx4s91xdjgh4d034fqyx4ykh2hcbzn"))))
     (build-system gnu-build-system)
     (arguments
      (list

@@ -52,8 +52,10 @@ The script always asserts paren balance implicitly (guix parses the result)
 and that every input variable has a definition; run with --dry-run first.
 """
 import argparse
+import os
 import re
 import sys
+from pathlib import Path
 
 # Matches a Guix rust-crate variable name: letters, digits, '.', '+', '-'.
 # MUST include '+' (pre-release/metadata versions like 1.0.3+wasi-0.2.9) and
@@ -94,6 +96,9 @@ def main() -> int:
     ap.add_argument('import_file')
     ap.add_argument('--dry-run', action='store_true')
     args = ap.parse_args()
+
+    # 规范化目标文件路径，避免相对路径/符号链接越界写入。
+    args.target = os.path.abspath(os.path.realpath(args.target))
 
     with open(args.import_file) as f:
         imp = f.read()
@@ -186,8 +191,7 @@ def main() -> int:
         print("[dry-run] no write performed")
         return 0
 
-    with open(args.target, 'w') as f:
-        f.write(scm)
+    Path(args.target).write_text(scm)
     print("[done] target updated")
     return 0
 

@@ -407,15 +407,17 @@ than cutting-edge.")
 (define-public inso-bin
   (package
     (name "inso-bin")
-    (version "0.3.6")
+    (version "0.3.7")
     (source
      (origin
        (method url-fetch)
        (uri (string-append
-             "https://github.com/isakvik/inso/releases/download/v" version
+             ;; Upstream switched to a capital-V tag ("V0.3.7"); keep the
+             ;; literal prefix in sync with the actual release tag.
+             "https://github.com/isakvik/inso/releases/download/V" version
              "/inso-" version "-linux-x64.zip"))
        (sha256
-        (base32 "1w636vslg1gnd9ix8rivbb4rjw3a49nga1laf1qhwkm5mwwdx8j9"))))
+        (base32 "156i22b77pk6l09vlgimciws77lmv8nvhxyy1zkzrsc5c4lcykhr"))))
     (build-system copy-build-system)
     (arguments
      (list
@@ -564,6 +566,9 @@ than cutting-edge.")
     ;; Release assets are named "inso-<version>-linux-x64.zip"; upstream-name
     ;; is the filename prefix before the version.  accept-pre-releases? so
     ;; guix refresh considers pre-release tags (v0.3.5 is marked pre-release).
+    ;; Note: since v0.3.7 upstream tags are capital-V ("V0.3.7"), which the
+    ;; github updater's URL matcher cannot parse; the Python updater handles
+    ;; this via the "V" tag_prefix in check-updates/config.json.
     (properties `((upstream-name . "inso")
                   (accept-pre-releases? . #t)))
     (home-page "https://github.com/isakvik/inso")

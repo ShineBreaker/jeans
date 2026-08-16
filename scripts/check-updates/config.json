@@ -3,7 +3,8 @@
   "skip_packages": ["git-credential-keepassxc"],
   "skip_files": ["rust-crates.scm"],
   "tag_prefix": {
-    "reasonix-desktop-bin": "desktop-v"
+    "reasonix-desktop-bin": "desktop-v",
+    "inso-bin": "V"
   },
   "stale_days": 14,
   "stale_watch": {
@@ -14,7 +15,7 @@
     "check_pre_release": "这个列表中的包会检查包括pre-release在内的所有版本。注意：emacs-ellsp/ellsp-bin 的 accept-pre-releases? property 已写在包定义里供 guix refresh 使用，此处保留给 Python updater 兜底。inso-bin 的上游 isakvik/inso 只发 prerelease（/releases/latest 恒 404），必须在此列表中才能被 updater 识别",
     "skip_packages": "这个列表中的包会被跳过更新检查。git-credential-keepassxc 当前固定在 0.14.2：0.14.3 的 sysinfo-0.39.1 需要 rustc >= 1.95，Guix 上游尚未打包 rust-1.95，升级会让 build-test 失败；等 Guix 有了 rust-1.95 再用 scripts/check-updates/merge_crate_inputs.py 重做依赖合并并移除此条",
     "skip_files": "这个列表中的文件不会被检查或更新。rust-crates.scm 只含 crate-source origin，由 blue import-crate / guix import crate --lockfile 管理，禁止手动编辑",
-    "tag_prefix": "当同一个 GitHub repo 有多个 release 系列（如 v* 和 desktop-v*）时，指定每个包跟踪的 tag 前缀。注意：reasonix-bin 的 release-tag-prefix property 已写在包定义里供 guix refresh 使用；reasonix-desktop-bin 因 refresh 的 URL 重建无法处理 desktop-v 前缀，仍由此处 Python 规则管理",
+    "tag_prefix": "当同一个 GitHub repo 有多个 release 系列（如 v* 和 desktop-v*）时，指定每个包跟踪的 tag 前缀。注意：reasonix-bin 的 release-tag-prefix property 已写在包定义里供 guix refresh 使用；reasonix-desktop-bin 因 refresh 的 URL 重建无法处理 desktop-v 前缀，仍由此处 Python 规则管理。inso-bin 自 v0.3.7 起上游改用大写 V 前缀（tag 为 \"V0.3.7\"），Python 兜底同样需要该前缀才能剥离出正确版本号",
     "stale_days": "stale_watch 中的包超此天数（默认 14 天）无手动更新时，CI 发提醒 issue。判定方法：更新时的 git diff 若无此包相关改动，视为无手动更新",
     "stale_watch": "无法自动更新的包名单（原因写进提醒 issue）。stale 提醒只会在 CI 环境触发，且与 14 天周期共同防重。librewolf-nongnu 继承 Guix 上游 librewolf，无独立版本；git-credential-keepassxc 是有意冻结（rustc 依赖）",
     "示例配置": "在数组中添加或删除包名来自定义行为"

@@ -23,7 +23,7 @@ import requests
 
 REPORT_FILE = Path(__file__).parent / "report.json"
 REFRESH_UPDATES_FILE = Path(__file__).parent / "refresh-updates.json"
-BUILD_REPORT_FILE = Path(__file__).parent / "build-report.json"
+BUILD_REPORT_FILE = Path(os.path.realpath(Path(__file__).parent / "build-report.json"))
 
 
 def load_report(path: Path) -> Dict[str, Any]:
@@ -210,8 +210,9 @@ def main() -> int:
 
     if not packages:
         print("ℹ️  本次没有更新到需要构建测试的包")
-        with open(BUILD_REPORT_FILE, "w", encoding="utf-8") as f:
-            json.dump(build_report, f, ensure_ascii=False, indent=2)
+        BUILD_REPORT_FILE.write_text(
+            json.dumps(build_report, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
         return 0
 
     print(f"🔨 将测试 {len(packages)} 个更新过的包")
@@ -230,8 +231,9 @@ def main() -> int:
             failures.append(enriched)
 
     build_report["failed_count"] = len(failures)
-    with open(BUILD_REPORT_FILE, "w", encoding="utf-8") as f:
-        json.dump(build_report, f, ensure_ascii=False, indent=2)
+    BUILD_REPORT_FILE.write_text(
+        json.dumps(build_report, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
 
     if not failures:
         return 0
