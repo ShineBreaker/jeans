@@ -614,8 +614,8 @@ enables command-line applications to interact with @code{keepassxc} databases.")
 ;;; @file{/var/lib/apm}.
 
 (define-public amber-pm
-  (let ((commit "d5bb8f929cb92007c5a28f154aa4349368ac7b4d")
-        (revision "0"))
+  (let ((commit "068d91329fa1e9b1c661a7b3f6cc8ac6d20b48a8")
+        (revision "1"))
     (package
       (name "amber-pm")
       (version (git-version "1.3.2" revision commit))
@@ -627,7 +627,7 @@ enables command-line applications to interact with @code{keepassxc} databases.")
                (commit commit)))
          (file-name (git-file-name name version))
          (sha256
-          (base32 "14iajm64090qw7flzn0ncazzmyn27rnw6mmrlz3d230zf2iws5j4"))))
+          (base32 "147vhpmxq5k4804y7aczm8sy7l7xrvj6ssy3zzzq10d2gnkshq02"))))
       (build-system gnu-build-system)
       (arguments
        (list

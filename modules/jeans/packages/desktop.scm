@@ -95,7 +95,7 @@ and Xorg.")
 (define-public waywallen-bin
   (package
     (name "waywallen-bin")
-    (version "0.3.3")
+    (version "0.3.5")
     (source
      (origin
        (method url-fetch)
@@ -104,7 +104,7 @@ and Xorg.")
              version
              "/waywallen-" version "-x86_64.AppImage"))
        (sha256
-        (base32 "1b41zji6krcppw9aji6q2bf26hvhlbqm8w4ks1nn1vv3fbxk01yw"))))
+        (base32 "1irim403q6xfbhp0bjf2lkqixrsiq4s1j0cq3jk1zhp6pwpnfm5k"))))
     (build-system copy-build-system)
     (arguments
      (list
@@ -291,7 +291,7 @@ provided by Guix.")
 (define-public open-wallpaper-engine-bin
   (package
     (name "open-wallpaper-engine-bin")
-    (version "0.2.3")
+    (version "0.2.5")
     (source
      (origin
        (method url-fetch)
@@ -301,8 +301,7 @@ provided by Guix.")
              "/org.waywallen.open-wallpaper-engine-" version
              "-linux-x86_64.zip"))
        (sha256
-        (base32
-         "16ij5wsaldawjxq22kvxx5i0v55k2606kjls1zkbcp9rbdl3l4x1"))))
+        (base32 "1hgfp6fikch4aq4g88590qlwffqzl5w86di6sdcxzs8igfv231g2"))))
     (build-system copy-build-system)
     (arguments
      (list

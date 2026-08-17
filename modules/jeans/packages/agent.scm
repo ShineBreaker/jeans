@@ -87,7 +87,7 @@
 (define-public codewhale-bin
   (package
     (name "codewhale-bin")
-    (version "0.9.7")
+    (version "0.9.8")
     (source
      (origin
        (method url-fetch)
@@ -95,7 +95,7 @@
              "https://github.com/Hmbown/CodeWhale/releases/download/"
              "v" version "/codewhale-linux-x64.tar.gz"))
        (sha256
-        (base32 "1nny30zddvhjxll7yrcv4hzx4s91xdjgh4d034fqyx4ykh2hcbzn"))))
+        (base32 "0dbvcjbsnfzl6lsg64fbk509m7zpvldwdwdgz9dby6imf41aa36n"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -650,7 +650,7 @@ coding experience with context awareness.")
 (define-public reasonix-bin
   (package
     (name "reasonix-bin")
-    (version "1.25.0")
+    (version "1.26.0")
     (source
      (origin
        (method url-fetch)
@@ -658,7 +658,7 @@ coding experience with context awareness.")
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
              "v" version "/reasonix-linux-amd64.tar.gz"))
        (sha256
-        (base32 "0s41axc07gr9mylq0ijklp0yrw1f7f585vqc54lrnymdqba2j4xm"))))
+        (base32 "0rm3sa10cay23mnny1wng49fwvlg06gywc23iwa8dingcaqhsqjl"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -692,7 +692,7 @@ and ships as a single static binary with no runtime dependencies.")
 (define-public reasonix-desktop-bin
   (package
     (name "reasonix-desktop-bin")
-    (version "1.25.0")
+    (version "1.26.0")
     (source
      (origin
        (method url-fetch)
@@ -700,7 +700,7 @@ and ships as a single static binary with no runtime dependencies.")
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
              "desktop-v" version "/Reasonix-linux-amd64.deb"))
        (sha256
-        (base32 "1mrh07y6pz03kzsfig9mxah8dmk5s4b8m35b3chih4p522d1n8ic"))))
+        (base32 "1q39fws8swlzxfnfpfa57gg10vv59w8yr5ijncqk0y25c7n30y5i"))))
     (build-system gnu-build-system)
     (arguments
      (list

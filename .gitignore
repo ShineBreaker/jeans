@@ -10,3 +10,4 @@ scripts/check-updates/report.json
 
 # 构建测试报告（CI 每次运行生成）
 scripts/check-updates/build-report.json
+.mimosa/
