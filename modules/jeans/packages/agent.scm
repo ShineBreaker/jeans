@@ -267,7 +267,7 @@ This package provides the prebuilt binary release.")
 (define-public github-copilot
   (package
     (name "github-copilot")
-    (version "1.1.8")
+    (version "1.1.10")
     (source
      (origin
        (method url-fetch)
@@ -275,7 +275,7 @@ This package provides the prebuilt binary release.")
              "https://github.com/github/app/releases/download/"
              "v" version "/GitHub-Copilot-linux-x64.deb"))
        (sha256
-        (base32 "0fnxkdb89khginzfg86n427zlcp5gmda2fnv6rapgj30df16ir1l"))))
+        (base32 "0yfak8z3i3x0h7b1ydr2agn7k86zq9ba14avpb2piwkr7sm5wc3h"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -650,7 +650,7 @@ coding experience with context awareness.")
 (define-public reasonix-bin
   (package
     (name "reasonix-bin")
-    (version "1.26.0")
+    (version "1.27.0")
     (source
      (origin
        (method url-fetch)
@@ -658,7 +658,7 @@ coding experience with context awareness.")
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
              "v" version "/reasonix-linux-amd64.tar.gz"))
        (sha256
-        (base32 "0rm3sa10cay23mnny1wng49fwvlg06gywc23iwa8dingcaqhsqjl"))))
+        (base32 "1ayfinr3kaxbaq57ga1h6szjkv27bnaq4rnb59fnrb3pg4yaz6mk"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -692,7 +692,7 @@ and ships as a single static binary with no runtime dependencies.")
 (define-public reasonix-desktop-bin
   (package
     (name "reasonix-desktop-bin")
-    (version "1.26.0")
+    (version "1.27.0")
     (source
      (origin
        (method url-fetch)
@@ -700,7 +700,7 @@ and ships as a single static binary with no runtime dependencies.")
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
              "desktop-v" version "/Reasonix-linux-amd64.deb"))
        (sha256
-        (base32 "1q39fws8swlzxfnfpfa57gg10vv59w8yr5ijncqk0y25c7n30y5i"))))
+        (base32 "1vgh00wx1dq9i6nd4sygwzn0rmj6r0ahb8plagnhpxnnfi5anqk0"))))
     (build-system gnu-build-system)
     (arguments
      (list
