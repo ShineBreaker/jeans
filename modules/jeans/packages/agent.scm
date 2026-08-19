@@ -87,7 +87,7 @@
 (define-public codewhale-bin
   (package
     (name "codewhale-bin")
-    (version "0.9.8")
+    (version "0.9.9")
     (source
      (origin
        (method url-fetch)
@@ -95,7 +95,7 @@
              "https://github.com/Hmbown/CodeWhale/releases/download/"
              "v" version "/codewhale-linux-x64.tar.gz"))
        (sha256
-        (base32 "0dbvcjbsnfzl6lsg64fbk509m7zpvldwdwdgz9dby6imf41aa36n"))))
+        (base32 "1f7hrgxl8rhns7a6s3pcvr9n67wq64rsqblpblddnj1nnc3mwcks"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -650,7 +650,7 @@ coding experience with context awareness.")
 (define-public reasonix-bin
   (package
     (name "reasonix-bin")
-    (version "1.27.0")
+    (version "1.29.0")
     (source
      (origin
        (method url-fetch)
@@ -658,7 +658,7 @@ coding experience with context awareness.")
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
              "v" version "/reasonix-linux-amd64.tar.gz"))
        (sha256
-        (base32 "1ayfinr3kaxbaq57ga1h6szjkv27bnaq4rnb59fnrb3pg4yaz6mk"))))
+        (base32 "1qbrvi1cggvrlnng2bxgqggczfnm2zxi57idwzz8icp8jvjh3csp"))))
     (build-system gnu-build-system)
     (arguments
      (list

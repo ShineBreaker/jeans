@@ -197,7 +197,7 @@ editor that supports the protocol to provide Java language features.")
 (define-public aria2-next-bin
   (package
     (name "aria2-next-bin")
-    (version "2.5.5")
+    (version "2.5.6")
     (source
      (origin
        (method url-fetch)
@@ -205,7 +205,7 @@ editor that supports the protocol to provide Java language features.")
              "https://github.com/AnInsomniacy/aria2-next/releases/download/"
              "v" version "/aria2-next-" version "-linux-x86_64"))
        (sha256
-        (base32 "1825g9l9463x2l2rlfi2kczqjvy3hi5xwafbgzfidfilrnnwvwmn"))))
+        (base32 "1ii0d1qyndzgjk0cxdcl2qdcqzyx3zy13yi7rv234dssiah061n1"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -465,7 +465,7 @@ binary release of the Tauri app and wires in aria2-next-bin as its engine.")
 (define-public cc-switch-bin
   (package
     (name "cc-switch-bin")
-    (version "3.19.2")
+    (version "3.20.0")
     (source
      (origin
        (method url-fetch)
@@ -473,7 +473,7 @@ binary release of the Tauri app and wires in aria2-next-bin as its engine.")
              "https://github.com/farion1231/cc-switch/releases/download/"
              "v" version "/CC-Switch-v" version "-Linux-x86_64.deb"))
        (sha256
-        (base32 "1wkp4qad0d1xj5azfx381a6yahknb1pa1sabm96y6gcy29dz6c75"))))
+        (base32 "1h2j5b6yvifa5nzd6sh4gjnmb5czrfkz7z8mbh9phag5hqnfw2nl"))))
     (build-system gnu-build-system)
     (arguments
      (list
