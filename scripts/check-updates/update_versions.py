@@ -26,6 +26,18 @@ from _http import ensure_public_http_url, resolve_safe_path
 
 # GitHub API配置
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN")  # 可选，用于提高API限制
+if not GITHUB_TOKEN:
+    # 本地 blue upgrade 不会注入 token，匿名配额（60 次/小时）会被几十个包
+    # 的轮询瞬间耗尽（403 rate limit）。回退到 gh CLI 的登录凭证；
+    # CI 里 GITHUB_TOKEN 已设置，不会走到这里。
+    try:
+        _gh = subprocess.run(
+            ["gh", "auth", "token"], capture_output=True, text=True, timeout=10,
+        )
+        if _gh.returncode == 0 and _gh.stdout.strip():
+            GITHUB_TOKEN = _gh.stdout.strip()
+    except Exception:
+        pass
 
 # 常量
 NEW_BASE32 = "0000000000000000000000000000000000000000000000000000"
@@ -500,7 +512,7 @@ def update_zcode(package: dict[str, Any], _config: dict[str, Any], scm_file: Pat
     抓 https://zcode.z.ai/cn 里的 releases/X.Y.Z，取最大版本号（semver 比较）。
     """
     try:
-        response = requests.get("https://zcode.z.ai/cn", timeout=30)
+        response = http.get(ensure_public_http_url("https://zcode.z.ai/cn"), timeout=30)
         if 500 <= response.status_code <= 599:
             raise RetryableError(f"HTTP {response.status_code}")
         response.raise_for_status()
@@ -522,8 +534,11 @@ def update_zcode(package: dict[str, Any], _config: dict[str, Any], scm_file: Pat
         return None
     url = (f"https://cdn-zcode.z.ai/zcode/electron/releases/"
            f"{latest}/linux-x64/ZCode-{latest}-linux-x64.deb")
+    # z.ai CDN 实测 ~1MB/s，138MB 的 .deb 需要 ~145s，默认 120s 不够；
+    # 与 font-misans 一致给大文件慢速 CDN 留足余量。
     new_base32 = with_retry(
         get_base32_from_guix_download, url, max_retries=2, base_delay=5,
+        timeout=600,
     )
     if not new_base32 or not re.fullmatch(r"[0-9a-z]{52}", new_base32) or re.fullmatch(r"0{52}", new_base32):
         raise RetryableError("无法计算下载 hash")
@@ -538,8 +553,10 @@ def update_amber_pm(package: dict[str, Any], _config: dict[str, Any], scm_file: 
     build_let_git_version_change 写回 let 绑定的 commit + 自增 revision。
     """
     try:
-        response = requests.get(
-            "https://gitee.com/api/v5/repos/amber-ce/amber-pm/branches/master",
+        response = http.get(
+            ensure_public_http_url(
+                "https://gitee.com/api/v5/repos/amber-ce/amber-pm/branches/master"
+            ),
             timeout=20,
         )
         if 500 <= response.status_code <= 599:
@@ -583,8 +600,11 @@ def update_jdtls_bin(package: dict[str, Any], _config: dict[str, Any], scm_file:
         return None
 
     try:
-        response = requests.get(
-            f"https://download.eclipse.org/jdtls/milestones/{latest}/", timeout=30
+        response = http.get(
+            ensure_public_http_url(
+                f"https://download.eclipse.org/jdtls/milestones/{latest}/"
+            ),
+            timeout=30,
         )
         if 500 <= response.status_code <= 599:
             raise RetryableError(f"HTTP {response.status_code}")
@@ -604,6 +624,7 @@ def update_jdtls_bin(package: dict[str, Any], _config: dict[str, Any], scm_file:
            f"jdt-language-server-{latest}-{ts}.tar.gz")
     new_base32 = with_retry(
         get_base32_from_guix_download, url, max_retries=2, base_delay=5,
+        timeout=300,
     )
     if not new_base32 or not re.fullmatch(r"[0-9a-z]{52}", new_base32) or re.fullmatch(r"0{52}", new_base32):
         raise RetryableError("无法计算下载 hash")
