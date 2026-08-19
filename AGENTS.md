@@ -76,8 +76,10 @@ blueprint.scm                     # BLUE 蓝图：任务运行器（build/upgrad
 
 ## 提交信息规范
 
-前缀风格：`ADD:`、`FIX:`、`UPDATE:`、`FEATURE:`、`MIGRATE:` —— 后跟简短描述。
-自动更新 CI 使用 `UPDATE: auto package update YYYY-MM-DD`。
+遵循 [Conventional Commits](https://www.conventionalcommits.org/zh-hans/)：`<type>(<scope>): <简短描述>`，详细规则（scope、描述、BREAKING CHANGE 等）见 `~/.config/git/gitmessage`。
+
+旧前缀映射：`ADD:`/`FEATURE:` → `feat:`，`FIX:` → `fix:`，`UPDATE:` → `feat:`，`MIGRATE:` → `refactor:`。
+自动更新 CI 使用 `feat(packages): auto package update YYYY-MM-DD`（2026-08-19 前的历史提交为旧前缀 `UPDATE:`）。
 
 ## 仓库约定与陷阱
 

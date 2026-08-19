@@ -281,7 +281,7 @@ jobs:
                    scripts/check-updates/stale-state.json; do
             [ -f "$f" ] && git add "$f"
           done
-          git commit -S -m "UPDATE: auto package update $(date -u +%Y-%m-%d)"
+          git commit -S -m "feat(packages): auto package update $(date -u +%Y-%m-%d)"
 
       - name: Push updates to GitHub
         if: steps.changes.outputs.has_changes == 'true'

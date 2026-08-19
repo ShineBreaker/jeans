@@ -706,14 +706,22 @@ SPECIAL_UPDATERS: Dict[str, Callable[[Dict[str, Any], Dict[str, Any], Path], Opt
 }
 
 
+# 自动更新提交的 subject 标记。git log --since 回溯窗口（stale_days）内
+# 新旧两种格式的自动提交会并存，判别手动更新时须同时排除。
+AUTO_COMMIT_MARKERS = (
+    "feat(packages): auto package update",  # Conventional Commits（2026-08-19 起）
+    "UPDATE: auto package update",          # 旧前缀风格（历史提交）
+)
+
+
 def _package_manually_updated(
     pkg_name: str, since_date: str, scm_files: List[Path]
 ) -> bool:
     """判断该包定义区间在 since_date 之后是否有非自动更新的提交。
 
     用 git log -L 精确跟随该包的定义区间（行号跟随跨提交），只统计
-    触碰该区间的提交；自动更新提交（信息以 "UPDATE: auto package
-    update" 开头）不算手动更新。文件级判定不可靠：同文件的
+    触碰该区间的提交；自动更新提交（subject 含 AUTO_COMMIT_MARKERS
+    之一）不算手动更新。文件级判定不可靠：同文件的
     其他包（如 tools.scm 的 agenote）变动会误判。
     """
     for scm in scm_files:
@@ -739,15 +747,15 @@ def _package_manually_updated(
             result = subprocess.run(
                 ["git", "log", f"--since={since_date}",
                  "-L", f"{start_line},{end_line}:{scm}",
-                 "--pretty=format:%H%n%s%n%x00"],
+                 "--pretty=format:%x00%H%n%s"],
                 capture_output=True, text=True, timeout=20,
             )
         except Exception:
             return False
-        # 每个触碰提交输出 "hash\nsubject\n\0"，subject 在第二个字段
+        # 每个触碰提交输出 "\0hash\nsubject"，diff 内容在后面，不影响判别
         for entry in result.stdout.split("\x00"):
             lines = [ln for ln in entry.splitlines() if ln]
-            if len(lines) >= 2 and "UPDATE: auto package update" not in lines[1]:
+            if len(lines) >= 2 and not any(m in lines[1] for m in AUTO_COMMIT_MARKERS):
                 print(f"⏰ {pkg_name}: 检测到手动更新提交（{lines[1][:60]}）")
                 return True
     return False
