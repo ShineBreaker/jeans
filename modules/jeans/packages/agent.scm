@@ -154,7 +154,7 @@ release.")
 (define-public crush-bin
   (package
     (name "crush-bin")
-    (version "0.89.0")
+    (version "0.90.0")
     (source
      (origin
        (method url-fetch)
@@ -162,7 +162,7 @@ release.")
              "https://github.com/charmbracelet/crush/releases/download/"
              "v" version "/crush_" version "_amd64.deb"))
        (sha256
-        (base32 "081q9ag4gb6sxs4lrihrzf7yp1h31c7ri1na5syxihdmhx041yk7"))))
+        (base32 "1vsgay0visbmplmx2xk8ip1mx7x1vbs9g06d3infylld2cacz3sj"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -440,7 +440,7 @@ release; the application itself is proprietary.")
 (define-public herdr-bin
   (package
     (name "herdr-bin")
-    (version "0.8.0")
+    (version "0.8.2")
     (source
      (origin
        (method url-fetch)
@@ -448,7 +448,7 @@ release; the application itself is proprietary.")
              "https://github.com/ogulcancelik/herdr/releases/download/"
              "v" version "/herdr-linux-x86_64"))
        (sha256
-        (base32 "0a6dk9p5zczmyg9ga8n60fsbfvgj3cmvdjbshmzb2b7s81zflwmq"))))
+        (base32 "1x7cda775xin16wjs63bwc97zdnzn9z1lbpa8fr983299nhm0qcp"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -692,7 +692,7 @@ and ships as a single static binary with no runtime dependencies.")
 (define-public reasonix-desktop-bin
   (package
     (name "reasonix-desktop-bin")
-    (version "1.27.0")
+    (version "1.29.0")
     (source
      (origin
        (method url-fetch)
@@ -700,7 +700,7 @@ and ships as a single static binary with no runtime dependencies.")
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
              "desktop-v" version "/Reasonix-linux-amd64.deb"))
        (sha256
-        (base32 "1vgh00wx1dq9i6nd4sygwzn0rmj6r0ahb8plagnhpxnnfi5anqk0"))))
+        (base32 "1nxhagf2nv7kafw5mz74i7v7vkixj0xx862ahz97g8lr622q9vd8"))))
     (build-system gnu-build-system)
     (arguments
      (list
