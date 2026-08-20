@@ -226,7 +226,7 @@ keeps the language selection interface enabled.")
 (define-public zen-browser-bin
   (package
     (name "zen-browser-bin")
-    (version "1.21.14b")
+    (version "1.21.15b")
     (source
      (origin
        (method url-fetch)
@@ -234,7 +234,7 @@ keeps the language selection interface enabled.")
              "https://github.com/zen-browser/desktop/releases/download/"
              version "/zen.linux-x86_64.tar.xz"))
        (sha256
-        (base32 "1q3y5chmq14yxgm65205d22m8r7dv9hkvpjcrzldq0wl5mwbp9dk"))))
+        (base32 "1gsbcwxjbffwvzdjv3m98s7ykyj88m7vs8z6mjh7q1j0p1jadbif"))))
     (build-system copy-build-system)
     (arguments
      (list
