@@ -811,7 +811,7 @@ support for multiple LLM providers.")
 (define-public zcode
   (package
     (name "zcode")
-    (version "3.7.7")
+    (version "3.8.1")
     (source
      (origin
        (method url-fetch)
@@ -819,7 +819,7 @@ support for multiple LLM providers.")
              "https://cdn-zcode.z.ai/zcode/electron/releases/"
              version "/linux-x64/ZCode-" version "-linux-x64.deb"))
        (sha256
-        (base32 "0qvchpq7k3jyw4pg6h9r6qrhpzd8snpvng442bp9py1pkdyn8vzy"))))
+        (base32 "0xamwhhj3h5mvkh7mmp38l3axhpq5flyz58s4l4gcmpb55v8fwaq"))))
     (build-system gnu-build-system)
     (arguments
      (list
