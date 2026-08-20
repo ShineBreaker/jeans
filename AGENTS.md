@@ -112,7 +112,7 @@ refresh 覆盖：GitHub release 包（带 upstream-name）和 git-fetch 有 tag 
 
 - **通用逻辑**（GitHub 源）：url-fetch 包（从 release 资产发现版本）和 git-fetch 包（tag / commit / let-绑定 git-version 追踪），其中无 tag 固定 commit 包（`winapps`/`orchis-kde-themes`/`colloid-kde-themes`）用 `let`+`git-version` 结构，脚本追踪 main 分支 commit 并更新 let 绑定的 commit + 自增 revision；`with-latest-git-commit` property 已写入但本机 Guix 尚未实现该功能。
 - **特殊源处理器**（`SPECIAL_UPDATERS` 映射，按包名分发，版本信号不在 GitHub 上）：
-  - `zcode`：z.ai CDN 无目录列表，从官网 `zcode.z.ai/cn` 的 JS 内嵌版本列表（`releases/X.Y.Z`）取最新
+  - `zcode`：z.ai CDN 无目录列表，从官网 `zcode.z.ai/cn` 的 JS 内嵌版本列表（`releases/X.Y.Z`）取最新稳定版；在 `check_pre_release` 中时还会扫描 CDN 灰度先行版（官网不展示、先发部分平台，靠 `<v>/linux-x64/latest.yml` 递增探测发现）
   - `amber-pm`：gitee 仓库无 tag，用 gitee API `/branches/master` 追踪 master 最新 commit（通用逻辑只认 GitHub）
   - `jdtls-bin`：GitHub tags 发现版本 + 抓 `download.eclipse.org/jdtls/milestones/<v>/` 目录页提取归档时间戳（`-YYYYMMDDHHMM` 不在 version 里，通过 `extra_replacements` 一并改写）
   - `font-misans`：zip 无版本号，以 `Last-Modified` 为更新信号，基线存 `font-misans-state.json`（227MB zip 不能每次下载算 hash；`ETag/Last-Modified` 变了才下载）

@@ -506,10 +506,44 @@ MISANS_STATE_FILE = Path(__file__).parent / "font-misans-state.json"
 STALE_STATE_FILE = Path(__file__).parent / "stale-state.json"
 
 
-def update_zcode(package: dict[str, Any], _config: dict[str, Any], scm_file: Path) -> Optional[Dict[str, Any]]:
-    """zcode：z.ai CDN 无目录列表，官网 JS 内嵌完整版本列表。
+def _zcode_scan_cdn_prerelease(stable_version: str) -> Optional[str]:
+    """扫描 z.ai CDN 上的灰度先行版（官网版本列表不展示）。
 
-    抓 https://zcode.z.ai/cn 里的 releases/X.Y.Z，取最大版本号（semver 比较）。
+    灰度版直接出现在 CDN 且各平台目录带 latest.yml（如 3.8.1：先发
+    Linux/macOS 灰度、无 Windows 资产、官网/changelog 均不列）。CDN
+    目录不可列举（OSS list 关闭），只能基于稳定版号向三个方向递增
+    探测 <v>/linux-x64/latest.yml。
+    """
+    major, minor, patch = (int(x) for x in stable_version.split("."))
+    candidates = (
+        # minor+1 段：灰度版最常见的位置（如稳定 3.7.7 → 灰度 3.8.1）
+        [f"{major}.{minor + 1}.{p}" for p in range(0, 10)]
+        # minor+2 段：保守扫前 3 个，防跳两个 minor
+        + [f"{major}.{minor + 2}.{p}" for p in range(0, 3)]
+        # 当前 minor 的后续 patch
+        + [f"{major}.{minor}.{patch + p}" for p in range(1, 6)]
+    )
+
+    found = []
+    for v in candidates:
+        url = (f"https://cdn-zcode.z.ai/zcode/electron/releases/"
+               f"{v}/linux-x64/latest.yml")
+        try:
+            r = http.get(ensure_public_http_url(url), timeout=15)
+        except requests.exceptions.RequestException:
+            continue  # 单个探测点的网络抖动不影响整体
+        if r.status_code == 200:
+            found.append(v)
+    if not found:
+        return None
+    return max(found, key=lambda v: tuple(int(x) for x in v.split(".")))
+
+
+def update_zcode(package: dict[str, Any], config: dict[str, Any], scm_file: Path) -> Optional[Dict[str, Any]]:
+    """zcode：z.ai CDN 无目录列表，官网 JS 内嵌稳定版列表 + CDN 灰度版扫描。
+
+    抓 https://zcode.z.ai/cn 里的 releases/X.Y.Z 得稳定版最大号；当包名在
+    config['check_pre_release'] 中时，再扫描 CDN 灰度先行版取最大。
     """
     try:
         response = http.get(ensure_public_http_url("https://zcode.z.ai/cn"), timeout=30)
@@ -529,7 +563,16 @@ def update_zcode(package: dict[str, Any], _config: dict[str, Any], scm_file: Pat
         print(f"     ⚠️  官网未找到版本列表")
         return None
     latest = versions[-1]
-    print(f"     z.ai 官网最新版本: {latest}")
+    print(f"     z.ai 官网最新稳定版: {latest}")
+
+    if package["name"] in config.get("check_pre_release", []):
+        beta = _zcode_scan_cdn_prerelease(latest)
+        if beta and tuple(int(x) for x in beta.split(".")) > tuple(
+            int(x) for x in latest.split(".")
+        ):
+            print(f"     🔍 CDN 灰度先行版: {beta}")
+            latest = beta
+
     if not compare_versions(package["version"], latest):
         return None
     url = (f"https://cdn-zcode.z.ai/zcode/electron/releases/"
