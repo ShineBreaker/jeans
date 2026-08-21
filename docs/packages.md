@@ -100,6 +100,7 @@
 | `amber-pm`                 | Container-based package manager using fuse-overlayfs             |
 | `aria2-next-bin`           | Maintained aria2 fork with bug fixes and modernized architecture |
 | `cc-switch-bin`            | All-in-One assistant for Claude Code, Codex & Gemini CLI         |
+| `fresh-editor-bin`         | Terminal-based text editor with LSP support                      |
 | `git-credential-keepassxc` | Use KeePassXC as a command-line credential store                 |
 | `jdtls-bin`                | Java language server                                             |
 | `motrix-next-bin`          | Full-featured download manager                                   |

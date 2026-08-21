@@ -808,3 +808,96 @@ configurable knowledge-base root (@env{KB_ROOT}, default
 @file{~/Documents/Org}), not into the package itself.")
       (properties `((with-latest-git-commit . #t)))
       (license license:expat))))
+
+;;; The upstream .deb ships one ELF binary plus desktop entry, hicolor icons
+;;; and a man page:
+;;;   - fresh          (Rust TUI editor; NEEDED is only glibc basics + libgcc_s)
+;;;
+;;; Console-mouse support dlopen's libgpm by the bare soname "libgpm.so.2"
+;;; (first entry of upstream's LIBGPM_PATHS probe list), so putting gpm on
+;;; RUNPATH makes it resolvable; connecting to an actual gpm daemon is a
+;;; user-environment concern.
+(define-public fresh-editor-bin
+  (package
+    (name "fresh-editor-bin")
+    (version "0.4.10")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://github.com/sinelaw/fresh/releases/download/"
+             "v" version "/fresh-editor_" version "-1_amd64.deb"))
+       (sha256
+        (base32 "0fcidrgfqc7plfr56iq1iy1habbfw4j3cjrbgs1b5bn06vk1bqgy"))))
+    (build-system gnu-build-system)
+    (arguments
+     (list
+      #:tests? #f
+      #:validate-runpath? #f
+      #:strip-binaries? #f
+      #:modules '((guix build gnu-build-system)
+                  (guix build utils))
+      #:phases
+      #~(modify-phases %standard-phases
+          (delete 'configure)
+          (delete 'build)
+          (replace 'unpack
+            (lambda _
+              (let ((debdir (string-append "fresh-editor-" #$version)))
+                (mkdir debdir)
+                (with-directory-excursion debdir
+                  (invoke "ar" "x" #$source)
+                  (invoke "tar" "xf" "data.tar.xz"))
+                (chdir debdir))))
+          (replace 'install
+            (lambda* (#:key inputs #:allow-other-keys)
+              (let* ((out #$output)
+                     (bin (string-append out "/bin"))
+                     (share (string-append out "/share"))
+                     (patchelf-bin
+                      (string-append (assoc-ref inputs "patchelf")
+                                     "/bin/patchelf"))
+                     (ldso (string-append (assoc-ref inputs "glibc")
+                                          "/lib/ld-linux-x86-64.so.2"))
+                     (rpath
+                      (string-join
+                       (list (string-append (assoc-ref inputs "glibc") "/lib")
+                             (string-append (assoc-ref inputs "gcc:lib")
+                                            "/lib")
+                             (string-append (assoc-ref inputs "gpm") "/lib"))
+                       ":")))
+                ;; Patch ELF interpreter and RPATH, then install.
+                (invoke patchelf-bin "--set-interpreter" ldso "usr/bin/fresh")
+                (invoke patchelf-bin "--set-rpath" rpath "usr/bin/fresh")
+                (install-file "usr/bin/fresh" bin)
+                ;; Install desktop entry with an absolute Exec path.
+                (mkdir-p (string-append share "/applications"))
+                (copy-file "usr/share/applications/fresh.desktop"
+                           (string-append share "/applications/fresh.desktop"))
+                (substitute* (string-append share "/applications/fresh.desktop")
+                  (("Exec=fresh")
+                   (string-append "Exec=" bin "/fresh")))
+
+                ;; Install all hicolor icon sizes and the man page.
+                (copy-recursively "usr/share/icons"
+                                  (string-append share "/icons"))
+                (install-file "usr/share/man/man1/fresh.1.gz"
+                              (string-append share "/man/man1"))))))))
+    (native-inputs (list patchelf binutils))
+    (inputs
+     `(("glibc" ,glibc)
+       ("gcc:lib" ,gcc "lib")
+       ("gpm" ,gpm)))
+    (home-page "https://sinelaw.github.io/fresh/")
+    (synopsis "Terminal-based text editor with LSP support")
+    (description "Fresh is a modern terminal text editor that requires zero
+configuration.  It brings VS Code-style UX to the terminal: familiar
+keybindings, full mouse support, multi-cursor editing, split panes, a command
+palette with fuzzy finding, tree-sitter syntax highlighting, integrated
+terminal, file explorer, and Language Server Protocol integration for code
+intelligence.  It handles multi-gigabyte files with low memory overhead and
+supports sandboxed TypeScript plugins.  This package provides the prebuilt
+binary release.")
+    (properties `((upstream-name . "fresh-editor")))
+    (license license:gpl2)
+    (supported-systems '("x86_64-linux"))))
