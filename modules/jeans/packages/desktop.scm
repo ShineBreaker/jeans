@@ -481,7 +481,9 @@ desktop through a Wayland layer shell and a QtQuick interface.")
     ;; The plugin bundles CEF (Chromium) and the scene/web renderer binaries;
     ;; these inputs cover only the libraries those binaries expect from the
     ;; host.  ffmpeg-7 supplies the libav*/libsw* sonames the wescene-renderer
-    ;; is linked against (Guix has no ffmpeg 7.x).
+    ;; is linked against (Guix has no ffmpeg 7.x).  libva covers the VA-API
+    ;; sonames and pulseaudio libpulse.so.0 (scene audio); without the latter
+    ;; the renderer dies with exit 127 before IPC connect.
     (inputs
      `(("glibc" ,glibc)
        ("gcc:lib" ,gcc "lib")
@@ -491,6 +493,8 @@ desktop through a Wayland layer shell and a QtQuick interface.")
        ("fontconfig-minimal" ,fontconfig)
        ("lz4" ,lz4)
        ("ffmpeg-7" ,ffmpeg-7)
+       ("libva" ,libva)
+       ("pulseaudio" ,pulseaudio)
        ("at-spi2-core" ,at-spi2-core)
        ("glib" ,glib)
        ("nss" ,nss)
