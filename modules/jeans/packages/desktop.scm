@@ -31,6 +31,7 @@
   #:use-module (gnu packages xdisorg)     ; libdrm, libxkbcommon
   #:use-module (gnu packages xorg)        ; libice, libsm, libx11, libxcb, libxcomposite, ...
   #:use-module (guix build-system copy)
+  #:use-module (guix build-system gnu)
   #:use-module (guix build-system python)
   #:use-module (guix download)
   #:use-module (guix gexp)
@@ -84,6 +85,74 @@
      "Waypaper is a simple GUI wallpaper manager for Linux, supporting both Wayland
 and Xorg.")
     (license license:gpl3)))
+
+;; ai-usagebar is a Rust waybar widget that reports Claude/GPT/GLM/OpenRouter
+;; plan usage.  The release tarball ships two dynamically-linked glibc ELFs
+;; (ai-usagebar CLI + ai-usagebar-tui) with no bundled libraries; the only
+;; external program it may spawn (grok) is located via an absolute path in
+;; config.toml, so no PATH wrapper is needed.  Patch the interpreter and
+;; append a RUNPATH covering glibc and libgcc_s, then install both binaries.
+(define-public ai-usagebar-bin
+  (package
+    (name "ai-usagebar-bin")
+    (version "1.4.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://github.com/akitaonrails/ai-usagebar/releases/download/"
+             "v" version "/ai-usagebar-linux-x86_64.tar.gz"))
+       (sha256
+        (base32 "1rpavjib7685vv6xf4nxxvgi1j0240wp5d1ys39gq798vmjk4kiw"))))
+    (build-system gnu-build-system)
+    (arguments
+     (list
+      #:tests? #f
+      #:validate-runpath? #f
+      #:strip-binaries? #f
+      #:modules '((guix build gnu-build-system)
+                  (guix build utils))
+      #:phases
+      #~(modify-phases %standard-phases
+          (delete 'configure)
+          (delete 'build)
+          (replace 'install
+            (lambda* (#:key inputs #:allow-other-keys)
+              (let* ((bin (string-append #$output "/bin"))
+                     (ld.so (string-append (assoc-ref inputs "glibc")
+                                           #$(glibc-dynamic-linker)))
+                     (rpath (string-append (assoc-ref inputs "glibc")
+                                           "/lib:"
+                                           (assoc-ref inputs "gcc:lib")
+                                           "/lib")))
+                (mkdir-p bin)
+                (for-each
+                 (lambda (program)
+                   (let ((target (string-append bin "/" program)))
+                     (install-file program bin)
+                     (invoke "patchelf" "--set-interpreter" ld.so target)
+                     (invoke "patchelf" "--set-rpath" rpath target)))
+                 '("ai-usagebar" "ai-usagebar-tui"))))))))
+    (native-inputs (list patchelf))
+    (inputs
+     `(("glibc" ,glibc)
+       ("gcc:lib" ,gcc "lib")))
+    ;; Release assets are ai-usagebar-linux-x86_64.tar.gz; upstream-name is
+    ;; the filename prefix before the version, tags use v*.
+    (properties `((upstream-name . "ai-usagebar")))
+    (home-page "https://github.com/akitaonrails/ai-usagebar")
+    (synopsis "Waybar widget for AI coding assistant usage")
+    (description "AI UsageBar is a Rust waybar widget that monitors plans and
+credits of AI coding assistants: Claude, Codex, GLM, Kimi, Grok, Cursor,
+OpenRouter and more.  It reads each vendor's local credential or state files,
+queries usage endpoints where needed, and renders a compact bar text with
+percentage, reset timer and tooltip for the waybar panel.  It ships both the
+@command{ai-usagebar} CLI (JSON output for custom widgets) and an interactive
+@command{ai-usagebar-tui}.  This package provides the prebuilt binary
+release.")
+    (license license:expat)
+    (supported-systems '("x86_64-linux"))))
+
 
 ;; Waywallen bundles its entire Qt6/ffmpeg/Vulkan-stack in the AppImage
 ;; (usr/lib).  Only a handful of libraries are not bundled and must come from
