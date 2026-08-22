@@ -89,6 +89,7 @@ blueprint.scm                     # BLUE 蓝图：任务运行器（build/upgrad
 - **不要从其他通道复制 `rust-crates.scm`**。版本不匹配会导致 `cargo build --offline` 失败。始终使用 `blue import-crate` 或 `guix import crate --lockfile`。
 - **`licenses/misans.txt`** 被 `font-misans` 通过 `local-file` 以相对路径引用（`../../../licenses/misans.txt`）—— 路径相对于 `.scm` 文件，而非仓库根目录。
 - **文件头**：所有 `.scm` 文件使用 `SPDX-FileCopyrightText` 和 `SPDX-License-Identifier` 头。新文件应包含 `BrokenShine <xchai404@gmail.com>` 版权。
+- **`description` 只描述软件本身** —— 打包过程、wrapper 机制、安装布局等细节写成包定义前的 `;;;` 注释，不进 `description`；面向用户的使用须知（运行时数据目录、初始化步骤）和单句 prebuilt 来源声明可保留。可泛化的打包经验凝练进 `.agents/skills/pack-guix/references/jeans-conventions.md`。
 - **`#:use-module ((guix licenses) #:prefix license:)`** 是许可证的标准导入模式 —— 总是以 `license:` 为前缀。
 - **`jeans.scm`** 重新导出所有子模块 —— 添加新包文件时，将其模块加入 `jeans.scm` 的 `%public-modules`。
 

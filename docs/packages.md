@@ -32,6 +32,7 @@
 | Package                     | Description                                                |
 | --------------------------- | ---------------------------------------------------------- |
 | `ai-usagebar-bin`           | Waybar widget for AI coding assistant usage                |
+| `linux-wallpaperengine`     | Run Wallpaper Engine wallpapers on the Linux desktop       |
 | `open-wallpaper-engine-bin` | Wallpaper Engine plugin for the Waywallen wallpaper daemon |
 | `waypaper`                  | GUI wallpaper manager for Wayland and Xorg Linux systems   |
 | `waywallen-bin`             | Dynamic wallpaper manager for Linux desktops               |

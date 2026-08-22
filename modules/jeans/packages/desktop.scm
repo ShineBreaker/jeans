@@ -20,17 +20,22 @@
   #:use-module (gnu packages glib)        ; dbus, gobject-introspection
   #:use-module (gnu packages gtk)         ; gtk+, harfbuzz, cairo, pango, at-spi2-core
   #:use-module (gnu packages linux)       ; alsa-lib, eudev
+  #:use-module (gnu packages maths)       ; glm
+  #:use-module (gnu packages multiprecision) ; gmp
   #:use-module (gnu packages networking)  ; socat
   #:use-module (gnu packages nss)         ; nss, nspr
   #:use-module (gnu packages pkg-config)
+  #:use-module (gnu packages pulseaudio)  ; pulseaudio
   #:use-module (gnu packages python-build) ; python-setuptools-scm
   #:use-module (gnu packages python-xyz)  ; python-screeninfo, python-platformdirs, python-pillow, ...
   #:use-module (gnu packages qt)          ; qtsvg
-  #:use-module (gnu packages video)       ; ffmpeg
+  #:use-module (gnu packages sdl)         ; sdl2
+  #:use-module (gnu packages video)       ; ffmpeg, mpv
   #:use-module (gnu packages vulkan)      ; vulkan-loader
   #:use-module (gnu packages xml)         ; expat
   #:use-module (gnu packages xdisorg)     ; libdrm, libxkbcommon
   #:use-module (gnu packages xorg)        ; libice, libsm, libx11, libxcb, libxcomposite, ...
+  #:use-module (guix build-system cmake)
   #:use-module (guix build-system copy)
   #:use-module (guix build-system gnu)
   #:use-module (guix build-system python)
@@ -522,3 +527,237 @@ daemon is provided by the @code{waywallen-bin} package; installing both in the
 same Guix profile is enough for Waywallen to discover the plugin.")
     (license license:gpl2)
     (supported-systems '("x86_64-linux"))))
+
+;;; The web renderer of linux-wallpaperengine needs the CEF (Chromium Embedded
+;;; Framework) binary distribution.  Upstream's CMakeLists.txt pins the exact
+;;; CEF version (CEF_VERSION) and downloads it at configure time; here the
+;;; tarball is an extra origin input dropped where DownloadCEF looks for it,
+;;; so the download logic itself is left untouched.  Keep %cef-version, the
+;;; URL-encoded URI and both hashes in sync when bumping the commit.
+(define %cef-version "135.0.17+gcbc1c5b+chromium-135.0.7049.52")
+
+(define cef-binary
+  (origin
+    (method url-fetch)
+    (uri (string-append
+          "https://cef-builds.spotifycdn.com/cef_binary_"
+          "135.0.17%2Bgcbc1c5b%2Bchromium-135.0.7049.52"
+          "_linux64_minimal.tar.bz2"))
+    (file-name (string-append "cef_binary_" %cef-version
+                              "_linux64_minimal.tar.bz2"))
+    (sha256
+     (base32 "1ijdxh9pyfabp5nprr1pig6xqw679fyxcdy3lapb3rrbws01kb14"))))
+
+;; Almamu's Wallpaper Engine renderer: an OpenGL reimplementation that plays
+;; Steam Wallpaper Engine wallpapers on X11 and Wayland.  Built from a fixed
+;; upstream commit (upstream tags are release-branch only and behind main);
+;; commit tracking is handled by the Python updater.
+(define-public linux-wallpaperengine
+  (let ((commit "b016d7d1fdcf4e5fd2f9c9fa420a8aaa07fee02d")
+        (revision "0"))
+    (package
+      (name "linux-wallpaperengine")
+      (version (git-version "0.0.1" revision commit))
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://github.com/Almamu/linux-wallpaperengine")
+               (commit commit)
+               (recursive? #t)))        ; glslang, quickjs, nlohmann/json, ...
+         (file-name (git-file-name name version))
+         (sha256
+          (base32 "0lmnbdy7p3gm55imi7ldgs860jsb59k0pzbl9ngygi883w84bdam"))))
+      (build-system cmake-build-system)
+      (arguments
+       (list
+        #:tests? #f                   ; Catch2 harness, not wired to CTest
+        ;; CEF's cmake picks the binary dir per build type
+        ;; (<cef>/RelWithDebInfo/ does not exist in the distribution)
+        #:build-type "Release"
+        ;; CEF loads its resources from the executable directory, so
+        ;; everything is installed flat under lib/<pkg>/ and bin/ only
+        ;; exposes a wrapper.
+        #:configure-flags
+        #~(list "-DENABLE_GLSLANG_BINARIES=OFF" ; tools need Python3, unused
+               ;; kissfft's option() clears the normal variables set by the
+               ;; parent project (CMP0077 OLD), so disable via the cache;
+               ;; its tests would require fftw3.
+               "-DKISSFFT_TEST=OFF"
+               "-DKISSFFT_TOOLS=OFF"
+               ;; Static: upstream only installs the output directory, so a
+               ;; shared kissfft would leave unresolved NEEDED entries.
+               "-DKISSFFT_STATIC=ON"
+               ;; libcef.so resolves its host libraries (glib/nss/cups/...)
+               ;; at load time via the RUNPATH this package sets on every
+               ;; ELF; the static check at exe link time cannot see them.
+               "-DCMAKE_EXE_LINKER_FLAGS=-Wl,--allow-shlib-undefined"
+               (string-append "-DCMAKE_INSTALL_PREFIX="
+                              #$output "/lib/linux-wallpaperengine"))
+        #:phases
+        #~(modify-phases %standard-phases
+            (add-after 'unpack 'use-system-glfw
+              (lambda _
+                ;; Upstream links the bare library name "glfw" without a
+                ;; find_package call and includes <GLFW/glfw3.h> and
+                ;; <glm/*.hpp> as system headers; resolve them explicitly
+                ;; for non-/usr prefixes.
+                (substitute* "CMakeLists.txt"
+                  (("find_package\\(Freetype REQUIRED\\)" line)
+                   (string-append
+                    line "\nfind_path(GLFW_INCLUDE_DIR GLFW/glfw3.h)"
+                    "\nfind_library(GLFW_LIBRARY glfw)"
+                    "\nfind_path(GLM_INCLUDE_DIR glm/glm.hpp)"))
+                  (("\\$\\{MPV_INCLUDE_DIR\\}" line)
+                   (string-append "${GLFW_INCLUDE_DIR}\n    "
+                                  "${GLM_INCLUDE_DIR}\n    " line))
+                  (("^    glfw$" line)
+                   ;; gmp/gmpxx are used via bare system headers too, but
+                   ;; unlike glfw are not even listed by upstream — link them
+                   ;; or the shared library ships with undefined symbols.
+                   "    ${GLFW_LIBRARY}\n    gmpxx\n    gmp"))))
+            (add-after 'unpack 'supply-cef-tarball
+              (lambda* (#:key inputs #:allow-other-keys)
+                ;; DownloadCEF skips the download when the tarball already
+                ;; sits in its download dir and just extracts it.  The dir
+                ;; is moved to the (writable) source tree because cmake's
+                ;; configure phase insists on creating the build directory
+                ;; itself.
+                (substitute* "CMakeLists.txt"
+                  (("\\$\\{CMAKE_CURRENT_BINARY_DIR\\}/cef")
+                   "${CMAKE_CURRENT_SOURCE_DIR}/cef")
+                  ;; The sandbox helper needs a setuid binary, which cannot
+                  ;; work from the store anyway; upstream runs CEF with
+                  ;; no_sandbox, so drop it like upstream drops libvulkan
+                  ;; (also avoids a spurious copy_if_different failure).
+                  (("list\\(REMOVE_ITEM CEF_BINARY_FILES libvulkan.so.1\\)"
+                    line)
+                   (string-append
+                    line "\nlist(REMOVE_ITEM CEF_BINARY_FILES chrome-sandbox)")))
+                (mkdir "cef")
+                (copy-file (assoc-ref inputs "cef-binary")
+                           (string-append "cef/cef_binary_"
+                                          #$%cef-version
+                                          "_linux64_minimal.tar.bz2"))))
+            (add-after 'install 'prune-subproject-artifacts
+              (lambda _
+                (let ((root (string-append #$output
+                                           "/lib/linux-wallpaperengine")))
+                  ;; quickjs's test tools and the vendored subprojects' own
+                  ;; install rules leak development artifacts into the
+                  ;; otherwise flat runtime layout
+                  (for-each
+                   (lambda (f)
+                     (delete-file-recursively (string-append root "/" f)))
+                   '("api-test" "run-test262" "function_source" "spirv-cross"
+                     "qjs" "qjsc"
+                     "bin" "include" "lib" "share")))))
+            (add-after 'prune-subproject-artifacts 'patch-cef-elfs
+              (lambda* (#:key inputs #:allow-other-keys)
+                ;; libcef.so and friends ship without a RUNPATH; point every
+                ;; installed ELF at $ORIGIN plus the Guix store libraries so
+                ;; both validate-runpath and runtime loading resolve (this
+                ;; also covers libcef.so's nss/cups/atk/... host deps).
+                (let* ((root (string-append #$output
+                                            "/lib/linux-wallpaperengine"))
+                       (ld.so (string-append (assoc-ref inputs "glibc")
+                                             #$(glibc-dynamic-linker)))
+                       (rpath
+                        (string-join
+                         (cons* "$ORIGIN"
+                                ;; Guix's nss keeps its libraries in lib/nss/
+                                (string-append
+                                 (assoc-ref inputs "nss") "/lib/nss")
+                                (map (lambda (input)
+                                       (string-append (cdr input) "/lib"))
+                                     inputs))
+                         ":")))
+                  (define (patch-elf file)
+                    (unless (string-contains file ".so")
+                      (invoke "patchelf" "--set-interpreter" ld.so file))
+                    (invoke "patchelf" "--set-rpath" rpath file))
+                  (for-each patch-elf
+                            (find-files root
+                                        (lambda (file stat)
+                                          (and (eq? 'regular (stat:type stat))
+                                               (elf-file? file))))))))
+            (add-after 'patch-cef-elfs 'link-binary
+              (lambda _
+                (let* ((bin (string-append #$output "/bin"))
+                       (real (string-append
+                              #$output
+                              "/lib/linux-wallpaperengine/linux-wallpaperengine"))
+                       (wrapper (string-append bin "/linux-wallpaperengine")))
+                  ;; A symlink would make validate-runpath expand $ORIGIN
+                  ;; against bin/, where the CEF libraries do not live;
+                  ;; exec'ing through a shell wrapper keeps the real binary
+                  ;; as /proc/self/exe (which is what CEF spawns, too).
+                  (mkdir-p bin)
+                  (call-with-output-file wrapper
+                    (lambda (port)
+                      (display (string-append
+                                "#!" #$bash-minimal "/bin/bash\n"
+                                "exec \"" real "\" \"$@\"\n")
+                               port)))
+                  (chmod wrapper #o755)))))))
+      (native-inputs (list pkg-config patchelf))
+      ;; Build dependencies first, then the host libraries libcef.so needs.
+      (inputs
+       `(("bash-minimal" ,bash-minimal)
+         ("sdl2" ,sdl2)
+         ("mpv" ,mpv)
+         ("ffmpeg" ,ffmpeg)
+         ("pulseaudio" ,pulseaudio)
+         ("glew" ,glew)
+         ("freeglut" ,freeglut)
+         ("glfw" ,glfw)
+         ("glm" ,glm)
+         ("gmp" ,gmp)
+         ("freetype" ,freetype)
+         ("zlib" ,zlib)
+         ("lz4" ,lz4)
+         ("dbus" ,dbus)
+         ("mesa" ,mesa)
+         ("libx11" ,libx11)
+         ("libxrandr" ,libxrandr)
+         ("libxxf86vm" ,libxxf86vm)
+         ("wayland" ,wayland)
+         ("wayland-protocols" ,wayland-protocols)
+         ("cef-binary" ,cef-binary)
+         ("glibc" ,glibc)
+         ("gcc:lib" ,gcc "lib")
+         ("glib" ,glib)
+         ("at-spi2-core" ,at-spi2-core)
+         ("cairo" ,cairo)
+         ("pango" ,pango)
+         ("nss" ,nss)
+         ("nspr" ,nspr)
+         ("cups" ,cups)
+         ("expat" ,expat)
+         ("alsa-lib" ,alsa-lib)
+         ("eudev" ,eudev)
+         ("libxcb" ,libxcb)
+         ("libxkbcommon" ,libxkbcommon)
+         ("libxcomposite" ,libxcomposite)
+         ("libxdamage" ,libxdamage)
+         ("libxext" ,libxext)
+         ("libxfixes" ,libxfixes)))
+      (properties `((with-latest-git-commit . #t)))
+      (home-page "https://github.com/Almamu/linux-wallpaperengine")
+      (synopsis "Run Wallpaper Engine wallpapers on the Linux desktop")
+      (description
+       "Linux Wallpaper Engine is an OpenGL reimplementation of Wallpaper Engine
+for Linux.  It renders scene, video and web wallpapers from Steam's Wallpaper
+Engine on X11 and Wayland desktops: scenes are drawn through its own GLSLang-
+and SPIRV-Cross-based shader translation, videos are decoded by a dedicated
+libmpv pipeline, and web wallpapers run inside an embedded Chromium (CEF)
+renderer.  Audio playback, fullscreen pausing and audio-triggered visualisers
+are supported.
+
+Wallpapers require assets from the official Wallpaper Engine release, which
+must be owned and installed through Steam; the assets are auto-detected from
+the usual Steam library locations or can be pointed at with
+@option{--assets-dir}.  The package is built from source, but the CEF web
+renderer relies on the upstream Chromium binary distribution.")
+      (license (list license:gpl3 license:bsd-3))
+      (supported-systems '("x86_64-linux")))))
