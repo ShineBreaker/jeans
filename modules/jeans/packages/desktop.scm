@@ -25,6 +25,7 @@
   #:use-module (gnu packages pkg-config)
   #:use-module (gnu packages python-build) ; python-setuptools-scm
   #:use-module (gnu packages python-xyz)  ; python-screeninfo, python-platformdirs, python-pillow, ...
+  #:use-module (gnu packages qt)          ; qtsvg
   #:use-module (gnu packages video)       ; ffmpeg
   #:use-module (gnu packages vulkan)      ; vulkan-loader
   #:use-module (gnu packages xml)         ; expat
@@ -236,8 +237,16 @@ release.")
               ;; Reproduce the AppRun contract: expose the bundled Qt
               ;; plugins / QML modules and the bundled libs, then exec the
               ;; daemon which spawns the UI, renderers and layer shell.
+              ;; The bundled Qt ships no iconengines/ (no libqsvgicon.so),
+              ;; so themed SVG icons would all render blank; qtsvg's plugin
+              ;; dir is appended to QT_PLUGIN_PATH to provide the engine
+              ;; (the wrapper's LD_LIBRARY_PATH keeps the bundled Qt 6.x
+              ;; libraries first, so the plugin resolves against them).
               (let* ((bin (string-append #$output "/bin"))
                      (root (string-append #$output "/lib/waywallen"))
+                     (qtsvg-plugins
+                      (string-append #$(this-package-input "qtsvg")
+                                     "/lib/qt6/plugins"))
                      (wrapper (string-append bin "/waywallen")))
                 (mkdir-p bin)
                 (call-with-output-file wrapper
@@ -249,10 +258,30 @@ release.")
                             "export LD_LIBRARY_PATH=\"")
                     (format port "$ROOT/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}\"~%")
                     (format port "export QT_PLUGIN_PATH=\"")
-                    (format port "$ROOT/plugins${QT_PLUGIN_PATH:+:$QT_PLUGIN_PATH}\"~%")
+                    (format port "$ROOT/plugins:~a" qtsvg-plugins)
+                    (format port "${QT_PLUGIN_PATH:+:$QT_PLUGIN_PATH}\"~%")
                     (format port "export QML2_IMPORT_PATH=\"")
                     (format port "$ROOT/qml${QML2_IMPORT_PATH:+:$QML2_IMPORT_PATH}\"~%")
                     (format port "export QML_IMPORT_PATH=\"$QML2_IMPORT_PATH\"~%")
+                    ;; Waywallen only scans <exec>/../share/waywallen and
+                    ;; $XDG_DATA_HOME/waywallen for plugins — it never reads
+                    ;; XDG_DATA_DIRS, which is how Guix profiles expose their
+                    ;; share/ tree.  Bridge the two: every XDG_DATA_DIRS entry
+                    ;; containing waywallen/plugins/ is passed as a --plugin
+                    ;; root (upstream expects the prefix dir and the flag is
+                    ;; repeatable), so profile-installed plugins are found.
+                    (format port "seen=\"\"~%")
+                    (format port "xdg_ifs=$IFS~%")
+                    (format port "IFS=:~%")
+                    (format port "for d in $XDG_DATA_DIRS; do~%")
+                    (format port "  IFS=$xdg_ifs~%")
+                    (format port "  [ -d \"$d/waywallen/plugins\" ] || continue~%")
+                    (format port "  case \" $seen \" in *\" $d \"*) continue;; esac~%")
+                    (format port "  seen=\"$seen $d\"~%")
+                    (format port "  set -- \"$@\" --plugin \"$d/waywallen\"~%")
+                    (format port "  IFS=:~%")
+                    (format port "done~%")
+                    (format port "IFS=$xdg_ifs~%")
                     (format port "exec \"$ROOT/bin/waywallen\" \"$@\"~%")))
                 (chmod wrapper #o755))))
           (add-after 'build-wrapper 'install-desktop-entry
@@ -281,6 +310,7 @@ release.")
      `(("bash-minimal" ,bash-minimal)
        ("glibc" ,glibc)
        ("gcc:lib" ,gcc "lib")
+       ("qtsvg" ,qtsvg)
        ("mesa" ,mesa)
        ("libglvnd" ,libglvnd)
        ("vulkan-loader" ,vulkan-loader)
@@ -308,7 +338,13 @@ desktop through a Wayland layer shell and a QtQuick interface.
 
 This package ships the upstream AppImage verbatim; Qt6, ffmpeg and the codec
 stack are bundled, while the Vulkan loader, libgbm and libwayland-client are
-provided by Guix.")
+provided by Guix.  The launcher appends Guix's @code{qtsvg} iconengines plugin
+to @code{QT_PLUGIN_PATH} (the bundle ships no SVG icon engine, which would
+leave all themed SVG icons blank) and bridges plugin discovery: upstream only
+scans @file{$XDG_DATA_HOME/waywallen/plugins/} and never reads
+@env{XDG_DATA_DIRS}, so the launcher passes every @env{XDG_DATA_DIRS} entry
+containing @file{waywallen/plugins/} as a @option{--plugin} root, making
+plugins installed in a Guix profile discoverable.")
     (license license:expat)
     (supported-systems '("x86_64-linux"))))
 
@@ -487,10 +523,10 @@ and ships two Waywallen renderer subprocesses: the @code{wescene} Vulkan
 scene/video renderer and the @code{weweb} CEF-backed web renderer.
 
 This package installs the upstream prebuilt plugin under
-@file{share/waywallen/plugins/org.waywallen.open-wallpaper-engine/}.  Waywallen
-discovers plugins from @file{$XDG_DATA_HOME/waywallen/plugins/} (or via
-@option{--plugin @var{PATH}}); to activate it, symlink the plugin directory
-there, or launch Waywallen with @option{--plugin} pointing at it.  The host
-daemon is provided by the @code{waywallen-bin} package.")
+@file{share/waywallen/plugins/org.waywallen.open-wallpaper-engine/}.  The
+@code{waywallen-bin} launcher bridges @env{XDG_DATA_DIRS} plugin discovery,
+so simply installing both packages in the same Guix profile is enough for
+Waywallen to pick the plugin up.  The host daemon is provided by the
+@code{waywallen-bin} package.")
     (license license:gpl2)
     (supported-systems '("x86_64-linux"))))
