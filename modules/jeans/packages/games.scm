@@ -578,9 +578,9 @@ Lua scripting and GLSL shader support for beatmaps.  It integrates with
 existing osu! beatmap collections and was originally built for the YEAST3
 sightreading tournament.
 
-On first launch the wrapper seeds a per-user data directory
-(@file{~/.local/share/inso} or @env{INSO_DATA_DIR}) with symlinks to the
-bundled default skin, shaders and fonts; drop osu! beatmaps into
-@file{songs/} to play them.")
+On first launch it prepares a per-user data directory
+(@file{~/.local/share/inso} or @env{INSO_DATA_DIR}) with the bundled default
+skin, shaders and fonts; drop osu! beatmaps into @file{songs/} there to play
+them.")
     (license (license:nonfree "https://github.com/isakvik/inso"))
     (supported-systems '("x86_64-linux"))))

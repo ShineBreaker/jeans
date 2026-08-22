@@ -447,10 +447,10 @@ prebuilt binary release.")
     (properties `((upstream-name . "MotrixNext")))
     (home-page "https://github.com/AnInsomniacy/motrix-next")
     (synopsis "Full-featured download manager")
-    (description "Motrix-Next is a full-featured download manager that supports
+     (description "Motrix-Next is a full-featured download manager that supports
 downloading HTTP, FTP, BitTorrent, and Magnet links.  It is built with Tauri
-and uses aria2-next as the download backend.  This package provides the prebuilt
-binary release of the Tauri app and wires in aria2-next-bin as its engine.")
+and uses aria2 as the download backend.  This package provides the prebuilt
+binary release.")
      (license license:expat)))
 
 ;;; CC-Switch: prebuilt binary for AI coding assistant manager (Tauri/WebKitGTK).
@@ -750,9 +750,8 @@ applications in isolated environments.  It supports converting regular
 deb packages into APM format, managing container overlays, and
 providing desktop integration.
 
-APM requires a writable @file{/var/lib/apm} directory at runtime.
-The seed data is installed under @file{share/apm/var-lib/} in the Guix
-store and must be copied to @file{/var/lib/apm} before first use.")
+It requires a writable @file{/var/lib/apm} directory at runtime; run the
+@command{amber-pm-init} script as root before first use to initialise it.")
       (properties `((with-latest-git-commit . #t)))
       (license license:agpl3+))))
 

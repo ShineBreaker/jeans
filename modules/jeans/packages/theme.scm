@@ -146,6 +146,9 @@
                    ; Some icons
                    license:cc-by-sa4.0))))
 
+;; Only the Kvantum themes are packaged from the Vimix-kde repository: full
+;; KDE support is not available in Guix, so the remaining components are of
+;; no use here.
 (define-public vimix-kvantum-themes
   (package
     (name "vimix-kvantum-themes")
@@ -168,9 +171,8 @@
     (home-page "https://github.com/vinceliuice/Vimix-kde")
     (synopsis "Vimix Kvantum themes for KDE Plasma")
     (description
-     "Vimix kde is a flat Design theme for KDE Plasma desktop.
-      This package provides only the Kvantum themes, as full
-      KDE support is not available in Guix.")
+     "Vimix is a flat Design theme for KDE Plasma desktop.  This package
+provides only its Kvantum themes.")
     (license (list license:gpl3 license:lgpl2.1 license:cc-by-sa4.0))))
 
 (define-public orchis-kde-themes

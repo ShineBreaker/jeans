@@ -104,8 +104,9 @@
     (synopsis "Run unpatched dynamic binaries on non-FHS systems")
     (description
      "nix-ld is a minimal ELF dynamic linker shim that allows pre-compiled
-binaries to run on non-FHS systems like Guix System or NixOS.  It installs
-at @file{/lib64/ld-linux-x86-64.so.2} and redirects to the actual Guix
-glibc dynamic linker via the @code{NIX_LD} and @code{NIX_LD_LIBRARY_PATH}
-environment variables.")
+binaries to run on non-FHS systems like Guix System or NixOS.  It redirects
+to the actual glibc dynamic linker via the @code{NIX_LD} and
+@code{NIX_LD_LIBRARY_PATH} environment variables.  On Guix System, use
+@code{nix-ld-service-type} to install it at @file{/lib64/ld-linux-x86-64.so.2}
+system-wide.")
     (license license:lgpl2.1)))

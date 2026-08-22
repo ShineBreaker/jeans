@@ -162,6 +162,13 @@ release.")
 ;; preserved verbatim under lib/waywallen so Qt finds its plugins and QML
 ;; modules; patchelf only repoints the interpreter and appends the Guix store
 ;; dirs to RUNPATH.
+;;
+;; The wrapper additionally covers two bundle gaps: it appends Guix's qtsvg
+;; plugin dir to QT_PLUGIN_PATH (the bundle ships no SVG icon engine, so
+;; themed SVG icons would render blank) and bridges plugin discovery —
+;; upstream scans only <exec>/../share/waywallen and $XDG_DATA_HOME/waywallen,
+;; never XDG_DATA_DIRS, so every XDG_DATA_DIRS entry containing a
+;; waywallen/plugins/ tree is passed as a --plugin root.
 (define-public waywallen-bin
   (package
     (name "waywallen-bin")
@@ -334,17 +341,7 @@ release.")
     (description "Waywallen is a dynamic wallpaper manager for Linux that began
 as a Wallpaper Engine plugin for KDE.  It renders image, video and web
 wallpapers using Vulkan and VA-API hardware decoding, and integrates with the
-desktop through a Wayland layer shell and a QtQuick interface.
-
-This package ships the upstream AppImage verbatim; Qt6, ffmpeg and the codec
-stack are bundled, while the Vulkan loader, libgbm and libwayland-client are
-provided by Guix.  The launcher appends Guix's @code{qtsvg} iconengines plugin
-to @code{QT_PLUGIN_PATH} (the bundle ships no SVG icon engine, which would
-leave all themed SVG icons blank) and bridges plugin discovery: upstream only
-scans @file{$XDG_DATA_HOME/waywallen/plugins/} and never reads
-@env{XDG_DATA_DIRS}, so the launcher passes every @env{XDG_DATA_DIRS} entry
-containing @file{waywallen/plugins/} as a @option{--plugin} root, making
-plugins installed in a Guix profile discoverable.")
+desktop through a Wayland layer shell and a QtQuick interface.")
     (license license:expat)
     (supported-systems '("x86_64-linux"))))
 
@@ -520,13 +517,8 @@ plugins installed in a Guix profile discoverable.")
 Workshop source plugin for the Waywallen wallpaper daemon.  It renders
 Wallpaper Engine scene (@code{.pkg}), video and web wallpapers using Vulkan,
 and ships two Waywallen renderer subprocesses: the @code{wescene} Vulkan
-scene/video renderer and the @code{weweb} CEF-backed web renderer.
-
-This package installs the upstream prebuilt plugin under
-@file{share/waywallen/plugins/org.waywallen.open-wallpaper-engine/}.  The
-@code{waywallen-bin} launcher bridges @env{XDG_DATA_DIRS} plugin discovery,
-so simply installing both packages in the same Guix profile is enough for
-Waywallen to pick the plugin up.  The host daemon is provided by the
-@code{waywallen-bin} package.")
+scene/video renderer and the @code{weweb} CEF-backed web renderer.  The host
+daemon is provided by the @code{waywallen-bin} package; installing both in the
+same Guix profile is enough for Waywallen to discover the plugin.")
     (license license:gpl2)
     (supported-systems '("x86_64-linux"))))

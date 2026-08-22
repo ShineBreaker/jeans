@@ -805,7 +805,6 @@ and stateless dashboard data functions, plus a bare keymap
 (@code{agenote-command-map}) that hosts can bind to a prefix of their choice.
 All file-system operations are delegated to the @command{agenote} CLI through
 the @code{agenote-call} adapter layer, so no logic drifts between the Emacs
-frontend and the CLI.  The @command{agenote} CLI is propagated so it lands on
-the profile PATH; @code{agenote-call} still re-resolves it on every call.")
+frontend and the CLI.")
       (properties `((with-latest-git-commit . #t)))
       (license license:expat))))

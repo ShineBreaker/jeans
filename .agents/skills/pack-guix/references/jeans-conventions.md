@@ -188,6 +188,21 @@ cargo 包升级时，`guix refresh` 只能改写包文件里的 `version`/`hash`
 - 二进制安装到 `lib/<pkg>/`，然后从 `bin/` 创建符号链接，使 patchelf 能找到同目录的 `.so` 文件。
 - 自动更新 CI（guix refresh 主力 + Python 兜底）会对本次更新的所有包运行构建测试；预编译包同样需要验证解包、patchelf 和 wrapper 阶段。
 
+### Qt 预编译 bundle 缺插件
+
+自包含 Qt bundle（AppImage 等）常缺个别 Qt 插件。典型案例：waywallen 的 AppImage 不含 `iconengines/libqsvgicon.so`，所有主题 SVG 图标渲染为空白。补法：把 Guix 对应 qt 包的插件目录（如 `qtsvg` 的 `lib/qt6/plugins`）**追加**到 wrapper 的 `QT_PLUGIN_PATH`（bundle 自带目录在前）。前提：wrapper 的 `LD_LIBRARY_PATH` 让 bundle 的 Qt 库排在 Guix Qt 之前，插件于是链接回 bundle 的 Qt，避免两套 Qt ABI 混用。
+
+### 插件宿主不读 XDG_DATA_DIRS
+
+插件型宿主（daemon/编辑器）常只扫私有目录（如 `<exec>/../share/<name>` 和 `$XDG_DATA_HOME/<name>`），不读 `XDG_DATA_DIRS`——而 Guix profile 恰恰通过 `XDG_DATA_DIRS` 暴露 `share/` 树。桥接法：在 wrapper 里遍历 `XDG_DATA_DIRS`（shell 循环需临时 `IFS=:`），把含 `<name>/plugins/` 的目录去重后转成上游的插件 CLI 参数（如 `--plugin <dir>`）。使用前确认：flag 是否可重复、上游期望前缀目录还是插件目录本身。桥接后，插件包与宿主装进同一 profile 即可互相发现，无需用户手动 symlink。
+
+### Tauri 应用（prebuilt .deb）
+
+Tauri 预编译包的两个解析规则（motrix-next-bin 实证）：
+
+- **resource_dir()** = `exe_dir/../lib/<identifier>/`：资源树（配置、数据库、bootstrap 数据）必须装到 `lib/<identifier>/`，缺任一数据文件会在启动时崩溃。
+- **shell-plugin sidecar 按 `exe_dir` + basename 解析**（不在 resource dir）：替换 sidecar（如用独立 Guix 包替换 bundled 引擎）时，新二进制必须放在主 ELF 同目录。注意 `wrap-program` 会把真实二进制改名为 `.<name>-real`，`/proc/self/exe` 随之指向它——sidecar 与 resource 解析都以这个真实路径为基准。
+
 ## input label 规范（必须遵守以通过 `guix lint`）
 
 `guix lint` 的 `check-input-labels` 检查要求 input 的 label（标签）与包的**实际 `name` 字段**完全一致——带子输出时还要附加 `:output`。本通道因此统一采用**旧式 quasiquote alist** 写法，而非现代的 `(list ...)`：
