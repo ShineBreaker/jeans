@@ -254,11 +254,23 @@ release.")
               ;; dir is appended to QT_PLUGIN_PATH to provide the engine
               ;; (the wrapper's LD_LIBRARY_PATH keeps the bundled Qt 6.x
               ;; libraries first, so the plugin resolves against them).
+              ;; The UI embeds its Material Symbols icon font as .woff2 in
+              ;; its resources; decoding WOFF2 requires a brotli-enabled
+              ;; freetype, so the freetype input is freetype-with-brotli
+              ;; and its lib dir goes into LD_LIBRARY_PATH right after
+              ;; $ROOT/lib — otherwise the plain freetype pulled in
+              ;; transitively (e.g. via fontconfig's RUNPATH) wins the
+              ;; soname race and every icon falls back to rendering its
+              ;; ligature name as text ("check", "delete", ...).
               (let* ((bin (string-append #$output "/bin"))
                      (root (string-append #$output "/lib/waywallen"))
                      (qtsvg-plugins
                       (string-append #$(this-package-input "qtsvg")
                                      "/lib/qt6/plugins"))
+                     (freetype-lib
+                      (string-append #$(this-package-input
+                                        "freetype-with-brotli")
+                                     "/lib"))
                      (wrapper (string-append bin "/waywallen")))
                 (mkdir-p bin)
                 (call-with-output-file wrapper
@@ -268,7 +280,8 @@ release.")
                     (format port "ROOT=\"~a\"~%" root)
                     (format port
                             "export LD_LIBRARY_PATH=\"")
-                    (format port "$ROOT/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}\"~%")
+                    (format port "$ROOT/lib:~a" freetype-lib)
+                    (format port "${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}\"~%")
                     (format port "export QT_PLUGIN_PATH=\"")
                     (format port "$ROOT/plugins:~a" qtsvg-plugins)
                     (format port "${QT_PLUGIN_PATH:+:$QT_PLUGIN_PATH}\"~%")
@@ -318,6 +331,8 @@ release.")
     ;; The AppImage bundles Qt6, ffmpeg and the codec stack; these inputs only
     ;; cover the libraries the bundle expects from the host (the C runtime,
     ;; GL/Vulkan dispatch, Wayland, X11/xcb/xkbcommon, and the font stack).
+    ;; freetype is the brotli-enabled variant: the UI's Material Symbols icon
+    ;; font is an embedded .woff2 that a plain freetype cannot decode.
     (inputs
      `(("bash-minimal" ,bash-minimal)
        ("glibc" ,glibc)
@@ -330,7 +345,7 @@ release.")
        ("libdrm" ,libdrm)
        ("dbus" ,dbus)
        ("fontconfig-minimal" ,fontconfig)
-       ("freetype" ,freetype)
+       ("freetype-with-brotli" ,freetype-with-brotli)
        ("harfbuzz" ,harfbuzz)
        ("libice" ,libice)
        ("libsm" ,libsm)
