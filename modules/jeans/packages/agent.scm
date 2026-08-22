@@ -87,7 +87,7 @@
 (define-public codewhale-bin
   (package
     (name "codewhale-bin")
-    (version "0.9.9")
+    (version "0.9.10")
     (source
      (origin
        (method url-fetch)
@@ -95,7 +95,7 @@
              "https://github.com/Hmbown/CodeWhale/releases/download/"
              "v" version "/codewhale-linux-x64.tar.gz"))
        (sha256
-        (base32 "1f7hrgxl8rhns7a6s3pcvr9n67wq64rsqblpblddnj1nnc3mwcks"))))
+        (base32 "1b45y1v05cx5rg5bxkz1vnrcp0dah83aqy1j0akn06ys1w4a9v7v"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -267,7 +267,7 @@ This package provides the prebuilt binary release.")
 (define-public github-copilot
   (package
     (name "github-copilot")
-    (version "1.1.10")
+    (version "1.1.12")
     (source
      (origin
        (method url-fetch)
@@ -275,7 +275,7 @@ This package provides the prebuilt binary release.")
              "https://github.com/github/app/releases/download/"
              "v" version "/GitHub-Copilot-linux-x64.deb"))
        (sha256
-        (base32 "0yfak8z3i3x0h7b1ydr2agn7k86zq9ba14avpb2piwkr7sm5wc3h"))))
+        (base32 "101yczaj7wa4q1iqndkg2k4391x90ds1jk9vj1rdij58lv604gw1"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -488,7 +488,7 @@ This package provides the prebuilt binary release.")
 (define-public opencode-desktop-bin
   (package
     (name "opencode-desktop-bin")
-    (version "1.18.18")
+    (version "1.18.21")
     (source
      (origin
        (method url-fetch)
@@ -496,7 +496,7 @@ This package provides the prebuilt binary release.")
              "https://github.com/anomalyco/opencode/releases/download/"
              "v" version "/opencode-desktop-linux-amd64.deb"))
        (sha256
-        (base32 "12nl2bhm4n84hxr2nigw1mpic7jg113lracqy06pznbwkimn8zbv"))))
+        (base32 "09pwsi9nxzq3pwnlhdk5n9szm9nbfvkx79mqydrqqf3lfq2ljlax"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -650,7 +650,7 @@ coding experience with context awareness.")
 (define-public reasonix-bin
   (package
     (name "reasonix-bin")
-    (version "1.29.0")
+    (version "1.31.2")
     (source
      (origin
        (method url-fetch)
@@ -658,7 +658,7 @@ coding experience with context awareness.")
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
              "v" version "/reasonix-linux-amd64.tar.gz"))
        (sha256
-        (base32 "1qbrvi1cggvrlnng2bxgqggczfnm2zxi57idwzz8icp8jvjh3csp"))))
+        (base32 "1nsdz3vdz4sxnwbqg6kj4ms2qmpf2dylgsxnja4yniabp2ckp5m3"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -692,7 +692,7 @@ and ships as a single static binary with no runtime dependencies.")
 (define-public reasonix-desktop-bin
   (package
     (name "reasonix-desktop-bin")
-    (version "1.29.0")
+    (version "1.31.2")
     (source
      (origin
        (method url-fetch)
@@ -700,7 +700,7 @@ and ships as a single static binary with no runtime dependencies.")
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
              "desktop-v" version "/Reasonix-linux-amd64.deb"))
        (sha256
-        (base32 "1nxhagf2nv7kafw5mz74i7v7vkixj0xx862ahz97g8lr622q9vd8"))))
+        (base32 "06azbrflbgmv73zvs3m31rlhnbjngig8z0kkxd0jjahghfbwayvv"))))
     (build-system gnu-build-system)
     (arguments
      (list

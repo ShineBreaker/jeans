@@ -766,8 +766,8 @@ store and must be copied to @file{/var/lib/apm} before first use.")
 ;;; sub-command) is optional and not packaged here.
 
 (define-public agenote
-  (let ((commit "3db8f6cb7967df8246b60b6544a7e4b7dadd02f4")
-        (revision "2"))
+  (let ((commit "25ee753f52b8b909a925be70ad33d633440bbaa0")
+        (revision "3"))
     (package
       (name "agenote")
       (version (git-version "0.1.2" revision commit))
@@ -779,7 +779,7 @@ store and must be copied to @file{/var/lib/apm} before first use.")
                (commit commit)))
          (file-name (git-file-name name version))
          (sha256
-          (base32 "17ahlac3jbjilccz4s7nyr24ird198fckc0pjw8pf1sip9bqb8gy"))))
+          (base32 "1x98rs04g7215hibk7lfxhl2fhy1ay3qzrws6zlzwzcf9c6a45v3"))))
       (build-system pyproject-build-system)
       (arguments
        (list
