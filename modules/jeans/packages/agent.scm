@@ -87,7 +87,7 @@
 (define-public codewhale-bin
   (package
     (name "codewhale-bin")
-    (version "0.9.10")
+    (version "0.9.11")
     (source
      (origin
        (method url-fetch)
@@ -95,7 +95,7 @@
              "https://github.com/Hmbown/CodeWhale/releases/download/"
              "v" version "/codewhale-linux-x64.tar.gz"))
        (sha256
-        (base32 "1b45y1v05cx5rg5bxkz1vnrcp0dah83aqy1j0akn06ys1w4a9v7v"))))
+        (base32 "1gqh8xd00dc0zldi9wcz62rsjs9azq66cb8mbnz3dglzk4zkixj0"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -154,7 +154,7 @@ release.")
 (define-public crush-bin
   (package
     (name "crush-bin")
-    (version "0.90.0")
+    (version "0.91.0")
     (source
      (origin
        (method url-fetch)
@@ -162,7 +162,7 @@ release.")
              "https://github.com/charmbracelet/crush/releases/download/"
              "v" version "/crush_" version "_amd64.deb"))
        (sha256
-        (base32 "1vsgay0visbmplmx2xk8ip1mx7x1vbs9g06d3infylld2cacz3sj"))))
+        (base32 "1zw3774zllcq5bpsv743jmrgz3020wryx583xh3py4sy2r4ss0hh"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -650,7 +650,7 @@ coding experience with context awareness.")
 (define-public reasonix-bin
   (package
     (name "reasonix-bin")
-    (version "1.31.2")
+    (version "1.31.3")
     (source
      (origin
        (method url-fetch)
@@ -658,7 +658,7 @@ coding experience with context awareness.")
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
              "v" version "/reasonix-linux-amd64.tar.gz"))
        (sha256
-        (base32 "1nsdz3vdz4sxnwbqg6kj4ms2qmpf2dylgsxnja4yniabp2ckp5m3"))))
+        (base32 "1j4yawb6a3avfklwa5id55gsmdyv45yp6677b0w3liv6x4mzkbms"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -692,7 +692,7 @@ and ships as a single static binary with no runtime dependencies.")
 (define-public reasonix-desktop-bin
   (package
     (name "reasonix-desktop-bin")
-    (version "1.31.2")
+    (version "1.31.3")
     (source
      (origin
        (method url-fetch)
@@ -700,7 +700,7 @@ and ships as a single static binary with no runtime dependencies.")
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
              "desktop-v" version "/Reasonix-linux-amd64.deb"))
        (sha256
-        (base32 "06azbrflbgmv73zvs3m31rlhnbjngig8z0kkxd0jjahghfbwayvv"))))
+        (base32 "0ck44wdf3rd30c07pyw7xa9qgkgfjvcvd4xjk9w25f7cvpv8vhra"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -811,7 +811,7 @@ support for multiple LLM providers.")
 (define-public zcode
   (package
     (name "zcode")
-    (version "3.8.1")
+    (version "3.9.1")
     (source
      (origin
        (method url-fetch)
@@ -819,7 +819,7 @@ support for multiple LLM providers.")
              "https://cdn-zcode.z.ai/zcode/electron/releases/"
              version "/linux-x64/ZCode-" version "-linux-x64.deb"))
        (sha256
-        (base32 "0xamwhhj3h5mvkh7mmp38l3axhpq5flyz58s4l4gcmpb55v8fwaq"))))
+        (base32 "0269z1mjnfxb7hw3iwp9w7bkd4s5qd2kyd1h2ywmi9pw0j7x3cdm"))))
     (build-system gnu-build-system)
     (arguments
      (list

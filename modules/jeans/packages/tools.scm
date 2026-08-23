@@ -197,7 +197,7 @@ editor that supports the protocol to provide Java language features.")
 (define-public aria2-next-bin
   (package
     (name "aria2-next-bin")
-    (version "2.5.6")
+    (version "2.5.7")
     (source
      (origin
        (method url-fetch)
@@ -205,7 +205,7 @@ editor that supports the protocol to provide Java language features.")
              "https://github.com/AnInsomniacy/aria2-next/releases/download/"
              "v" version "/aria2-next-" version "-linux-x86_64"))
        (sha256
-        (base32 "1ii0d1qyndzgjk0cxdcl2qdcqzyx3zy13yi7rv234dssiah061n1"))))
+        (base32 "1p567m9h573imrgz23lm4yc9q6x76vmfp682yzyhrpc6c2337agg"))))
     (build-system gnu-build-system)
     (arguments
      (list

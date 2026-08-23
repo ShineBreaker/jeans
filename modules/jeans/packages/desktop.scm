@@ -101,7 +101,7 @@ and Xorg.")
 (define-public ai-usagebar-bin
   (package
     (name "ai-usagebar-bin")
-    (version "1.4.0")
+    (version "1.5.1")
     (source
      (origin
        (method url-fetch)
@@ -109,7 +109,7 @@ and Xorg.")
              "https://github.com/akitaonrails/ai-usagebar/releases/download/"
              "v" version "/ai-usagebar-linux-x86_64.tar.gz"))
        (sha256
-        (base32 "1rpavjib7685vv6xf4nxxvgi1j0240wp5d1ys39gq798vmjk4kiw"))))
+        (base32 "07pry7bm5a6qh97fys7z0y4bbzadz3ajc1hzwv55msnb0mv1314d"))))
     (build-system gnu-build-system)
     (arguments
      (list
