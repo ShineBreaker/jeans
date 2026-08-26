@@ -191,16 +191,30 @@ def create_github_issue(title: str, body: str) -> None:
 
 
 def main() -> int:
-    if not REPORT_FILE.exists():
-        print(f"❌ 未找到更新报告: {REPORT_FILE}")
-        return 2
+    # 手动模式（--packages a,b）：跳过更新报告合并，直接构建指定包。
+    # 用于 workflow_dispatch 触发的按需构建验证；失败不开 issue，
+    # 结果只进 build-report.json artifact。
+    manual: List[str] = []
+    if len(sys.argv) == 3 and sys.argv[1] == "--packages":
+        manual = [p.strip() for p in sys.argv[2].split(",") if p.strip()]
 
-    report = load_report(REPORT_FILE)
-    python_updated = select_updated_packages(report)
-    refresh_updated = load_refresh_updates()
-    packages = merge_updated_packages(python_updated, refresh_updated)
-    if refresh_updated:
-        print(f"📋 合并更新来源: Python updater {len(python_updated)} 个 + guix refresh {len(refresh_updated)} 个")
+    if manual:
+        packages = [
+            {"name": name, "old_version": "(manual)", "new_version": "(manual)"}
+            for name in manual
+        ]
+    else:
+        if not REPORT_FILE.exists():
+            print(f"❌ 未找到更新报告: {REPORT_FILE}")
+            return 2
+
+        report = load_report(REPORT_FILE)
+        python_updated = select_updated_packages(report)
+        refresh_updated = load_refresh_updates()
+        packages = merge_updated_packages(python_updated, refresh_updated)
+        if refresh_updated:
+            print(f"📋 合并更新来源: Python updater {len(python_updated)} 个 + guix refresh {len(refresh_updated)} 个")
+
     build_report: Dict[str, Any] = {
         "timestamp": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "tested_count": len(packages),
@@ -238,15 +252,18 @@ def main() -> int:
     if not failures:
         return 0
 
-    signature = hashlib.sha1(
+    signature = hashlib.sha256(
         "\n".join(sorted(failure["name"] for failure in failures)).encode("utf-8")
     ).hexdigest()[:8]
     title = f"❌ Updated package build failures — {signature}"
     body = build_issue_body(failures, packages)
-    try:
-        create_github_issue(title, body)
-    except Exception as e:
-        print(f"⚠️  创建 GitHub Issue 失败: {e}")
+    if manual:
+        print("ℹ️  手动模式：跳过 Issue 创建，结果见 build-report artifact")
+    else:
+        try:
+            create_github_issue(title, body)
+        except Exception as e:
+            print(f"⚠️  创建 GitHub Issue 失败: {e}")
 
     return 1
 
