@@ -488,7 +488,7 @@ This package provides the prebuilt binary release.")
 (define-public opencode-desktop-bin
   (package
     (name "opencode-desktop-bin")
-    (version "1.18.21")
+    (version "1.18.22")
     (source
      (origin
        (method url-fetch)
@@ -496,7 +496,7 @@ This package provides the prebuilt binary release.")
              "https://github.com/anomalyco/opencode/releases/download/"
              "v" version "/opencode-desktop-linux-amd64.deb"))
        (sha256
-        (base32 "09pwsi9nxzq3pwnlhdk5n9szm9nbfvkx79mqydrqqf3lfq2ljlax"))))
+        (base32 "18y066l05939anjcmg7v6yg22kcybs1jr6sbprhy7m1cp9qvdalx"))))
     (build-system gnu-build-system)
     (arguments
      (list

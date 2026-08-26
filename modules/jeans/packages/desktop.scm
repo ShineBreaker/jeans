@@ -101,7 +101,7 @@ and Xorg.")
 (define-public ai-usagebar-bin
   (package
     (name "ai-usagebar-bin")
-    (version "1.5.1")
+    (version "1.5.2")
     (source
      (origin
        (method url-fetch)
@@ -109,7 +109,7 @@ and Xorg.")
              "https://github.com/akitaonrails/ai-usagebar/releases/download/"
              "v" version "/ai-usagebar-linux-x86_64.tar.gz"))
        (sha256
-        (base32 "07pry7bm5a6qh97fys7z0y4bbzadz3ajc1hzwv55msnb0mv1314d"))))
+        (base32 "18iv6z999qy3dhwkhaajb8i24b7sbgyn3blyncj2vpympfpi3l6s"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -177,7 +177,7 @@ release.")
 (define-public waywallen-bin
   (package
     (name "waywallen-bin")
-    (version "0.3.5")
+    (version "0.3.6")
     (source
      (origin
        (method url-fetch)
@@ -186,7 +186,7 @@ release.")
              version
              "/waywallen-" version "-x86_64.AppImage"))
        (sha256
-        (base32 "1irim403q6xfbhp0bjf2lkqixrsiq4s1j0cq3jk1zhp6pwpnfm5k"))))
+        (base32 "0pfgai3bh7bl7v943ymhpmmn16c2cyasyawmajj6fn4ff21zjfd8"))))
     (build-system copy-build-system)
     (arguments
      (list
@@ -413,7 +413,7 @@ desktop through a Wayland layer shell and a QtQuick interface.")
 (define-public open-wallpaper-engine-bin
   (package
     (name "open-wallpaper-engine-bin")
-    (version "0.2.5")
+    (version "0.2.8")
     (source
      (origin
        (method url-fetch)
@@ -423,7 +423,7 @@ desktop through a Wayland layer shell and a QtQuick interface.")
              "/org.waywallen.open-wallpaper-engine-" version
              "-linux-x86_64.zip"))
        (sha256
-        (base32 "1hgfp6fikch4aq4g88590qlwffqzl5w86di6sdcxzs8igfv231g2"))))
+        (base32 "08i32y054ylpj40hp5nla86kjlbrbf6m1fmwdsj6rjpw88alq9y7"))))
     (build-system copy-build-system)
     (arguments
      (list
@@ -444,6 +444,8 @@ desktop through a Wayland layer shell and a QtQuick interface.")
           ;; The release zip is already laid out as a plugin directory
           ;; (plugin.toml, main.lua, files.txt, wallpaper_engine/*.lua and
           ;; bin/).  Install it verbatim under the id Waywallen indexes it by.
+          ;; Since 0.2.8 the release zip also carries the CEF web renderer
+          ;; under lib/weweb/ (previously bin/weweb/) and i18n catalogs.
           (replace 'install
             (lambda* (#:key outputs #:allow-other-keys)
               (let* ((out (assoc-ref outputs "out"))
@@ -451,15 +453,15 @@ desktop through a Wayland layer shell and a QtQuick interface.")
                             out "/share/waywallen/plugins/"
                             "org.waywallen.open-wallpaper-engine")))
                 (mkdir-p dest)
-                (copy-recursively "bin" (string-append dest "/bin"))
-                (copy-recursively "wallpaper_engine"
-                                  (string-append dest "/wallpaper_engine"))
+                (for-each
+                 (lambda (dir) (copy-recursively dir (string-append dest "/" dir)))
+                 '("bin" "lib" "wallpaper_engine" "i18n"))
                 (for-each (lambda (f) (install-file f dest))
                           '("main.lua" "plugin.toml" "files.txt"))
                 (for-each
                  (lambda (f) (chmod (string-append dest "/" f) #o755))
                  '("bin/waywallen-wescene-renderer"
-                   "bin/weweb/waywallen-weweb-renderer")))))
+                   "lib/weweb/waywallen-weweb-renderer")))))
           ;; Repoint the interpreter and RUNPATH of every ELF in the plugin
           ;; tree.  The bundled CEF libraries (libcef.so, libGLESv2.so,
           ;; libEGL.so, libvk_swiftshader.so, libvulkan.so.1) keep finding

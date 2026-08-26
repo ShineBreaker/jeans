@@ -41,8 +41,8 @@
 (define-public winapps
   ;; 上游不打 tag，追踪 main 分支 HEAD；由 guix refresh 的
   ;; latest-git-commit updater 自动更新 commit 和 revision。
-  (let ((commit "77f7177b623aa0ee4e8fd97cad30b260ae6b35b4")
-        (revision "1"))
+  (let ((commit "1b38cab1b8c1a513e4a313931759ac4942473678")
+        (revision "2"))
     (package
       (name "winapps")
       (version (git-version "0" revision commit))
@@ -54,7 +54,7 @@
                (commit commit)))
          (file-name (git-file-name name version))
          (sha256
-          (base32 "0pqi1fvrjipgq02jxvp2dn0h1av3wmf1kdqdk9mzglyzw16lqbqk"))
+          (base32 "1jwd9i93gmn4gv76w80k9minw34j2nivi7fk3kzzf8585a6zxh82"))
          (patches
           (map canonicalize-path
                (search-patches
@@ -197,7 +197,7 @@ editor that supports the protocol to provide Java language features.")
 (define-public aria2-next-bin
   (package
     (name "aria2-next-bin")
-    (version "2.5.7")
+    (version "2.5.9")
     (source
      (origin
        (method url-fetch)
@@ -205,7 +205,7 @@ editor that supports the protocol to provide Java language features.")
              "https://github.com/AnInsomniacy/aria2-next/releases/download/"
              "v" version "/aria2-next-" version "-linux-x86_64"))
        (sha256
-        (base32 "1p567m9h573imrgz23lm4yc9q6x76vmfp682yzyhrpc6c2337agg"))))
+        (base32 "0qz3bfpqicfmjv1hggn5x8w8nqk2bm0i1a8rdqfrnix6h86q7f52"))))
     (build-system gnu-build-system)
     (arguments
      (list
