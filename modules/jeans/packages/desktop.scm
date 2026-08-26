@@ -194,9 +194,12 @@ release.")
       #:validate-runpath? #f
       #:strip-binaries? #f
       #:install-plan
-      #~'(("squashfs-root/usr/" "lib/waywallen/")
-          ("squashfs-root/org.waywallen.waywallen.svg"
-           "share/icons/hicolor/scalable/apps/org.waywallen.waywallen.svg"))
+      #~'(("usr/" "lib/waywallen/")
+          ;; The AppImage root carries org.waywallen.waywallen.svg as a
+          ;; relative symlink into usr/, which would dangle once installed;
+          ;; copy the real file instead.
+          ("usr/share/icons/hicolor/scalable/apps/org.waywallen.waywallen.svg"
+           "share/icons/hicolor/scalable/apps/"))
       #:modules '((guix build utils)
                   (guix build copy-build-system)
                   (ice-9 format)
@@ -204,15 +207,16 @@ release.")
       #:phases
       #~(modify-phases %standard-phases
           (delete 'install-license-files)
-          ;; The AppImage runtime extracts itself into ./squashfs-root.
-          ;; Store paths are read-only, so copy the AppImage to the build
-          ;; directory and make it executable before invoking its built-in
-          ;; --appimage-extract handler.
+          ;; The source is a bare AppImage (not an archive), so the default
+          ;; unpack is replaced by a plain copy to the build directory.
+          ;; Extraction uses 7z's static parsing of the AppImage container:
+          ;; the runtime's built-in --appimage-extract self-extraction needs
+          ;; exec permission on the build-tree copy, which GitHub runners'
+          ;; build directories deny (issue #32).
           (replace 'unpack
             (lambda* (#:key source #:allow-other-keys)
               (copy-file source "waywallen.AppImage")
-              (chmod "waywallen.AppImage" #o755)
-              (invoke "./waywallen.AppImage" "--appimage-extract")))
+              (invoke "7z" "x" "waywallen.AppImage")))
           (add-after 'install 'patch-elf
             (lambda* (#:key inputs #:allow-other-keys)
               (let* ((ld.so (string-append (assoc-ref inputs "glibc")
@@ -327,7 +331,7 @@ release.")
                     (format port "Categories=Graphics;Qt;~%")
                     (format port "Keywords=wallpaper;pipewire;vulkan;~%")
                     (format port "StartupNotify=true~%")))))))))
-    (native-inputs (list patchelf))
+    (native-inputs (list p7zip patchelf))
     ;; The AppImage bundles Qt6, ffmpeg and the codec stack; these inputs only
     ;; cover the libraries the bundle expects from the host (the C runtime,
     ;; GL/Vulkan dispatch, Wayland, X11/xcb/xkbcommon, and the font stack).
