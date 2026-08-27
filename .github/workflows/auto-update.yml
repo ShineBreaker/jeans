@@ -64,6 +64,19 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # install.sh 硬编码 ftpmirror.gnu.org 下载（不可通过环境变量换源），
+          # 该镜像偶发 502/不可达；此时退回 ftp.gnu.org 主站预下载 tarball，
+          # 经 GUIX_BINARY_FILE_NAME 走本地安装分支（TLS 保证来源完整性）。
+          if ! curl -fsI --max-time 20 https://ftpmirror.gnu.org/gnu/guix/ >/dev/null 2>&1; then
+            echo "ftpmirror.gnu.org unreachable, falling back to ftp.gnu.org"
+            ver=$(curl -fsSL https://ftp.gnu.org/gnu/guix/ \
+              | sed -n -e 's/.*guix-binary-\([0-9.]*[a-z0-9]*\)\.x86_64-linux\.tar\.xz.*/\1/p' \
+              | sort -Vu | tail -1)
+            echo "latest binary release: $ver"
+            f="guix-binary-${ver}.x86_64-linux.tar.xz"
+            curl -fSL -o "/tmp/$f" "https://ftp.gnu.org/gnu/guix/$f"
+            export GUIX_BINARY_FILE_NAME="/tmp/$f"
+          fi
           curl -fsSL https://guix.gnu.org/install.sh -o /tmp/install-guix.sh
           { yes "" 2>/dev/null || true; } | sudo -E bash /tmp/install-guix.sh
           if [ -f /var/guix/current/etc/profile ]; then
