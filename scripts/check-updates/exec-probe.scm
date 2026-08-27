@@ -31,9 +31,16 @@
                (use-modules (guix build utils) (ice-9 rdelim))
                (format #t "=== probe: cwd = ~a ===~%" (getcwd))
                (format #t "=== probe: /proc/self/mountinfo ===~%")
-             (call-with-input-file "/proc/self/mountinfo"
-               (lambda (port)
-                 (display (read-string port))))
+               ;; /proc may be inaccessible in restricted sandboxes; treat
+               ;; failure as a diagnostic data point, not a probe abort.
+               (catch #t
+                 (lambda ()
+                   (call-with-input-file "/proc/self/mountinfo"
+                     (lambda (port)
+                       (display (read-string port)))))
+                 (lambda args
+                   (format #t "=== probe: cannot read mountinfo: ~a ===~%"
+                           args)))
                (call-with-output-file "probe.sh"
                  (lambda (port)
                    (format port "#!~a/bin/sh\necho SANDBOX-EXEC-OK\n" #$bash)))

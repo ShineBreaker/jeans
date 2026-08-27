@@ -94,9 +94,13 @@ jobs:
         run: |
           # GitHub runner 的构建沙箱里，执行构建树内的可执行文件
           # （AppImage 自解压、autotools 的 ./configure）会 execvp EACCES
-          # （issue #32），疑似 daemon 默认 build root /tmp 拒绝 exec。
-          # guix-daemon 以自身 TMPDIR 环境变量决定 build tree 位置
-          # （Guix 手册 "Invoking guix-daemon"），drop-in 挪到 /var/tmp。
+          # （issue #32）。根因：Guix 1.5 install.sh 默认安装 unprivileged
+          # daemon（user namespace 沙箱），而 Ubuntu 23.10+ 默认
+          # apparmor_restrict_unprivileged_userns=1，限制非特权 userns 的
+          # mount 操作，导致沙箱内构建树挂载异常。解除该限制（非 Ubuntu
+          # 无此键，容错跳过）。
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 \
+            || echo "sysctl unavailable, continuing"
           sudo mkdir -p /etc/systemd/system/guix-daemon.service.d
           printf '[Service]\nEnvironment=TMPDIR=/var/tmp\n' \
             | sudo tee /etc/systemd/system/guix-daemon.service.d/build-dir.conf >/dev/null
