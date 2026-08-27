@@ -90,7 +90,11 @@ jobs:
             sudo tar --numeric-owner --zstd -xf /tmp/guix-snapshot.tar.zst -C /
             # install.sh 在 Ubuntu 上会开启 unprivileged userns 开关供
             # guix-daemon 使用，快照恢复路径需自行保证（键不存在则跳过）。
+            # apparmor_restrict_unprivileged_userns=0 缺失时，daemon 沙箱
+            # 无法配 loopback（initLoopback EPERM）、构建树 exec 报 EACCES。
             sudo sysctl -w kernel.unprivileged_userns_clone=1 2>/dev/null || true
+            sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 \
+              2>/dev/null || true
             # 快照不含 /var/log/guix（install.sh 建立并归属 daemon 用户）；
             # 缺失会让 guix pull 直接 Permission denied。
             sudo mkdir -p /var/log/guix
