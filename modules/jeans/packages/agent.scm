@@ -154,7 +154,7 @@ release.")
 (define-public crush-bin
   (package
     (name "crush-bin")
-    (version "0.91.0")
+    (version "0.91.2")
     (source
      (origin
        (method url-fetch)
@@ -162,7 +162,7 @@ release.")
              "https://github.com/charmbracelet/crush/releases/download/"
              "v" version "/crush_" version "_amd64.deb"))
        (sha256
-        (base32 "1zw3774zllcq5bpsv743jmrgz3020wryx583xh3py4sy2r4ss0hh"))))
+        (base32 "1nfhpx456n9anxpm11pg6hf6jf9yj8hjgl2hi4kk8w2hqyz2gh47"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -267,7 +267,7 @@ This package provides the prebuilt binary release.")
 (define-public github-copilot
   (package
     (name "github-copilot")
-    (version "1.1.12")
+    (version "1.1.14")
     (source
      (origin
        (method url-fetch)
@@ -275,7 +275,7 @@ This package provides the prebuilt binary release.")
              "https://github.com/github/app/releases/download/"
              "v" version "/GitHub-Copilot-linux-x64.deb"))
        (sha256
-        (base32 "101yczaj7wa4q1iqndkg2k4391x90ds1jk9vj1rdij58lv604gw1"))))
+        (base32 "1l02w23nz5bybv67sc9365i36zl2v9v6clsh9dz8q9v3afsjbb6j"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -488,7 +488,7 @@ This package provides the prebuilt binary release.")
 (define-public opencode-desktop-bin
   (package
     (name "opencode-desktop-bin")
-    (version "1.18.22")
+    (version "1.18.23")
     (source
      (origin
        (method url-fetch)
@@ -496,7 +496,7 @@ This package provides the prebuilt binary release.")
              "https://github.com/anomalyco/opencode/releases/download/"
              "v" version "/opencode-desktop-linux-amd64.deb"))
        (sha256
-        (base32 "18y066l05939anjcmg7v6yg22kcybs1jr6sbprhy7m1cp9qvdalx"))))
+        (base32 "0incmgd3y6hsrwq1qm3j7p1rpzjhw1lsxvq310lb04bbsib7kc2g"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -650,7 +650,7 @@ coding experience with context awareness.")
 (define-public reasonix-bin
   (package
     (name "reasonix-bin")
-    (version "1.31.3")
+    (version "1.31.4")
     (source
      (origin
        (method url-fetch)
@@ -658,7 +658,7 @@ coding experience with context awareness.")
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
              "v" version "/reasonix-linux-amd64.tar.gz"))
        (sha256
-        (base32 "1j4yawb6a3avfklwa5id55gsmdyv45yp6677b0w3liv6x4mzkbms"))))
+        (base32 "0z16gbd1ynwzay30czb9bavm4px3q1i3md4bhz9b8rdn3k6dfn5l"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -692,7 +692,7 @@ and ships as a single static binary with no runtime dependencies.")
 (define-public reasonix-desktop-bin
   (package
     (name "reasonix-desktop-bin")
-    (version "1.31.3")
+    (version "1.31.4")
     (source
      (origin
        (method url-fetch)
@@ -700,7 +700,7 @@ and ships as a single static binary with no runtime dependencies.")
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
              "desktop-v" version "/Reasonix-linux-amd64.deb"))
        (sha256
-        (base32 "0ck44wdf3rd30c07pyw7xa9qgkgfjvcvd4xjk9w25f7cvpv8vhra"))))
+        (base32 "0ayssnq6w9af4721q2s0gina65mfgys91zyvili191kakg4s9wzg"))))
     (build-system gnu-build-system)
     (arguments
      (list

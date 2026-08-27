@@ -197,7 +197,7 @@ editor that supports the protocol to provide Java language features.")
 (define-public aria2-next-bin
   (package
     (name "aria2-next-bin")
-    (version "2.5.9")
+    (version "2.6.5")
     (source
      (origin
        (method url-fetch)
@@ -205,7 +205,7 @@ editor that supports the protocol to provide Java language features.")
              "https://github.com/AnInsomniacy/aria2-next/releases/download/"
              "v" version "/aria2-next-" version "-linux-x86_64"))
        (sha256
-        (base32 "0qz3bfpqicfmjv1hggn5x8w8nqk2bm0i1a8rdqfrnix6h86q7f52"))))
+        (base32 "0lgd7cm6w93cnfbryvjny75g3nxyfsg692qlfpn9xi83nnrw1jhn"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -765,8 +765,8 @@ It requires a writable @file{/var/lib/apm} directory at runtime; run the
 ;;; sub-command) is optional and not packaged here.
 
 (define-public agenote
-  (let ((commit "25ee753f52b8b909a925be70ad33d633440bbaa0")
-        (revision "3"))
+  (let ((commit "4df1a96c918f80f2693df4dd8f797c410b89bcac")
+        (revision "4"))
     (package
       (name "agenote")
       (version (git-version "0.1.2" revision commit))
@@ -778,7 +778,7 @@ It requires a writable @file{/var/lib/apm} directory at runtime; run the
                (commit commit)))
          (file-name (git-file-name name version))
          (sha256
-          (base32 "1x98rs04g7215hibk7lfxhl2fhy1ay3qzrws6zlzwzcf9c6a45v3"))))
+          (base32 "14vvzgbysvxi1gk4jwprqmkdvfn1slkw5gp52q5rx7d9gfyb7gxv"))))
       (build-system pyproject-build-system)
       (arguments
        (list

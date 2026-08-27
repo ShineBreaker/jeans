@@ -777,8 +777,8 @@ official prebuilt Linux x86_64 release.")
 ;;; presence on PATH, the lookup itself stays dynamic.
 
 (define-public emacs-agenote
-  (let ((commit "ec127222dd3831dd2f11aa3fd71a853a515c0ba3")
-        (revision "0"))
+  (let ((commit "ef392001936b62f881f6eb7557ded68f32214bd2")
+        (revision "1"))
     (package
       (name "emacs-agenote")
       (version (git-version "0" revision commit))
@@ -790,7 +790,7 @@ official prebuilt Linux x86_64 release.")
                (commit commit)))
          (file-name (git-file-name name version))
          (sha256
-          (base32 "10bhsaxw9x1rpcyd56wp7k2qv9hsm9l63fmr917b17x4wp9jr50l"))))
+          (base32 "1dzm869lm6xf5v8fmrkc3yfwdxw118fjgw63brlg9xnpnlikhccd"))))
       (build-system emacs-build-system)
       (arguments
        (list #:tests? #f))
