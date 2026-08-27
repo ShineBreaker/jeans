@@ -91,6 +91,11 @@ jobs:
             # install.sh 在 Ubuntu 上会开启 unprivileged userns 开关供
             # guix-daemon 使用，快照恢复路径需自行保证（键不存在则跳过）。
             sudo sysctl -w kernel.unprivileged_userns_clone=1 2>/dev/null || true
+            # 快照不含 /var/log/guix（install.sh 建立并归属 daemon 用户）；
+            # 缺失会让 guix pull 直接 Permission denied。
+            sudo mkdir -p /var/log/guix
+            sudo chown "$(stat -c %u /gnu/store):$(stat -c %g /gnu/store)" \
+              /var/log/guix
             uid=$(stat -c %u /gnu/store)
             gid=$(stat -c %g /gnu/store)
             sudo groupadd -g "$gid" guix-daemon 2>/dev/null \
