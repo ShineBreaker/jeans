@@ -65,6 +65,20 @@ jobs:
         shell: bash
         run: echo "key=guix-snapshot-v1-$(date -u +%G-W%V)" >> "$GITHUB_OUTPUT"
 
+      # issue #32 根因：Guix 1.5 起在 systemd 发行版安装 unprivileged
+      # daemon（user namespace 沙箱），Ubuntu 23.10+ 默认
+      # apparmor_restrict_unprivileged_userns=1，daemon 沙箱内构建树 exec
+      # 与 /proc 读取一律 EACCES（AppImage 自解压、autotools ./configure
+      # 全部死于此）。该 sysctl 必须在任何 guix-daemon 启动之前生效——
+      # daemon 进程继承启动瞬间的 LSM 状态，事后设置无效。
+      - name: Lift Ubuntu userns restrictions before daemon start
+        shell: bash
+        run: |
+          sudo sysctl -w kernel.unprivileged_userns_clone=1 2>/dev/null \
+            || echo "sysctl unavailable (non-Debian), continuing"
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 \
+            2>/dev/null || echo "sysctl unavailable, continuing"
+
       # ── Guix 安装快照缓存：Install Guix（install.sh + guix pull）占整轮
       # run 约 30 分钟，是最大时间开销。每周一条快照（key 含 ISO 周号），
       # 命中则解包上次的 /gnu + /var/guix + guix-daemon 服务与用户配置，
@@ -88,13 +102,6 @@ jobs:
             # 后必须按 store 属主的 uid/gid 重建同名用户，daemon 才有
             # 权限写 /gnu/store 与 /var/guix/db.sqlite。
             sudo tar --numeric-owner --zstd -xf /tmp/guix-snapshot.tar.zst -C /
-            # install.sh 在 Ubuntu 上会开启 unprivileged userns 开关供
-            # guix-daemon 使用，快照恢复路径需自行保证（键不存在则跳过）。
-            # apparmor_restrict_unprivileged_userns=0 缺失时，daemon 沙箱
-            # 无法配 loopback（initLoopback EPERM）、构建树 exec 报 EACCES。
-            sudo sysctl -w kernel.unprivileged_userns_clone=1 2>/dev/null || true
-            sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 \
-              2>/dev/null || true
             # 快照不含 /var/log/guix（install.sh 建立并归属 daemon 用户）；
             # 缺失会让 guix pull 直接 Permission denied。
             sudo mkdir -p /var/log/guix
@@ -139,35 +146,6 @@ jobs:
           guix pull --verbosity=0
           hash guix
           guix --version
-
-      - name: Point guix-daemon build trees at an exec-permitted fs
-        shell: bash
-        run: |
-          # GitHub runner 的构建沙箱里，执行构建树内的可执行文件
-          # （AppImage 自解压、autotools 的 ./configure）会 execvp EACCES
-          # （issue #32）。根因：Guix 1.5 install.sh 默认安装 unprivileged
-          # daemon（user namespace 沙箱），而 Ubuntu 23.10+ 默认
-          # apparmor_restrict_unprivileged_userns=1，限制非特权 userns 的
-          # mount 操作，导致沙箱内构建树挂载异常。解除该限制（非 Ubuntu
-          # 无此键，容错跳过）。
-          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 \
-            || echo "sysctl unavailable, continuing"
-          sudo mkdir -p /etc/systemd/system/guix-daemon.service.d
-          printf '[Service]\nEnvironment=TMPDIR=/var/tmp\n' \
-            | sudo tee /etc/systemd/system/guix-daemon.service.d/build-dir.conf >/dev/null
-          sudo systemctl daemon-reload
-          sudo systemctl restart guix-daemon
-          systemctl show guix-daemon -p Environment
-
-          # 诊断：实锤两个候选路径的 exec 能力，供日志对照。
-          for d in /tmp /var/tmp; do
-            echo "== $d =="
-            findmnt -T "$d" -o TARGET,SOURCE,FSTYPE,OPTIONS || true
-            probe="$d/.guix-exec-probe"
-            cp /bin/true "$probe"
-            if "$probe" 2>/dev/null; then echo "exec: OK"; else echo "exec: DENIED"; fi
-            rm -f "$probe"
-          done
 
       - name: Checkout nonguix channel
         shell: bash
@@ -301,9 +279,6 @@ jobs:
             . "$HOME/.config/guix/current/etc/profile"
           fi
           if [ -n "${TEST_PACKAGES:-}" ]; then
-            # 沙箱内 exec 探针：打印构建沙箱的挂载 flags 并尝试执行
-            # 构建树内脚本（issue #32 的失败操作），只输出诊断不阻断。
-            guix build -f scripts/check-updates/exec-probe.scm || true
             python3 scripts/check-updates/test_updated_packages.py \
               --packages "$TEST_PACKAGES"
           else
