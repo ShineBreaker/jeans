@@ -233,6 +233,9 @@ jobs:
             . "$HOME/.config/guix/current/etc/profile"
           fi
           if [ -n "${TEST_PACKAGES:-}" ]; then
+            # 沙箱内 exec 探针：打印构建沙箱的挂载 flags 并尝试执行
+            # 构建树内脚本（issue #32 的失败操作），只输出诊断不阻断。
+            guix build -f scripts/check-updates/exec-probe.scm || true
             python3 scripts/check-updates/test_updated_packages.py \
               --packages "$TEST_PACKAGES"
           else
