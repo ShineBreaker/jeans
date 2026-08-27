@@ -60,25 +60,67 @@ jobs:
             echo "/etc/gitconfig does not exist, nothing to remove."
           fi
 
+      - name: Compute Guix snapshot cache key
+        id: guix-key
+        shell: bash
+        run: echo "key=guix-snapshot-v1-$(date -u +%G-W%V)" >> "$GITHUB_OUTPUT"
+
+      # ── Guix 安装快照缓存：Install Guix（install.sh + guix pull）占整轮
+      # run 约 30 分钟，是最大时间开销。每周一条快照（key 含 ISO 周号），
+      # 命中则解包上次的 /gnu + /var/guix + guix-daemon 服务与用户配置，
+      # 只做增量 pull；restore-keys 兜底命中上一周快照，增量稍大但可用。
+      - name: Restore Guix installation snapshot
+        id: guix-snapshot
+        uses: actions/cache/restore@v4
+        with:
+          path: /tmp/guix-snapshot.tar.zst
+          key: ${{ steps.guix-key.outputs.key }}
+          restore-keys: guix-snapshot-v1-
+
       - name: Install Guix
         shell: bash
         run: |
           set -euo pipefail
-          # install.sh 硬编码 ftpmirror.gnu.org 下载（不可通过环境变量换源），
-          # 该镜像偶发 502/不可达；此时退回 ftp.gnu.org 主站预下载 tarball，
-          # 经 GUIX_BINARY_FILE_NAME 走本地安装分支（TLS 保证来源完整性）。
-          if ! curl -fsI --max-time 20 https://ftpmirror.gnu.org/gnu/guix/ >/dev/null 2>&1; then
-            echo "ftpmirror.gnu.org unreachable, falling back to ftp.gnu.org"
-            ver=$(curl -fsSL https://ftp.gnu.org/gnu/guix/ \
-              | sed -n -e 's/.*guix-binary-\([0-9.]*[a-z0-9]*\)\.x86_64-linux\.tar\.xz.*/\1/p' \
-              | sort -Vu | tail -1)
-            echo "latest binary release: $ver"
-            f="guix-binary-${ver}.x86_64-linux.tar.xz"
-            curl -fSL -o "/tmp/$f" "https://ftp.gnu.org/gnu/guix/$f"
-            export GUIX_BINARY_FILE_NAME="/tmp/$f"
+          if [ -f /tmp/guix-snapshot.tar.zst ]; then
+            echo "Restoring Guix from snapshot..."
+            # --numeric-owner 保留快照里的数字 uid/gid；guix-daemon 是
+            # --system 动态分配 uid 的系统用户，各 runner 上不一致，恢复
+            # 后必须按 store 属主的 uid/gid 重建同名用户，daemon 才有
+            # 权限写 /gnu/store 与 /var/guix/db.sqlite。
+            sudo tar --numeric-owner --zstd -xf /tmp/guix-snapshot.tar.zst -C /
+            # install.sh 在 Ubuntu 上会开启 unprivileged userns 开关供
+            # guix-daemon 使用，快照恢复路径需自行保证（键不存在则跳过）。
+            sudo sysctl -w kernel.unprivileged_userns_clone=1 2>/dev/null || true
+            uid=$(stat -c %u /gnu/store)
+            gid=$(stat -c %g /gnu/store)
+            sudo groupadd -g "$gid" guix-daemon 2>/dev/null \
+              || sudo groupmod -g "$gid" guix-daemon
+            if id -u guix-daemon >/dev/null 2>&1; then
+              sudo usermod -u "$uid" -g "$gid" guix-daemon
+            else
+              sudo useradd -g "$gid" -u "$uid" -d /var/empty \
+                -s "$(command -v nologin)" --system guix-daemon
+            fi
+            sudo systemctl daemon-reload
+            sudo systemctl enable --now guix-daemon
+          else
+            # install.sh 硬编码 ftpmirror.gnu.org 下载（不可通过环境变量
+            # 换源），该镜像偶发 502/不可达；此时退回 ftp.gnu.org 主站预
+            # 下载 tarball，经 GUIX_BINARY_FILE_NAME 走本地安装分支
+            # （TLS 保证来源完整性）。
+            if ! curl -fsI --max-time 20 https://ftpmirror.gnu.org/gnu/guix/ >/dev/null 2>&1; then
+              echo "ftpmirror.gnu.org unreachable, falling back to ftp.gnu.org"
+              ver=$(curl -fsSL https://ftp.gnu.org/gnu/guix/ \
+                | sed -n -e 's/.*guix-binary-\([0-9.]*[a-z0-9]*\)\.x86_64-linux\.tar\.xz.*/\1/p' \
+                | sort -Vu | tail -1)
+              echo "latest binary release: $ver"
+              f="guix-binary-${ver}.x86_64-linux.tar.xz"
+              curl -fSL -o "/tmp/$f" "https://ftp.gnu.org/gnu/guix/$f"
+              export GUIX_BINARY_FILE_NAME="/tmp/$f"
+            fi
+            curl -fsSL https://guix.gnu.org/install.sh -o /tmp/install-guix.sh
+            { yes "" 2>/dev/null || true; } | sudo -E bash /tmp/install-guix.sh
           fi
-          curl -fsSL https://guix.gnu.org/install.sh -o /tmp/install-guix.sh
-          { yes "" 2>/dev/null || true; } | sudo -E bash /tmp/install-guix.sh
           if [ -f /var/guix/current/etc/profile ]; then
             . /var/guix/current/etc/profile
           fi
@@ -373,6 +415,31 @@ jobs:
           remote_url="https://${FORGEJO_USERNAME}:${FORGEJO_TOKEN}@${FORGEJO_SERVER_URL#https://}/${FORGEJO_REPOSITORY}.git"
           git remote add codeberg "$remote_url"
           git push --force codeberg "HEAD:refs/heads/${{ github.ref_name }}"
+
+      - name: Snapshot Guix installation for next run
+        # 仅在本次未命中快照（每周第一条）时打包；daemon 必须先停，保证
+        # /var/guix/db.sqlite 与 /gnu/store 文件状态一致。always()：构建
+        # 失败不影响 store 状态，快照依然有效。
+        if: always() && steps.guix-snapshot.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo systemctl stop guix-daemon
+          args=(/gnu /var/guix)
+          [ -d /etc/guix ] && args+=(/etc/guix) || true
+          [ -f /etc/systemd/system/guix-daemon.service ] \
+            && args+=(/etc/systemd/system/guix-daemon.service) || true
+          [ -d "$HOME/.config/guix" ] && args+=("$HOME/.config/guix") || true
+          sudo tar --numeric-owner --use-compress-program='zstd -T0 -3' \
+            -cf /tmp/guix-snapshot.tar.zst "${args[@]}"
+          ls -lh /tmp/guix-snapshot.tar.zst
+
+      - name: Save Guix installation snapshot
+        if: always() && steps.guix-snapshot.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: /tmp/guix-snapshot.tar.zst
+          key: ${{ steps.guix-key.outputs.key }}
 
       - name: Upload update report artifact
         if: always()
