@@ -759,42 +759,41 @@ It requires a writable @file{/var/lib/apm} directory at runtime; run the
 ;;;
 ;;; A pure-stdlib Python CLI (hatchling build backend) that manages a shared
 ;;; knowledge base of experience cards, memory, curation and workflow
-;;; distillation across multiple AI coding agents.  Upstream publishes no git
-;;; tags, so this tracks the main-branch HEAD via the latest-git-commit
-;;; updater; the @code{jieba} extra (Chinese segmentation for the @code{dream}
-;;; sub-command) is optional and not packaged here.
+;;; distillation across multiple AI coding agents.  Upstream publishes
+;;; v-prefixed git tags; this pins the latest release tag (the generic-git
+;;; updater takes over from here).  The @code{jieba} extra (Chinese
+;;; segmentation for the @code{dream} sub-command) is optional and not
+;;; packaged here.
 
 (define-public agenote
-  (let ((commit "4df1a96c918f80f2693df4dd8f797c410b89bcac")
-        (revision "4"))
-    (package
-      (name "agenote")
-      (version (git-version "0.1.2" revision commit))
-      (source
-       (origin
-         (method git-fetch)
-         (uri (git-reference
-               (url "https://github.com/ShineBreaker/agenote")
-               (commit commit)))
-         (file-name (git-file-name name version))
-         (sha256
-          (base32 "14vvzgbysvxi1gk4jwprqmkdvfn1slkw5gp52q5rx7d9gfyb7gxv"))))
-      (build-system pyproject-build-system)
-      (arguments
-       (list
-        ;; No upstream test suite.
-        #:tests? #f))
-      (native-inputs (list python-hatchling))
-      ;; jieba (Chinese segmentation) is a hard runtime dependency since
-      ;; 0.1.2: the @code{dream} sub-command imports it for real word
-      ;; boundaries.  Propagated so it enters the profile of anything
-      ;; depending on agenote; only the missing/corrupt case falls back
-      ;; to the bundled 2-gram heuristic.
-      (propagated-inputs (list python-jieba))
-      (home-page "https://github.com/ShineBreaker/agenote")
-      (synopsis "Cross-agent experience platform CLI")
-      (description
-       "agenote is a Python CLI for cross-agent knowledge management and
+  (package
+    (name "agenote")
+    (version "0.1.5.1")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/ShineBreaker/agenote")
+             (commit "25ee753f52b8b909a925be70ad33d633440bbaa0")))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "1x98rs04g7215hibk7lfxhl2fhy1ay3qzrws6zlzwzcf9c6a45v3"))))
+    (build-system pyproject-build-system)
+    (arguments
+     (list
+      ;; No upstream test suite.
+      #:tests? #f))
+    (native-inputs (list python-hatchling))
+    ;; jieba (Chinese segmentation) is a hard runtime dependency since
+    ;; 0.1.2: the @code{dream} sub-command imports it for real word
+    ;; boundaries.  Propagated so it enters the profile of anything
+    ;; depending on agenote; only the missing/corrupt case falls back
+    ;; to the bundled 2-gram heuristic.
+    (propagated-inputs (list python-jieba))
+    (home-page "https://github.com/ShineBreaker/agenote")
+    (synopsis "Cross-agent experience platform CLI")
+    (description
+     "agenote is a Python CLI for cross-agent knowledge management and
 experience sharing.  It exposes a unified terminal API (29 sub-commands)
 through which multiple AI coding agents can create, retrieve and curate
 experience cards, maintain a shared memory system, run health and
@@ -805,8 +804,7 @@ shim for hook extensions) and @code{orgfmt} (generic Org-mode
 formatter).  Card data and runtime artefacts are written to a
 configurable knowledge-base root (@env{KB_ROOT}, default
 @file{~/Documents/Org}), not into the package itself.")
-      (properties `((with-latest-git-commit . #t)))
-      (license license:expat))))
+    (license license:expat)))
 
 ;;; The upstream .deb ships one ELF binary plus desktop entry, hicolor icons
 ;;; and a man page:
