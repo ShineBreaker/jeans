@@ -197,7 +197,7 @@ editor that supports the protocol to provide Java language features.")
 (define-public aria2-next-bin
   (package
     (name "aria2-next-bin")
-    (version "2.6.5")
+    (version "2.6.7")
     (source
      (origin
        (method url-fetch)
@@ -205,7 +205,7 @@ editor that supports the protocol to provide Java language features.")
              "https://github.com/AnInsomniacy/aria2-next/releases/download/"
              "v" version "/aria2-next-" version "-linux-x86_64"))
        (sha256
-        (base32 "0lgd7cm6w93cnfbryvjny75g3nxyfsg692qlfpn9xi83nnrw1jhn"))))
+        (base32 "09jfwf59qvg20wcs0bnpsx3kxigjh7fx1v09jyfas3s69f60j7m8"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -465,7 +465,7 @@ binary release.")
 (define-public cc-switch-bin
   (package
     (name "cc-switch-bin")
-    (version "3.20.0")
+    (version "3.20.1")
     (source
      (origin
        (method url-fetch)
@@ -473,7 +473,7 @@ binary release.")
              "https://github.com/farion1231/cc-switch/releases/download/"
              "v" version "/CC-Switch-v" version "-Linux-x86_64.deb"))
        (sha256
-        (base32 "1h2j5b6yvifa5nzd6sh4gjnmb5czrfkz7z8mbh9phag5hqnfw2nl"))))
+        (base32 "0qrls5ccgvd0zw17dsckdbky8db57sadp7gl3xjpw00z7641zsmf"))))
     (build-system gnu-build-system)
     (arguments
      (list

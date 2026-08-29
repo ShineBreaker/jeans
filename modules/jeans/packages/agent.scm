@@ -488,7 +488,7 @@ This package provides the prebuilt binary release.")
 (define-public opencode-desktop-bin
   (package
     (name "opencode-desktop-bin")
-    (version "1.18.23")
+    (version "1.18.25")
     (source
      (origin
        (method url-fetch)
@@ -496,7 +496,7 @@ This package provides the prebuilt binary release.")
              "https://github.com/anomalyco/opencode/releases/download/"
              "v" version "/opencode-desktop-linux-amd64.deb"))
        (sha256
-        (base32 "0incmgd3y6hsrwq1qm3j7p1rpzjhw1lsxvq310lb04bbsib7kc2g"))))
+        (base32 "0ar1v3iad9l4bpmrb52lms1qdlnskf1f39jj5fb6ndbzk8bri49i"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -650,7 +650,7 @@ coding experience with context awareness.")
 (define-public reasonix-bin
   (package
     (name "reasonix-bin")
-    (version "1.31.4")
+    (version "1.33.0")
     (source
      (origin
        (method url-fetch)
@@ -658,7 +658,7 @@ coding experience with context awareness.")
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
              "v" version "/reasonix-linux-amd64.tar.gz"))
        (sha256
-        (base32 "0z16gbd1ynwzay30czb9bavm4px3q1i3md4bhz9b8rdn3k6dfn5l"))))
+        (base32 "1x4lj7clm6wjjcbw3sq3i7h3nbsb9q05blfl0l9pf8ipaqh7r0s7"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -692,7 +692,7 @@ and ships as a single static binary with no runtime dependencies.")
 (define-public reasonix-desktop-bin
   (package
     (name "reasonix-desktop-bin")
-    (version "1.31.4")
+    (version "1.33.0")
     (source
      (origin
        (method url-fetch)
@@ -700,7 +700,7 @@ and ships as a single static binary with no runtime dependencies.")
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
              "desktop-v" version "/Reasonix-linux-amd64.deb"))
        (sha256
-        (base32 "0ayssnq6w9af4721q2s0gina65mfgys91zyvili191kakg4s9wzg"))))
+        (base32 "0ipcnqppyxrf9vbzzjcx7l31yfb6sa058cgssagy66rkjvqkzvvl"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -811,7 +811,7 @@ support for multiple LLM providers.")
 (define-public zcode
   (package
     (name "zcode")
-    (version "3.9.2")
+    (version "3.10.1")
     (source
      (origin
        (method url-fetch)
@@ -819,7 +819,7 @@ support for multiple LLM providers.")
              "https://cdn-zcode.z.ai/zcode/electron/releases/"
              version "/linux-x64/ZCode-" version "-linux-x64.deb"))
        (sha256
-        (base32 "0v2x4wfs8claz7hmy88y33rkv5vgpyh32dmnj88vpbvql88l4gyv"))))
+        (base32 "12zhrcdcd2z3alb8nn946py5v10ykck1crg2z33s8i853v0fxv0x"))))
     (build-system gnu-build-system)
     (arguments
      (list
