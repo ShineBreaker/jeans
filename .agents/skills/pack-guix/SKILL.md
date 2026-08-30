@@ -52,7 +52,11 @@ trap 'rm -rf "$WORK_DIR"' EXIT
 - 稳定源码归档：使用 url-fetch；下载后立即用 file 检查类型。
 - GitHub 自动生成的源码 tarball：优先改用 git-fetch，避免同一 tag 的归档内容漂移。
 - .deb：ar x 后解压 data.tar.*，检查 opt/、usr/bin、desktop 文件和资源路径。
-- AppImage：使用 7z x，再检查所有 ELF 和 .so；不要把 AppImage 自带更新器带进 Guix runtime。
+- AppImage：永远用 `7z x` 静态解压（`p7zip` 进 native-inputs），不要执行
+  AppImage 自身的 `--appimage-extract`——那需要执行构建树内的二进制，CI 上
+  一律 Permission denied。解压产物在顶层（无 `squashfs-root/` 前缀）；产物
+  结构、install-plan 符号链接陷阱与参照包见 jeans-conventions.md「AppImage
+  包」。解压后检查所有 ELF 和 .so；不要把 AppImage 自带更新器带进 Guix runtime。
 
 预编译产物至少执行：
 

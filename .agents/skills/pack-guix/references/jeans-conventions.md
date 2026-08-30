@@ -155,19 +155,34 @@ cargo 包升级时，`guix refresh` 只能改写包文件里的 `version`/`hash`
 
 ### AppImage 包
 
-用 `7z x` 提取，对所有 ELF 二进制和 `.so` 文件执行 `patchelf`。使用 `copy-build-system` 配合 `#:install-plan`：
+**默认用 `7z x` 静态解压，永远不要执行 AppImage 自身的 `--appimage-extract`。**
+原因：自解压需要执行构建树里的 AppImage runtime，而 jeans 的自动更新 CI（GitHub
+runner）不允许执行构建树中的任何可执行文件——AppImage 自解压、autotools
+`./configure` 乃至 chmod 755 的 shell 脚本全部 `execvp: Permission denied`
+（issue #32）。`7z` 只解析容器格式（ELF runtime + squashfs 段），全程只运行
+store 里的程序，本地与 CI 行为一致。`p7zip` 加入 `native-inputs`。
+
+`7z x` 把内容直接解到构建目录顶层（`usr/`、`*.desktop`、图标等），**没有**
+`squashfs-root/` 前缀——那是自解压模式才有的产物。`#:install-plan` 按顶层路径写：
 
 ```scheme
-(build-system copy-build-system)
-(arguments
- (list
-  #:tests? #f
-  #:validate-runpath? #f
-  #:strip-binaries? #f
-  #:install-plan
-  #~'(("bin/%upstream-program%" "bin/"))))
-(native-inputs (list patchelf))
+(native-inputs (list p7zip patchelf))
+#:install-plan
+#~'(("usr/" "lib/<pkg>/"))
 ```
+
+**install-plan 陷阱**：AppImage 根部的 `.desktop` 和图标文件几乎都是指向
+`usr/share/...` 的**相对符号链接**，按链接路径安装会得到悬空链接（waywallen-bin
+实证）。需要这些文件时引用 `usr/` 内的真实文件，而非根部链接。
+
+解压后对所有 ELF 二进制和 `.so` 执行 `patchelf`（遍历全部，不只主入口）。
+
+参照包：
+
+- `modules/jeans/packages/games.scm` 的 `osu-lazer-bin` —— 最简参照，7z 解包 +
+  patchelf + wrap-program，该模式已被自动更新 CI 构建验证多次。
+- `modules/jeans/packages/desktop.scm` 的 `waywallen-bin` —— 复杂参照，Qt6
+  bundle 保留 AppRun 布局、QT_PLUGIN_PATH 补插件、插件发现桥接。
 
 ### tar.gz / .deb 等归档包
 
@@ -191,6 +206,17 @@ cargo 包升级时，`guix refresh` 只能改写包文件里的 `version`/`hash`
 ### Qt 预编译 bundle 缺插件
 
 自包含 Qt bundle（AppImage 等）常缺个别 Qt 插件。典型案例：waywallen 的 AppImage 不含 `iconengines/libqsvgicon.so`，所有主题 SVG 图标渲染为空白。补法：把 Guix 对应 qt 包的插件目录（如 `qtsvg` 的 `lib/qt6/plugins`）**追加**到 wrapper 的 `QT_PLUGIN_PATH`（bundle 自带目录在前）。前提：wrapper 的 `LD_LIBRARY_PATH` 让 bundle 的 Qt 库排在 Guix Qt 之前，插件于是链接回 bundle 的 Qt，避免两套 Qt ABI 混用。
+
+### 预编译包需要的 ffmpeg 版本 Guix 没有
+
+Guix 只有 ffmpeg 8.x/6.x/5.x/4.x，没有 7.x。预编译包链接 7.x sonames
+（libavformat.so.61、libavcodec.so.61、libavutil.so.59、libswscale.so.8、
+libswresample.so.5）时，在同一包文件内写**私有 helper**（`define` 而非
+`define-public`）：`(inherit ffmpeg)` 改 name/version/source，只保留
+shared 输出，inputs 收缩到实际需要的（如仅 zlib）。**保留继承来的自定义
+`configure` phase**——ffmpeg 用手写的 configure，不接受 gnu-build-system
+默认 phase 注入的 `CONFIG_SHELL`/`--build=` 参数，替换掉就构建失败。参照
+`desktop.scm` 的 `ffmpeg-7`（open-wallpaper-engine-bin 的依赖）。
 
 ### 插件宿主不读 XDG_DATA_DIRS
 
