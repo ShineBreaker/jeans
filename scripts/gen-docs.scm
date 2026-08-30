@@ -35,6 +35,7 @@
   '((jeans packages agent)
     (jeans packages browser)
     (jeans packages desktop)
+    (jeans packages editor)
     (jeans packages emacs-xyz)
     (jeans packages fonts)
     (jeans packages games)
