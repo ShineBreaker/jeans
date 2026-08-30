@@ -37,6 +37,7 @@ github updater 用 release 资产 URL 的文件名前缀匹配包。`package-ups
 ```
 
 多个 property 用 alist 合并：
+
 ```scheme
 (properties `((upstream-name . "reasonix") (release-tag-prefix . "^v")))
 ```
@@ -81,16 +82,24 @@ github updater 用 release 资产 URL 的文件名前缀匹配包。`package-ups
 ```bash
 GUIX_GITHUB_TOKEN="$(gh auth token)" guix refresh -L modules -L /tmp/nonguix <package-name>
 # "已是最新" 或 "would be upgraded" = 识别成功
-# "no updater" = properties 配置有误，检查 upstream-name 是否匹配文件名前缀
+# "no updater" = properties 配置有误（检查 upstream-name 是否匹配文件名前缀），
+#               或命中 github updater 静默盲区（见下方「Python updater 兜底」的盲区清单）
 ```
 
 ### Python updater 兜底（guix refresh 力不能及的包）
 
 少数包 guix refresh 无法处理，仍由 `update_versions.py` + `config.json` 兜底：
+
 - **非 GitHub 源**：CDN（zcode）、gitee（amber-pm）、无 version URL（font-misans）
 - **npm scoped tag**：kimi-code-bin（`@scope/name@version` 模式）
 - **refresh URL 重建失败的边缘 case**：reasonix-desktop-bin（`desktop-v` 前缀 + 文件名不标准）
 - 这些包的 tag_prefix / pre-release 规则保留在 `config.json`，不写入 properties。
+
+github updater 还有几个静默盲区（不报错、就是不识别），命中任一条就直接走 Python 兜底，不要在 properties 上浪费时间：
+
+- **非数字开头的 tag 系列**：`nightly-20260831` 这类 tag 不被当作版本（lem-next-bin，由 SPECIAL_UPDATERS 的 nightly 处理器接管，正则锁定 `nightly-YYYYMMDD-HHMM` 日期 tag）。
+- **资产前缀大小写不匹配**：上游 tag/资产用大写 `V0.3.7`（inso-bin），refresh 的资产名匹配区分大小写。
+- **只发 prerelease 的 repo**：`/releases/latest` 恒 404（inso-bin），必须进 `check_pre_release` 列表才有版本可查；即使 guix refresh 侧能识别， prerelease-only 的上游也常需要 Python 侧配合。
 
 ## Rust 打包（双文件模式）
 
@@ -128,7 +137,8 @@ cargo 包升级时，`guix refresh` 只能改写包文件里的 `version`/`hash`
    guix import crate --lockfile "$WORK/<pkg>-<new-ver>/Cargo.lock" \
      > "$WORK/import.scm"
    ```
-   `import.scm` 是扁平的 `(define rust-... (crate-source ...))` 列表，**它的全部 define 就是新的 input 列表**（已用 0.14.2 的 266 个 input 全部能在现有 define 中找到验证过）。
+
+`import.scm` 是扁平的 `(define rust-... (crate-source ...))` 列表，**它的全部 define 就是新的 input 列表**（已用 0.14.2 的 266 个 input 全部能在现有 define 中找到验证过）。
 
 3. **用 `scripts/check-updates/merge_crate_inputs.py` 合并**（不要手写脚本，历史事故都来自这里）：
    ```bash
@@ -136,34 +146,31 @@ cargo 包升级时，`guix refresh` 只能改写包文件里的 `version`/`hash`
      <pkg> modules/jeans/packages/rust-crates.scm "$WORK/import.scm" --dry-run
    # dry-run 报告 OK 后去掉 --dry-run 正式执行
    ```
-   脚本做三件事：在 `ssss-separator` 前插入缺失的 crate-source 定义；用括号深度匹配替换 `<pkg>` 的 input 列表；断言每个 input 变量都有定义。
 
-   **这个脚本修正了旧脚本的两个致命 bug**：
-   - 正则 `rust-[a-z0-9.+-]+` 必须含 `-`（crate 名如 `objc2-open-directory`）和 `+`（版本如 `1.0.3+wasi-0.2.9`）。旧的 `rust-[\w.+]+` 在连字符处截断，静默漏掉一半定义 → 文件被清空。
-   - input 列表的 `(list ...)` 必须保留**内层**右括号（`scm[list_close-1:]`，不是 `scm[list_close:]`），否则 `(key => (list ...))` 项的外层括号丢失 → 整个 `define-cargo-inputs` 块语法错误。
+脚本做三件事：在 `ssss-separator` 前插入缺失的 crate-source 定义；用括号深度匹配替换 `<pkg>` 的 input 列表；断言每个 input 变量都有定义。
+
+**这个脚本修正了旧脚本的两个致命 bug**：
+
+- 正则 `rust-[a-z0-9.+-]+` 必须含 `-`（crate 名如 `objc2-open-directory`）和 `+`（版本如 `1.0.3+wasi-0.2.9`）。旧的 `rust-[\w.+]+` 在连字符处截断，静默漏掉一半定义 → 文件被清空。
+- input 列表的 `(list ...)` 必须保留**内层**右括号（`scm[list_close-1:]`，不是 `scm[list_close:]`），否则 `(key => (list ...))` 项的外层括号丢失 → 整个 `define-cargo-inputs` 块语法错误。
 
 4. **验证只信 guix，不信 wrapper 退出码。** `blue build`/shell 的 `$?` 反映的是 wrapper 是否成功调用 guix，**不是**构建是否成功。必须读 guix 输出里的字样：
    ```bash
    guix build -L modules <pkg> --dry-run    # 先确认模块能加载（语法/括号）
    blue build <pkg>                          # 再真实构建，grep 输出里的 "失败"/"error"
    ```
-   guile 能 `use-modules` 加载不代表语法正确（可能命中 `.go` cache）；`guix build --dry-run` 报 `unexpected end of input` 才是真相。
+
+guile 能 `use-modules` 加载不代表语法正确（可能命中 `.go` cache）；`guix build --dry-run` 报 `unexpected end of input` 才是真相。
 
 ## 预编译二进制包
 
-预编译包有三种常见形态，处理方式不同。
+预编译包的常见形态各不相同，按小节对号入座；先用 `patchelf --print-interpreter` 探测 linkage，再选处理路线。
 
 ### AppImage 包
 
-**默认用 `7z x` 静态解压，永远不要执行 AppImage 自身的 `--appimage-extract`。**
-原因：自解压需要执行构建树里的 AppImage runtime，而 jeans 的自动更新 CI（GitHub
-runner）不允许执行构建树中的任何可执行文件——AppImage 自解压、autotools
-`./configure` 乃至 chmod 755 的 shell 脚本全部 `execvp: Permission denied`
-（issue #32）。`7z` 只解析容器格式（ELF runtime + squashfs 段），全程只运行
-store 里的程序，本地与 CI 行为一致。`p7zip` 加入 `native-inputs`。
+**默认用 `7z x` 静态解压，永远不要执行 AppImage 自身的 `--appimage-extract`。** 原因：自解压需要执行构建树里的 AppImage runtime，而 jeans 的自动更新 CI（GitHub runner）不允许执行构建树中的任何可执行文件——AppImage 自解压、autotools `./configure` 乃至 chmod 755 的 shell 脚本全部 `execvp: Permission denied` （issue #32）。`7z` 只解析容器格式（ELF runtime + squashfs 段），全程只运行 store 里的程序，本地与 CI 行为一致。`p7zip` 加入 `native-inputs`。
 
-`7z x` 把内容直接解到构建目录顶层（`usr/`、`*.desktop`、图标等），**没有**
-`squashfs-root/` 前缀——那是自解压模式才有的产物。`#:install-plan` 按顶层路径写：
+`7z x` 把内容直接解到构建目录顶层（`usr/`、`*.desktop`、图标等），**没有** `squashfs-root/` 前缀——那是自解压模式才有的产物。`#:install-plan` 按顶层路径写：
 
 ```scheme
 (native-inputs (list p7zip patchelf))
@@ -171,22 +178,18 @@ store 里的程序，本地与 CI 行为一致。`p7zip` 加入 `native-inputs`�
 #~'(("usr/" "lib/<pkg>/"))
 ```
 
-**install-plan 陷阱**：AppImage 根部的 `.desktop` 和图标文件几乎都是指向
-`usr/share/...` 的**相对符号链接**，按链接路径安装会得到悬空链接（waywallen-bin
-实证）。需要这些文件时引用 `usr/` 内的真实文件，而非根部链接。
+**install-plan 陷阱**：AppImage 根部的 `.desktop` 和图标文件几乎都是指向 `usr/share/...` 的**相对符号链接**，按链接路径安装会得到悬空链接（waywallen-bin 实证）。需要这些文件时引用 `usr/` 内的真实文件，而非根部链接。
 
 解压后对所有 ELF 二进制和 `.so` 执行 `patchelf`（遍历全部，不只主入口）。
 
 参照包：
 
-- `modules/jeans/packages/games.scm` 的 `osu-lazer-bin` —— 最简参照，7z 解包 +
-  patchelf + wrap-program，该模式已被自动更新 CI 构建验证多次。
-- `modules/jeans/packages/desktop.scm` 的 `waywallen-bin` —— 复杂参照，Qt6
-  bundle 保留 AppRun 布局、QT_PLUGIN_PATH 补插件、插件发现桥接。
+- `modules/jeans/packages/games.scm` 的 `osu-lazer-bin` —— 最简参照，7z 解包 + patchelf + wrap-program，该模式已被自动更新 CI 构建验证多次。
+- `modules/jeans/packages/desktop.scm` 的 `waywallen-bin` —— 复杂参照，Qt6 bundle 保留 AppRun 布局、QT_PLUGIN_PATH 补插件、插件发现桥接。
 
 ### tar.gz / .deb 等归档包
 
-`gnu-build-system`，删除 `configure`/`build` 阶段，自定义 `install`。
+`gnu-build-system`，删除 `configure`/`build` 阶段，自定义 `install`。解包前先 `tar tzf` / `unzip -l` 列出顶层布局——多数归档有 `<name>-<version>/` 顶层目录，但有的直接散装在根部（ai-usagebar-bin 的 tar.gz、inso-bin 的 zip），install-plan 按实际布局写。
 
 ### 裸 ELF 可执行文件
 
@@ -194,9 +197,26 @@ store 里的程序，本地与 CI 行为一致。`p7zip` 加入 `native-inputs`�
 
 完整模板见 `references/package-template.scm`。
 
+### 自定位二进制：patchelf 和 wrapper 都不可用
+
+判断标准：二进制在运行时用 `/proc/self/exe` 或自身文件名定位资源、甚至解包自己。任何改变 ELF 布局或文件名的处理都会破坏这条假设：
+
+- **bun --compile 产物**：`patchelf` 写 interpreter/RPATH 会平移 ELF 内的 `.bun` 段，自解包随之损坏；Guix ld-linux wrapper 则让 `/proc/self/exe` 指向 wrapper 自身，触发循环解包（打包探索记录，仓库暂无此类包实例；nix-ld 侧基础设施已就位）。可行方案：**原样安装、不 patch**，依赖系统级 nix-ld 提供带回退搜索路径的 `/lib/ld-linux`（`jeans/services/nix-ld.scm` 的 `nix-ld-service-type`），运行库通过 `NIX_LD_LIBRARY_PATH` 提供。
+- **wrap-program 会把真实二进制改名为 `.<name>-real`**：neomacs 在该命名下死循环。解法：真实 ELF 以本名安装到 `libexec/<pkg>/`，`bin/` 下手写 thin shell wrapper 启动它；exe 同目录数据（`neomacs.pdump`）和上游按 exe 路径探测的 `../share/<name>` 随之回正，仍不够时用上游提供的环境变量（如 `NEOMACS_RUNTIME_ROOT`）显式指路。完整分析见 `emacs-xyz.scm` 的 `neomacs-bin` 包前注释。
+- **反例（能容忍 `.real` 命名）**：Tauri 的 resource/sidecar 解析以真实 exe 路径为基准，`wrap-program` 不影响（motrix-next-bin，见下方 Tauri 小节）。动手前先读上游定位自身资源的代码，不要按包类型猜。
+
+### dlopen / CFFI 写死的动态加载
+
+`readelf -d` 的 NEEDED 列表只是静态真相，两类运行时加载会让"NEEDED 为空 = 无依赖"的判断失效：
+
+- **裸 soname dlopen**：加载探测列表的第一项常是不带路径的裸 soname（fresh-editor-bin 的控制台鼠标支持 dlopen `libgpm.so.2`，`editor.scm` 包前注释）。RUNPATH 即可满足：把提供该库的包加进 inputs 并纳入 library path，不需要 symlink。
+- **写死上游发行版的 soname**：CFFI/FFI 的候选列表按打包者的发行版写死（lem-next 的 CFFI 写死 Ubuntu 的 `libncursesw.so.6.3`、neomacs 的 `libtinfo.so.6` 同理，而 Guix 的 ncurses 只提供 `libncursesw.so.6`）。解法：安装阶段在二进制同目录 `symlink` 一个别名指向 Guix 的实际库文件（`editor.scm` 的 `lem-next-bin`、`emacs-xyz.scm` 的 `neomacs-bin` 均有实例），并把该目录放进 RUNPATH。
+- 断言"Guix 下无法加载"之前，先读上游的加载源码找探测顺序——多数 FFI 按列表依次尝试，前面失败会落到可满足的后续项。
+
 ### 所有预编译包的通用规则
 
 - `patchelf` 用于设置 ELF 解释器（`ld-linux`）和 RPATH（指向 Guix store 路径）。
+- 先探测 linkage 再动手：`patchelf --print-interpreter` 非零退出（找不到 `.interp` 段）说明是静态二进制（static-pie），直接复制安装即可，不做任何 interpreter/RPATH 处理。`agent.scm` 的 crush 在构建时探测、只在 dynamic 时 `--set-interpreter`；CodeWhale 已知 fully static，直接安装、连 patchelf 都不进 native-inputs。
 - 设置 `#:tests? #f`（无源码 → 无测试）。
 - 设置 `#:validate-runpath? #f`（预编译二进制无法通过 Guix 的 runpath 校验）。
 - 设置 `#:strip-binaries? #f`（预编译二进制不支持 Guix 的 strip，会导致损坏）。
@@ -209,18 +229,20 @@ store 里的程序，本地与 CI 行为一致。`p7zip` 加入 `native-inputs`�
 
 ### 预编译包需要的 ffmpeg 版本 Guix 没有
 
-Guix 只有 ffmpeg 8.x/6.x/5.x/4.x，没有 7.x。预编译包链接 7.x sonames
-（libavformat.so.61、libavcodec.so.61、libavutil.so.59、libswscale.so.8、
-libswresample.so.5）时，在同一包文件内写**私有 helper**（`define` 而非
-`define-public`）：`(inherit ffmpeg)` 改 name/version/source，只保留
-shared 输出，inputs 收缩到实际需要的（如仅 zlib）。**保留继承来的自定义
-`configure` phase**——ffmpeg 用手写的 configure，不接受 gnu-build-system
-默认 phase 注入的 `CONFIG_SHELL`/`--build=` 参数，替换掉就构建失败。参照
-`desktop.scm` 的 `ffmpeg-7`（open-wallpaper-engine-bin 的依赖）。
+Guix 只有 ffmpeg 8.x/6.x/5.x/4.x，没有 7.x。预编译包链接 7.x sonames（libavformat.so.61、libavcodec.so.61、libavutil.so.59、libswscale.so.8、libswresample.so.5）时，在同一包文件内写**私有 helper**（`define` 而非 `define-public`）：`(inherit ffmpeg)` 改 name/version/source，只保留 shared 输出，inputs 收缩到实际需要的（如仅 zlib）。**保留继承来的自定义 `configure` phase**——ffmpeg 用手写的 configure，不接受 gnu-build-system 默认 phase 注入的 `CONFIG_SHELL`/`--build=` 参数，替换掉就构建失败。参照 `desktop.scm` 的 `ffmpeg-7`（open-wallpaper-engine-bin 的依赖）。
 
 ### 插件宿主不读 XDG_DATA_DIRS
 
 插件型宿主（daemon/编辑器）常只扫私有目录（如 `<exec>/../share/<name>` 和 `$XDG_DATA_HOME/<name>`），不读 `XDG_DATA_DIRS`——而 Guix profile 恰恰通过 `XDG_DATA_DIRS` 暴露 `share/` 树。桥接法：在 wrapper 里遍历 `XDG_DATA_DIRS`（shell 循环需临时 `IFS=:`），把含 `<name>/plugins/` 的目录去重后转成上游的插件 CLI 参数（如 `--plugin <dir>`）。使用前确认：flag 是否可重复、上游期望前缀目录还是插件目录本身。桥接后，插件包与宿主装进同一 profile 即可互相发现，无需用户手动 symlink。
+
+### Electron 包的 Wayland/Ozone 参数
+
+仓库有两个现成的 phase helper（`agent.scm`），新 Electron 包直接复用，不要各写各的：
+
+- `prefer-electron-wayland-phase`：默认方案。`WAYLAND_DISPLAY` 存在且用户未自选平台时，向 wrapper 注入 `--ozone-platform=wayland --enable-features=UseOzonePlatform,WaylandWindowDecorations`。
+- `prefer-electron-wayland-hint-phase`：**argv 解析严格的上游**（自己的 parser 对未知 flag 直接退出，Paseo 实证）不能用注入方案，改为 export Electron 原生的 `ELECTRON_OZONE_PLATFORM_HINT=wayland`。注入后启动即报未知 flag 的包换这个。
+
+生效条件（读 case 逻辑）：hint-phase 只在用户未设置 `ELECTRON_OZONE_PLATFORM_HINT` 时 export；wayland-phase 在未设置（默认 auto）或显式设为 wayland 时注入，设为其他值（如 x11）则不注入。两者都不覆盖用户指向其他平台的选择。
 
 ### Tauri 应用（prebuilt .deb）
 
@@ -317,6 +339,15 @@ generic-git updater 能直接处理。version 字段是字面字符串，commit 
 
 git-fetch 包更新版本/commit 后，必须重新构建以获取正确的 base32。占位 hash（`000...000`）只用于占位，不能提交。
 
+## 括号失衡的两类症状（定位方向相反）
+
+改完 `.scm` 后加载报错时，先按症状选定位方向，不要肉眼重排全文：
+
+- **`missing field initializers`（缺字段初始化器）**：某个 package 提前闭合——通常是字段块里少了开括号/多了闭括号，解析器认为 package 到此结束，后面的字段成了裸表达式。此时全文括号净差往往恰好为 0（一开一闭成对错位），净差扫描查不出来。
+- **`unexpected end of input`（输入意外结束）**：整体未闭合——某处少了闭括号，解析器读到 EOF 还在等。净差扫描对这类有效。
+
+两类都优先用 `guix build -L modules <pkg> --dry-run` 的报错定位；guile 能 `use-modules` 加载不代表语法正确（可能命中 `.go` cache），dry-run 报错才是真相。
+
 ## 通用构建阶段模式
 
 - **`wrap-program`**：总是包装以设置 `PATH`、`LD_LIBRARY_PATH`、`GI_TYPELIB_PATH`、`XDG_DATA_DIRS` 等。
@@ -364,3 +395,10 @@ git-fetch 包更新版本/commit 后，必须重新构建以获取正确的 base
 在手写 wrapper 脚本（`with-output-to-file`）里设置 `XDG_DATA_DIRS` 时，**必须**用追加语法 `"${XDG_DATA_DIRS:+:$XDG_DATA_DIRS}"`，保留系统原有的 `~/.guix-home/profile/share`、`/run/current-system/profile/share` 等路径。如果用 `export XDG_DATA_DIRS=...`（精确替换）覆盖掉系统路径，gdk-pixbuf 会找不到 loaders cache 和 mime 数据 → GTK 加载 PNG 图标时崩溃（`Gtk:ERROR ... Unrecognized image file format (gdk-pixbuf-error-quark, 3)` SIGABRT）。这个 bug 极其隐蔽：构建正常、`guix lint` 通过、纯 gdk-pixbuf 程序（不调 `gtk_init`）正常，只有完整 GTK 应用才崩。
 
 同样适用于 `GDK_PIXBUF_MODULE_FILE`：Guix 的 gdk-pixbuf 用补丁加了 `GUIX_GDK_PIXBUF_MODULE_FILES`（复数），上游的 `GDK_PIXBUF_MODULE_FILE`（单数）在 Guix 环境下指向的 store cache 通常只有部分 loader（无 PNG/JPEG，因为它们是内建的），设置它反而有害——应让 gdk-pixbuf 从 profile 继承。
+
+## 运行时验证的环境限制（TUI / headless）
+
+- TUI 入口在无控制终端的环境下启动，报 `os error 6`（无 TTY）是**预期行为**，不代表包损坏。headless 会话只做静态验证（ELF interpreter/RPATH、wrapper `bash -n`、文件布局、desktop Exec），并在交接报告里标注"TUI 未真实复现"。
+- CLI 入口不受此限，必须真实运行（`--version` / `--help`）。
+- 验证脚本注意：Guix 没有 `/bin/bash`，shebang 写 `#!/bin/bash` 的脚本会秒退——在 `guix shell` 里显式用 bash 调起，或先 patch shebang；工具重写文件会重置执行位，跑之前 `chmod +x`。
+- 在 tmux 里做 TUI 验证时只 kill 自己创建的会话（`tmux kill-session -t <自己的>`），不要 `kill-server`。

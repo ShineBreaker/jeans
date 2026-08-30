@@ -417,10 +417,7 @@ guix import pypi PACKAGE > modules/jeans/packages/file.scm
 # 构建包
 guix build -L modules PACKAGE
 
-# 本地安装
-guix package -L modules -i PACKAGE
-
-# 带包进入 shell
+# 带包进入 shell（验证入口，不持久安装）
 guix shell -L modules PACKAGE
 
 # Lint 检查（打包后必须运行）

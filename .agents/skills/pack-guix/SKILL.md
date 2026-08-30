@@ -1,6 +1,6 @@
 ---
 name: pack-guix
-description: "Use when creating, updating, or reviewing a GNU Guix package in this channel, especially precompiled binaries, .deb/AppImage/tarball extraction, ELF/FHS compatibility, package naming, hashes, wrappers, lint, or build verification."
+description: "Use when creating, updating, or reviewing a GNU Guix package in this channel, especially precompiled binaries, .deb/AppImage/tarball extraction, ELF/FHS compatibility, self-locating or bun-compiled binaries, package naming, hashes, wrappers, lint, build verification, auto-update properties for guix refresh, or Rust cargo dependency updates via import-crate."
 ---
 
 # Pack-Guix
@@ -49,7 +49,7 @@ trap 'rm -rf "$WORK_DIR"' EXIT
 根据来源选择唯一分支：
 
 - Git tag/commit：使用 git-fetch、git-reference、git-file-name；固定 commit 并用 checkout 内容算 hash。
-- 稳定源码归档：使用 url-fetch；下载后立即用 file 检查类型。
+- 稳定源码归档：使用 url-fetch；下载后立即用 file 检查类型，解包前先列出归档顶层布局（有的归档没有顶层目录）。
 - GitHub 自动生成的源码 tarball：优先改用 git-fetch，避免同一 tag 的归档内容漂移。
 - .deb：ar x 后解压 data.tar.*，检查 opt/、usr/bin、desktop 文件和资源路径。
 - AppImage：永远用 `7z x` 静态解压（`p7zip` 进 native-inputs），不要执行
@@ -118,17 +118,19 @@ fontconfig 变量的实际包名是 fontconfig-minimal，openjdk17 变量的实�
 
 选择运行策略：
 
+- 静态 ELF（`patchelf --print-interpreter` 探测失败、无 .interp 段）：直接复制安装，不做 interpreter/RPATH 处理。
 - 能安全修改 ELF：patchelf --set-interpreter + RPATH，遍历所有实际 ELF，不只 patch 主入口。
 - 不能修改或需要保持自定位：安装到 libexec/<pkg>，用 Guix ld-linux wrapper，并传 --argv0 和 --library-path。
+- 自定位二进制（按 /proc/self/exe 或自身文件名找资源、自解包；bun --compile 产物已知属于此类）：patchelf 和 wrapper 都会破坏自定位——原样安装 + 系统级 nix-ld，或真名住 libexec + 手写 thin wrapper，见 jeans-conventions.md「自定位二进制」。
 - wrapper 中所有路径类环境变量使用 prefix/追加语义。手写 GTK wrapper 的 XDG_DATA_DIRS 必须保留原值；不要设置有害的单数 GDK_PIXBUF_MODULE_FILE。
 - shell wrapper 使用 store 中的 bash-minimal，不写宿主 /bin/sh 或 /usr/bin/env。
-- Electron 包删除会触发 electron-updater 的 resources/package-type；Wayland 会话可在 wrapper 中注入 Ozone 参数，并提供 ELECTRON_OZONE_PLATFORM_HINT=x11 回退。
+- Electron 包删除会触发 electron-updater 的 resources/package-type；Wayland 支持复用 agent.scm 的 prefer-electron-wayland-phase（注入 flag）或 prefer-electron-wayland-hint-phase（argv 解析严格的上游只认 ELECTRON_OZONE_PLATFORM_HINT env），见 jeans-conventions.md「Electron 包的 Wayland/Ozone 参数」。
 
 完成标准：构建阶段不依赖网络更新、不写入 store 外的源码目录；wrapper、desktop 文件、资源和可写数据路径都指向正确位置；所有输入 label 可由 guix show 证明。
 
 ### 5. Load, build, and lint
 
-先做低成本检查，再做实际构建：
+先做低成本检查，再做实际构建。`.scm` 加载失败时按括号症状定位：`missing field initializers` = 某个 package 提前闭合；`unexpected end of input` = 整体未闭合（详见 jeans-conventions.md「括号失衡的两类症状」）：
 
 ```bash
 guix package -L modules -A >/dev/null
@@ -152,6 +154,7 @@ synopsis,gnu-description <package-name>
 根据包类型选择真实命令：
 
 - CLI：guix shell -L modules <package> -- <command> --version 或 --help。
+- TUI：headless 下报 os error 6（无 TTY，ai-usagebar-tui 实测复现）是预期，不代表包损坏；静态验证 + 标注"TUI 未真实复现"。CLI 入口仍须真实运行。
 - GUI：在真实图形会话中启动；至少检查 wrapper bash -n、ELF interpreter/RPATH、desktop Exec 和资源路径。
 - Electron：分别记录 Wayland/X11 会话、WAYLAND_DISPLAY、缩放变量和 wrapper 实际参数；用 ELECTRON_OZONE_PLATFORM_HINT=x11 做对照实验。
 - GTK/Tauri：检查 XDG_DATA_DIRS、GI_TYPELIB_PATH、GUIX_GDK_PIXBUF_MODULE_FILES 和 tray/native addon；不要只以“进程启动未立即退出”判定成功。
@@ -183,6 +186,8 @@ synopsis,gnu-description <package-name>
 - 不用手工 SHA256 转换替代 guix download/guix hash -rx。
 - 不用现代 list + output 的表达式表示带 output 的 input；使用 quasiquote alist。
 - 不覆盖系统 XDG_DATA_DIRS，不指向包内不完整的 gdk-pixbuf loader cache。
+- 不对自定位二进制（按 /proc/self/exe 或自身文件名定位资源；bun --compile 产物）用 patchelf 或 wrap-program；改用系统级 nix-ld，或真名住 libexec + 手写 thin wrapper。
+- 不把无仓库实证（file:line 或 commit）的单次经验写成普遍结论；写进本 skill 的条目注明实例来源，探索性结论标注"待实证"。
 - 不把网络故障、GUI 不可用或只完成 dry-run 写成构建/运行时成功。
 - 不提交缺少 `upstream-name` 的 GitHub release `-bin` 包；否则 guix refresh 会报 "no updater" 且包永远收不到自动更新。交付前必须用 `guix refresh` dry-run 确认 updater 识别。
 
