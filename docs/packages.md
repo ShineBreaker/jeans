@@ -9,16 +9,17 @@
 
 ### (jeans packages agent)
 
-| Package                | Description                                        |
-| ---------------------- | -------------------------------------------------- |
-| `codewhale-bin`        | Multi-provider AI coding agent for the terminal    |
-| `crush-bin`            | AI-powered coding assistant for the CLI            |
-| `github-copilot`       | Agent-native GitHub Copilot desktop application    |
-| `herdr-bin`            | Terminal workspace manager for AI coding agents    |
-| `opencode-desktop-bin` | AI coding agent desktop application                |
-| `reasonix-bin`         | DeepSeek-native AI coding agent for the terminal   |
-| `reasonix-desktop-bin` | DeepSeek-native AI coding agent with desktop GUI   |
-| `zcode`                | Desktop application for agent-assisted development |
+| Package                | Description                                                |
+| ---------------------- | ---------------------------------------------------------- |
+| `codewhale-bin`        | Multi-provider AI coding agent for the terminal            |
+| `crush-bin`            | AI-powered coding assistant for the CLI                    |
+| `github-copilot`       | Agent-native GitHub Copilot desktop application            |
+| `herdr-bin`            | Terminal workspace manager for AI coding agents            |
+| `opencode-desktop-bin` | AI coding agent desktop application                        |
+| `paseo-bin`            | Self-hosted desktop client for orchestrating coding agents |
+| `reasonix-bin`         | DeepSeek-native AI coding agent for the terminal           |
+| `reasonix-desktop-bin` | DeepSeek-native AI coding agent with desktop GUI           |
+| `zcode`                | Desktop application for agent-assisted development         |
 
 ### (jeans packages browser)
 

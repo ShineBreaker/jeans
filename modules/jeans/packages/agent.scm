@@ -71,6 +71,22 @@
             "esac\n"
             "exec -a "))))))
 
+;; Variant for Electron apps whose own argv parser rejects Chromium's
+;; --ozone-platform flags (Paseo): prefer Wayland by exporting Electron's
+;; native ELECTRON_OZONE_PLATFORM_HINT instead of injecting flags.  Only
+;; applied when the user has not chosen a platform themselves.
+(define (prefer-electron-wayland-hint-phase program)
+  #~(lambda _
+      (let ((wrapper (string-append #$output "/bin/" #$program)))
+        (substitute* wrapper
+          (("^exec -a ")
+           (string-append
+            "if [ -z \"${ELECTRON_OZONE_PLATFORM_HINT:-}\" ] "
+            "&& [ -n \"${WAYLAND_DISPLAY:-}\" ]; then\n"
+            "  export ELECTRON_OZONE_PLATFORM_HINT=wayland\n"
+            "fi\n"
+            "exec -a "))))))
+
 ;;; CodeWhale: multi-provider AI coding agent for the terminal (Rust).
 ;;;
 ;;; The upstream tar.gz ships two statically-linked (static-pie) Rust
@@ -639,6 +655,208 @@ This package provides the prebuilt binary release.")
 with Electron.  It supports multiple LLM providers and offers an interactive
 coding experience with context awareness.")
     (license license:expat)))
+
+;;; Paseo: self-hosted orchestrator for coding agents (Electron).
+;;;
+;;; The upstream .deb installs an Electron bundle under /opt/Paseo.  The
+;;; bundle keeps its upstream layout under lib/paseo:
+;;;   - Paseo                  the Electron main executable (GUI entry)
+;;;   - resources/bin/paseo    upstream CLI launcher; runs the main binary
+;;;                            with ELECTRON_RUN_AS_NODE=1.  Kept internal
+;;;                            (not on PATH), matching the upstream .deb,
+;;;                            which also leaves it out of /usr/bin.
+;;;   - resources/app.asar.unpacked/node_modules/...  native addons
+;;;     (node-pty pty.node, sherpa-onnx) in nested directories.  RPATH
+;;;     entries therefore include $ORIGIN so addons resolve sibling
+;;;     libraries (e.g. sherpa-onnx.node -> libsherpa-onnx-c-api.so)
+;;;     without dragging their exact paths into the build recipe.
+;;;
+;;; License note: this release ships under AGPLv3 (LICENSE at tag v0.6.1
+;;; and the .deb control metadata both say AGPL-3.0-or-later).  Upstream
+;;; relicensed to Apache-2.0 in commit a8734a9 (2026-08-27), which
+;;; postdates v0.6.1; flip to license:asl2.0 when refreshing past it.
+
+(define-public paseo-bin
+  (package
+    (name "paseo-bin")
+    (version "0.6.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://github.com/getpaseo/paseo/releases/download/"
+             "v" version "/Paseo-" version "-amd64.deb"))
+       (sha256
+        (base32 "0msc2g5x4cf21l7rlqfy6qn4yfix1acljzizhdqmjrzchgsmw15q"))))
+    (build-system gnu-build-system)
+    (arguments
+     (list
+      #:tests? #f
+      #:validate-runpath? #f
+      #:strip-binaries? #f
+      #:modules '((guix build gnu-build-system)
+                  (guix build utils)
+                  (ice-9 ftw)
+                  (ice-9 regex)
+                  (srfi srfi-26))
+      #:phases
+      #~(modify-phases %standard-phases
+          (delete 'configure)
+          (delete 'build)
+          (replace 'unpack
+            (lambda _
+              (invoke "ar" "x" #$source)
+              (invoke "tar" "xf" "data.tar.xz")))
+          (replace 'install
+            (lambda _
+              (copy-recursively "opt/Paseo"
+                                (string-append #$output "/lib/paseo"))
+              #t))
+          (add-after 'install 'disable-electron-updater
+            #$(disable-electron-updater-phase "paseo"))
+          (add-after 'disable-electron-updater 'patch-cli-shebang
+            (lambda* (#:key inputs #:allow-other-keys)
+              (substitute* (string-append #$output
+                                         "/lib/paseo/resources/bin/paseo")
+                (("#!/bin/sh")
+                 (string-append "#!"
+                                (search-input-file inputs
+                                                   "bin/bash"))))))
+          (add-after 'patch-cli-shebang 'patch-elf
+            (lambda* (#:key inputs #:allow-other-keys)
+              (let* ((ld.so (string-append #$(this-package-input "glibc")
+                                           #$(glibc-dynamic-linker)))
+                     (rpath (string-join
+                             (cons* "$ORIGIN"
+                                    (string-append #$output "/lib/paseo")
+                                    (map (lambda (input)
+                                           (string-append (cdr input) "/lib"))
+                                         inputs))
+                             ":")))
+                (define (patch-elf file patch-interp?)
+                  (format #t "Patching ~a ..." file)
+                  (when patch-interp?
+                    (invoke "patchelf" "--set-interpreter" ld.so file))
+                  (invoke "patchelf" "--set-rpath" rpath file)
+                  (display " done\n"))
+                ;; Electron executables get a new interpreter; shared
+                ;; libraries and .node addons have no PT_INTERP and only
+                ;; get RPATH.
+                (for-each (lambda (file) (patch-elf file #t))
+                          (map (lambda (binary)
+                                 (string-append #$output "/lib/paseo/"
+                                                binary))
+                               '("Paseo"
+                                 "chrome_crashpad_handler"
+                                 "chrome-sandbox")))
+                (for-each (lambda (file) (patch-elf file #f))
+                          (append (find-files (string-append #$output
+                                                             "/lib/paseo")
+                                              ".*\\.so(\\.[0-9]+)?$")
+                                  (find-files (string-append #$output
+                                                             "/lib/paseo")
+                                              ".*\\.node$"))))))
+          (add-after 'patch-elf 'install-bin
+            (lambda _
+              (let* ((out #$output)
+                     (bin (string-append out "/bin"))
+                     (exe (string-append out "/lib/paseo/Paseo")))
+                (mkdir-p bin)
+                (symlink exe (string-append bin "/paseo")))))
+          (add-after 'install-bin 'install-desktop
+            (lambda _
+              (let* ((out #$output)
+                     (apps (string-append out "/share/applications")))
+                (mkdir-p apps)
+                (make-desktop-entry-file
+                 (string-append apps "/paseo.desktop")
+                 #:name "Paseo"
+                 #:type "Application"
+                 #:comment #$(package-synopsis this-package)
+                 #:exec (string-append #$output "/bin/paseo %U")
+                 #:icon "paseo"
+                 #:categories '("Development")
+                 #:mime-type '("x-scheme-handler/paseo")
+                 #:startup-w-m-class "Paseo"))))
+          (add-after 'install-desktop 'install-icons
+            (lambda _
+              (let* ((icon-src "usr/share/icons/hicolor")
+                     (icon-dst (string-append #$output
+                                              "/share/icons/hicolor")))
+                (for-each
+                 (lambda (old)
+                   (let* ((size (match:substring
+                                  (string-match "/([0-9]+x[0-9]+)/apps/"
+                                                old)
+                                  1))
+                          (new (string-append icon-dst "/" size
+                                              "/apps/paseo.png")))
+                     (mkdir-p (dirname new))
+                     (copy-file old new)))
+                 (find-files icon-src "Paseo\\.png$")))))
+          (add-after 'install-icons 'wrap-program
+            (lambda* (#:key inputs outputs #:allow-other-keys)
+              (let* ((out (assoc-ref outputs "out"))
+                     (lib (string-append out "/lib/paseo"))
+                     (mesa-lib (string-append (assoc-ref inputs "mesa")
+                                              "/lib"))
+                     (nss-lib (string-append (assoc-ref inputs "nss")
+                                             "/lib/nss")))
+                (wrap-program (string-append out "/bin/paseo")
+                  `("LD_LIBRARY_PATH" prefix
+                    (,lib ,mesa-lib ,nss-lib))
+                  `("FONTCONFIG_FILE" =
+                    (,(string-append
+                       #$(this-package-input "fontconfig-minimal")
+                       "/etc/fonts/fonts.conf")))
+                  `("XDG_DATA_DIRS" prefix
+                    (,(string-append out "/share")))))))
+          (add-after 'wrap-program 'prefer-wayland
+            ;; Paseo's argv parser rejects injected --ozone-platform flags
+            ;; ("error: unknown option"), so use the env-hint variant.
+            #$(prefer-electron-wayland-hint-phase "paseo")))))
+    (native-inputs (list binutils patchelf tar xz))
+    (inputs `(("alsa-lib" ,alsa-lib)
+              ("at-spi2-core" ,at-spi2-core)
+              ("bash-minimal" ,bash-minimal)
+              ("cairo" ,cairo)
+              ("cups" ,cups)
+              ("dbus" ,dbus)
+              ("eudev" ,eudev)
+              ("expat" ,expat)
+              ("fontconfig-minimal" ,fontconfig)
+              ("gcc:lib" ,gcc "lib")
+              ("glibc" ,glibc)
+              ("glib" ,glib)
+              ("gtk+" ,gtk+)
+              ("libnotify" ,libnotify)
+              ("libsecret" ,libsecret)
+              ("libx11" ,libx11)
+              ("libxcb" ,libxcb)
+              ("libxcomposite" ,libxcomposite)
+              ("libxdamage" ,libxdamage)
+              ("libxext" ,libxext)
+              ("libxfixes" ,libxfixes)
+              ("libxkbcommon" ,libxkbcommon)
+              ("libxrandr" ,libxrandr)
+              ("libxscrnsaver" ,libxscrnsaver)
+              ("libxtst" ,libxtst)
+              ("mesa" ,mesa)
+              ("nss" ,nss)
+              ("pango" ,pango)
+              ("util-linux:lib" ,util-linux "lib")))
+    (properties `((upstream-name . "Paseo")))
+    (home-page "https://paseo.sh")
+    (synopsis "Self-hosted desktop client for orchestrating coding agents")
+    (description
+     "Paseo is a self-hosted orchestrator for coding agents such as Claude
+Code, Codex, Copilot, OpenCode, and Pi.  It runs a local daemon that manages
+the agents on your own machine with your own tools and configuration, and
+connects desktop, web, mobile, and CLI clients to it.  Agents run in
+parallel, tasks can be dictated through voice mode, and Paseo ships no
+telemetry or forced log-ins.")
+    (license license:agpl3+)
+    (supported-systems '("x86_64-linux"))))
 
 ;;; Reasonix: DeepSeek-native AI coding agent (Go static binary).
 ;;;
