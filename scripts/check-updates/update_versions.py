@@ -740,12 +740,65 @@ def update_font_misans(package: dict[str, Any], _config: dict[str, Any], scm_fil
     return update_package_in_file(scm_file, package, package["version"], new_base32)
 
 
+def update_lem_next_bin(package: dict[str, Any], _config: dict[str, Any], scm_file: Path) -> Optional[Dict[str, Any]]:
+    """lem-next-bin：lem-project/lem 只发 nightly prerelease。
+
+    移动 tag nightly-latest 的资产名恒定，且同样以 nightly- 开头，
+    通用 tag_prefix 模式区分不了两者（列表里它还排在最前），这里用
+    正则锁定日期 tag nightly-YYYYMMDD-HHMM，取 release 列表第一个
+    匹配（最新）。version 是 tag 去前缀后的日期串，唯一出现在下载
+    URL 的 tag 段里，通用 version 替换即可完成改写。
+    """
+    headers = {}
+    if GITHUB_TOKEN:
+        headers["Authorization"] = f"token {GITHUB_TOKEN}"
+    try:
+        response = http.github_api_get(
+            "lem-project/lem", "releases?per_page=30", headers
+        )
+        if 500 <= response.status_code <= 599:
+            raise RetryableError(f"GitHub API 服务器错误: {response.status_code}")
+        response.raise_for_status()
+    except requests.exceptions.Timeout as e:
+        raise RetryableError(f"请求超时: {e}")
+    except requests.exceptions.ConnectionError as e:
+        raise RetryableError(f"网络连接错误: {e}")
+
+    latest_tag = None
+    for rel in response.json():
+        tag = rel.get("tag_name") or ""
+        if re.fullmatch(r"nightly-\d{8}-\d{4}", tag):
+            latest_tag = tag
+            break
+    if not latest_tag:
+        raise RetryableError("release 列表中没有日期格式的 nightly tag")
+    latest = latest_tag[len("nightly-"):]
+    print(f"     最新 nightly tag: {latest_tag}")
+    if latest == package["version"]:
+        print(f"     ✓ 已是最新 nightly")
+        return None
+
+    url = (
+        "https://github.com/lem-project/lem/releases/download/"
+        f"{latest_tag}/Lem-x86_64-nightly.AppImage"
+    )
+    new_base32 = with_retry(
+        get_base32_from_guix_download, url, max_retries=1, base_delay=5,
+        timeout=600,
+    )
+    if not new_base32 or not re.fullmatch(r"[0-9a-z]{52}", new_base32) or re.fullmatch(r"0{52}", new_base32):
+        raise RetryableError("无法计算下载 hash")
+    print(f"     ✅ 发现新 nightly: {latest}")
+    return update_package_in_file(scm_file, package, latest, new_base32)
+
+
 # 包名 → 特殊处理器映射
 SPECIAL_UPDATERS: Dict[str, Callable[[Dict[str, Any], Dict[str, Any], Path], Optional[Dict[str, Any]]]] = {
     "zcode": update_zcode,
     "amber-pm": update_amber_pm,
     "jdtls-bin": update_jdtls_bin,
     "font-misans": update_font_misans,
+    "lem-next-bin": update_lem_next_bin,
 }
 
 
