@@ -197,7 +197,7 @@ editor that supports the protocol to provide Java language features.")
 (define-public aria2-next-bin
   (package
     (name "aria2-next-bin")
-    (version "2.6.7")
+    (version "2.6.8")
     (source
      (origin
        (method url-fetch)
@@ -205,7 +205,7 @@ editor that supports the protocol to provide Java language features.")
              "https://github.com/AnInsomniacy/aria2-next/releases/download/"
              "v" version "/aria2-next-" version "-linux-x86_64"))
        (sha256
-        (base32 "09jfwf59qvg20wcs0bnpsx3kxigjh7fx1v09jyfas3s69f60j7m8"))))
+        (base32 "193yd6aqmlw2qgdagg1d4al2z47qd326r3r27yghkv7crzmqgicn"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -768,16 +768,16 @@ It requires a writable @file{/var/lib/apm} directory at runtime; run the
 (define-public agenote
   (package
     (name "agenote")
-    (version "2026-08-29")
+    (version "2026-08-31")
     (source
      (origin
        (method git-fetch)
        (uri (git-reference
              (url "https://github.com/ShineBreaker/agenote")
-             (commit "b91dab5029299db7ee035720f4734f7eb165bdf8")))
+             (commit "2cba928e3e45cba374fda903c8e4262ddc24b384")))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "08psn455jg80qh77hsr4wqvlv8scns1hsx8fi77sisz03qaxn899"))))
+        (base32 "1mcjinlpg1ljcwj73ffx23shrryq6h6mv3b8a84fcj6xr1s19ny9"))))
     (build-system pyproject-build-system)
     (arguments
      (list

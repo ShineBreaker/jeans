@@ -50,7 +50,7 @@
 (define-public waypaper
   (package
     (name "waypaper")
-    (version "2.8")
+    (version "2.9")
     (source
      (origin
        (method git-fetch)
@@ -59,7 +59,7 @@
              (commit version)))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "0xd37qr6m2icjl0w0saq3318nw4g7i7zna5m1yr6ym3zp2byjdh5"))))
+        (base32 "0m0j6r9knz2by7ajnp6lvkm56lgwkyrx4lg5myk1h93yal1mpfss"))))
     (build-system python-build-system)
     (arguments
      (list
@@ -101,7 +101,7 @@ and Xorg.")
 (define-public ai-usagebar-bin
   (package
     (name "ai-usagebar-bin")
-    (version "1.9.0")
+    (version "1.9.1")
     (source
      (origin
        (method url-fetch)
@@ -109,7 +109,7 @@ and Xorg.")
              "https://github.com/akitaonrails/ai-usagebar/releases/download/"
              "v" version "/ai-usagebar-linux-x86_64.tar.gz"))
        (sha256
-        (base32 "1z2vgfbi6bi0f4jsnkhdds369vwy5vfjrng13qsv96s3vfpl3hqx"))))
+        (base32 "1c4lyl9yjvk3jp11w7vf681v037syf7wfk5j5qpy26jadrk3dq4q"))))
     (build-system gnu-build-system)
     (arguments
      (list
