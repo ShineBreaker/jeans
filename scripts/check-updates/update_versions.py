@@ -452,8 +452,8 @@ def get_latest_github_tag(repo: str, tag_prefix: Optional[str] = None) -> Option
         raise RetryableError(f"网络错误: {e}")
 
 
-def get_latest_commit(repo: str) -> Optional[Tuple[str, str]]:
-    """获取GitHub仓库默认分支的最新commit
+def get_latest_commit(repo: str, branch: Optional[str] = None) -> Optional[Tuple[str, str]]:
+    """获取GitHub仓库指定分支的最新commit（不指定则用默认分支）
 
     Returns:
         (commit_sha, date_str) 或 None。date_str 格式为 YYYY-MM-DD。
@@ -464,8 +464,14 @@ def get_latest_commit(repo: str) -> Optional[Tuple[str, str]]:
     if GITHUB_TOKEN:
         headers["Authorization"] = f"token {GITHUB_TOKEN}"
 
+    path = "commits"
+    if branch:
+        if not re.fullmatch(r"[A-Za-z0-9._/-]+", branch):
+            return None
+        path = f"commits?sha={branch}"
+
     try:
-        response = http.github_api_get(repo, "commits", headers)
+        response = http.github_api_get(repo, path, headers)
         if 500 <= response.status_code <= 599:
             raise RetryableError(f"GitHub API 服务器错误: {response.status_code}")
         response.raise_for_status()
@@ -983,6 +989,11 @@ def parse_package_definitions(content: str, _file_path: Path) -> list[dict[str, 
         release_tag_prefix = (
             release_tag_prefix_match.group(1) if release_tag_prefix_match else None
         )
+        # git-branch：let-git-version 包追踪的分支（不设则追踪默认分支）。
+        git_branch_match = re.search(
+            r'\(git-branch\s+\.\s+"([A-Za-z0-9._/-]+)"\)', package_content
+        )
+        git_branch = git_branch_match.group(1) if git_branch_match else None
         # git-version 的 base（用于重建 version 字符串）
         git_version_base = None
         if is_let_git_version:
@@ -1007,6 +1018,7 @@ def parse_package_definitions(content: str, _file_path: Path) -> list[dict[str, 
                 "let_revision_val": let_revision_val,
                 "git_version_base": git_version_base,
                 "release_tag_prefix": release_tag_prefix,
+                "git_branch": git_branch,
                 "content": package_content,
                 "start_pos": start_pos,
                 "end_pos": end_pos,
@@ -1658,6 +1670,7 @@ def main():
                         result = with_retry(
                             get_latest_commit,
                             github_repo,
+                            branch=package.get("git_branch"),
                             max_retries=2,
                             base_delay=5,
                         )
@@ -1836,6 +1849,7 @@ def main():
                         result = with_retry(
                             get_latest_commit,
                             github_repo,
+                            branch=package.get("git_branch"),
                             max_retries=2,
                             base_delay=5,
                         )

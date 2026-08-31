@@ -162,6 +162,16 @@ cargo 包升级时，`guix refresh` 只能改写包文件里的 `version`/`hash`
 
 guile 能 `use-modules` 加载不代表语法正确（可能命中 `.go` cache）；`guix build --dry-run` 报 `unexpected end of input` 才是真相。
 
+### Cargo git 依赖（尤其是 workspace 型）
+
+`guix import crate --lockfile` 支持解析 Cargo.lock 里的 git 依赖：为每个 git crate 生成 git-fetch origin（变量/版本带 commit 后缀，如 `rust-steel-core-0.8.3.118fb9f`，hash 为整个仓库 checkout 的 NAR），若上游 commit 是一个**单 crate 仓库**则 vendor 机制直接可用（上游 rust-crates.scm 的 `rust-ecies-ed25519-ng-0.5.3.554ca29` 即此形态）。importer 对 workspace 会在 define 上方注释 `TODO REVIEW: Define standalone package if this is a workspace`——这是给维护者的信号，不是能直接构建的产物。
+
+**workspace 型 git 依赖不能直接 vendor**：`crate-src?` 对目录走 `cargo-package?`（要求 Cargo.toml 含 `[package]` 段），virtual workspace（只有 `[workspace]`）被拒；且 cargo-build-system 生成的 `.cargo/config` 只有 `[source.crates-io] replace-with` 规则，`cargo build --offline` 遇到 `git =` 依赖声明无法 checkout（报 `can't checkout from '...': you are in the offline mode`）。解决方案（helix-steel 实例，`editor.scm:272`）：把 git checkout 作为普通 input 传入（label 需加 `-checkout` 后缀，guix 给 git-fetch origin 的 label 规则），patch 阶段把**所有** `git = "...<url>"` 声明改写为 `path = "<checkout>/<crate目录>"`——path 依赖离线可解析，且 checkout 内部各 crate 的相互 path 依赖保持自洽，只需改写入口声明。注意入口声明可能不止根 Cargo.toml 一处（helix-steel 分支里 `steel-doc` 直接写在 `helix-term/Cargo.toml`，不走 `workspace = true`），改写前 `grep -rn "git = " --include=Cargo.toml` 全量排查。
+
+配置块（`define-cargo-inputs` 的条目）里同 commit 的多个 git 变体可只保留一个（其余是同一 checkout 的重复 input）；define 保留不动以便将来 import 重跑 diff 最小。
+
+**追踪特性分支**：let-git-version 包默认追踪 GitHub 默认分支；上游实际开发在特性分支时，在 properties 加 `(git-branch . "<分支名>")`（updater 的 `get_latest_commit` 支持），否则 CI 拿到的会是默认分支（主线）的 commit，构建必然失败（helix-steel 实例：默认分支是上游主线 master）。
+
 ## 预编译二进制包
 
 预编译包的常见形态各不相同，按小节对号入座；先用 `patchelf --print-interpreter` 探测 linkage，再选处理路线。

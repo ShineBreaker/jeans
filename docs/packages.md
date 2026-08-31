@@ -40,10 +40,11 @@
 
 ### (jeans packages editor)
 
-| Package            | Description                                              |
-| ------------------ | -------------------------------------------------------- |
-| `fresh-editor-bin` | Terminal-based text editor with LSP support              |
-| `lem-next-bin`     | Integrated IDE/editor for Common Lisp (nightly prebuild) |
+| Package            | Description                                                         |
+| ------------------ | ------------------------------------------------------------------- |
+| `fresh-editor-bin` | Terminal-based text editor with LSP support                         |
+| `helix-steel`      | Post-modern modal text editor with an embedded Steel Scheme runtime |
+| `lem-next-bin`     | Integrated IDE/editor for Common Lisp (nightly prebuild)            |
 
 ### (jeans packages emacs-xyz)
 

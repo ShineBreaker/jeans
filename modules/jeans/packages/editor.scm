@@ -7,7 +7,9 @@
   #:use-module (guix packages)
   #:use-module (guix download)
   #:use-module (guix gexp)
+  #:use-module (guix git-download)
   #:use-module (guix utils)
+  #:use-module (guix build-system cargo)
   #:use-module (guix build-system copy)
   #:use-module (guix build-system gnu)
   #:use-module (gnu packages base)
@@ -22,6 +24,7 @@
   #:use-module (gnu packages gtk)
   #:use-module (gnu packages linux)
   #:use-module (gnu packages ncurses)
+  #:use-module (gnu packages text-editors)
   #:use-module (gnu packages tls)
   #:use-module (gnu packages webkit))
 
@@ -248,3 +251,74 @@ binary release.")
     (properties `((upstream-name . "fresh-editor")))
     (license license:gpl2)
     (supported-systems '("x86_64-linux"))))
+
+;;; helix-steel tracks mattwparas' steel-event-system branch of Helix: an
+;;; experimental build that embeds the Steel Scheme interpreter as a
+;;; scripting/event engine.  The branch has no release tags, so the version
+;;; is the workspace baseline plus the tracked branch commit (handled by
+;;; update_versions.py's let-bound git-version logic).
+;;;
+;;; Steel enters as git dependencies pinned to a single upstream commit (see
+;;; the rust-steel-* origins in rust-crates.scm).  cargo-build-system only
+;;; vendors crates.io sources, and cargo --offline cannot check out git
+;;; sources, so the steel checkout - a virtual Cargo workspace, rejected by
+;;; the vendor phase like any workspace - is passed through as a plain input
+;;; and the branch's Cargo.toml is patched to point the steel-core git
+;;; dependency at the checkout's crates/steel-core; steel's crates resolve
+;;; their mutual path dependencies inside the checkout, so a single path
+;;; rewrite is enough.  The branch's built-in Steel configuration scripts
+;;; are compiled in via include_str!, and the inherited install phases
+;;; (binary + runtime + desktop entry, HELIX_RUNTIME wrapper) work unchanged.
+(define-public helix-steel
+  (let ((commit "7738d6dcb12763517d277f5dbcc06677f5f0a204")
+        (revision "0"))
+    (package
+      (inherit helix)
+      (name "helix-steel")
+      (version (git-version "25.7.1" revision commit))
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://github.com/mattwparas/helix")
+               (commit commit)))
+         (file-name (git-file-name name version))
+         (sha256
+          (base32 "1rnx4v3ax0l2wpw094c6hq9k51hlisys5v8m6xnv71kjkf4h0m1y"))))
+      (arguments
+       (substitute-keyword-arguments (package-arguments helix)
+         ((#:phases phases)
+          #~(modify-phases #$phases
+              (add-after 'unpack 'patch-steel-git-dependency
+                (lambda* (#:key inputs #:allow-other-keys)
+                  ;; The branch declares steel-core in the workspace deps
+                  ;; and steel-doc directly in helix-term; both git
+                  ;; declarations must become path dependencies.
+                  (let* ((steel (assoc-ref inputs
+                                           "rust-steel-core-0.8.3.118fb9f-checkout"))
+                         (steel-url "https://github.com/mattwparas/steel.git")
+                         (root-dep
+                          (string-append
+                           "steel-core = \\{ git = \"" steel-url "\""))
+                         (term-dep
+                          (string-append
+                           "steel-doc = \\{ git = \"" steel-url "\"")))
+                    (substitute* "Cargo.toml"
+                      ((root-dep)
+                       (string-append
+                        "steel-core = { path = \"" steel "/crates/steel-core\"")))
+                    (substitute* "helix-term/Cargo.toml"
+                      ((term-dep)
+                       (string-append
+                        "steel-doc = { path = \"" steel "/crates/steel-doc\""))))))))))
+      (inputs
+       (cons bash-minimal
+             (cargo-inputs 'helix-steel
+                           #:module '(jeans packages rust-crates))))
+      (synopsis "Post-modern modal text editor with an embedded Steel Scheme runtime")
+      (description
+       "A Kakoune / Neovim inspired modal text editor with the Steel Scheme
+interpreter embedded as its scripting and event engine.")
+      (properties
+       `((with-latest-git-commit . #t)
+         (git-branch . "steel-event-system"))))))
