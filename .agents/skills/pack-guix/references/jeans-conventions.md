@@ -412,3 +412,12 @@ git-fetch 包更新版本/commit 后，必须重新构建以获取正确的 base
 - CLI 入口不受此限，必须真实运行（`--version` / `--help`）。
 - 验证脚本注意：Guix 没有 `/bin/bash`，shebang 写 `#!/bin/bash` 的脚本会秒退——在 `guix shell` 里显式用 bash 调起，或先 patch shebang；工具重写文件会重置执行位，跑之前 `chmod +x`。
 - 在 tmux 里做 TUI 验证时只 kill 自己创建的会话（`tmux kill-session -t <自己的>`），不要 `kill-server`。
+
+### 外来 Emacs 变体需要自带 Guix autoloads 集成
+
+GNU Emacs 的 site-start.el/guix-emacs.el（包 autoloads 链 + TREE_SITTER_GRAMMAR_PATH 接线）由 emacs 包自带，且住在 emacs 包**自身 profile**里，不出现在 EMACSLOADPATH 根目录——因此没有编译期 Guix site-lisp 的外来 Emacs 实现（如 neomacs-bin）会缺失整条链：所有 `*-autoloads.el` 不加载，用户配置引用 autoloads 期符号（如 `telega-prefix-map`）启动即崩。修法（见 emacs-xyz.scm 的 neomacs-bin）：这类实现的"运行时 lisp 目录"恒在其默认 load-path 上（neomacs 是 `share/neomacs/lisp`），且它像 GNU Emacs 一样在 early-init 前从 load-path 加载 site-run-file——把复刻 Guix 官方版的 `site-start.el` + vendor 的 `guix-emacs.el` 装进该目录即可；GNU Emacs 不受影响（该目录不会进入其 load-path）。顺带可在 site-start 里用 `unless-boundp` defvar 修上游漏定义的变量（eln 那类），上游修复后守卫自动 no-op。
+
+配套两个 Guix 通用坑（同次实测）：
+
+- `local-file` 的相对路径在此 channel 环境按 **CWD** 解析（编译期源目录信息丢失），channel 内文件用 `(local-file (search-path %load-path "jeans/..."))` 定位（misans 模式，见 fonts.scm）。
+- `install-file` 保留 store item 的完整 basename（**含哈希前缀**）；目标文件名必须精确时（如 site-run-file 按名字原样查找）改用 `copy-file` 显式指定目标名。

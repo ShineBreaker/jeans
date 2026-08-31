@@ -87,7 +87,7 @@ blueprint.scm                     # BLUE 蓝图：任务运行器（build/upgrad
 
 - **`nonguix` 通道是硬依赖** —— 在 `.guix-channel` 中声明，构建时必须可用。
 - **不要从其他通道复制 `rust-crates.scm`**。版本不匹配会导致 `cargo build --offline` 失败。始终使用 `blue import-crate` 或 `guix import crate --lockfile`。
-- **`licenses/misans.txt`** 被 `font-misans` 通过 `local-file` 以相对路径引用（`../../../licenses/misans.txt`）—— 路径相对于 `.scm` 文件，而非仓库根目录。
+- **channel 内文件引用用 `search-path %load-path`**：`local-file` 的相对路径在此环境按 CWD 解析（源文件目录信息丢失），应写 `(local-file (search-path %load-path "jeans/licenses/misans.txt"))`（`font-misans` 模式，文件在 `modules/jeans/licenses/misans.txt`）。另：`install-file` 会保留 store item 含哈希的完整 basename，目标文件名必须精确时用 `copy-file`。
 - **文件头**：所有 `.scm` 文件使用 `SPDX-FileCopyrightText` 和 `SPDX-License-Identifier` 头。新文件应包含 `BrokenShine <xchai404@gmail.com>` 版权。
 - **`description` 只描述软件本身** —— 打包过程、wrapper 机制、安装布局等细节写成包定义前的 `;;;` 注释，不进 `description`；面向用户的使用须知（运行时数据目录、初始化步骤）和单句 prebuilt 来源声明可保留。可泛化的打包经验凝练进 `.agents/skills/pack-guix/references/jeans-conventions.md`。
 - **`#:use-module ((guix licenses) #:prefix license:)`** 是许可证的标准导入模式 —— 总是以 `license:` 为前缀。
