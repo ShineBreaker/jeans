@@ -74,12 +74,12 @@
               (let ((apps (string-append #$output "/share/applications")))
                 (mkdir-p apps)
                 (copy-file "usr/share/applications/lem.desktop"
-                           (string-append apps "/lem-next.desktop"))
+                           (string-append apps "/lem.desktop"))
                 ;; Upstream's entry launches the AppImage-internal run-lem
                 ;; shim; point straight at our wrapper instead.
-                (substitute* (string-append apps "/lem-next.desktop")
+                (substitute* (string-append apps "/lem.desktop")
                   (("Exec=run-lem %F")
-                   (string-append "Exec=" #$output "/bin/lem-next"))))))
+                   (string-append "Exec=" #$output "/bin/lem"))))))
           ;; The SBCL core baked into lem.real dlopens the exact Ubuntu
           ;; 22.04 soname; alias it to Guix's ncurses.
           (add-after 'install 'fix-so
@@ -87,7 +87,7 @@
               (symlink #$(file-append ncurses "/lib/libncursesw.so.6")
                        (string-append #$output
                                       "/libexec/lem-next/libncursesw.so.6.3"))))
-          (add-after 'install-desktop-entry 'wrap-lem-next
+          (add-after 'install-desktop-entry 'wrap-lem
             (lambda* (#:key inputs #:allow-other-keys)
               (let* ((out #$output)
                      (libexec (string-append out "/libexec/lem-next"))
@@ -107,7 +107,7 @@
                      (schemas
                       (assoc-ref inputs "gsettings-desktop-schemas")))
                 (mkdir-p (string-append out "/bin"))
-                (with-output-to-file (string-append out "/bin/lem-next")
+                (with-output-to-file (string-append out "/bin/lem")
                   (lambda ()
                     (display
                      (string-append
@@ -131,7 +131,7 @@
                       "exec " ld.so " --argv0 " libexec "/lem.real"
                       " --library-path " lib-path " " libexec
                       "/lem.real \"$@\"\n"))))
-                (chmod (string-append out "/bin/lem-next") #o555)))))))
+                (chmod (string-append out "/bin/lem") #o555)))))))
     (native-inputs (list p7zip))
     (inputs
      `(("bash-minimal" ,bash-minimal)
