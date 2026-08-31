@@ -491,6 +491,26 @@ of Emacs Lisp projects.  This package provides the prebuilt binary release.")
 ;;; level search paths are declared below, mirroring emacs-minimal's
 ;;; native-search-paths minus EMACSNATIVELOADPATH (neomacs has no
 ;;; native-comp .eln output).
+;;;
+;;; == Guix package autoloads integration (share/neomacs/lisp) ==
+;;;
+;;; Guix' own Emacs builds carry site-start.el + guix-emacs.el inside
+;;; the emacs package's profile; that profile never shows up in the
+;;; EMACSLOADPATH roots a foreign binary sees, and neomacs has no
+;;; compiled-in site-lisp of its own.  Left alone every Guix package's
+;;; *-autoloads.el stays unloaded, so inits referencing autoloads-time
+;;; symbols die (telega-prefix-map), and TREE_SITTER_GRAMMAR_PATH is
+;;; never wired into treesit-extra-load-path.
+;;;
+;;; neomacs loads `site-run-file' ("site-start") from the load-path
+;;; before early-init.el like GNU Emacs, and its runtime lisp tree
+;;; share/neomacs/lisp is always on the built-in load-path -- so we
+;;; install neomacs/site-start.el plus a verbatim guix-emacs.el right
+;;; there.  site-start.el also defvars native-comp-eln-load-path,
+;;; which 0.0.16's startup.el references without defining (only
+;;; native-comp builds defvar it), breaking startup-redirect-eln-cache
+;;; with void-variable.  Both workarounds no-op themselves once fixed
+;;; upstream; see the removal conditions in neomacs/site-start.el.
 
 (define-public neomacs-bin
   (package
@@ -609,6 +629,16 @@ of Emacs Lisp projects.  This package provides the prebuilt binary release.")
                 ;; Runtime data tree (lisp, etc, leim).
                 (mkdir-p share)
                 (copy-recursively "usr/share/neomacs/." share)
+                ;; Guix package autoloads integration -- see the comment
+                ;; block above.  share/neomacs/lisp is on the built-in
+                ;; load-path and `site-run-file' loads "site-start" from
+                ;; there before early-init.el.  copy-file (not
+                ;; install-file): store item basenames carry the hash,
+                ;; and site-run-file looks the names up verbatim.
+                (copy-file (assoc-ref inputs "site-start.el")
+                           (string-append out "/share/neomacs/lisp/site-start.el"))
+                (copy-file (assoc-ref inputs "guix-emacs.el")
+                           (string-append out "/share/neomacs/lisp/guix-emacs.el"))
                 ;; Desktop entry (shipped upstream; Exec repointed at the
                 ;; store path) and SVG icon.
                 (let ((apps (string-append out "/share/applications"))
@@ -634,7 +664,15 @@ of Emacs Lisp projects.  This package provides the prebuilt binary release.")
                   (map (lambda (f) (string-append archlib "/" f))
                        '("neomacs-temacs" "bootstrap-neomacs"
                          "mock-display"))))))))))
-    (native-inputs (list libarchive patchelf))
+    (native-inputs
+     `(("libarchive" ,libarchive)
+       ("patchelf" ,patchelf)
+       ("site-start.el"
+        ,(local-file (search-path %load-path
+                                  "jeans/packages/neomacs/site-start.el")))
+       ("guix-emacs.el"
+        ,(local-file (search-path %load-path
+                                  "jeans/packages/neomacs/guix-emacs.el")))))
     (inputs `(("glibc" ,glibc)
               ("gcc:lib" ,gcc "lib")
               ("ncurses" ,ncurses)
