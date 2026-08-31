@@ -26,9 +26,13 @@
   #:use-module (gnu packages ncurses)
   #:use-module (gnu packages text-editors)
   #:use-module (gnu packages tls)
+  #:use-module (gnu packages tree-sitter)
   #:use-module (gnu packages webkit))
 
 ;;; lem-next-bin tracks Lem's rolling nightly release (built from master).
+;;; Upstream stopped publishing dated nightlies in 2025-08; the only
+;;; rolling artifact is the nightly-latest release, whose title carries
+;;; the build stamp ("Nightly Build - YYYYMMDD-HHMM") used as version.
 ;;; Upstream master has dropped the SDL2 frontend; the GUI is now the
 ;;; webview frontend (GTK3 + WebKitGTK 4.1 API) with an ncurses TUI
 ;;; fallback.  The nightly AppImage bundles a full Ubuntu 22.04 library
@@ -44,15 +48,15 @@
 (define-public lem-next-bin
   (package
     (name "lem-next-bin")
-    (version "20250810-0811")
+    (version "20260531-0400")
     (source
      (origin
        (method url-fetch)
        (uri (string-append
-             "https://github.com/lem-project/lem/releases/download/nightly-"
-             version "/Lem-x86_64-nightly.AppImage"))
+             "https://github.com/lem-project/lem/releases/download/"
+             "nightly-latest/Lem-x86_64.AppImage"))
        (sha256
-        (base32 "0gc8f9lqj92wzpbmj3cf30i75k2indjhla57b820fajfm0vqwd5a"))))
+        (base32 "1k37fr76w0sknss90nj8hgr3c7b4nbnrk03dlbdlfdnc9iib6rqs"))))
     (build-system copy-build-system)
     (arguments
      (list
@@ -83,13 +87,17 @@
                 (substitute* (string-append apps "/lem.desktop")
                   (("Exec=run-lem %F")
                    (string-append "Exec=" #$output "/bin/lem"))))))
-          ;; The SBCL core baked into lem.real dlopens the exact Ubuntu
-          ;; 22.04 soname; alias it to Guix's ncurses.
+          ;; The SBCL core baked into lem.real dlopens exact Ubuntu
+          ;; 22.04 sonames; alias them to Guix's libraries.
           (add-after 'install 'fix-so
             (lambda _
               (symlink #$(file-append ncurses "/lib/libncursesw.so.6")
                        (string-append #$output
-                                      "/libexec/lem-next/libncursesw.so.6.3"))))
+                                      "/libexec/lem-next/libncursesw.so.6.3"))
+              ;; tree-sitter's C ABI is backward compatible across 0.2x.
+              (symlink #$(file-append tree-sitter "/lib/libtree-sitter.so.0.25")
+                       (string-append #$output
+                                      "/libexec/lem-next/libtree-sitter.so.0.27"))))
           (add-after 'install-desktop-entry 'wrap-lem
             (lambda* (#:key inputs #:allow-other-keys)
               (let* ((out #$output)
@@ -146,6 +154,7 @@
        ("gtk+" ,gtk+)
        ("ncurses" ,ncurses)
        ("openssl" ,openssl)
+       ("tree-sitter" ,tree-sitter)
        ("webkitgtk-for-gtk3" ,webkitgtk-for-gtk3)))
     (home-page "http://lem-project.github.io/")
     (synopsis "Integrated IDE/editor for Common Lisp (nightly prebuild)")
@@ -154,9 +163,7 @@
 package provides a prebuilt nightly build of Lem's master branch, using
 the webview (GTK/WebKitGTK) frontend with an ncurses fallback.")
     (properties
-     `((upstream-name . "lem")
-       (release-tag-prefix . "^nightly-")
-       (accept-pre-releases? . #t)))
+     `((upstream-name . "lem")))
     (license license:expat)))
 
 ;;; The upstream .deb ships one ELF binary plus desktop entry, hicolor icons

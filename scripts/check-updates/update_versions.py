@@ -747,20 +747,19 @@ def update_font_misans(package: dict[str, Any], _config: dict[str, Any], scm_fil
 
 
 def update_lem_next_bin(package: dict[str, Any], _config: dict[str, Any], scm_file: Path) -> Optional[Dict[str, Any]]:
-    """lem-next-bin：lem-project/lem 只发 nightly prerelease。
+    """lem-next-bin：跟踪上游滚动 release nightly-latest。
 
-    移动 tag nightly-latest 的资产名恒定，且同样以 nightly- 开头，
-    通用 tag_prefix 模式区分不了两者（列表里它还排在最前），这里用
-    正则锁定日期 tag nightly-YYYYMMDD-HHMM，取 release 列表第一个
-    匹配（最新）。version 是 tag 去前缀后的日期串，唯一出现在下载
-    URL 的 tag 段里，通用 version 替换即可完成改写。
+    上游 2025-08 起停发 dated nightly，只在移动 tag nightly-latest
+    上滚动覆盖同一资产（Lem-x86_64.AppImage，URL 恒定无版本号）。
+    版本信号取 release 标题里的构建戳（"Nightly Build - YYYYMMDD-HHMM"）：
+    与包内 version 不同即下载重算 hash，走通用 version/base32 替换。
     """
     headers = {}
     if GITHUB_TOKEN:
         headers["Authorization"] = f"token {GITHUB_TOKEN}"
     try:
         response = http.github_api_get(
-            "lem-project/lem", "releases?per_page=30", headers
+            "lem-project/lem", "releases/tags/nightly-latest", headers
         )
         if 500 <= response.status_code <= 599:
             raise RetryableError(f"GitHub API 服务器错误: {response.status_code}")
@@ -770,23 +769,19 @@ def update_lem_next_bin(package: dict[str, Any], _config: dict[str, Any], scm_fi
     except requests.exceptions.ConnectionError as e:
         raise RetryableError(f"网络连接错误: {e}")
 
-    latest_tag = None
-    for rel in response.json():
-        tag = rel.get("tag_name") or ""
-        if re.fullmatch(r"nightly-\d{8}-\d{4}", tag):
-            latest_tag = tag
-            break
-    if not latest_tag:
-        raise RetryableError("release 列表中没有日期格式的 nightly tag")
-    latest = latest_tag[len("nightly-"):]
-    print(f"     最新 nightly tag: {latest_tag}")
+    title = response.json().get("name") or ""
+    match = re.search(r"Nightly Build - (\d{8}-\d{4})", title)
+    if not match:
+        raise RetryableError(f"nightly-latest 标题无构建戳: {title!r}")
+    latest = match.group(1)
+    print(f"     最新 nightly 构建: {latest}")
     if latest == package["version"]:
         print(f"     ✓ 已是最新 nightly")
         return None
 
     url = (
         "https://github.com/lem-project/lem/releases/download/"
-        f"{latest_tag}/Lem-x86_64-nightly.AppImage"
+        "nightly-latest/Lem-x86_64.AppImage"
     )
     new_base32 = with_retry(
         get_base32_from_guix_download, url, max_retries=1, base_delay=5,
