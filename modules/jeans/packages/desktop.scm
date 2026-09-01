@@ -177,7 +177,7 @@ release.")
 (define-public waywallen-bin
   (package
     (name "waywallen-bin")
-    (version "0.3.7")
+    (version "0.3.8")
     (source
      (origin
        (method url-fetch)
@@ -186,7 +186,7 @@ release.")
              version
              "/waywallen-" version "-x86_64.AppImage"))
        (sha256
-        (base32 "10r9kisxv4y5y1lny4hgfc3m7abk1rny5gpn1vr44fc52ymm7a3x"))))
+        (base32 "0vl10g59hp5l2sy5i3x4sz4z8fvlvhd47flm9lcx4d358z98gz4w"))))
     (build-system copy-build-system)
     (arguments
      (list
@@ -417,7 +417,7 @@ desktop through a Wayland layer shell and a QtQuick interface.")
 (define-public open-wallpaper-engine-bin
   (package
     (name "open-wallpaper-engine-bin")
-    (version "0.2.8")
+    (version "0.2.9")
     (source
      (origin
        (method url-fetch)
@@ -427,7 +427,7 @@ desktop through a Wayland layer shell and a QtQuick interface.")
              "/org.waywallen.open-wallpaper-engine-" version
              "-linux-x86_64.zip"))
        (sha256
-        (base32 "08i32y054ylpj40hp5nla86kjlbrbf6m1fmwdsj6rjpw88alq9y7"))))
+        (base32 "0y02havggj32ygr23093mgw5vv3xl33pqi2b37xy081k0idfxkrh"))))
     (build-system copy-build-system)
     (arguments
      (list
