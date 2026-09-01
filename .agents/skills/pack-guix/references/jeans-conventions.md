@@ -100,6 +100,8 @@ github updater 还有几个静默盲区（不报错、就是不识别），命�
 - **非数字开头的 tag 系列**：`nightly-20260831` 这类 tag 不被当作版本（lem-next-bin，由 SPECIAL_UPDATERS 的 nightly 处理器接管，正则锁定 `nightly-YYYYMMDD-HHMM` 日期 tag）。
 - **资产前缀大小写不匹配**：上游 tag/资产用大写 `V0.3.7`（inso-bin），refresh 的资产名匹配区分大小写。
 - **只发 prerelease 的 repo**：`/releases/latest` 恒 404（inso-bin），必须进 `check_pre_release` 列表才有版本可查；即使 guix refresh 侧能识别， prerelease-only 的上游也常需要 Python 侧配合。
+- **tag 带产品前缀 + 资产名带平台后缀**：`updated-url` 对 `/releases/download/` 只认 `v<ver>/<name>-<ver><ext>`、`<ver>/<repo>-<ver><ext>` 等固定形状；cua 的 `cua-driver-rs-v0.23.2/cua-driver-rs-0.23.2-linux-x86_64-binary.tar.gz`（monorepo 多产品）所有形状都不匹配，设了 `upstream-name` 也报 no updater（cua-driver-bin，2026-09-02）。
+- **monorepo 把 stable 刻意标成 prerelease**：cua 上游用 GitHub 的 prerelease 标签防止仓库级 Latest 指针被单个产品抢走，plain SemVer 稳定版（`cua-driver-rs-v0.23.2`）全是 prerelease——除了 `tag_prefix` 过滤 nightly 系列，还必须进 `check_pre_release` 放行（cua-driver-bin，2026-09-02）。
 
 ## Rust 打包（双文件模式）
 

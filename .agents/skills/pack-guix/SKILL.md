@@ -105,13 +105,12 @@ guix hash -rx "$WORK_DIR/src"
 #:strip-binaries? #f
 ```
 
-inputs 使用实际包名作为 label；带子输出必须使用 quasiquote alist：
+inputs 使用实际包名作为 label；带子输出的 input 用 `label ,pkg "output"` alist 形式。注意必须写 reader 语法（反引号 + 逗号），不要展开写 `(quasiquote ...)`/裸 `unquote` 符号——裸 `unquote` 符号不被 guile reader 展开，构建时报 `match-error: no matching pattern`（cua-driver-bin 实证）：
 
 ```scheme
-(inputs (quasiquote
-         (("bash-minimal" unquote bash-minimal)
-          ("glibc" unquote glibc)
-          ("gcc:lib" unquote gcc "lib"))))
+(inputs `(("bash-minimal" ,bash-minimal)
+          ("glibc" ,glibc)
+          ("gcc:lib" ,gcc "lib")))
 ```
 
 fontconfig 变量的实际包名是 fontconfig-minimal，openjdk17 变量的实际包名是 openjdk。build phase 的 assoc-ref、this-package-input 和 gexp 引用必须使用同一个 label；不要写不存在的 gexp 变量 gcc:lib。
@@ -184,7 +183,7 @@ synopsis,gnu-description <package-name>
 - 不把开源预编译包和闭源包统一命名；先看许可证。
 - 不用固定 /tmp 路径；每次运行使用唯一 WORK_DIR。
 - 不用手工 SHA256 转换替代 guix download/guix hash -rx。
-- 不用现代 list + output 的表达式表示带 output 的 input；使用 quasiquote alist。
+- 不用现代 list + output 的表达式表示带 output 的 input；用 `` `("label" ,pkg "output") `` alist（注意 reader 语法，裸 `unquote` 符号不生效）。
 - 不覆盖系统 XDG_DATA_DIRS，不指向包内不完整的 gdk-pixbuf loader cache。
 - 不对自定位二进制（按 /proc/self/exe 或自身文件名定位资源；bun --compile 产物）用 patchelf 或 wrap-program；改用系统级 nix-ld，或真名住 libexec + 手写 thin wrapper。
 - 不把无仓库实证（file:line 或 commit）的单次经验写成普遍结论；写进本 skill 的条目注明实例来源，探索性结论标注"待实证"。
