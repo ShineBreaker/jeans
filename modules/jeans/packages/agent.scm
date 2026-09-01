@@ -1182,3 +1182,113 @@ with your existing tools so you can plan, code, review, and deploy
 without friction.")
     (license (license:nonfree "https://zcode.z.ai/"))
     (supported-systems '("x86_64-linux"))))
+
+;;; cua-driver is the computer-use automation driver from the trycua/cua
+;;; monorepo (MIT).  The release tarball ships an FHS dynamic ELF set that
+;;; needs libX11/libXi/libxkbcommon and libgcc_s; every ELF gets the Guix
+;;; interpreter and an explicit RPATH.  The payload lives in
+;;; libexec/cua-driver/ mirroring the upstream release directory layout
+;;; (cua-driver resolves its sibling cua-cursor-theme and wayland-helper
+;;; helpers there), and bin/cua-driver is a thin wrapper that enables the
+;;; native Wayland backend only when WAYLAND_DISPLAY is set (X11 capture
+;;; is broken on pure-Wayland compositors like niri) and disables the
+;;; default PostHog telemetry.
+(define-public cua-driver-bin
+  (package
+    (name "cua-driver-bin")
+    (version "0.23.2")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://github.com/trycua/cua/releases/download/"
+             "cua-driver-rs-v" version
+             "/cua-driver-rs-" version "-linux-x86_64-binary.tar.gz"))
+       (sha256
+        (base32
+         "0065mqc6icf92ynq7zrrvx95nz0sxxb60b2b9c7w170jxhwq7gq1"))))
+    (build-system gnu-build-system)
+    (arguments
+     (list
+      #:tests? #f
+      #:validate-runpath? #f
+      #:strip-binaries? #f
+      #:modules '((guix build gnu-build-system)
+                  (guix build utils))
+      #:phases
+      #~(modify-phases %standard-phases
+          (delete 'configure)
+          (delete 'build)
+          ;; The tarball has no single top-level directory; unpack flat
+          ;; into the build directory instead of relying on the default
+          ;; phase's top-level detection.
+          (replace 'unpack
+            (lambda _
+              (invoke "tar" "xvf" #$source)
+              #t))
+          (replace 'install
+            (lambda _
+              (let* ((out #$output)
+                     (bin (string-append out "/bin"))
+                     (libexec (string-append out "/libexec/cua-driver"))
+                     (ld.so (string-append #$(this-package-input "glibc")
+                                           #$(glibc-dynamic-linker)))
+                     (rpath (string-join
+                             (list (string-append #$(this-package-input "libx11") "/lib")
+                                   (string-append #$(this-package-input "libxi") "/lib")
+                                   (string-append #$(this-package-input "libxkbcommon")
+                                                  "/lib")
+                                   (string-append #$(this-package-input "gcc:lib")
+                                                  "/lib"))
+                             ":")))
+                (mkdir-p bin)
+                (for-each
+                 (lambda (file) (install-file file libexec))
+                 '("cua-driver" "cua-cursor-theme"
+                   "libcua_driver_sdk.so" "cua_driver_node_runtime.node"))
+                (copy-recursively "wayland-helper"
+                                  (string-append libexec "/wayland-helper"))
+                ;; Shared objects (.so/.node) have no .interp section;
+                ;; only patch the interpreter on PIE executables.
+                (for-each
+                 (lambda (elf)
+                   (when (zero? (system* "patchelf" "--print-interpreter" elf))
+                     (invoke "patchelf" "--set-interpreter" ld.so elf))
+                   (invoke "patchelf" "--set-rpath" rpath elf))
+                 (map (lambda (file)
+                        (string-append libexec "/" file))
+                      '("cua-driver" "cua-cursor-theme"
+                        "libcua_driver_sdk.so"
+                        "cua_driver_node_runtime.node")))
+                (call-with-output-file (string-append bin "/cua-driver")
+                  (lambda (port)
+                    (format port "#!~a/bin/bash
+if [ -n \"${WAYLAND_DISPLAY:-}\" ]; then
+  export CUA_DRIVER_RS_ENABLE_WAYLAND=1
+fi
+export CUA_DRIVER_RS_TELEMETRY_ENABLED=0
+exec ~a \"$@\""
+                            #$(this-package-input "bash-minimal")
+                            (string-append libexec "/cua-driver"))))
+                (chmod (string-append bin "/cua-driver") #o555)
+                #t))))))
+    (native-inputs (list patchelf))
+    (inputs `(("bash-minimal" ,bash-minimal)
+              ("gcc:lib" ,gcc "lib")
+              ("glibc" ,glibc)
+              ("libx11" ,libx11)
+              ("libxi" ,libxi)
+              ("libxkbcommon" ,libxkbcommon)))
+    (home-page "https://github.com/trycua/cua")
+    (synopsis "Cross-platform computer-use automation driver")
+    (description
+     "Cua is a computer-use automation driver that exposes screenshot
+capture, window discovery, and keyboard/mouse input injection through a
+stdio MCP server (cua-driver mcp).  It backs the computer_use toolset of
+AI agent runtimes and speaks both X11 and native Wayland on Linux.
+Runtime state lives in ~/.cua-driver; upgrades are owned by the channel
+so the bundled self-updater should not be used.")
+    (properties `((upstream-name . "cua-driver-rs")
+                  (release-tag-prefix . "^cua-driver-rs-v")))
+    (license license:expat)
+    (supported-systems '("x86_64-linux"))))

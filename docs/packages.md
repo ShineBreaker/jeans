@@ -13,6 +13,7 @@
 | ---------------------- | ---------------------------------------------------------- |
 | `codewhale-bin`        | Multi-provider AI coding agent for the terminal            |
 | `crush-bin`            | AI-powered coding assistant for the CLI                    |
+| `cua-driver-bin`       | Cross-platform computer-use automation driver              |
 | `github-copilot`       | Agent-native GitHub Copilot desktop application            |
 | `herdr-bin`            | Terminal workspace manager for AI coding agents            |
 | `opencode-desktop-bin` | AI coding agent desktop application                        |
