@@ -170,7 +170,7 @@ release.")
 (define-public crush-bin
   (package
     (name "crush-bin")
-    (version "0.91.2")
+    (version "0.92.0")
     (source
      (origin
        (method url-fetch)
@@ -178,7 +178,7 @@ release.")
              "https://github.com/charmbracelet/crush/releases/download/"
              "v" version "/crush_" version "_amd64.deb"))
        (sha256
-        (base32 "1nfhpx456n9anxpm11pg6hf6jf9yj8hjgl2hi4kk8w2hqyz2gh47"))))
+        (base32 "0876pglqwsy4mvrmgsbls2gs6kd2cv3xqa3hng9rc2f2hinscfls"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -679,7 +679,7 @@ coding experience with context awareness.")
 (define-public paseo-bin
   (package
     (name "paseo-bin")
-    (version "0.6.1")
+    (version "0.7.0")
     (source
      (origin
        (method url-fetch)
@@ -687,7 +687,7 @@ coding experience with context awareness.")
              "https://github.com/getpaseo/paseo/releases/download/"
              "v" version "/Paseo-" version "-amd64.deb"))
        (sha256
-        (base32 "0msc2g5x4cf21l7rlqfy6qn4yfix1acljzizhdqmjrzchgsmw15q"))))
+        (base32 "0bn4b0i1qrpl15y1q1072da4qzw7b2ql7986nqn5p2clca5wb691"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -868,7 +868,7 @@ telemetry or forced log-ins.")
 (define-public reasonix-bin
   (package
     (name "reasonix-bin")
-    (version "1.34.0")
+    (version "1.35.0")
     (source
      (origin
        (method url-fetch)
@@ -876,7 +876,7 @@ telemetry or forced log-ins.")
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
              "v" version "/reasonix-linux-amd64.tar.gz"))
        (sha256
-        (base32 "1gba16lfk7pxbjjsql39p4xmdh9kbx0rffh59hz0aw2q5g9b3002"))))
+        (base32 "0bssp6agg7k44l3xdqhl4xwxppj4qmdwh4j27i57y6wl0k0gb9rn"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -910,7 +910,7 @@ and ships as a single static binary with no runtime dependencies.")
 (define-public reasonix-desktop-bin
   (package
     (name "reasonix-desktop-bin")
-    (version "1.34.0")
+    (version "1.35.0")
     (source
      (origin
        (method url-fetch)
@@ -918,7 +918,7 @@ and ships as a single static binary with no runtime dependencies.")
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
              "desktop-v" version "/Reasonix-linux-amd64.deb"))
        (sha256
-        (base32 "1vlp7njwgmspw3j1l9x5r5vxa1z15c5fny5n35766x4gys5lvmzz"))))
+        (base32 "1zn9lyr3bf3j5s3psvf56yvph4yca9y553d1hjjc2chwqaxjpj6a"))))
     (build-system gnu-build-system)
     (arguments
      (list

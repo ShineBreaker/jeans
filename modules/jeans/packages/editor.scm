@@ -277,8 +277,8 @@ binary release.")
 ;;; are compiled in via include_str!, and the inherited install phases
 ;;; (binary + runtime + desktop entry, HELIX_RUNTIME wrapper) work unchanged.
 (define-public helix-steel
-  (let ((commit "7738d6dcb12763517d277f5dbcc06677f5f0a204")
-        (revision "0"))
+  (let ((commit "ba5b022c1000a0ce28d4ce1d09acdd062a83a020")
+        (revision "1"))
     (package
       (inherit helix)
       (name "helix-steel")
@@ -291,7 +291,7 @@ binary release.")
                (commit commit)))
          (file-name (git-file-name name version))
          (sha256
-          (base32 "1rnx4v3ax0l2wpw094c6hq9k51hlisys5v8m6xnv71kjkf4h0m1y"))))
+          (base32 "1a4p37kclcrqwaxbq00kbr5w9zwc2yhvnr95pxxkmz4c3f1xb7mw"))))
       (arguments
        (substitute-keyword-arguments (package-arguments helix)
          ((#:phases phases)
