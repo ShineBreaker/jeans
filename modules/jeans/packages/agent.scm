@@ -671,15 +671,14 @@ coding experience with context awareness.")
 ;;;     libraries (e.g. sherpa-onnx.node -> libsherpa-onnx-c-api.so)
 ;;;     without dragging their exact paths into the build recipe.
 ;;;
-;;; License note: this release ships under AGPLv3 (LICENSE at tag v0.6.1
-;;; and the .deb control metadata both say AGPL-3.0-or-later).  Upstream
-;;; relicensed to Apache-2.0 in commit a8734a9 (2026-08-27), which
-;;; postdates v0.6.1; flip to license:asl2.0 when refreshing past it.
+;;; License note: this release ships under Apache-2.0 (LICENSE at tag
+;;; v0.7.0 is the full Apache text).  v0.6.1 shipped AGPLv3; upstream
+;;; relicensed in commit a8734a9 (2026-08-27).
 
 (define-public paseo-bin
   (package
     (name "paseo-bin")
-    (version "0.6.1")
+    (version "0.7.0")
     (source
      (origin
        (method url-fetch)
@@ -687,7 +686,7 @@ coding experience with context awareness.")
              "https://github.com/getpaseo/paseo/releases/download/"
              "v" version "/Paseo-" version "-amd64.deb"))
        (sha256
-        (base32 "0msc2g5x4cf21l7rlqfy6qn4yfix1acljzizhdqmjrzchgsmw15q"))))
+        (base32 "0bn4b0i1qrpl15y1q1072da4qzw7b2ql7986nqn5p2clca5wb691"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -855,7 +854,7 @@ the agents on your own machine with your own tools and configuration, and
 connects desktop, web, mobile, and CLI clients to it.  Agents run in
 parallel, tasks can be dictated through voice mode, and Paseo ships no
 telemetry or forced log-ins.")
-    (license license:agpl3+)
+    (license license:asl2.0)
     (supported-systems '("x86_64-linux"))))
 
 ;;; Reasonix: DeepSeek-native AI coding agent (Go static binary).
