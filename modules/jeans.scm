@@ -18,6 +18,7 @@
                   (jeans packages fonts)
                   (jeans packages games)
                   (jeans packages hardware)
+                  (jeans packages lisp)
                   (jeans packages rust-crates)
                   (jeans packages theme)
                   (jeans packages nix-ld)

@@ -9,6 +9,7 @@
   #:use-module (guix gexp)
   #:use-module (guix git-download)
   #:use-module (guix utils)
+  #:use-module (guix build-system asdf)
   #:use-module (guix build-system cargo)
   #:use-module (guix build-system copy)
   #:use-module (guix build-system gnu)
@@ -23,11 +24,16 @@
   #:use-module (gnu packages gnome)
   #:use-module (gnu packages gtk)
   #:use-module (gnu packages linux)
+  #:use-module (gnu packages lisp-check)
+  #:use-module (gnu packages lisp-xyz)
   #:use-module (gnu packages ncurses)
+  #:use-module (gnu packages terminals)
   #:use-module (gnu packages text-editors)
   #:use-module (gnu packages tls)
   #:use-module (gnu packages tree-sitter)
-  #:use-module (gnu packages webkit))
+  #:use-module (gnu packages webkit)
+  #:use-module (gnu packages)
+  #:use-module (jeans packages lisp))
 
 ;;; lem-next-bin tracks Lem's rolling nightly release (built from master).
 ;;; Upstream stopped publishing dated nightlies in 2025-08; the only
@@ -165,6 +171,168 @@ the webview (GTK/WebKitGTK) frontend with an ncurses fallback.")
     (properties
      `((upstream-name . "lem")))
     (license license:expat)))
+
+;;; lem-next builds Lem from source, tracking the main branch (webview
+;;; form).  It is based on the upstream Guix "lem" package definition
+;;; (gnu/packages/text-editors.scm, version 2.3.0), adapted for the
+;;; ncurses/webview/server frontends of Lem's main branch following the
+;;; upstream flake.nix build recipe; native library wiring follows the
+;;; upstream Guix conventions (absolute store paths substituted into the
+;;; FFI definitions, terminal.so compiled into $out/lib).
+;;;
+;;; Differences from the upstream 2.3.0 definition:
+;;;   - tracks the pinned main-branch commit instead of the v2.3.0 tag;
+;;;   - (pushnew :nix-build *features*) is injected into lem.asd to skip
+;;;     lem-extension-manager, whose main.lisp calls QL-DIST at load time
+;;;     and is unusable without Quicklisp (same trick as flake.nix);
+;;;   - the program bundles lem-ncurses, lem-webview and lem-server
+;;;     instead of lem-ncurses and lem-sdl2 (SDL2 frontend is dropped
+;;;     upstream); the webview frontend's dist assets are read into the
+;;;     image at load time (main.lisp's *dist* toplevel), so no extra
+;;;     data files need installing;
+;;;   - inputs add the main-branch dependencies (webview C shim + CL
+;;;     bindings, tree-sitter, frugal-uuid, hunchentoot, jsonrpc pinned
+;;;     to Lem's qlfile.lock commit, deploy for defsystem-depends-on,
+;;;     cl-mustache, command-line-arguments, float-features) and drop
+;;;     the SDL2 stack.
+;;;
+;;; The pinned commits of webview / tree-sitter-cl / jsonrpc in
+;;; (jeans packages lisp) mirror Lem's qlfile.lock at this commit:
+;;; update them together with this package.
+;;;
+;;; Runtime notes: tree-sitter grammar libraries are optional; install
+;;; e.g. tree-sitter-json and point LD_LIBRARY_PATH at its lib/ to
+;;; enable syntax highlighting for that language.
+(define-public lem-next
+  (let ((commit "68e85e08e05b183f5dba78a8a84cb97fc19fb681")
+        (revision "0"))
+    (package
+      (inherit lem)
+      (name "lem-next")
+      (version (git-version "2.3.0" revision commit))
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://github.com/lem-project/lem/")
+               (commit commit)))
+         (file-name (git-file-name name version))
+         (sha256
+          (base32 "0rhrmkcdx2x9lg77m226y52kxfgm45jafqzmrshhvj4qhffs2rk4"))
+         (patches
+          (map canonicalize-path
+               (search-patches
+                "jeans/patches/lem-next-cl-ppcre-single-alternation.patch")))
+         (snippet
+          #~(begin
+              (use-modules (guix build utils))
+              ;; Quicklisp/Roswell-based install helpers.
+              (delete-file-recursively "roswell")))))
+      (home-page "https://lem-project.github.io/")
+      (arguments
+       (list
+        ;; The system defined in lem.asd is named "lem", not "lem-next".
+        #:asd-systems ''("lem")
+        #:phases
+        #~(modify-phases %standard-phases
+            (add-after 'unpack 'patch-shared-object-files
+              (lambda* (#:key inputs outputs #:allow-other-keys)
+                (let* ((libvterm-lib (assoc-ref inputs "libvterm"))
+                       (lib-dir (string-append libvterm-lib "/lib"))
+                       (shared-lib-dir (string-append (assoc-ref outputs "out")
+                                                      "/lib"))
+                       (shared-lib (string-append shared-lib-dir "/terminal.so")))
+                  (substitute* "extensions/terminal/ffi.lisp"
+                    (("terminal\\.so")
+                     shared-lib)))))
+            (add-after 'unpack 'disable-extension-manager
+              (lambda _
+                ;; lem/core hard-depends on lem-extension-manager unless
+                ;; the :nix-build feature is present; its main.lisp calls
+                ;; QL-DIST at load time, unavailable without Quicklisp.
+                (substitute* "lem.asd"
+                  (("^(#[+]ros[.]installing.*)$" _ line)
+                   (string-append
+                    "(pushnew :nix-build *features*)\n" line)))))
+            (add-after 'create-asdf-configuration 'build-program
+              (lambda* (#:key outputs #:allow-other-keys)
+                (build-program (string-append (assoc-ref outputs "out")
+                                              "/bin/lem")
+                               outputs
+                               #:dependencies '("lem-ncurses" "lem-webview"
+                                                "lem-server")
+                               #:entry-program '((lem:main)
+                                                 0))))
+            (add-after 'build 'build-terminal-library
+              (lambda* (#:key inputs outputs #:allow-other-keys)
+                (let* ((libvterm-lib (assoc-ref inputs "libvterm"))
+                       (lib-dir (string-append libvterm-lib "/lib"))
+                       (shared-lib-dir (string-append (assoc-ref outputs "out")
+                                                      "/lib"))
+                       (shared-lib (string-append shared-lib-dir "/terminal.so")))
+                  (mkdir-p shared-lib-dir)
+                  (invoke #$(cc-for-target)
+                          "extensions/terminal/terminal.c"
+                          "-L"
+                          lib-dir
+                          "-lvterm"
+                          "-Wl,-Bdynamic"
+                          "-o"
+                          shared-lib
+                          "-shared"
+                          "-fPIC"
+                          "-lutil")))))))
+      (native-inputs (list sbcl-cl-ansi-text sbcl-rove
+                           sbcl-trivial-package-local-nicknames))
+      (inputs
+       (modify-inputs (package-inputs lem)
+         (delete "sbcl-sdl2" "sbcl-sdl2-ttf" "sbcl-sdl2-image"
+                 "sbcl-trivial-main-thread" "sbcl-jsonrpc"
+                 "sbcl-micros")
+         (append libvterm
+                 sbcl-3bmd
+                 sbcl-alexandria
+                 sbcl-async-process
+                 sbcl-babel
+                 sbcl-bordeaux-threads
+                 sbcl-cffi
+                 sbcl-cl-change-case
+                 sbcl-cl-charms
+                 sbcl-cl-iconv
+                 sbcl-cl-mustache
+                 sbcl-cl-package-locks
+                 sbcl-cl-ppcre
+                 sbcl-cl-setlocale
+                 sbcl-cl-str
+                 sbcl-closer-mop
+                 sbcl-command-line-arguments
+                 sbcl-deploy
+                 sbcl-dexador
+                 sbcl-esrap
+                 sbcl-float-features
+                 sbcl-frugal-uuid
+                 sbcl-hunchentoot
+                 sbcl-inquisitor
+                 sbcl-iterate
+                 sbcl-jsonrpc-lem
+                 sbcl-lem-mailbox
+                 sbcl-lisp-preprocessor
+                 sbcl-log4cl
+                 sbcl-micros-lem
+                 sbcl-parse-number
+                 sbcl-quri
+                 sbcl-slime-swank
+                 sbcl-split-sequence
+                 sbcl-tree-sitter-cl
+                 sbcl-trivia
+                 sbcl-trivial-gray-streams
+                 sbcl-trivial-open-browser
+                 sbcl-trivial-types
+                 sbcl-trivial-utf-8
+                 sbcl-trivial-ws
+                 sbcl-usocket
+                 sbcl-webview
+                 sbcl-yason))))))
 
 ;;; The upstream .deb ships one ELF binary plus desktop entry, hicolor icons
 ;;; and a man page:

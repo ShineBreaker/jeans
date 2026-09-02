@@ -45,6 +45,7 @@
 | ------------------ | ------------------------------------------------------------------- |
 | `fresh-editor-bin` | Terminal-based text editor with LSP support                         |
 | `helix-steel`      | Post-modern modal text editor with an embedded Steel Scheme runtime |
+| `lem-next`         | Integrated IDE/editor for Common Lisp                               |
 | `lem-next-bin`     | Integrated IDE/editor for Common Lisp (nightly prebuild)            |
 
 ### (jeans packages emacs-xyz)
@@ -81,6 +82,17 @@
 | Package                       | Description                     |
 | ----------------------------- | ------------------------------- |
 | `opentabletdriver-udev-rules` | UDev rules for OpenTabletDriver |
+
+### (jeans packages lisp)
+
+| Package               | Description                                          |
+| --------------------- | ---------------------------------------------------- |
+| `sbcl-frugal-uuid`    | Common Lisp UUID library with zero dependencies      |
+| `sbcl-jsonrpc-lem`    | JSON-RPC 2.0 server/client for Common Lisp           |
+| `sbcl-micros-lem`     | SLIME/SWANK fork for the Lem editor                  |
+| `sbcl-tree-sitter-cl` | Common Lisp bindings for tree-sitter                 |
+| `sbcl-webview`        | Common Lisp bindings for the webview library         |
+| `webview`             | Tiny cross-platform webview library (C shim for Lem) |
 
 ### (jeans packages nix-ld)
 
