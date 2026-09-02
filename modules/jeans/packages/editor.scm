@@ -281,7 +281,25 @@ the webview (GTK/WebKitGTK) frontend with an ncurses fallback.")
                           shared-lib
                           "-shared"
                           "-fPIC"
-                          "-lutil")))))))
+                          "-lutil"))))
+            ;; The desktop entry and icon come from the upstream
+            ;; resources/ directory — the same files the AppImage
+            ;; release packs.  Exec must be absolute in Guix.
+            (add-after 'build-terminal-library 'install-desktop-entry
+              (lambda* (#:key outputs #:allow-other-keys)
+                (let* ((out (assoc-ref outputs "out"))
+                       (apps (string-append out "/share/applications"))
+                       (icons (string-append out
+                                             "/share/icons/hicolor/256x256/apps")))
+                  (mkdir-p apps)
+                  (mkdir-p icons)
+                  (copy-file "resources/lem.desktop"
+                             (string-append apps "/lem.desktop"))
+                  (substitute* (string-append apps "/lem.desktop")
+                    (("Exec=lem %F")
+                     (string-append "Exec=" out "/bin/lem %F")))
+                  (copy-file "resources/lem.png"
+                             (string-append icons "/lem.png"))))))))
       (native-inputs (list sbcl-cl-ansi-text sbcl-rove
                            sbcl-trivial-package-local-nicknames))
       (inputs
