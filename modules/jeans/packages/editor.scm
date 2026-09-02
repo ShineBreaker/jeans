@@ -281,6 +281,7 @@ the webview (GTK/WebKitGTK) frontend with an ncurses fallback.")
                           shared-lib
                           "-shared"
                           "-fPIC"
+<<<<<<< HEAD
                           "-lutil"))))
             ;; The desktop entry and icon come from the upstream
             ;; resources/ directory — the same files the AppImage
@@ -300,6 +301,9 @@ the webview (GTK/WebKitGTK) frontend with an ncurses fallback.")
                      (string-append "Exec=" out "/bin/lem %F")))
                   (copy-file "resources/lem.png"
                              (string-append icons "/lem.png"))))))))
+=======
+                          "-lutil")))))))
+>>>>>>> 5aeaf309a1563a366860bc708abc48d8da7522e0
       (native-inputs (list sbcl-cl-ansi-text sbcl-rove
                            sbcl-trivial-package-local-nicknames))
       (inputs
