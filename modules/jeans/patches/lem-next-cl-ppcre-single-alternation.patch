@@ -1,0 +1,30 @@
+From: BrokenShine <xchai404@gmail.com>
+Subject: [PATCH] zig-mode: degrade single-token alternation for cl-ppcre 2.1.1
+
+Guix's sbcl-cl-ppcre 2.1.1 rejects single-branch (:alternation "x")
+patterns with PPCRE-SYNTAX-ERROR ("Encountered alternation without
+choices"), while newer Quicklisp releases accept them.  Lem's zig-mode
+passes a one-element token list ("_") through its tokens helper.
+Degrade to the bare string, which matches identically.
+
+Upstream-status: not submitted upstream; works around a Guix-only
+cl-ppcre version gap.  Can be dropped once Guix ships cl-ppcre >= 2.1.2
+(if it accepts single-branch alternations).
+
+diff --git a/extensions/zig-mode/zig-mode.lisp b/extensions/zig-mode/zig-mode.lisp
+index d8ad8346..52f65193 100644
+--- a/extensions/zig-mode/zig-mode.lisp
++++ b/extensions/zig-mode/zig-mode.lisp
+@@ -12,7 +12,11 @@
+ (defun tokens (boundary strings)
+   "Create a regex pattern for matching a list of tokens."
+   (let ((alternation
+-          `(:alternation ,@(sort (copy-list strings) #'> :key #'length))))
++          ;; cl-ppcre 2.1.1 rejects single-branch (:alternation "x");
++          ;; degrade to the bare string, which matches identically.
++          (if (cdr strings)
++              `(:alternation ,@(sort (copy-list strings) #'> :key #'length))
++              (car strings))))
+     (if boundary
+         `(:sequence ,boundary ,alternation ,boundary)
+         alternation)))
