@@ -504,7 +504,7 @@ This package provides the prebuilt binary release.")
 (define-public opencode-desktop-bin
   (package
     (name "opencode-desktop-bin")
-    (version "1.18.25")
+    (version "1.18.27")
     (source
      (origin
        (method url-fetch)
@@ -512,7 +512,7 @@ This package provides the prebuilt binary release.")
              "https://github.com/anomalyco/opencode/releases/download/"
              "v" version "/opencode-desktop-linux-amd64.deb"))
        (sha256
-        (base32 "0ar1v3iad9l4bpmrb52lms1qdlnskf1f39jj5fb6ndbzk8bri49i"))))
+        (base32 "1ap0d71n6b0wqxhj5zkppn954ssjzlcdv8qzv77pz49d9m8gza77"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -678,7 +678,7 @@ coding experience with context awareness.")
 (define-public paseo-bin
   (package
     (name "paseo-bin")
-    (version "0.7.0")
+    (version "0.7.2")
     (source
      (origin
        (method url-fetch)
@@ -686,7 +686,7 @@ coding experience with context awareness.")
              "https://github.com/getpaseo/paseo/releases/download/"
              "v" version "/Paseo-" version "-amd64.deb"))
        (sha256
-        (base32 "0bn4b0i1qrpl15y1q1072da4qzw7b2ql7986nqn5p2clca5wb691"))))
+        (base32 "039m4gsm13yd10xm0yha0pwk770wfdzdw0nnabbn7v4v2wnc8asx"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -867,7 +867,7 @@ telemetry or forced log-ins.")
 (define-public reasonix-bin
   (package
     (name "reasonix-bin")
-    (version "1.35.0")
+    (version "1.36.0")
     (source
      (origin
        (method url-fetch)
@@ -875,7 +875,7 @@ telemetry or forced log-ins.")
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
              "v" version "/reasonix-linux-amd64.tar.gz"))
        (sha256
-        (base32 "0bssp6agg7k44l3xdqhl4xwxppj4qmdwh4j27i57y6wl0k0gb9rn"))))
+        (base32 "00flpr709ip2hb50rdnc75w54p90pq6nywcaajvfm333rqi7n4d4"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -909,7 +909,7 @@ and ships as a single static binary with no runtime dependencies.")
 (define-public reasonix-desktop-bin
   (package
     (name "reasonix-desktop-bin")
-    (version "1.35.0")
+    (version "1.36.0")
     (source
      (origin
        (method url-fetch)
@@ -917,7 +917,7 @@ and ships as a single static binary with no runtime dependencies.")
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
              "desktop-v" version "/Reasonix-linux-amd64.deb"))
        (sha256
-        (base32 "1zn9lyr3bf3j5s3psvf56yvph4yca9y553d1hjjc2chwqaxjpj6a"))))
+        (base32 "1baq3a03jz79qi5nf6czknq1h0128x93mry1ikwsgr6bkcanr7lb"))))
     (build-system gnu-build-system)
     (arguments
      (list
