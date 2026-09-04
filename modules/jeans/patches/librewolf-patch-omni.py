@@ -16,16 +16,19 @@ with tempfile.TemporaryDirectory() as td:
         zin.extractall(root)
 
     # Patch 1: Fix MOZ_APP_VERSION in AppConstants
+    # 版本号段数不固定（149.0 / 152.0.4），字符类 [0-9.]+ 兼容任意段数
     app = root / "modules" / "AppConstants.sys.mjs"
     text = app.read_text()
-    text = re.sub(
-        r'MOZ_APP_VERSION: "([0-9]+\.[0-9]+)-[0-9]+"', r'MOZ_APP_VERSION: "\1"', text
-    )
-    text = re.sub(
-        r'MOZ_APP_VERSION_DISPLAY: "([0-9]+\.[0-9]+)-[0-9]+"',
-        r'MOZ_APP_VERSION_DISPLAY: "\1"',
+    text, n_ver = re.subn(
+        r'MOZ_APP_VERSION(_DISPLAY)?: "([0-9.]+)-[0-9]+"',
+        r'MOZ_APP_VERSION\1: "\2"',
         text,
     )
+    if n_ver < 2:
+        sys.exit(
+            f"ERROR: only {n_ver}/2 MOZ_APP_VERSION patterns found in AppConstants "
+            "(upstream changed?)"
+        )
     app.write_text(text)
 
     # Patch 2: Skip compat check for locale addons in XPIDatabase
@@ -40,7 +43,7 @@ with tempfile.TemporaryDirectory() as td:
         db.write_text(db_text)
         print("Patched XPIDatabase: bypassed compat check for locale addons")
     else:
-        print("WARNING: could not find compat check in XPIDatabase")
+        sys.exit("ERROR: could not find compat check in XPIDatabase (upstream changed?)")
 
     # Rebuild omni.ja
     rebuilt = root / "omni-fixed.ja"

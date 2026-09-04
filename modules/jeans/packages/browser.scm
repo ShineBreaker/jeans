@@ -61,7 +61,8 @@
      #:modules '((guix build utils))
      #:builder
      #~(begin
-         (use-modules (guix build utils))
+         (use-modules (guix build utils)
+                      (ice-9 textual-ports))
 
          (define lw #$librewolf)
          (define out #$output)
@@ -132,13 +133,18 @@
            (chmod cfg-file #o444))
 
          ;; 2.1 修正 app cslication.ini 中带发行版后缀的版本号，
-         ;;     否则 Mozilla 语言包的 strict_max_version 不会匹配 149.0-1 这种值。
+         ;;     否则 Mozilla 语言包的 strict_max_version 不会匹配 152.0.4-1 这种值。
+         ;;     上游版本段数不固定（149.0 / 152.0.4），字符类 [0-9.]+ 兼容任意段数。
          (let ((app-file (string-append out "/lib/librewolf/application.ini")))
            (dereference! app-file)
            (chmod app-file #o644)
            (substitute* app-file
-                        (("Version=([0-9]+\\.[0-9]+)-[0-9]+" all version)
+                        (("Version=([0-9.]+)-[0-9]+" all version)
                          (string-append "Version=" version)))
+           ;; substitute* 失配时静默跳过：读回校验，仍带后缀说明上游格式已变
+           (when (regexp-exec (make-regexp "Version=[0-9.]+-[0-9]+")
+                              (call-with-input-file app-file get-string-all))
+             (error "librewolf-nongnu: application.ini 版本号修正未生效"))
            (chmod app-file #o444))
 
          ;; 2.2 修补 omni.ja：修正 AppConstants 版本号 + 绕过 langpack 兼容性检查
