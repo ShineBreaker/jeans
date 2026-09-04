@@ -19,7 +19,9 @@
   #:use-module (gnu packages compression)
   #:use-module (gnu packages elf)
   #:use-module (gnu packages fontutils)
+  #:use-module (gnu packages freedesktop)
   #:use-module (gnu packages gcc)
+  #:use-module (gnu packages gl)
   #:use-module (gnu packages glib)
   #:use-module (gnu packages gnome)
   #:use-module (gnu packages gtk)
@@ -32,6 +34,8 @@
   #:use-module (gnu packages tls)
   #:use-module (gnu packages tree-sitter)
   #:use-module (gnu packages webkit)
+  #:use-module (gnu packages xdisorg)
+  #:use-module (gnu packages xorg)
   #:use-module (gnu packages)
   #:use-module (jeans packages lisp))
 
@@ -443,6 +447,137 @@ supports sandboxed TypeScript plugins.  This package provides the prebuilt
 binary release.")
     (properties `((upstream-name . "fresh-editor")))
     (license license:gpl2)
+    (supported-systems '("x86_64-linux"))))
+
+;;; zedg-bin is the prebuilt zh-CN distribution of the Zed editor
+;;; (x6nux/zed-globalization): upstream Zed's GPL-3.0-or-later binaries
+;;; repackaged with an AI-translated localization layer (the repo marks
+;;; itself MIT, but the shipped editor body is GPL Zed, the same source
+;;; panther's zed package ships).  Only the x86_64-linux tarball is
+;;; packaged; upstream also publishes -pre tags which are not tracked.
+;;;
+;;; Layout: the GUI entry point is usr/bin/zedg (Zed's combined CLI+GUI
+;;; binary, renamed upstream); usr/libexec/zedg is the remote-server
+;;; payload, but the rename did not touch the built-in
+;;; "/libexec/zed-editor" lookup path, so an alias symlink is installed
+;;; alongside.  ZED_UPDATE_EXPLANATION points the built-in auto-updater
+;;; (which would fetch from x6nux/zed-globalization) at Guix instead.
+;;; NEEDED libraries plus the dlopen'd GPU/display stack (mesa, libdrm,
+;;; wayland, libX11) are resolved via interpreter + RPATH; libpipewire /
+;;; libpulse are optional dlopen targets (screen sharing / audio) that
+;;; degrade gracefully when absent.
+;;;
+;;; The "shim" output exposes the same wrapped binary as the plain
+;;; "zed" command for tooling that hardcodes upstream's name.
+(define-public zedg-bin
+  (package
+    (name "zedg-bin")
+    (version "1.17.2")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://github.com/x6nux/zed-globalization/releases/download/"
+             "v" version "/zedg-zh-cn-linux-x86_64-v" version ".tar.gz"))
+       (sha256
+        (base32
+         "10xbj0syvxhi8v970pwpq65bvmzgyj0m3pqnnjyymv0y50shr3c9"))))
+    (build-system gnu-build-system)
+    (outputs '("out" "shim"))
+    (arguments
+     (list
+      #:tests? #f
+      #:validate-runpath? #f
+      #:strip-binaries? #f
+      #:modules '((guix build gnu-build-system)
+                  (guix build utils))
+      #:phases
+      #~(modify-phases %standard-phases
+          (delete 'configure)
+          (delete 'build)
+          (replace 'unpack
+            (lambda _
+              ;; tarball top level is ./usr/{bin,libexec,share}
+              (invoke "tar" "--strip-components=1" "-xzf" #$source)))
+          (replace 'install
+            (lambda* (#:key inputs #:allow-other-keys)
+              (let* ((out #$output)
+                     (shim #$output:shim)
+                     (libdir (string-append out "/lib/zedg-bin"))
+                     (patchelf (assoc-ref inputs "patchelf"))
+                     (ldso (string-append (assoc-ref inputs "glibc")
+                                          "/lib/ld-linux-x86-64.so.2"))
+                     (rpath
+                      (string-join
+                       (map (lambda (label)
+                              (string-append (assoc-ref inputs label) "/lib"))
+                            '("glibc" "gcc:lib" "glib" "libx11" "libxcb"
+                              "libxkbcommon" "mesa" "libdrm" "wayland"
+                              "alsa-lib"))
+                       ":")))
+                (for-each
+                 (lambda (file)
+                   (invoke (string-append patchelf "/bin/patchelf")
+                           "--set-interpreter" ldso file)
+                   (invoke (string-append patchelf "/bin/patchelf")
+                           "--set-rpath" rpath file))
+                 (list "usr/bin/zedg" "usr/libexec/zedg"))
+                ;; Keep bin/ and libexec/ sibling directories so the
+                ;; built-in ../libexec lookup keeps resolving.
+                (install-file "usr/bin/zedg" libdir)
+                (install-file "usr/libexec/zedg"
+                              (string-append libdir "/libexec"))
+                (symlink "zedg"
+                         (string-append libdir "/libexec/zed-editor"))
+                (wrap-program (string-append libdir "/zedg")
+                  `("ZED_UPDATE_EXPLANATION" =
+                    ("Updates are handled by the Guix package manager."))
+                  `("XKB_CONFIG_ROOT" ":" prefix
+                    (,(string-append (assoc-ref inputs "xkeyboard-config")
+                                     "/share/X11/xkb"))))
+                (mkdir-p (string-append out "/bin"))
+                (symlink (string-append libdir "/zedg")
+                         (string-append out "/bin/zedg"))
+                (mkdir-p (string-append shim "/bin"))
+                (symlink (string-append libdir "/zedg")
+                         (string-append shim "/bin/zed"))
+                (let ((share (string-append out "/share")))
+                  (mkdir-p (string-append share "/applications"))
+                  (copy-file "usr/share/applications/zedg.desktop"
+                             (string-append share "/applications/zedg.desktop"))
+                  (substitute* (string-append share "/applications/zedg.desktop")
+                    (("Exec=zedg %F")
+                     (string-append "Exec=" out "/bin/zedg %F"))
+                    (("TryExec=zedg\n") "")
+                    (("Icon=zedg")
+                     (string-append "Icon=" share
+                                    "/icons/hicolor/512x512/apps/zedg.png")))
+                  (copy-recursively "usr/share/icons"
+                                    (string-append share "/icons")))))))))
+    (native-inputs (list patchelf))
+    (inputs
+     `(("bash-minimal" ,bash-minimal)
+       ("glibc" ,glibc)
+       ("gcc:lib" ,gcc "lib")
+       ("glib" ,glib)
+       ("libx11" ,libx11)
+       ("libxcb" ,libxcb)
+       ("libxkbcommon" ,libxkbcommon)
+       ("mesa" ,mesa)
+       ("libdrm" ,libdrm)
+       ("wayland" ,wayland)
+       ("alsa-lib" ,alsa-lib)
+       ("xkeyboard-config" ,xkeyboard-config)))
+    (home-page "https://github.com/x6nux/zed-globalization")
+    (synopsis "Chinese-localized build of the Zed code editor")
+    (description "ZedG is a distribution of the Zed editor carrying an
+AI-translated localization layer: the same high-performance,
+GPU-accelerated collaborative code editor with menus, prompts and UI
+strings rendered in Simplified Chinese.  This package provides the
+prebuilt binary release; install the @code{shim} output as well to expose
+the editor under the plain @code{zed} command name.")
+    (properties `((upstream-name . "zedg-zh-cn")))
+    (license license:gpl3+)
     (supported-systems '("x86_64-linux"))))
 
 ;;; helix-steel tracks mattwparas' steel-event-system branch of Helix: an
