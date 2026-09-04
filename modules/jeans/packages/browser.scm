@@ -132,7 +132,7 @@
                           "themes\");\n")))
            (chmod cfg-file #o444))
 
-         ;; 2.1 修正 app cslication.ini 中带发行版后缀的版本号，
+         ;; 2.1 修正 application.ini 中带发行版后缀的版本号，
          ;;     否则 Mozilla 语言包的 strict_max_version 不会匹配 152.0.4-1 这种值。
          ;;     上游版本段数不固定（149.0 / 152.0.4），字符类 [0-9.]+ 兼容任意段数。
          (let ((app-file (string-append out "/lib/librewolf/application.ini")))
