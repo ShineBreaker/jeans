@@ -549,11 +549,18 @@ binary release.")
                     (("Exec=zedg %F")
                      (string-append "Exec=" out "/bin/zedg %F"))
                     (("TryExec=zedg\n") "")
-                    (("Icon=zedg")
-                     (string-append "Icon=" share
-                                    "/icons/hicolor/512x512/apps/zedg.png")))
+                    (("Icon=zedg") "Icon=zed"))
+                  ;; Install the icon under upstream's "zed" name so icon
+                  ;; themes and icon packs can resolve the desktop entry.
                   (copy-recursively "usr/share/icons"
-                                    (string-append share "/icons")))))))))
+                                    (string-append share "/icons"))
+                  (for-each
+                   (lambda (size)
+                     (let ((apps (string-append share "/icons/hicolor/"
+                                                size "/apps")))
+                       (rename-file (string-append apps "/zedg.png")
+                                    (string-append apps "/zed.png"))))
+                   '("512x512" "1024x1024")))))))))
     (native-inputs (list patchelf))
     (inputs
      `(("bash-minimal" ,bash-minimal)
