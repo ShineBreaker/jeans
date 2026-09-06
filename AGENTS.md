@@ -51,16 +51,23 @@ modules/                          # 通道包目录（由 .guix-channel 指定�
 │  ├──agent.scm                     # OpenCode/Orca/ZCode 及其他 AI agent 包；开源预编译包使用 -bin，闭源/限制性许可证包不使用 -bin
 │  ├──browser.scm                   # librewolf-nongnu（trivial-build-system，omni.ja 补丁）
 │  ├──desktop.scm                   # python-screeninfo, waypaper
+│  ├──editor.scm                    # lem-next-bin, lem-next, fresh-editor-bin, zedg-bin, helix-steel
+│  ├──emacs-xyz.scm                 # emacs-ghostel, emacs-msgu, emacs-agenote, eask-bin, ellsp-bin, neomacs-bin
 │  ├──fonts.scm                     # font-maple-font-nf-cn, font-misans, font-nerd-symbols, font-nerd-font-iosevka
 │  ├──games.scm                     # lr2oraja-endlessdream-bin, osu-lazer-bin（开源预编译包，AppImage/JAR 提取）
 │  ├──hardware.scm                  # opentabletdriver-udev-rules
+│  ├──lisp.scm                      # sbcl-frugal-uuid, sbcl-tree-sitter-cl, webview, sbcl-webview, sbcl-micros-lem, sbcl-jsonrpc-lem
 │  ├──nix-ld.scm                    # nix-ld（从上游镜像的 Rust 源码构建包）
+│  ├──python-xyz.scm                # python-jieba
 │  ├──theme.scm                     # colloid-gtk-theme, vimix-gtk-themes, vimix-kvantum-themes, orchis-kde-themes, colloid-kde-themes
 │  ├──tools.scm                     # winapps, jdtls-bin, motrix-next-bin, cc-switch-bin,
 │  │                                # git-credential-keepassxc, amber-pm
 │  └──rust-crates.scm               # Rust crate 源码 —— 由 guix import 管理，禁止手动编辑
 ├──jeans/services/
-│  └──hardware.scm                  # Guix 服务定义（opentabletdriver-service-type）
+│  ├──hardware.scm                  # Guix 服务定义（opentabletdriver-service-type）
+│  └──nix-ld.scm                    # nix-ld 系统服务（activation / etc-profile / profile 三扩展）
+├──jeans/home/services/
+│  └──emacs-xyz.scm                   # home-neomacs-service-type（参照 rosenthal home-emacs，含 wrapper 机制说明）
 └──jeans/patches/
    └──winapps-fix-install-paths.patch # 通过 search-patches 被包定义引用的补丁
 

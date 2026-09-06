@@ -509,8 +509,11 @@ of Emacs Lisp projects.  This package provides the prebuilt binary release.")
 ;;; there.  site-start.el also defvars native-comp-eln-load-path,
 ;;; which 0.0.16's startup.el references without defining (only
 ;;; native-comp builds defvar it), breaking startup-redirect-eln-cache
-;;; with void-variable.  Both workarounds no-op themselves once fixed
-;;; upstream; see the removal conditions in neomacs/site-start.el.
+;;; with void-variable, and calls guix-emacs-autoload-packages without
+;;; NO-RELOAD so the subdirs.el files of co-installed packages get
+;;; loaded (GNU Emacs scans them natively at startup, neomacs does
+;;; not).  All of these no-op themselves once fixed upstream; see the
+;;; removal conditions in neomacs/site-start.el.
 
 (define-public neomacs-bin
   (package
@@ -689,15 +692,20 @@ of Emacs Lisp projects.  This package provides the prebuilt binary release.")
               ;; dlopen'd by the lcms subrs.
               ("lcms" ,lcms)))
     ;; Mirrors the native-search-paths of gnu/packages/emacs.scm's
-    ;; emacs-minimal, adapted to neomacs' data layout.  This lets packages
-    ;; depending on neomacs contribute to EMACSLOADPATH/INFOPATH/
-    ;; TREE_SITTER_GRAMMAR_PATH automatically when co-installed in a profile.
-    ;; EMACSNATIVELOADPATH is intentionally omitted: neomacs is a Rust
-    ;; reimplementation with no native-compilation (.eln) output tree.
+    ;; emacs-minimal.  EMACSLOADPATH must point at share/emacs/site-lisp
+    ;; -- the layout every Guix Emacs package (emacs-build-system)
+    ;; installs to -- so that co-installed packages aggregate into
+    ;; EMACSLOADPATH when neomacs enters a profile; together with the
+    ;; subdirs.el handling in neomacs/site-start.el this makes `guix
+    ;; install neomacs-bin emacs-FOO' work out of the box.  Neomacs' own
+    ;; share/neomacs/lisp tree stays out of this: it is on the built-in
+    ;; load-path already.  EMACSNATIVELOADPATH is intentionally omitted:
+    ;; neomacs is a Rust reimplementation with no native-compilation
+    ;; (.eln) output tree.
     (native-search-paths
      (list (search-path-specification
             (variable "EMACSLOADPATH")
-            (files '("share/neomacs/site-lisp")))
+            (files '("share/emacs/site-lisp")))
            (search-path-specification
             (variable "INFOPATH")
             (files '("share/info")))

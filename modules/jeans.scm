@@ -22,11 +22,12 @@
                   (jeans packages rust-crates)
                   (jeans packages theme)
                   (jeans packages nix-ld)
-                 (jeans packages python-xyz)
-                 (jeans packages tools)
+                  (jeans packages python-xyz)
+                  (jeans packages tools)
 
-                 (jeans services hardware)
-                 (jeans services nix-ld)))
+                  (jeans home services emacs-xyz)
+                  (jeans services hardware)
+                  (jeans services nix-ld)))
 
              (for-each (let ((i (module-public-interface (current-module))))
                          (lambda (m)
