@@ -36,6 +36,7 @@
   #:use-module (gnu packages tls)          ; openssl
   #:use-module (gnu packages compression) ; xz
   #:use-module (gnu packages version-control) ; git
+  #:use-module (gnu packages node)        ; node
   )
 
 (define-public winapps
@@ -804,5 +805,61 @@ shim for hook extensions) and @code{orgfmt} (generic Org-mode
 formatter).  Card data and runtime artefacts are written to a
 configurable knowledge-base root (@env{KB_ROOT}, default
 @file{~/Documents/Org}), not into the package itself.")
+    (license license:expat)))
+
+;;; Prettier: opinionated code formatter (MIT).  Upstream publishes no
+;;; binary release assets on GitHub; the npm tarball on registry.npmjs.org
+;;; is the official prebuilt distribution — a self-contained ES-module
+;;; bundle with zero runtime dependencies, executed directly by node.
+;;; Installed in the standard lib/node_modules layout; bin/prettier.cjs
+;;; ships non-executable (npm convention) so we chmod before wrapping.
+;;; guix refresh has no npm updater, so version bumps go through the
+;;; Python updater's "prettier-bin" special handler (npm registry
+;;; dist-tags; the URI embeds `version` so only the version field changes).
+(define-public prettier-bin
+  (package
+    (name "prettier-bin")
+    (version "3.9.6")
+    (source
+      (origin
+        (method url-fetch)
+        (uri (string-append
+              "https://registry.npmjs.org/prettier/-/prettier-"
+              version
+              ".tgz"))
+        (sha256
+          (base32 "0br1zcjrbqgjn5zda6f6ybii5p78lqig37n7mwy0b0dfy9fajzcr"))))
+    (build-system gnu-build-system)
+    (arguments
+      (list
+        #:tests? #f
+        #:validate-runpath? #f
+        #:strip-binaries? #f
+        #:phases
+        #~(modify-phases %standard-phases
+            (delete 'configure)
+            (delete 'build)
+            ;; npm tarballs always unpack to a generic "package/" directory,
+            ;; which the default unpack phase already chdirs into.
+            (replace 'install
+              (lambda _
+                (let ((dir (string-append #$output "/lib/node_modules/prettier")))
+                  (mkdir-p dir)
+                  (copy-recursively "." dir)
+                  (chmod (string-append dir "/bin/prettier.cjs") #o555)
+                  (wrap-program (string-append dir "/bin/prettier.cjs")
+                    `("PATH" ":" prefix
+                      (,(string-append #$node "/bin"))))
+                  (mkdir-p (string-append #$output "/bin"))
+                  (symlink (string-append dir "/bin/prettier.cjs")
+                           (string-append #$output "/bin/prettier"))))))))
+    (inputs `(("node" ,node)
+              ("bash-minimal" ,bash-minimal)))
+    (synopsis "Opinionated multi-language code formatter")
+    (description "Prettier is an opinionated code formatter.  It enforces a
+consistent style by parsing code and re-printing it with its own rules,
+supporting many languages including JavaScript, TypeScript, CSS, HTML,
+JSON, YAML, Markdown and GraphQL.")
+    (home-page "https://prettier.io")
     (license license:expat)))
 

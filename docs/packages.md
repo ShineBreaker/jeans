@@ -128,4 +128,5 @@
 | `git-credential-keepassxc` | Use KeePassXC as a command-line credential store                 |
 | `jdtls-bin`                | Java language server                                             |
 | `motrix-next-bin`          | Full-featured download manager                                   |
+| `prettier-bin`             | Opinionated multi-language code formatter                        |
 | `winapps`                  | Run Windows applications on GNU/Linux                            |
