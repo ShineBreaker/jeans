@@ -6,6 +6,7 @@
   #:use-module (ice-9 match)
   #:use-module (guix packages)
   #:use-module (guix build-system cargo)
+  #:use-module (guix build-system copy)
   #:use-module (guix build-system pyproject)
   #:use-module (guix download)
   #:use-module (guix git-download)
@@ -29,6 +30,7 @@
   #:use-module (gnu packages elf)      ; patchelf
   #:use-module (gnu packages webkit)   ; webkitgtk-for-gtk3
   #:use-module (gnu packages base)     ; glibc, binutils, coreutils
+  #:use-module (gnu packages bootstrap) ; glibc-dynamic-linker
   #:use-module (gnu packages glib)     ; glib
   #:use-module (gnu packages freedesktop) ; libappindicator
   #:use-module (gnu packages gcc)         ; gcc:lib
@@ -37,6 +39,15 @@
   #:use-module (gnu packages compression) ; xz
   #:use-module (gnu packages version-control) ; git
   #:use-module (gnu packages node)        ; node
+  #:use-module (gnu packages dns)         ; avahi
+  #:use-module (gnu packages fontutils)   ; fontconfig, freetype, harfbuzz
+  #:use-module (gnu packages gl)          ; mesa, libglvnd
+  #:use-module (gnu packages gnupg)       ; libgpg-error
+  #:use-module (gnu packages multiprecision) ; gmp
+  #:use-module (gnu packages pulseaudio)  ; pipewire
+  #:use-module (gnu packages video)       ; x265
+  #:use-module (gnu packages xdisorg)     ; libdrm
+  #:use-module (gnu packages xorg)        ; libx11, libxcb, libice, libsm
   )
 
 (define-public winapps
@@ -863,3 +874,168 @@ JSON, YAML, Markdown and GraphQL.")
     (home-page "https://prettier.io")
     (license license:expat)))
 
+
+;; Sunshine (GPL-3.0-only, LizardByte/Sunshine) is a self-hosted game stream
+;; host for Moonlight.  Two prebuilt Linux shapes were evaluated for
+;; v2026.906.222525, and only the AppImage is usable here:
+;;
+;; - The "sunshine.pkg.tar.gz" asset is just the Arch PKGBUILD recipe
+;;   (3.5 KiB), not a binary.  Its sibling binary
+;;   (sunshine-<ver>-1-x86_64.pkg.tar.zst) hardcodes SUNSHINE_ASSETS_DIR to
+;;   /usr/share/sunshine (cmake/compile_definitions/unix.cmake prepends
+;;   CMAKE_INSTALL_PREFIX) and needs Qt_6.11 symbols (readelf -V), newer
+;;   than Guix's qtbase 6.9.2.
+;; - The AppImage bundles its own Qt/ffmpeg/curl stack (108 .so) and its
+;;   binary references assets as CWD-relative "./usr/share/sunshine", which
+;;   is why upstream AppRun does `cd "$HERE"`.  Only stock system libraries
+;;   stay external; the inputs below additionally cover transitive NEEDEDs
+;;   of the bundled libs plus the dlopen()ed avahi-client, x265 and EGL/GL.
+;;
+;; The install preserves the AppRun layout verbatim under lib/sunshine and
+;; bin/sunshine is a thin shell wrapper that only cds there before execing
+;; (deliberately no wrap-program/LD_LIBRARY_PATH: the binary re-execs
+;; /proc/self/exe on in-app restart, which would bypass wrapper-set env but
+;; keeps the baked RPATH).  udev rules are copied to lib/udev/rules.d so the
+;; sunshine-service-type picks them up; modules-load.d and the systemd user
+;; unit ship in the payload for reference, Guix uses kernel-module-loader
+;; and the home shepherd service instead.
+(define-public sunshine-bin
+  (package
+    (name "sunshine-bin")
+    (version "2026.906.222525")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://github.com/LizardByte/Sunshine/releases/download/v"
+             version "/Sunshine_" version "_x86_64.AppImage"))
+       (sha256
+        (base32 "11738mpzw8zjg3zdmjwy02gricxrpdd1h8541md5dw6yi3llrnx5"))))
+    (build-system copy-build-system)
+    (arguments
+     (list
+      #:tests? #f
+      #:validate-runpath? #f
+      #:strip-binaries? #f
+      #:modules '((guix build utils)
+                  (guix build copy-build-system)
+                  (ice-9 ftw)
+                  (ice-9 format))
+      #:install-plan
+      #~'(("usr" "lib/sunshine/usr")
+          ("usr/share/applications/" "share/applications/")
+          ("usr/share/icons/" "share/icons/"))
+      #:phases
+      #~(modify-phases %standard-phases
+          (delete 'install-license-files)
+          ;; The source is a bare AppImage (not an archive): extract it with
+          ;; 7z's static parsing, never the runtime's --appimage-extract
+          ;; self-extraction (exec on the build tree is denied on CI).
+          (add-after 'unpack 'extract-appimage
+            (lambda _
+              (invoke "7z" "x" #$source)))
+          (add-after 'install 'patch-elf
+            (lambda* (#:key inputs #:allow-other-keys)
+              (let* ((ld.so (string-append (assoc-ref inputs "glibc")
+                                           #$(glibc-dynamic-linker)))
+                     (lib-dir (string-append #$output "/lib/sunshine/usr/lib"))
+                     ;; Build-side `inputs' preserves the sub-output path
+                     ;; for "gcc:lib"; the "fontconfig-minimal" label is the
+                     ;; package's actual name, not the variable name.
+                     (rpath
+                      (string-join
+                       (cons lib-dir
+                             (map (lambda (label)
+                                    (string-append
+                                     (assoc-ref inputs label) "/lib"))
+                                  '("glibc" "gcc:lib" "mesa" "libglvnd"
+                                    "libdrm" "wayland" "libx11" "libxcb"
+                                    "libice" "libsm" "pipewire"
+                                    "fontconfig-minimal" "freetype" "harfbuzz"
+                                    "zlib" "avahi" "x265" "e2fsprogs" "gmp"
+                                    "libgpg-error")))
+                       ":")))
+                (define (patch-elf file)
+                  (format #t "Patching ~a ..." file)
+                  (unless (string-contains file ".so")
+                    (invoke "patchelf" "--set-interpreter" ld.so file))
+                  (invoke "patchelf" "--set-rpath" rpath file)
+                  (display " done\n"))
+                (for-each patch-elf
+                          (find-files (string-append #$output "/lib/sunshine")
+                                      (lambda (file stat)
+                                        (and (eq? 'regular (stat:type stat))
+                                             (elf-file? file))))))))
+          (add-after 'patch-elf 'make-executable
+            (lambda _
+              (let ((root (string-append #$output "/lib/sunshine")))
+                (chmod (string-append root "/usr/bin/sunshine") #o555)
+                ;; The payload ships versioned .so symlinks; only chmod real
+                ;; files, never follow (possibly dangling) links.
+                (for-each (lambda (f)
+                            (when (eq? 'regular (stat:type (lstat f)))
+                              (chmod f #o555)))
+                          (find-files root ".*\\.so.*")))))
+          (add-after 'make-executable 'build-wrapper
+            (lambda _
+              ;; Mirror AppRun's contract: assets resolve as
+              ;; "./usr/share/sunshine" against the working directory.
+              (let* ((bin (string-append #$output "/bin"))
+                     (root (string-append #$output "/lib/sunshine"))
+                     (wrapper (string-append bin "/sunshine")))
+                (mkdir-p bin)
+                (call-with-output-file wrapper
+                  (lambda (port)
+                    (format port "#!~a/bin/bash~%" #$bash-minimal)
+                    (format port "set -e~%")
+                    (format port "ROOT=\"~a\"~%" root)
+                    (format port "cd \"$ROOT\" || exit 1~%")
+                    (format port "exec -a sunshine \"$ROOT/usr/bin/sunshine\" \"$@\"~%")))
+                (chmod wrapper #o755))))
+          (add-after 'build-wrapper 'install-udev-rules
+            (lambda _
+              (install-file
+               (string-append #$output "/lib/sunshine/usr/share/sunshine/"
+                              "udev/rules.d/60-sunshine.rules")
+               (string-append #$output "/lib/udev/rules.d"))))
+          (add-after 'install-udev-rules 'fix-desktop-entry
+            (lambda _
+              (substitute* (string-append #$output "/share/applications/"
+                                          "dev.lizardbyte.app.Sunshine.desktop")
+                (("^Exec=sunshine$")
+                 (string-append "Exec=" #$output "/bin/sunshine"))))))))
+    (native-inputs (list p7zip patchelf))
+    (inputs
+     `(("bash-minimal" ,bash-minimal)
+       ("glibc" ,glibc)
+       ("gcc:lib" ,gcc "lib")
+       ("mesa" ,mesa)
+       ("libglvnd" ,libglvnd)
+       ("libdrm" ,libdrm)
+       ("wayland" ,wayland)
+       ("libx11" ,libx11)
+       ("libxcb" ,libxcb)
+       ("libice" ,libice)
+       ("libsm" ,libsm)
+       ("pipewire" ,pipewire)
+       ("fontconfig-minimal" ,fontconfig)
+       ("freetype" ,freetype)
+       ("harfbuzz" ,harfbuzz)
+       ("zlib" ,zlib)
+       ("avahi" ,avahi)
+       ("x265" ,x265)
+       ("e2fsprogs" ,e2fsprogs)
+       ("gmp" ,gmp)
+       ("libgpg-error" ,libgpg-error)))
+    ;; Asset filenames are Sunshine_<version>_<arch>.AppImage; upstream-name
+    ;; is the filename prefix before the version (case-sensitive).
+    (properties `((upstream-name . "Sunshine")))
+    (home-page "https://app.lizardbyte.dev/Sunshine")
+    (synopsis "Self-hosted game stream host for Moonlight")
+    (description "Sunshine is a self-hosted game stream host for Moonlight.
+It streams the desktop and games to local devices with low latency, using
+hardware encoding (NVENC, AMF, Quick Sync, VA-API, VideoToolbox) where
+available.  Configuration happens through a local web UI; clients pair with
+a PIN.  This package provides the prebuilt AppImage release.")
+    (license license:gpl3)
+    (supported-systems '("x86_64-linux"))))

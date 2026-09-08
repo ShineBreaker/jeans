@@ -26,8 +26,11 @@
                   (jeans packages tools)
 
                   (jeans home services emacs-xyz)
+                  (jeans home services hardware)
+                  (jeans home services tools)
                   (jeans services hardware)
-                  (jeans services nix-ld)))
+                  (jeans services nix-ld)
+                  (jeans services tools)))
 
              (for-each (let ((i (module-public-interface (current-module))))
                          (lambda (m)

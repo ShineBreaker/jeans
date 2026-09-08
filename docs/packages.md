@@ -80,9 +80,10 @@
 
 ### (jeans packages hardware)
 
-| Package                       | Description                     |
-| ----------------------------- | ------------------------------- |
-| `opentabletdriver-udev-rules` | UDev rules for OpenTabletDriver |
+| Package                       | Description                                 |
+| ----------------------------- | ------------------------------------------- |
+| `opentabletdriver-bin`        | User-mode tablet driver for drawing tablets |
+| `opentabletdriver-udev-rules` | UDev rules for OpenTabletDriver             |
 
 ### (jeans packages lisp)
 
@@ -129,4 +130,5 @@
 | `jdtls-bin`                | Java language server                                             |
 | `motrix-next-bin`          | Full-featured download manager                                   |
 | `prettier-bin`             | Opinionated multi-language code formatter                        |
+| `sunshine-bin`             | Self-hosted game stream host for Moonlight                       |
 | `winapps`                  | Run Windows applications on GNU/Linux                            |
