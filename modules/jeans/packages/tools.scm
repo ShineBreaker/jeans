@@ -780,16 +780,16 @@ It requires a writable @file{/var/lib/apm} directory at runtime; run the
 (define-public agenote
   (package
     (name "agenote")
-    (version "2026-08-31")
+    (version "2026-09-12")
     (source
      (origin
        (method git-fetch)
        (uri (git-reference
              (url "https://github.com/ShineBreaker/agenote")
-             (commit "2cba928e3e45cba374fda903c8e4262ddc24b384")))
+             (commit "6892dbd9e2e55ca3da13016e98bc78b9801b3fb2")))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "1mcjinlpg1ljcwj73ffx23shrryq6h6mv3b8a84fcj6xr1s19ny9"))))
+        (base32 "135zb32rjjwnh7fdbwl16si6hc0rvly8z5xx2mvp65pc7l0mx1ha"))))
     (build-system pyproject-build-system)
     (arguments
      (list
