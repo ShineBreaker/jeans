@@ -518,7 +518,7 @@ of Emacs Lisp projects.  This package provides the prebuilt binary release.")
 (define-public neomacs-bin
   (package
     (name "neomacs-bin")
-    (version "0.0.16")
+    (version "0.0.18")
     (source
      (origin
        (method url-fetch)
@@ -526,7 +526,7 @@ of Emacs Lisp projects.  This package provides the prebuilt binary release.")
              "https://github.com/eval-exec/neomacs/releases/download/"
              "v" version "/neomacs_" version "_amd64.deb"))
        (sha256
-        (base32 "1ksmm25mpkda36xln5mxc9q7fgjbfmgwhdybd9lav5hsy7myzr7n"))))
+        (base32 "0pr4gpwhzwaad0g0y2s6xidc4w2yfn3n07mn0fdh2gwn5z7cvj39"))))
     (build-system gnu-build-system)
     (arguments
      (list

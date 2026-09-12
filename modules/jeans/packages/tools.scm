@@ -254,7 +254,7 @@ editor that supports the protocol to provide Java language features.")
 (define-public aria2-next-bin
   (package
     (name "aria2-next-bin")
-    (version "2.6.8")
+    (version "2.7.5")
     (source
      (origin
        (method url-fetch)
@@ -262,7 +262,7 @@ editor that supports the protocol to provide Java language features.")
              "https://github.com/AnInsomniacy/aria2-next/releases/download/"
              "v" version "/aria2-next-" version "-linux-x86_64"))
        (sha256
-        (base32 "193yd6aqmlw2qgdagg1d4al2z47qd326r3r27yghkv7crzmqgicn"))))
+        (base32 "08pr8m5jhr3xb7vykcgnzdp9ghpgvskn39ck51ih39f97psv942i"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -351,7 +351,7 @@ prebuilt binary release.")
 (define-public motrix-next-bin
   (package
     (name "motrix-next-bin")
-    (version "3.9.7")
+    (version "3.9.9")
     (source
      (origin
        (method url-fetch)
@@ -359,7 +359,7 @@ prebuilt binary release.")
              "https://github.com/AnInsomniacy/motrix-next/releases/download/"
              "v" version "/MotrixNext_" version "_amd64.deb"))
        (sha256
-        (base32 "15bp7prj63r3f1hmcf9lc612x0i8g4dh1kn0n3nhx54gdvs8bp40"))))
+        (base32 "0rm7almw22wvhrrlcrvgbkj6yz9xg22f274qzanfps6zbzf6a7dl"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -522,7 +522,7 @@ binary release.")
 (define-public cc-switch-bin
   (package
     (name "cc-switch-bin")
-    (version "3.20.1")
+    (version "3.20.3")
     (source
      (origin
        (method url-fetch)
@@ -530,7 +530,7 @@ binary release.")
              "https://github.com/farion1231/cc-switch/releases/download/"
              "v" version "/CC-Switch-v" version "-Linux-x86_64.deb"))
        (sha256
-        (base32 "0qrls5ccgvd0zw17dsckdbky8db57sadp7gl3xjpw00z7641zsmf"))))
+        (base32 "1ifn3p24k5v0bk04a44brj9mky2lgrb2nj3cnr2hamq529gygkr2"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -825,16 +825,16 @@ It requires a writable @file{/var/lib/apm} directory at runtime; run the
 (define-public agenote
   (package
     (name "agenote")
-    (version "2026-09-12")
+    (version "2026-08-31")
     (source
      (origin
        (method git-fetch)
        (uri (git-reference
              (url "https://github.com/ShineBreaker/agenote")
-             (commit "6892dbd9e2e55ca3da13016e98bc78b9801b3fb2")))
+             (commit "2cba928e3e45cba374fda903c8e4262ddc24b384")))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "135zb32rjjwnh7fdbwl16si6hc0rvly8z5xx2mvp65pc7l0mx1ha"))))
+        (base32 "1mcjinlpg1ljcwj73ffx23shrryq6h6mv3b8a84fcj6xr1s19ny9"))))
     (build-system pyproject-build-system)
     (arguments
      (list
