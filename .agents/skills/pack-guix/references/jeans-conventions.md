@@ -222,6 +222,7 @@ guile 能 `use-modules` 加载不代表语法正确（可能命中 `.go` cache�
 `readelf -d` 的 NEEDED 列表只是静态真相，两类运行时加载会让"NEEDED 为空 = 无依赖"的判断失效：
 
 - **裸 soname dlopen**：加载探测列表的第一项常是不带路径的裸 soname（fresh-editor-bin 的控制台鼠标支持 dlopen `libgpm.so.2`，`editor.scm` 包前注释）。RUNPATH 即可满足：把提供该库的包加进 inputs 并纳入 library path，不需要 symlink。
+- **RUNPATH 失效场景（dlopen 由内嵌 runtime 发起）**：glibc 的 dlopen 只查*调用者*自己的 RUNPATH。宿主 ELF 内嵌另一个 runtime 并由它 dlopen 裸 soname 时（.NET single-file bundle：P/Invoke 走 libcoreclr 的 dlopen），打在宿主 ELF 上的 RPATH 完全不可见——库加载静默失败、上层功能无声降级。opentabletdriver-bin `hardware.scm:86` 包前注释：HidSharp 拿不到 libudev.so.1 时设备枚举恒为空，日志只说 "No tablets were detected"，不报库错误。解法是改走加载器自身的探测路径：.NET NativeLibrary 先试 `<assembly-dir>/<soname>`，把裸 soname symlink 进二进制同目录（libudev.so.1/libevdev.so.2/libnotify.so.4 实例）。strace 观察 dlopen 的 openat 搜索序列是判定调用链的最快手段。
 - **写死上游发行版的 soname**：CFFI/FFI 的候选列表按打包者的发行版写死（lem-next 的 CFFI 写死 Ubuntu 的 `libncursesw.so.6.3`、neomacs 的 `libtinfo.so.6` 同理，而 Guix 的 ncurses 只提供 `libncursesw.so.6`）。解法：安装阶段在二进制同目录 `symlink` 一个别名指向 Guix 的实际库文件（`editor.scm` 的 `lem-next-bin`、`emacs-xyz.scm` 的 `neomacs-bin` 均有实例），并把该目录放进 RUNPATH。
 - 断言"Guix 下无法加载"之前，先读上游的加载源码找探测顺序——多数 FFI 按列表依次尝试，前面失败会落到可满足的后续项。
 
