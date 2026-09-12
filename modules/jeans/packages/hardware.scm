@@ -16,6 +16,7 @@
    #:use-module (gnu packages icu4c)
    #:use-module (gnu packages instrumentation)
    #:use-module (gnu packages kerberos)
+   #:use-module (gnu packages linux)
    #:use-module (gnu packages libunwind)
    #:use-module (gnu packages tls)
    #:use-module (gnu packages web)
@@ -85,7 +86,16 @@
  ;;; a lower version, so a matching private runtime ships below.
  ;;; The runtime dlopen set (.NET host: ICU, OpenSSL, libunwind; daemon:
  ;;; libevdev; UX.Gtk: Gtk3) is absent from NEEDED, so those libraries go
- ;;; on RPATH alongside the static set.
+ ;;; on RPATH alongside the static set.  That RPATH only covers dlopens
+ ;;; the apphost's own libraries issue: glibc dlopen consults only the
+ ;;; *caller's* RUNPATH, and bare-soname P/Invokes are issued by
+ ;;; libcoreclr (whose RUNPATH is nonguix's runtime plan), so the apphost
+ ;;; RPATH is invisible to them.  Those resolve via .NET's
+ ;;; assembly-directory probe instead (NativeLibrary tries
+ ;;; <BaseDir>/<soname> first): HidSharp dlopens libudev.so.1 for hidraw
+ ;;; enumeration (without it the device list is silently empty -- "No
+ ;;; tablets were detected"), artist mode dlopens libevdev.so.2, so both
+ ;;; sonames are symlinked next to the bundles.
  ;;;
  ;;; Upstream launches via sh wrappers (/usr/bin/otd* calling
  ;;; /usr/lib/opentabletdriver/*); reproduced as thin store-bash wrappers
@@ -253,6 +263,19 @@
                  '("OpenTabletDriver.Console"
                    "OpenTabletDriver.Daemon"
                    "OpenTabletDriver.UX.Gtk"))
+                ;; Bare-soname dlopens from the .NET runtime (libudev for
+                ;; HidSharp's hidraw enumeration, libevdev for artist
+                ;; mode, libnotify for GUI notifications): the apphost
+                ;; RPATH is invisible to libcoreclr's dlopen, but
+                ;; NativeLibrary probes this directory first.
+                (symlink (string-append (assoc-ref inputs "eudev") "/lib/libudev.so.1")
+                         (string-append libdir "/libudev.so.1"))
+                (symlink (string-append (assoc-ref inputs "libevdev")
+                                        "/lib/libevdev.so.2")
+                         (string-append libdir "/libevdev.so.2"))
+                (symlink (string-append (assoc-ref inputs "libnotify")
+                                        "/lib/libnotify.so.4")
+                         (string-append libdir "/libnotify.so.4"))
                 ;; Thin wrappers mirroring upstream's /usr/bin/otd* scripts.
                 (mkdir-p bin)
                 (for-each
@@ -317,8 +340,10 @@
     (inputs
      `(("bash-minimal" ,bash-minimal)
        ("dotnet-runtime-8" ,dotnet-runtime-8)
+       ("eudev" ,eudev)
        ("glibc" ,glibc)
        ("gcc:lib" ,gcc "lib")
+       ("libnotify" ,libnotify)
        ("libunwind" ,libunwind)
        ("icu4c" ,icu4c)
        ("openssl" ,openssl)

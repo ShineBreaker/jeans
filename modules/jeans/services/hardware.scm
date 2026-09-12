@@ -28,6 +28,11 @@
 ;;     The otd-daemon user unit maps to home-opentabletdriver-service-type
 ;;     (jeans home services hardware), a home shepherd service, instead of
 ;;     NixOS's systemd user service bound to graphical-session.target.
+;;
+;; The driver's libinput quirks (shipped at share/libinput/ in the .deb)
+;; are re-exposed as /etc/libinput/local-overrides.quirks: libinput only
+;; reads its built-in store data dir plus that override path, so the
+;; share/libinput copy in the package output would never be consulted.
 (define-record-type* <opentabletdriver-configuration>
   opentabletdriver-configuration make-opentabletdriver-configuration
   opentabletdriver-configuration?
@@ -58,7 +63,11 @@ kernel module configuration and conflicting-module blacklist.")
           (service-extension etc-service-type
                              (lambda (config)
                                `(("modprobe.d/99-opentabletdriver.conf"
-                                  ,%opentabletdriver-modprobe-conf))))))
+                                  ,%opentabletdriver-modprobe-conf)
+                                 ("libinput/local-overrides.quirks"
+                                  ,(file-append
+                                    (opentabletdriver-configuration-driver config)
+                                    "/share/libinput/30-vendor-opentabletdriver.quirks")))))))
    (default-value (opentabletdriver-configuration))))
 
 (define* (opentabletdriver-service #:key (package opentabletdriver-udev-rules)
