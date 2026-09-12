@@ -48,6 +48,11 @@
   #:use-module (gnu packages video)       ; x265
   #:use-module (gnu packages xdisorg)     ; libdrm
   #:use-module (gnu packages xorg)        ; libx11, libxcb, libice, libsm
+  #:use-module (gnu packages curl)        ; curl
+  #:use-module (gnu packages nss)         ; nss-certs
+  #:use-module (guix profiles)            ; ca-certificate-bundle
+  #:use-module (guix store)
+  #:use-module (guix monads)
   )
 
 (define-public winapps
@@ -136,21 +141,61 @@
       (properties `((with-latest-git-commit . #t)))
       (license license:agpl3+))))
 
+;;; curl-url-fetch：origin 下载 method，用 curl 替代内置下载器抓取。
+;;;
+;;; download.eclipse.org 现在经由代理层返回 "Cache-Control: private,
+;;; max-age=8m, no-transform"（max-age 按 RFC 9111 应为非负整数秒，8m 非法），
+;;; 而 guile >= 3.0.10 为 Cache-Control 声明了严格解析器，内置 url-fetch
+;;; 走 Guile HTTP 客户端，直接以 "Bad non-negative-integer header component:
+;;; 8m" 拒绝下载。jdtls 的发行 tarball 只在 download.eclipse.org 独家分发
+;;; （不在 Eclipse 镜像网络内），只能换用对响应头宽容的 curl；完整性仍由
+;;; fixed-output derivation 的 sha256 校验保证。构建沙箱不一定挂宿主的
+;;; /etc/ssl/certs（daemon 未配置 chroot-directory 时就没有），CA 用
+;;; ca-certificate-bundle derivation 自带，不依赖宿主环境。
+(define* (curl-url-fetch url hash-algo hash
+                         #:optional name
+                         #:key (system (%current-system))
+                         (guile (default-guile)))
+  (define file-name (basename url))
+  (mlet %store-monad ((guile (package->derivation guile system))
+                      (ca-bundle (ca-certificate-bundle
+                                  (packages->manifest (list nss-certs))
+                                  system)))
+    (gexp->derivation (or name file-name)
+      (with-imported-modules '((guix build utils))
+        #~(begin
+            (use-modules (guix build utils))
+            (invoke (string-append #$curl "/bin/curl")
+                    "--fail" "--location" "--retry" "3" "--retry-delay" "2"
+                    "--output" #$output
+                    "--cacert"
+                    (string-append #$ca-bundle
+                                   "/etc/ssl/certs/ca-certificates.crt")
+                    #$url)))
+      #:system system
+      #:guile-for-build guile
+      #:hash-algo hash-algo
+      #:hash hash
+      #:local-build? #t
+      ;; 与内置 url-fetch 对齐：允许代理与 locale 设置进入构建环境。
+      #:leaked-env-vars '("http_proxy" "https_proxy" "no_proxy"
+                          "LC_ALL" "LC_MESSAGES" "LANG"))))
+
 (define-public jdtls-bin
   (package
     (name "jdtls-bin")
-    (version "1.60.0")
+    (version "1.61.0")
     (source
-      (origin
-        (method url-fetch)
-        (uri (string-append
-              "https://download.eclipse.org/jdtls/milestones/"
-              version
-              "/jdt-language-server-"
-              version
-              "-202606262232.tar.gz"))
-        (sha256
-          (base32 "07ggh6mb28pj1d0pha29qm98rl8zfww2fn03129pgycqh4yk0k79"))))
+     (origin
+       (method curl-url-fetch)
+       (uri (string-append
+             "https://download.eclipse.org/jdtls/milestones/"
+             version
+             "/jdt-language-server-"
+             version
+             "-202609031315.tar.gz"))
+       (sha256
+        (base32 "0r2cjfwgz6rhj8h380vw9vmn79sgsfh1jfa5l8dnadhqsrrpx3ik"))))
     (build-system gnu-build-system)
     (arguments
       (list
