@@ -229,10 +229,14 @@ restores access to Mozilla's official add-on and language pack services and
 keeps the language selection interface enabled.")
        (license license:mpl2.0)))
 
+;;; zen-browser-bin: upstream prebuilt tarball of the Zen browser.  Since 1.22b
+;;; the gfx smoke-test helpers are shipped as a single `gfxtest' binary
+;;; (formerly glxtest/vaapitest/vulkantest); the patch-elf phase filters its
+;;; hardcoded binary list by file-exists? to survive such upstream renames.
 (define-public zen-browser-bin
   (package
     (name "zen-browser-bin")
-    (version "1.21.16b")
+    (version "1.22b")
     (source
      (origin
        (method url-fetch)
@@ -240,7 +244,7 @@ keeps the language selection interface enabled.")
              "https://github.com/zen-browser/desktop/releases/download/"
              version "/zen.linux-x86_64.tar.xz"))
        (sha256
-        (base32 "0hmrmj977xgppwxzjwpzp1b3hfzsb13diyjsscwj5a0h3lwkqk0y"))))
+        (base32 "1f7v9blamgld2fqbngijgy679qpqf63qzzn5a6ir3vib5b42brs1"))))
     (build-system copy-build-system)
     (arguments
      (list
@@ -355,12 +359,15 @@ keeps the language selection interface enabled.")
                   (display " done\n"))
                 (for-each (lambda (binary)
                             (patch-elf binary))
-                          (append (map (lambda (binary)
-                                         (string-append #$output "/lib/zen/"
-                                                        binary))
-                                       '("glxtest" "updater" "vaapitest"
-                                         "vulkantest" "zen" "zen-bin"
-                                         "pingsender"))
+                          (append (filter file-exists?
+                                          (map (lambda (binary)
+                                                 (string-append #$output
+                                                                "/lib/zen/"
+                                                                binary))
+                                               '("gfxtest" "glxtest" "updater"
+                                                 "vaapitest" "vulkantest"
+                                                 "zen" "zen-bin"
+                                                 "pingsender")))
                                   (find-files (string-append #$output
                                                              "/lib/zen")
                                               ".*\\.so.*"))))))
