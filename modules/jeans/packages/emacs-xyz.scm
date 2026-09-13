@@ -440,7 +440,6 @@ of Emacs Lisp projects.  This package provides the prebuilt binary release.")
 ;;;   out/libexec/neomacs/<ver>/<triple>/    (PATH_EXEC, see below)
 ;;;     {neomacs-temacs,bootstrap-neomacs,mock-display}
 ;;;     neomacs.pdump                        (dump image, copied as data)
-;;;     libtinfo.so.6 -> libncursesw.so.6    (compat symlink, on RPATH)
 ;;;   out/share/neomacs/{lisp,etc,leim}      (runtime root)
 ;;;   out/share/applications/neomacs.desktop (shipped by upstream)
 ;;;   out/share/icons/hicolor/scalable/apps/neomacs.svg
@@ -474,11 +473,8 @@ of Emacs Lisp projects.  This package provides the prebuilt binary release.")
 ;;;
 ;;; readelf NEEDED: libtinfo.so.6, libstdc++.so.6, the GStreamer stack
 ;;; (see below), libfontconfig.so.1, libz.so.1, libgcc_s.so.1,
-;;; libm/libc.so.6.  Guix's ncurses is built
-;;; --enable-widec and WITHOUT --with-termlib, so the store has no
-;;; standalone libtinfo.so.6; libtinfo is an ABI-compatible subset of
-;;; libncursesw, so we ship a symlink inside the archlib (cf.
-;;; haskell.scm's GHC bootstrap for the same trick).
+;;; libm/libc.so.6.  libtinfo comes from a private ncurses variant --
+;;; see ncurses-tinfo-versioned below for why the stock one will not do.
 ;;;
 ;;; 0.0.18 re-introduced the GStreamer stack that 0.0.16 had dropped:
 ;;; NEEDED carries libgstreamer-1.0 (gstreamer) together with
@@ -523,6 +519,24 @@ of Emacs Lisp projects.  This package provides the prebuilt binary release.")
 ;;; loaded (GNU Emacs scans them natively at startup, neomacs does
 ;;; not).  All of these no-op themselves once fixed upstream; see the
 ;;; removal conditions in neomacs/site-start.el.
+
+;;; neomacs' ELF links against libtinfo.so.6 and requires the
+;;; NCURSES6_TINFO_5.0.19991023 version node that upstream's Ubuntu build
+;;; emits.  Guix's ncurses has --enable-widec but neither --with-termlib
+;;; nor --with-versioned-syms: it ships no standalone libtinfo.so.6, and
+;;; libncursesw.so.6 carries no tinfo version node at all -- symlinking it
+;;; as libtinfo.so.6 (the GHC-bootstrap trick in haskell.scm) does resolve
+;;; the symbols but the loader still prints "no version information
+;;; available" on every start.  Build the Ubuntu configuration instead:
+;;; the tinfo termlib split out, with symbol versioning enabled.
+(define ncurses-tinfo-versioned
+  (package
+    (inherit ncurses)
+    (name "ncurses-tinfo-versioned")
+    (arguments
+     (substitute-keyword-arguments (package-arguments ncurses)
+       ((#:configure-flags flags)
+        #~(cons* "--with-termlib=tinfo" "--with-versioned-syms" #$flags))))))
 
 (define-public neomacs-bin
   (package
@@ -583,10 +597,11 @@ of Emacs Lisp projects.  This package provides the prebuilt binary release.")
                      ;; main output, which lacks libgcc_s.so.1).  This is the
                      ;; "gexp default-output" footgun documented in AGENTS.md.
                      (gcc-lib (string-append (assoc-ref inputs "gcc:lib") "/lib"))
-                     (ncurses-lib (string-append (assoc-ref inputs "ncurses") "/lib"))
-                     ;; RPATH over every runtime library input + our own
-                     ;; archlib/ (which carries the libtinfo.so.6
-                     ;; compatibility symlink, see below).
+                     (ncurses-lib
+                      (string-append
+                       (assoc-ref inputs "ncurses-tinfo-versioned") "/lib"))
+                     ;; RPATH over every runtime library input; archlib
+                     ;; (the PATH_EXEC directory) comes first.
                      ;;
                      ;; The GUI windowing/GPU stack (wayland, mesa,
                      ;; libxkbcommon, the X11 libs, lcms) does not appear in
@@ -630,18 +645,6 @@ of Emacs Lisp projects.  This package provides the prebuilt binary release.")
                 ;; neomacs.pdump is NOT executable; copy as data.
                 (copy-file (string-append deb-archlib "/neomacs.pdump")
                            (string-append archlib "/neomacs.pdump"))
-                ;; libtinfo.so.6 compatibility symlink.
-                ;;
-                ;; The neomacs ELF links against libtinfo.so.6, but Guix's
-                ;; ncurses is built with --enable-widec and WITHOUT
-                ;; --with-termlib, so the terminfo subset lives inside
-                ;; libncursesw.so.6 and there is no standalone libtinfo.so.6
-                ;; in the store (cf. haskell.scm's GHC bootstrap, which uses
-                ;; the same workaround).  libtinfo is an ABI-compatible subset
-                ;; of libncursesw, so we ship a symlink in the archlib
-                ;; directory and put it on RUNPATH.
-                (symlink (string-append ncurses-lib "/libncursesw.so.6")
-                         (string-append archlib "/libtinfo.so.6"))
                 ;; Runtime data tree (lisp, etc, leim).
                 (mkdir-p share)
                 (copy-recursively "usr/share/neomacs/." share)
@@ -691,7 +694,7 @@ of Emacs Lisp projects.  This package provides the prebuilt binary release.")
                                   "jeans/packages/neomacs/guix-emacs.el")))))
     (inputs `(("glibc" ,glibc)
               ("gcc:lib" ,gcc "lib")
-              ("ncurses" ,ncurses)
+              ("ncurses-tinfo-versioned" ,ncurses-tinfo-versioned)
               ("fontconfig-minimal" ,fontconfig)
               ("zlib" ,zlib)
               ;; GUI windowing/GPU stack — not in readelf NEEDED; loaded via
