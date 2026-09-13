@@ -92,7 +92,13 @@
                   (("@out@") #$output))
                 (substitute* "install/inquirer.sh"
                   (("#!/bin/bash")
-                   (string-append "#!" #$bash-minimal "/bin/bash")))))
+                   (string-append "#!" #$bash-minimal "/bin/bash")))
+                ;; bash-minimal 不支持 /dev/tcp 网络重定向，而 wrap 又把它
+                ;; 置于用户 PATH 之前，等待循环的 RDP 端口探测恒失败，冷启动
+                ;; 必然超时；改用已注入 PATH 的 netcat-openbsd 探测。
+                (substitute* "bin/winapps"
+                  (("timeout 1 bash -c \">/dev/tcp/\\$RDP_IP/\\$RDP_PORT\"")
+                   "timeout 1 nc -z \"$RDP_IP\" \"$RDP_PORT\""))))
             (replace 'install
               (lambda _
                 (let ((bin (string-append #$output "/bin"))
