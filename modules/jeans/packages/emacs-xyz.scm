@@ -23,6 +23,8 @@
   #:use-module (gnu packages gcc)            ; gcc "lib"
   #:use-module (gnu packages ghostscript)    ; lcms (liblcms2)
   #:use-module (gnu packages gl)             ; mesa (libEGL)
+  #:use-module (gnu packages glib)           ; glib (libglib/gobject/gio)
+  #:use-module (gnu packages gstreamer)      ; gstreamer, gst-plugins-base
   #:use-module (gnu packages ncurses)        ; ncurses (libtinfo)
   #:use-module (gnu packages compression)    ; zlib
   #:use-module (gnu packages xdisorg)        ; libxkbcommon
@@ -470,18 +472,25 @@ of Emacs Lisp projects.  This package provides the prebuilt binary release.")
 ;;;
 ;;; == Runtime ELF dependencies ==
 ;;;
-;;; readelf NEEDED: libtinfo.so.6, libstdc++.so.6, libfontconfig.so.1,
-;;; libz.so.1, libgcc_s.so.1, libm/libc.so.6.  Guix's ncurses is built
+;;; readelf NEEDED: libtinfo.so.6, libstdc++.so.6, the GStreamer stack
+;;; (see below), libfontconfig.so.1, libz.so.1, libgcc_s.so.1,
+;;; libm/libc.so.6.  Guix's ncurses is built
 ;;; --enable-widec and WITHOUT --with-termlib, so the store has no
 ;;; standalone libtinfo.so.6; libtinfo is an ABI-compatible subset of
 ;;; libncursesw, so we ship a symlink inside the archlib (cf.
 ;;; haskell.scm's GHC bootstrap for the same trick).
 ;;;
+;;; 0.0.18 re-introduced the GStreamer stack that 0.0.16 had dropped:
+;;; NEEDED carries libgstreamer-1.0 (gstreamer) together with
+;;; libgstpbutils-1.0/libgstvideo-1.0/libgstapp-1.0/libgstallocators-1.0
+;;; (gst-plugins-base) and glib's libglib-2.0/libgobject-2.0/
+;;; libgio-2.0.  They are hard NEEDED entries, so all three packages
+;;; belong on RUNPATH or the loader refuses to start the binary.
+;;;
 ;;; dlopen'd at runtime and therefore on RUNPATH: libwayland-client/
 ;;; libwayland-egl (Wayland), libX11.so.6 + libX11-xcb.so.1 (X11),
 ;;; libxkbcommon{,-x11}, libXi, libXcursor, libEGL.so.1 (mesa),
-;;; liblcms2.so.2 (lcms subrs).  GStreamer is gone upstream since
-;;; 0.0.16 (neither linked nor dlopen'd).
+;;; liblcms2.so.2 (lcms subrs).
 ;;;
 ;;; == Emacs environment-variable migration (from gnu/packages/emacs.scm) ==
 ;;;
@@ -593,6 +602,10 @@ of Emacs Lisp projects.  This package provides the prebuilt binary release.")
                                     (assoc-ref inputs "fontconfig-minimal") "/lib")
                                    (string-append (assoc-ref inputs "zlib") "/lib")
                                    (string-append (assoc-ref inputs "lcms") "/lib")
+                                   (string-append
+                                    (assoc-ref inputs "gst-plugins-base") "/lib")
+                                   (string-append (assoc-ref inputs "gstreamer") "/lib")
+                                   (string-append (assoc-ref inputs "glib") "/lib")
                                    (string-append (assoc-ref inputs "wayland") "/lib")
                                    (string-append
                                     (assoc-ref inputs "libxkbcommon") "/lib")
@@ -690,7 +703,12 @@ of Emacs Lisp projects.  This package provides the prebuilt binary release.")
               ("libxi" ,libxi)
               ("libxcursor" ,libxcursor)
               ;; dlopen'd by the lcms subrs.
-              ("lcms" ,lcms)))
+              ("lcms" ,lcms)
+              ;; GStreamer stack: hard NEEDED again since 0.0.18, after
+              ;; having been dropped in 0.0.16.
+              ("gstreamer" ,gstreamer)
+              ("gst-plugins-base" ,gst-plugins-base)
+              ("glib" ,glib)))
     ;; Mirrors the native-search-paths of gnu/packages/emacs.scm's
     ;; emacs-minimal.  EMACSLOADPATH must point at share/emacs/site-lisp
     ;; -- the layout every Guix Emacs package (emacs-build-system)
