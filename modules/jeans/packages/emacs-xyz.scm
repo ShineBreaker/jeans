@@ -792,3 +792,63 @@ the @code{agenote-call} adapter layer, so no logic drifts between the Emacs
 frontend and the CLI.")
       (properties `((with-latest-git-commit . #t)))
       (license license:expat))))
+
+;;; dsh-emacs is a pure-Elisp client for the DeepSeek Harness (@command{dsh})
+;;; server: sixteen root-level .el files, no third-party Elisp dependency.
+;;; Its server half is the external dsh CLI, resolved on every call through
+;;; (executable-find "dsh"), the same runtime lookup emacs-agenote uses; the
+;;; CLI is not propagated because dsh itself is not packaged in this channel.
+;;;
+;;; The 'patch-el-files' phase is dropped: emacs-build-system scans *.el
+;;; recursively with find-files, so it also walks test/ and scripts/, and
+;;; test/dsh-test.el binds the literal "/bin/sh".  The phase resolves such
+;;; literals against 'inputs' and aborts with "patch-el-files: unable to
+;;; locate" when nothing provides them -- no standard input does.  No
+;;; production .el carries a /bin or /sbin literal (programs are located on
+;;; PATH), so the phase has nothing to rewrite for this package anyway.
+;;;
+;;; Upstream declares an Emacs 27.1 baseline, yet three call sites use
+;;; 'completion-table-with-metadata' unguarded -- dsh-emacs.el:1394 and
+;;; :2808, dsh-emacs-reference.el:812 -- and that function first appears in
+;;; Emacs 31.  On Emacs 30 and older those paths signal void-function, which
+;;; breaks session switching (dsh-emacs.el:1588), the model picker and the
+;;; @-reference completion.  This is not worked around at the packaging
+;;; layer: upstream's own AGENTS.md forbids unguarded post-27.1 APIs, so the
+;;; guard belongs upstream (reported as
+;;; https://github.com/vritser/dsh-emacs/issues/7).  Emacs 31 builds
+;;; (emacs-next) are unaffected.
+;;; The upstream ERT suite cannot serve as our test phase either: loading it
+;;; on Emacs 30 hits the same missing function at top level, so #:tests? is
+;;; #f.
+
+(define-public emacs-dsh
+  (package
+    (name "emacs-dsh")
+    (version "0.3.0")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/vritser/dsh-emacs")
+             (commit (string-append "v" version))))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "0czcbnm7l5wggahni19gcbqg0y7gxf5p1x54446idf3a17m8vjiq"))))
+    (build-system emacs-build-system)
+    (arguments
+     (list
+      #:tests? #f
+      #:phases #~(modify-phases %standard-phases
+                   (delete 'patch-el-files))))
+    (home-page "https://github.com/vritser/dsh-emacs")
+    (synopsis "Emacs client for the DeepSeek Harness server")
+    (description
+     "An Emacs client for the DeepSeek Harness (@command{dsh}) server.  It
+talks to a running dsh server over HTTP with a WebSocket event stream and
+provides a session list, a chat buffer with streaming replies, foldable tool
+calls and thinking blocks, slash commands, @code{@@} references, one-read
+agent question prompts, model and reasoning-effort selection, and a
+mode-line statistics segment.  It uses only Emacs built-ins; the
+@command{dsh} command-line tool is the runtime dependency, and dsh-emacs can
+install it on demand when it is missing.")
+    (license license:gpl3+)))

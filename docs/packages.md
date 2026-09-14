@@ -56,6 +56,7 @@
 | `eask-bin`      | CLI tool for building, testing and managing Emacs packages   |
 | `ellsp-bin`     | Elisp Language Server Protocol server                        |
 | `emacs-agenote` | Emacs integration for the agenote knowledge-base CLI         |
+| `emacs-dsh`     | Emacs client for the DeepSeek Harness server                 |
 | `emacs-ellsp`   | Elisp Language Server Protocol server (Emacs backend)        |
 | `emacs-ghostel` | Terminal emulator powered by libghostty                      |
 | `emacs-msgu`    | Utility functions for message output in Emacs                |

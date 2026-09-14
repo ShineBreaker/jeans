@@ -103,6 +103,13 @@ github updater 还有几个静默盲区（不报错、就是不识别），命�
 - **tag 带产品前缀 + 资产名带平台后缀**：`updated-url` 对 `/releases/download/` 只认 `v<ver>/<name>-<ver><ext>`、`<ver>/<repo>-<ver><ext>` 等固定形状；cua 的 `cua-driver-rs-v0.23.2/cua-driver-rs-0.23.2-linux-x86_64-binary.tar.gz`（monorepo 多产品）所有形状都不匹配，设了 `upstream-name` 也报 no updater（cua-driver-bin，2026-09-02）。
 - **monorepo 把 stable 刻意标成 prerelease**：cua 上游用 GitHub 的 prerelease 标签防止仓库级 Latest 指针被单个产品抢走，plain SemVer 稳定版（`cua-driver-rs-v0.23.2`）全是 prerelease——除了 `tag_prefix` 过滤 nightly 系列，还必须进 `check_pre_release` 放行（cua-driver-bin，2026-09-02）。
 
+## Emacs 包（emacs-build-system）
+
+- **`install` 只装根目录 `.el`**：`%default-include` 为 `'("^[^/]*\\.el$" "^[^/]*\\.info$" "^doc/.*\\.info$")`，子目录（`test/`、`scripts/`、`lisp/`）里的 `.el` 不会被安装。上游把源码放在子目录时用 `#:lisp-directory`（`emacs-ghostel` 的 `#:lisp-directory "lisp"`），无需手写 `#:exclude`。
+- **`patch-el-files` 递归扫描整棵源码树，会被测试夹具里的 `/bin/...` 字面量打断**：该阶段用 `(find-files (getcwd) "\\.el$")` 取**所有** `.el`（不只待安装的），把 `"/bin/xxx"`、`"/sbin/xxx"` 形式字面量替换为 store 路径，解析不到就 `(error "patch-el-files: unable to locate ...")` 中止构建（`guix/build/emacs-build-system.scm:137-148`，Guix 9e068cc0）。上游测试里的 `(let ((shell-file-name "/bin/sh"))` 这类夹具足以让构建失败，**且 `#:exclude` 管不到这个阶段**（它不接受该参数）。生产 `.el` 无此类字面量时（程序按 PATH 查找，上游常规做法）直接 `(delete 'patch-el-files)`；否则把提供该程序、且带 `bin/` 的包加进 `inputs`。实例：`emacs-dsh`（`emacs-xyz.scm`，2026-09-14）。
+- **反向陷阱：`"/usr/bin/true"` 不会被误伤**。正则锚定在引号后紧跟 `s?bin/`，`"` 后是 `/usr/` 故不匹配；不要把 `/usr/bin/...` 与 `/bin/...` 混为一谈去排查。
+- 完整换行工具包（无 pkg.el、无 Makefile、无 ELPA 发布）用 `#:tests? #f`：`check` 阶段只认 `buttercup`、`ert-runner` 或 `Makefile`，都没有时即使 `#:tests? #t` 也只打印 "test system not found"。要用上游 ERT 套件得显式给 `#:test-command`。
+
 ## Rust 打包（双文件模式）
 
 Rust 包使用双文件结构：
