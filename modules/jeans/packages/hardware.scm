@@ -94,8 +94,17 @@
  ;;; assembly-directory probe instead (NativeLibrary tries
  ;;; <BaseDir>/<soname> first): HidSharp dlopens libudev.so.1 for hidraw
  ;;; enumeration (without it the device list is silently empty -- "No
- ;;; tablets were detected"), artist mode dlopens libevdev.so.2, so both
- ;;; sonames are symlinked next to the bundles.
+ ;;; tablets were detected"), artist mode dlopens libevdev.so.2 (Guix's
+ ;;; libevdev also carries the libevdev_uinput_* symbols, so the one
+ ;;; soname covers the virtual device too), the GUI dlopens
+ ;;; libnotify.so.4, and display handling P/Invokes libX11.so.6 plus
+ ;;; libXrandr.so.2 (XScreen, the X11 fallback); Wayland needs no native
+ ;;; library at all (WaylandDisplay is the pure-managed WaylandNET
+ ;;; client).  All these sonames are symlinked next to the bundles.  The
+ ;;; display pick is env-driven (WAYLAND_DISPLAY else DISPLAY, else a
+ ;;; doomed XScreen), so the daemon must be started inside the graphical
+ ;;; session -- see the wait-for-display wrapper in jeans home services
+ ;;; hardware.
  ;;;
  ;;; Upstream launches via sh wrappers (/usr/bin/otd* calling
  ;;; /usr/lib/opentabletdriver/*); reproduced as thin store-bash wrappers
@@ -265,8 +274,9 @@
                    "OpenTabletDriver.UX.Gtk"))
                 ;; Bare-soname dlopens from the .NET runtime (libudev for
                 ;; HidSharp's hidraw enumeration, libevdev for artist
-                ;; mode, libnotify for GUI notifications): the apphost
-                ;; RPATH is invisible to libcoreclr's dlopen, but
+                ;; mode's uinput device, libnotify for GUI notifications,
+                ;; libX11/libXrandr for the X11 fallback display): the
+                ;; apphost RPATH is invisible to libcoreclr's dlopen, but
                 ;; NativeLibrary probes this directory first.
                 (symlink (string-append (assoc-ref inputs "eudev") "/lib/libudev.so.1")
                          (string-append libdir "/libudev.so.1"))
@@ -276,6 +286,12 @@
                 (symlink (string-append (assoc-ref inputs "libnotify")
                                         "/lib/libnotify.so.4")
                          (string-append libdir "/libnotify.so.4"))
+                (symlink (string-append (assoc-ref inputs "libx11")
+                                        "/lib/libX11.so.6")
+                         (string-append libdir "/libX11.so.6"))
+                (symlink (string-append (assoc-ref inputs "libxrandr")
+                                        "/lib/libXrandr.so.2")
+                         (string-append libdir "/libXrandr.so.2"))
                 ;; Thin wrappers mirroring upstream's /usr/bin/otd* scripts.
                 (mkdir-p bin)
                 (for-each
@@ -345,6 +361,8 @@
        ("gcc:lib" ,gcc "lib")
        ("libnotify" ,libnotify)
        ("libunwind" ,libunwind)
+       ("libx11" ,libx11)
+       ("libxrandr" ,libxrandr)
        ("icu4c" ,icu4c)
        ("openssl" ,openssl)
        ("zlib" ,zlib)
