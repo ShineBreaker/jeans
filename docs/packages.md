@@ -19,7 +19,7 @@
 | `opencode-desktop-bin` | AI coding agent desktop application                        |
 | `paseo-bin`            | Self-hosted desktop client for orchestrating coding agents |
 | `reasonix-bin`         | DeepSeek-native AI coding agent for the terminal           |
-| `reasonix-desktop-bin` | DeepSeek-native AI coding agent with desktop GUI           |
+| `reasonix-studio-bin`  | Desktop GUI for the Reasonix AI coding agent               |
 | `zcode`                | Desktop application for agent-assisted development         |
 
 ### (jeans packages browser)

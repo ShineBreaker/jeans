@@ -56,15 +56,51 @@
         "jeans/patches/emacs-ghostel-ghostty-framedata.zig.patch"
         "jeans/patches/emacs-ghostel-ghostty-resources.zig.patch")))
 
+(define %ghostel-ghostty-translate-c-source
+  (origin
+    (method url-fetch)
+    (uri (string-append
+          "https://codeberg.org/vancluever/translate-c/archive/"
+          "4e879eb8aba615de112eabd1231ea6e01920cead.tar.gz"))
+    (sha256
+     (base32 "01ysbvxc4zkl3xzlcqpizpqzdg1h2ay3lp926l7bzcz8lg3gbc4g"))))
+
+(define %ghostel-ghostty-aro-source
+  (origin
+    (method url-fetch)
+    (uri (string-append
+          "https://github.com/vancluever/arocc/archive/"
+          "f97cdfc3779aec4b242299e2fc9a1c828c3547c6.tar.gz"))
+    (sha256
+     (base32 "113pkbzbfbsgfzbqxjmdcfw7hp053x35xp7pda7524jv2fwwmj22"))))
+
+;; google/wuffs snapshot vendored by ghostty via deps.files.ghostty.org
+;; (pkg/wuffs fetches it lazily, but the lazyDependency calls inside
+;; pkg/wuffs/build.zig run while the libvt build graph is constructed,
+;; so the sandbox needs local copies).
+(define %ghostel-ghostty-wuffs-source
+  (origin
+    (method url-fetch)
+    (uri "https://deps.files.ghostty.org/wuffs-7411f488fe2e2c205c3d3b3d28638b7356522930.tar.gz")
+    (sha256
+     (base32 "074sf6lv4x13c4s5wb24lq4nij057cp5pr32dhfnb23rdws7v1qp"))))
+
+(define %ghostel-ghostty-pixels-source
+  (origin
+    (method url-fetch)
+    (uri "https://deps.files.ghostty.org/pixels-12207ff340169c7d40c570b4b6a97db614fe47e0d83b5801a932dcd44917424c8806.tar.gz")
+    (sha256
+     (base32 "06pi3f3lhyxfzczhwrc2b4n0jhhzydbz96qlpw12a24is0b3ps2m"))))
+
 (define %ghostel-ghostty-source
-  (let ((commit "ab0b9da9e88fcb4b0533a1854e84628f663930af"))
+  (let ((commit "0c2a290d3a3e2a599be3a43435d778a5896667ee"))
     (origin
       (method url-fetch)
       (uri (string-append
              "https://github.com/ghostty-org/ghostty"
              "/archive/" commit ".tar.gz"))
       (sha256
-       (base32 "02ymjk7qw8c9bbc5fn96xfc9kyvibysclky0m90vqq40x5kzl7v5"))
+       (base32 "1gsbsszzkayzcw68y0c3xzcxr12by2v3bxca9mhf3slcm84dvsmb"))
       (patches %ghostel-ghostty-patches))))
 
 ;; uucode is pinned to commit 2826a37a (not the v0.2.0 tag) because that is
@@ -83,7 +119,7 @@
 (define-public emacs-ghostel
   (package
     (name "emacs-ghostel")
-    (version "0.53.0")
+    (version "0.54.0")
     (source
      (origin
        (method git-fetch)
@@ -92,7 +128,7 @@
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "0ph1gjl3915wgf7qz2c389gnm64yn07q9jb69dyqy6r8fkzmyd37"))
+        (base32 "0vq68pxmr9hywi1vw1ighl6kyq6kll7f5l1bh7xvrdi663m1lcr3"))
        (patches %ghostel-patches)))
       (build-system emacs-build-system)
       (arguments
@@ -169,6 +205,35 @@
                     (mkdir-p uucode-dir)
                     (invoke "tar" "xf" #$%ghostel-uucode-source
                             "-C" uucode-dir "--strip-components=1"))
+                  ;; Since ghostty pin 0c2a290d, pkg/translate-c is a wrapper
+                  ;; package whose build.zig.zon vendors vancluever/translate-c
+                  ;; via URL, which in turn vendors arocc via URL.  Populate
+                  ;; deps/translate-c and deps/aro and rewrite the wrapper's
+                  ;; dependency to local paths (the rewrite must run before
+                  ;; zig parses the dependency tree).
+                  (let ((tc-dir (string-append deps "/translate-c")))
+                    (mkdir-p tc-dir)
+                    (invoke "tar" "xf" #$%ghostel-ghostty-translate-c-source
+                            "-C" tc-dir "--strip-components=1")
+                    (let ((aro-dir (string-append deps "/aro")))
+                      (mkdir-p aro-dir)
+                      (invoke "tar" "xf" #$%ghostel-ghostty-aro-source
+                              "-C" aro-dir "--strip-components=1"))
+                    (let ((wuffs-dir (string-append deps "/wuffs")))
+                      (mkdir-p wuffs-dir)
+                      (invoke "tar" "xf" #$%ghostel-ghostty-wuffs-source
+                              "-C" wuffs-dir "--strip-components=1"))
+                    (let ((pixels-dir (string-append deps "/pixels")))
+                      (mkdir-p pixels-dir)
+                      (invoke "tar" "xf" #$%ghostel-ghostty-pixels-source
+                              "-C" pixels-dir "--strip-components=1"))
+                    ;; translate-c vendors arocc via URL; point it at the
+                    ;; local deps/aro copy the same way.
+                    (substitute* (string-append tc-dir "/build.zig.zon")
+                      (("\\.url = \"https://github\\.com/vancluever/arocc/archive/[^\"]*\"")
+                       ".path = \"../aro\"")
+                      (("\\.hash = \"aro-0.0.0-JSD1Qk6lNgDdcDV4Vh7Sfy-34m2TluIVOdPzMmj_0BjX\",")
+                       "")))
                   (for-each make-file-writable
                             (find-files deps #:directories? #t)))))
             (add-after 'unpack-zig-dependencies 'patch-guix-specific-shell-paths

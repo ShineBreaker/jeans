@@ -1,12 +1,24 @@
 Guix build sandbox workaround: redirect ghostty's uucode Zig URL dependency
-to a local path so the build does not require network access.  Regenerated
-against ghostty commit ab0b9da9e88fcb4b0533a1854e84628f663930af.
+to a local path so the build does not require network access.  Since the
+0c2a290d pin, the libvt build graph eagerly resolves three more URL
+dependencies:
+- pkg/translate-c (new wrapper package) vendors vancluever/translate-c,
+  which in turn vendors arocc; the wrapper's top-level
+  @import("translate_c") requires the dependency to resolve locally at
+  build-graph construction time.
+- pkg/wuffs (now wired into libvt for kitty graphics) vendors google/wuffs
+  and pixels; its build.zig lazyDependency calls run while the build graph
+  is constructed.
+The package definition populates deps/translate-c, deps/aro, deps/wuffs
+and deps/pixels from Guix origins; these hunks rewrite the URL
+dependencies to those local paths.
+Regenerated against ghostty commit 0c2a290d3a3e2a599be3a43435d778a5896667ee.
 
 Upstream-Status: Inappropriate [Guix-specific build environment]
 
 --- a/build.zig.zon
 +++ b/build.zig.zon
-@@ -46,11 +46,7 @@
+@@ -40,11 +40,7 @@
              .hash = "zig_js-0.0.0-rjCAV7-GAADvMTBL7lPMuvDk7xgS9PCMIZWiOUXLZSlj",
              .lazy = true,
          },
@@ -19,3 +31,39 @@ Upstream-Status: Inappropriate [Guix-specific build environment]
          .zig_wayland = .{
              // codeberg ifreund/zig-wayland
              .url = "https://deps.files.ghostty.org/wayland-0.6.0-lQa1kqz8AQADQmdNJsNhLoNHcnEGEUjrOaPV-dtEnEmX.tar.gz",
+--- a/pkg/translate-c/build.zig.zon
++++ b/pkg/translate-c/build.zig.zon
+@@ -11,9 +11,6 @@
+         .apple_sdk = .{
+             .path = "../apple-sdk",
+         },
+-        .translate_c = .{
+-            .url = "https://codeberg.org/vancluever/translate-c/archive/4e879eb8aba615de112eabd1231ea6e01920cead.tar.gz",
+-            .hash = "translate_c-0.0.0-Q_BUWhVNBwDOEcIqub4VFPJPB6D9dgwzUMHTX5KWr8Xr",
+-        },
++        .translate_c = .{ .path = "../../../translate-c" },
+     },
+ }
+--- a/pkg/wuffs/build.zig.zon
++++ b/pkg/wuffs/build.zig.zon
+@@ -6,18 +6,10 @@
+         .translate_c = .{ .path = "../translate-c" },
+
+         // google/wuffs
+-        .wuffs = .{
+-            .url = "https://deps.files.ghostty.org/wuffs-7411f488fe2e2c205c3d3b3d28638b7356522930.tar.gz",
+-            .hash = "N-V-__8AAP5JWgCGP_AD0teWpa4krRvE9VPZzvviGdbmN4jI",
+-            .lazy = true,
+-        },
++        .wuffs = .{ .path = "../../../wuffs", .lazy = true },
+
+         // make-github-pseudonymous-again/pixels
+-        .pixels = .{
+-            .url = "https://deps.files.ghostty.org/pixels-12207ff340169c7d40c570b4b6a97db614fe47e0d83b5801a932dcd44917424c8806.tar.gz",
+-            .hash = "N-V-__8AADYiAAB_80AWnH1AxXC0tql9thT-R-DYO1gBqTLc",
+-            .lazy = true,
+-        },
++        .pixels = .{ .path = "../../../pixels", .lazy = true },
+     },
+     .paths = .{
+         "build.zig",

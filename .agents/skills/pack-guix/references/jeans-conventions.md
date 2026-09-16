@@ -92,7 +92,7 @@ GUIX_GITHUB_TOKEN="$(gh auth token)" guix refresh -L modules -L /tmp/nonguix <pa
 
 - **非 GitHub 源**：CDN（zcode）、gitee（amber-pm）、无 version URL（font-misans）
 - **npm scoped tag**：kimi-code-bin（`@scope/name@version` 模式）
-- **refresh URL 重建失败的边缘 case**：reasonix-desktop-bin（`desktop-v` 前缀 + 文件名不标准）
+- **refresh URL 重建失败的边缘 case**：reasonix-studio-bin（`studio-v` 前缀 + 资产文件名无版本号）
 - 这些包的 tag_prefix / pre-release 规则保留在 `config.json`，不写入 properties。
 
 github updater 还有几个静默盲区（不报错、就是不识别），命中任一条就直接走 Python 兜底，不要在 properties 上浪费时间：

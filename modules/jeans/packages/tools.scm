@@ -58,8 +58,8 @@
 (define-public winapps
   ;; 上游不打 tag，追踪 main 分支 HEAD；由 guix refresh 的
   ;; latest-git-commit updater 自动更新 commit 和 revision。
-  (let ((commit "1b38cab1b8c1a513e4a313931759ac4942473678")
-        (revision "2"))
+  (let ((commit "42c7e8318280c6fc3426c7afebfc7f43b895f4c8")
+        (revision "3"))
     (package
       (name "winapps")
       (version (git-version "0" revision commit))
@@ -71,7 +71,7 @@
                (commit commit)))
          (file-name (git-file-name name version))
          (sha256
-          (base32 "1jwd9i93gmn4gv76w80k9minw34j2nivi7fk3kzzf8585a6zxh82"))
+          (base32 "04b8fgq9kh2aa0py324ydyyd6p4595z3hgzxidzsypmxxdiha9br"))
          (patches
           (map canonicalize-path
                (search-patches
@@ -114,7 +114,7 @@
                   (call-with-output-file (string-append bin "/xfreerdp3")
                     (lambda (port)
                       (format port "#!~a/bin/bash~%exec ~a/bin/xfreerdp \"$@\"~%"
-                              #$bash-minimal #$freerdp-3)))
+                              #$bash-minimal #$freerdp)))
                   (chmod (string-append bin "/xfreerdp3") #o755))))
             (add-after 'install 'wrap-programs
               (lambda _
@@ -126,7 +126,7 @@
                        `("PATH" ":" prefix
                          ,(list bin
                                 (string-append #$bash-minimal "/bin")
-                                (string-append #$freerdp-3 "/bin")
+                                (string-append #$freerdp "/bin")
                                 (string-append #$libnotify "/bin")
                                 (string-append #$dialog "/bin")
                                 (string-append #$netcat-openbsd "/bin")
@@ -134,7 +134,7 @@
                    '("winapps" "winapps-setup"))))))))
       (inputs
        `(("bash-minimal" ,bash-minimal)
-         ("freerdp" ,freerdp-3)
+         ("freerdp" ,freerdp)
          ("dialog" ,dialog)
          ("libnotify" ,libnotify)
          ("netcat-openbsd" ,netcat-openbsd)

@@ -274,9 +274,8 @@ This package provides the prebuilt binary release.")
 ;;; icons.  The data.tar is zstd-compressed, hence libarchive (bsdtar) is
 ;;; used for unpacking.
 ;;;
-;;; Same approach as reasonix-desktop-bin: do not patchelf the giant
-;;; binary, instead launch it via the Guix ld-linux wrapper with a
-;;; --library-path assembled from every input's /lib.  WebKitGTK,
+;;; Do not patchelf the giant binary: launch it via the Guix ld-linux
+;;; wrapper with a --library-path assembled from every input's /lib.
 ;;; libsoup, javascriptcore and the rest come transitively from
 ;;; webkitgtk-for-gtk3.
 
@@ -906,18 +905,32 @@ and ships as a single static binary with no runtime dependencies.")
     (supported-systems '("x86_64-linux"))))
 
 
-(define-public reasonix-desktop-bin
+;;; Reasonix Studio: DeepSeek-native AI coding agent desktop app (Electron).
+;;;
+;;; Upstream renamed the desktop line to Studio (studio-v* tags) and deleted
+;;; the desktop-v1.38.4+ releases, so the old Wails-based reasonix-desktop-bin
+;;; is replaced by this package.  The .deb ships an Electron tree:
+;;;   - opt/Reasonix Studio/reasonix-studio-electron  (main Electron binary)
+;;;   - opt/Reasonix Studio/resources/bin/reasonix-studio-host
+;;;     (Go sidecar serving the loopback host, libc only)
+;;;   - opt/Reasonix Studio/resources/app.asar  (frontend)
+;;;
+;;; The polkit update helper (/usr/lib/reasonix-studio/...) only serves
+;;; in-app .deb upgrades, which Guix owns here, so it is not shipped.
+;;; Same Electron treatment as zcode: copy the tree to lib/, patchelf every
+;;; ELF, symlink bin/, wrap with LD_LIBRARY_PATH.
+(define-public reasonix-studio-bin
   (package
-    (name "reasonix-desktop-bin")
-    (version "1.38.7")
+    (name "reasonix-studio-bin")
+    (version "2.16.0")
     (source
      (origin
        (method url-fetch)
        (uri (string-append
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
-             "desktop-v" version "/Reasonix-linux-amd64.deb"))
+             "studio-v" version "/ReasonixStudio-linux-amd64.deb"))
        (sha256
-        (base32 "0lx7j7a96mq7d0djrvsv7bf82v5jpkrwm74dv2im12nh24sxxfjl"))))
+        (base32 "0mzd071pih2nyv78y5vwc7j5zvznzm0jd84yvqnvpch7yl2yirav"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -925,103 +938,136 @@ and ships as a single static binary with no runtime dependencies.")
       #:validate-runpath? #f
       #:strip-binaries? #f
       #:modules '((guix build gnu-build-system)
-                  (guix build utils))
+                  (guix build utils)
+                  (ice-9 ftw)
+                  (ice-9 regex)
+                  (srfi srfi-26))
       #:phases
       #~(modify-phases %standard-phases
           (delete 'configure)
           (delete 'build)
           (replace 'unpack
             (lambda _
-              (invoke "bsdtar" "xf" #$source)
-              (invoke "tar" "xzf" "data.tar.gz")))
+              (invoke "ar" "x" #$source)
+              (invoke "tar" "xf" "data.tar.xz")))
           (replace 'install
+            (lambda _
+              (let ((out #$output))
+                (copy-recursively "opt/Reasonix Studio"
+                                  (string-append out "/lib/reasonix-studio"))
+                #t)))
+          (add-after 'install 'disable-electron-updater
+            #$(disable-electron-updater-phase "reasonix-studio"))
+          (add-after 'install 'patch-elf
             (lambda* (#:key inputs #:allow-other-keys)
-              (let* ((out #$output)
-                     (libexec (string-append out "/libexec/reasonix-desktop"))
-                     (bin (string-append out "/bin"))
-                     (ld.so (string-append (assoc-ref inputs "glibc")
+              (let* ((ld.so (string-append #$(this-package-input "glibc")
                                            #$(glibc-dynamic-linker)))
-                     (lib-path (string-join
-                                (map (lambda (input)
-                                       (string-append (cdr input) "/lib"))
-                                     inputs)
-                                ":"))
-                     (glib-lib (string-append (assoc-ref inputs "glib") "/lib"))
-                     (gtk-lib (string-append (assoc-ref inputs "gtk+") "/lib"))
-                     (gtk-share (string-append (assoc-ref inputs "gtk+") "/share"))
-                     (webkitgtk-lib
-                      (string-append
-                       (assoc-ref inputs "webkitgtk-for-gtk3") "/lib"))
-                     (webkitgtk-share
-                      (string-append
-                       (assoc-ref inputs "webkitgtk-for-gtk3") "/share"))
-                     (gdk-pixbuf (assoc-ref inputs "gdk-pixbuf")))
-                (mkdir-p libexec)
-                (copy-file "usr/bin/reasonix-desktop"
-                           (string-append libexec "/reasonix-desktop"))
-                (chmod (string-append libexec "/reasonix-desktop") #o755)
-                (mkdir-p bin)
-                (with-output-to-file (string-append bin "/reasonix-desktop")
-                  (lambda ()
-                    (display
-                     (string-append
-                      "#!" #$(this-package-input "bash-minimal") "/bin/sh\n"
-                      "export FONTCONFIG_FILE="
-                      #$(this-package-input "fontconfig-minimal")
-                      "/etc/fonts/fonts.conf\n"
-                      "export XDG_DATA_DIRS=" out "/share:" gtk-share ":"
-                      webkitgtk-share
-                      "${XDG_DATA_DIRS:+:$XDG_DATA_DIRS}\n"
-                      "export GI_TYPELIB_PATH=" glib-lib "/girepository-1.0:"
-                      gtk-lib "/girepository-1.0:"
-                      webkitgtk-lib "/girepository-1.0:"
-                      gdk-pixbuf "/lib/girepository-1.0\n"
-                      "export GIO_EXTRA_MODULES=" glib-lib "/gio/modules\n"
-                      "exec " ld.so " --argv0 "
-                      libexec "/reasonix-desktop"
-                      " --library-path " lib-path " " libexec
-                      "/reasonix-desktop \"$@\"\n"))))
-                (chmod (string-append bin "/reasonix-desktop") #o755))))
-          (add-after 'install 'install-desktop-entry
+                     (rpath (string-join
+                             (cons* (string-append #$output "/lib/reasonix-studio")
+                                    (map (lambda (input)
+                                           (string-append (cdr input) "/lib"))
+                                         inputs))
+                             ":")))
+                (define (patch-elf file)
+                  (format #t "Patching ~a ..." file)
+                  (unless (string-contains file ".so")
+                    (invoke "patchelf" "--set-interpreter" ld.so file))
+                  (invoke "patchelf" "--set-rpath" rpath file)
+                  (display " done\n"))
+                (for-each patch-elf
+                          (append (find-files (string-append #$output
+                                                             "/lib/reasonix-studio")
+                                              ".*\\.so(\\.[0-9]+)?$")
+                                  (map (lambda (binary)
+                                         (string-append #$output
+                                                        "/lib/reasonix-studio/"
+                                                        binary))
+                                       '("reasonix-studio-electron"
+                                         "chrome_crashpad_handler"
+                                         "chrome-sandbox"
+                                         "resources/bin/reasonix-studio-host")))))))
+          (add-after 'patch-elf 'install-bin
             (lambda _
               (let* ((out #$output)
-                     (apps (string-append out "/share/applications"))
-                     (pixmaps (string-append out "/share/pixmaps")))
+                     (bin (string-append out "/bin"))
+                     (exe (string-append
+                            out "/lib/reasonix-studio/reasonix-studio-electron")))
+                (mkdir-p bin)
+                (symlink exe (string-append bin "/reasonix-studio")))))
+          (add-after 'install-bin 'install-desktop
+            (lambda _
+              (let* ((out #$output)
+                     (apps (string-append out "/share/applications")))
                 (mkdir-p apps)
-                (mkdir-p pixmaps)
-                (copy-file "usr/share/applications/reasonix.desktop"
-                           (string-append apps "/reasonix-desktop.desktop"))
-                ;; Upstream's desktop entry launches reasonix-launcher, a
-                ;; versioning shim that resolves the active build via
-                ;; current.json.  That mechanism is irrelevant in the
-                ;; immutable Guix store, so point straight at our wrapper.
-                (substitute* (string-append apps "/reasonix-desktop.desktop")
-                  (("Exec=reasonix-launcher")
-                   (string-append "Exec=" out "/bin/reasonix-desktop")))
-                (copy-file "usr/share/pixmaps/reasonix-desktop.png"
-                           (string-append pixmaps "/reasonix-desktop.png"))))))))
-    (native-inputs (list libarchive tar gzip))
-    (propagated-inputs (list reasonix-bin))
-    (inputs `(("gcc:lib" ,gcc "lib")
+                (make-desktop-entry-file
+                 (string-append apps "/reasonix-studio.desktop")
+                 #:name "Reasonix Studio"
+                 #:type "Application"
+                 #:comment #$(package-synopsis this-package)
+                 #:exec (string-append #$output "/bin/reasonix-studio %U")
+                 #:icon "reasonix-studio"
+                 #:categories '("Development")
+                 #:startup-w-m-class "Reasonix Studio"))))
+          (add-after 'install-desktop 'install-icons
+            (lambda _
+              (let* ((out #$output)
+                     (src (string-append "usr/share/icons/hicolor/512x512/apps/"
+                                      "reasonix-studio-electron.png"))
+                     (dst (string-append
+                            out "/share/icons/hicolor/512x512/apps/reasonix-studio.png")))
+                (mkdir-p (dirname dst))
+                (copy-file src dst))))
+          (add-after 'install-icons 'wrap-program
+            (lambda* (#:key inputs outputs #:allow-other-keys)
+              (let* ((out (assoc-ref outputs "out"))
+                     (lib (string-append out "/lib/reasonix-studio"))
+                     (mesa-lib (string-append (assoc-ref inputs "mesa") "/lib"))
+                     (nss-lib (string-append (assoc-ref inputs "nss") "/lib/nss"))
+                     (fontconfig-file (string-append
+                                      (assoc-ref inputs "fontconfig-minimal")
+                                      "/etc/fonts/fonts.conf")))
+                (wrap-program (string-append out "/bin/reasonix-studio")
+                  `("LD_LIBRARY_PATH" prefix
+                    (,lib ,mesa-lib ,nss-lib))
+                  `("FONTCONFIG_FILE" =
+                    (,fontconfig-file))
+                  `("XDG_DATA_DIRS" prefix
+                    (,(string-append out "/share")))))))
+          (add-after 'wrap-program 'prefer-wayland
+            #$(prefer-electron-wayland-phase "reasonix-studio")))))
+    (native-inputs (list binutils patchelf tar xz))
+    (inputs `(("alsa-lib" ,alsa-lib)
+              ("at-spi2-core" ,at-spi2-core)
               ("bash-minimal" ,bash-minimal)
+              ("cups" ,cups)
+              ("dbus" ,dbus)
+              ("eudev" ,eudev)
+              ("expat" ,expat)
               ("fontconfig-minimal" ,fontconfig)
+              ("gcc:lib" ,gcc "lib")
               ("glibc" ,glibc)
               ("glib" ,glib)
               ("gtk+" ,gtk+)
-              ("gdk-pixbuf" ,gdk-pixbuf)
-              ("libsoup" ,libsoup)
+              ("libx11" ,libx11)
+              ("libxcb" ,libxcb)
+              ("libxcomposite" ,libxcomposite)
+              ("libxdamage" ,libxdamage)
+              ("libxext" ,libxext)
+              ("libxfixes" ,libxfixes)
+              ("libxkbcommon" ,libxkbcommon)
+              ("libxrandr" ,libxrandr)
               ("mesa" ,mesa)
-              ("webkitgtk-for-gtk3" ,webkitgtk-for-gtk3)))
+              ("nss" ,nss)))
     (home-page "https://github.com/esengine/DeepSeek-Reasonix")
-    (synopsis "DeepSeek-native AI coding agent with desktop GUI")
+    (synopsis "Desktop GUI for the Reasonix AI coding agent")
     (description
-     "Reasonix is a DeepSeek-native AI coding agent for your terminal,
-tuned around DeepSeek's prefix cache so token costs stay low across long
-sessions.
-This is the desktop version with a graphical interface built with Wails
-(Go + WebKitGTK).  It provides a config- and plugin-driven harness with
-support for multiple LLM providers.")
-    (properties `((upstream-name . "Reasonix") (release-tag-prefix . "^desktop-v")))
+     "Reasonix Studio is the desktop companion to Reasonix, a DeepSeek-native
+AI coding agent tuned around DeepSeek's prefix cache so token costs stay low
+across long sessions.
+This package provides the prebuilt Electron shell with its bundled loopback
+host and frontend.  The harness is config- and plugin-driven with support
+for multiple LLM providers.")
+    (properties `((upstream-name . "ReasonixStudio") (release-tag-prefix . "^studio-v")))
     (license license:expat)
     (supported-systems '("x86_64-linux"))))
 
