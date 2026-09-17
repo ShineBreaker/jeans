@@ -936,7 +936,9 @@ def check_stale_packages(scm_files: List[Path], config: Dict[str, Any]) -> None:
         if days < stale_days:
             print(f"⏰ {pkg_name}: 距上次提醒 {days} 天，未到 {stale_days} 天阈值")
             continue
-        title = f"⏰ 包 {pkg_name} 已 {days} 天未手动更新"
+        # 标题必须与天数无关：_issue_exists 按标题精确匹配防重，
+        # 天数嵌进标题会让每次提醒的标题都不同，查重失效（重复发 issue）。
+        title = f"⏰ 包 {pkg_name} 长期未手动更新，需要人工检查"
         body = (
             f"**{pkg_name}** 属于无法自动更新的包，已 {days} 天无手动更新。\n\n"
             f"原因：{reason}\n\n"
