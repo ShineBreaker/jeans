@@ -6,6 +6,9 @@
 ;;; and AI-powered editors, consolidated from tools.scm and desktop.scm.
 
 (define-module (jeans packages agent)
+  #:export (disable-electron-updater-phase
+            prefer-electron-wayland-phase
+            prefer-electron-wayland-hint-phase)
   #:use-module (gnu packages)
   #:use-module (gnu packages audio)        ; alsa-lib
   #:use-module (gnu packages backup)       ; libarchive

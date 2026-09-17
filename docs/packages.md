@@ -29,6 +29,13 @@
 | `librewolf-nongnu` | LibreWolf with Mozilla language pack support restored |
 | `zen-browser-bin` | Privacy-focused web browser with a calm interface |
 
+### (jeans packages databases)
+
+| Package | Description |
+| --- | --- |
+| `mysql-workbench-community` | Visual tool for MySQL database design, administration and development |
+| `mysql-workbench-community-bin` | Visual tool for MySQL database design, administration and development |
+
 ### (jeans packages desktop)
 
 | Package | Description |

@@ -12,6 +12,7 @@
                   (guix utils)
                   (jeans packages agent)
                   (jeans packages browser)
+                  (jeans packages databases)
                   (jeans packages desktop)
                   (jeans packages editor)
                   (jeans packages emacs-xyz)
