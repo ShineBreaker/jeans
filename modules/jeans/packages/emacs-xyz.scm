@@ -917,3 +917,47 @@ mode-line statistics segment.  It uses only Emacs built-ins; the
 @command{dsh} command-line tool is the runtime dependency, and dsh-emacs can
 install it on demand when it is missing.")
     (license license:gpl3+)))
+
+;;; minibuffer-frame is pure Elisp on Emacs builtins (icomplete; Emacs 28.1
+;;; baseline).  Upstream declares Version: 1.0.0 in the library header but
+;;; publishes no tags (the MELPA build rolls directly off main), so this
+;;; package follows the main-branch HEAD with the let + git-version
+;;; structure and the with-latest-git-commit property; the header version
+;;; serves as the git-version base.
+;;;
+;;; The upstream Makefile has no "check" target, and its "test" target
+;;; (emacs -Q -L . -l test/test.el) omits --batch, so it dies with
+;;; "standard input is not a tty" in the headless build sandbox.  The
+;;; test file is a load-and-enable smoke test, not an ERT suite; it is
+;;; replicated here in batch mode, which is all it ever needed.
+
+(define-public emacs-minibuffer-frame
+  (let ((commit "f8205be3bbae4199a618f06a753cc91a5c378e01")
+        (revision "0"))
+    (package
+      (name "emacs-minibuffer-frame")
+      (version (git-version "1.0.0" revision commit))
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://github.com/zHaOdANiuu/minibuffer-frame")
+               (commit commit)))
+         (file-name (git-file-name name version))
+         (sha256
+          (base32 "1sh73jg20dv655sxdv329cxxi548cj6afdw72zl3wn71x948sk5n"))))
+      (build-system emacs-build-system)
+      (arguments
+       (list #:test-command
+             #~(list "emacs" "--batch" "-Q" "-L" "." "-l" "test/test.el")))
+      (home-page "https://github.com/zHaOdANiuu/minibuffer-frame")
+      (synopsis "Display the minibuffer in a centered child frame")
+      (description
+       "minibuffer-frame shows the Emacs minibuffer in a child frame centered
+relative to its parent frame.  The frame is created on first minibuffer
+activation, resizes to fit the icomplete/fido completion candidates, is reused
+across recursive minibuffer sessions, and is hidden when the outermost
+minibuffer exits, with focus kept on it while the minibuffer is active.  Width
+and top offset are customizable as fractions of the parent frame size.")
+      (properties `((with-latest-git-commit . #t)))
+      (license license:gpl3+))))
