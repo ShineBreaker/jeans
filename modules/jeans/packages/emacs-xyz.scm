@@ -119,7 +119,7 @@
 (define-public emacs-ghostel
   (package
     (name "emacs-ghostel")
-    (version "0.54.0")
+    (version "0.55.0")
     (source
      (origin
        (method git-fetch)
@@ -128,7 +128,7 @@
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "0vq68pxmr9hywi1vw1ighl6kyq6kll7f5l1bh7xvrdi663m1lcr3"))
+        (base32 "065swxsqdhkvbjp676fp3k3h6zhp5snid741ihhhl1cyy8fnjw35"))
        (patches %ghostel-patches)))
       (build-system emacs-build-system)
       (arguments

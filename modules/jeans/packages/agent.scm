@@ -922,7 +922,7 @@ and ships as a single static binary with no runtime dependencies.")
 (define-public reasonix-studio-bin
   (package
     (name "reasonix-studio-bin")
-    (version "2.17.0")
+    (version "2.18.0")
     (source
      (origin
        (method url-fetch)
@@ -930,7 +930,7 @@ and ships as a single static binary with no runtime dependencies.")
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
              "studio-v" version "/ReasonixStudio-linux-amd64.deb"))
        (sha256
-        (base32 "1mj4zfg9zbrwskli2pdmz1q7j9dzpxqilbnhkv5lyybd9qll1r9g"))))
+        (base32 "1ily1mbf1zb0lnkdz8q7m6k5vsyhj4db6qpp56fply1qbd9200hl"))))
     (build-system gnu-build-system)
     (arguments
      (list
