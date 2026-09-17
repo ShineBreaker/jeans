@@ -37,7 +37,7 @@ def main() -> None:
 
     cases = (
         ("reasonix-bin", "v", "v1.17.17", "1.17.17"),
-        ("reasonix-desktop-bin", "desktop-v", "desktop-v1.17.17", "1.17.17"),
+        ("reasonix-studio-bin", "studio-v", "studio-v2.16.0", "2.16.0"),
     )
     for name, prefix, tag, version in cases:
         package = packages[name]
