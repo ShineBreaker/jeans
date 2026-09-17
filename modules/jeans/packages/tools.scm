@@ -831,13 +831,13 @@ It requires a writable @file{/var/lib/apm} directory at runtime; run the
 (define-public agenote
   (package
     (name "agenote")
-    (version "0.1.10")
+    (version "2026-09-14")
     (source
      (origin
        (method git-fetch)
        (uri (git-reference
              (url "https://github.com/ShineBreaker/agenote")
-             (commit "9a3c81e71fc64f99d95fdc33d1e515c712a1219d")))
+             (commit "dc6d25a84d9dc50673bd8bf026ec703a8433eb35")))
        (file-name (git-file-name name version))
        (sha256
         (base32 "10h6q1wzgh85pbjc8j3qlgmv8snqgxcfzaa6wijxn9q0ybp4wvh2"))))
@@ -881,7 +881,7 @@ configurable knowledge-base root (@env{KB_ROOT}, default
 (define-public prettier-bin
   (package
     (name "prettier-bin")
-    (version "3.9.6")
+    (version "3.9.7")
     (source
       (origin
         (method url-fetch)
@@ -890,7 +890,7 @@ configurable knowledge-base root (@env{KB_ROOT}, default
               version
               ".tgz"))
         (sha256
-          (base32 "0br1zcjrbqgjn5zda6f6ybii5p78lqig37n7mwy0b0dfy9fajzcr"))))
+          (base32 "1lxdr6k7x55n2dsmj34a758zm3jgyh9ng0l4alv8pjv0qysb59sp"))))
     (build-system gnu-build-system)
     (arguments
       (list
@@ -953,7 +953,7 @@ JSON, YAML, Markdown and GraphQL.")
 (define-public sunshine-bin
   (package
     (name "sunshine-bin")
-    (version "2026.906.222525")
+    (version "2026.914.233613")
     (source
      (origin
        (method url-fetch)
@@ -961,7 +961,7 @@ JSON, YAML, Markdown and GraphQL.")
              "https://github.com/LizardByte/Sunshine/releases/download/v"
              version "/Sunshine_" version "_x86_64.AppImage"))
        (sha256
-        (base32 "11738mpzw8zjg3zdmjwy02gricxrpdd1h8541md5dw6yi3llrnx5"))))
+        (base32 "0ik841a9rhq43zp3v71adbcs9jd8q2sk3wag27d8rkrvhmx2k03g"))))
     (build-system copy-build-system)
     (arguments
      (list

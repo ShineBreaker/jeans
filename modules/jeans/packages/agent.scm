@@ -103,7 +103,7 @@
 (define-public codewhale-bin
   (package
     (name "codewhale-bin")
-    (version "0.9.12")
+    (version "0.9.13")
     (source
      (origin
        (method url-fetch)
@@ -111,7 +111,7 @@
              "https://github.com/Hmbown/CodeWhale/releases/download/"
              "v" version "/codewhale-linux-x64.tar.gz"))
        (sha256
-        (base32 "0vmiqjvaqxn4mziw5424m7cy9nfnbawl28jja2h6bqdcd72vibrm"))))
+        (base32 "0f5jknfmfzz4h2lgypjgag6cw46ncjmp232ws78389is8mxvdzkd"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -170,7 +170,7 @@ release.")
 (define-public crush-bin
   (package
     (name "crush-bin")
-    (version "0.94.1")
+    (version "0.95.0")
     (source
      (origin
        (method url-fetch)
@@ -178,7 +178,7 @@ release.")
              "https://github.com/charmbracelet/crush/releases/download/"
              "v" version "/crush_" version "_amd64.deb"))
        (sha256
-        (base32 "1riy81q1l87yjpzr7ydkpxa747y18729wpx471yamll79rbqhsc2"))))
+        (base32 "1pizcwb2mvjag5qh035b68a15v66gmm3gv9prxk4v0i8bd4lnfva"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -282,7 +282,7 @@ This package provides the prebuilt binary release.")
 (define-public github-copilot
   (package
     (name "github-copilot")
-    (version "1.1.19")
+    (version "1.1.22")
     (source
      (origin
        (method url-fetch)
@@ -290,7 +290,7 @@ This package provides the prebuilt binary release.")
              "https://github.com/github/app/releases/download/"
              "v" version "/GitHub-Copilot-linux-x64.deb"))
        (sha256
-        (base32 "1iggk1hqz39fzv4n01nkp6hlqfc92hviszq5q7m2ilw4w9lxn28z"))))
+        (base32 "0aw9r5yfy4p2w7wi5jb6x10n13a2glh41f7z94fn5y8wjck9yafw"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -455,7 +455,7 @@ release; the application itself is proprietary.")
 (define-public herdr-bin
   (package
     (name "herdr-bin")
-    (version "0.9.0")
+    (version "0.9.1")
     (source
      (origin
        (method url-fetch)
@@ -463,7 +463,7 @@ release; the application itself is proprietary.")
              "https://github.com/ogulcancelik/herdr/releases/download/"
              "v" version "/herdr-linux-x86_64"))
        (sha256
-        (base32 "07xp7yv1mn64r9hrp3830c3c3p5hh03jf6ykjbd4706xb08s18ag"))))
+        (base32 "1dslbhymcl24sk93q1ddb3fa8b35iw23zm710vq1wrgbdg8zw0ia"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -503,7 +503,7 @@ This package provides the prebuilt binary release.")
 (define-public opencode-desktop-bin
   (package
     (name "opencode-desktop-bin")
-    (version "1.18.30")
+    (version "1.18.31")
     (source
      (origin
        (method url-fetch)
@@ -511,7 +511,7 @@ This package provides the prebuilt binary release.")
              "https://github.com/anomalyco/opencode/releases/download/"
              "v" version "/opencode-desktop-linux-amd64.deb"))
        (sha256
-        (base32 "1vhimp35g36k5yjpbscch7skk2g1nqsrs545mhjhn42i7g561335"))))
+        (base32 "0h7j8bv2zim3n3qvd6y6rr423kk8v8zrs0inz4px7pppprqws1k6"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -866,7 +866,7 @@ telemetry or forced log-ins.")
 (define-public reasonix-bin
   (package
     (name "reasonix-bin")
-    (version "1.38.7")
+    (version "1.38.8")
     (source
      (origin
        (method url-fetch)
@@ -874,7 +874,7 @@ telemetry or forced log-ins.")
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
              "v" version "/reasonix-linux-amd64.tar.gz"))
        (sha256
-        (base32 "00cp2r7xm6y46z4wdqk41kqhv3aiqaxrjiv9fk9qqi38hvix2w3r"))))
+        (base32 "1px69pzny5jd6577g409sg7sj5ym5xi8i1vsqn2paldimbslbvl2"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -922,7 +922,7 @@ and ships as a single static binary with no runtime dependencies.")
 (define-public reasonix-studio-bin
   (package
     (name "reasonix-studio-bin")
-    (version "2.16.0")
+    (version "2.17.0")
     (source
      (origin
        (method url-fetch)
@@ -930,7 +930,7 @@ and ships as a single static binary with no runtime dependencies.")
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
              "studio-v" version "/ReasonixStudio-linux-amd64.deb"))
        (sha256
-        (base32 "0mzd071pih2nyv78y5vwc7j5zvznzm0jd84yvqnvpch7yl2yirav"))))
+        (base32 "1mj4zfg9zbrwskli2pdmz1q7j9dzpxqilbnhkv5lyybd9qll1r9g"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -1074,7 +1074,7 @@ for multiple LLM providers.")
 (define-public zcode
   (package
     (name "zcode")
-    (version "3.11.2")
+    (version "3.12.3")
     (source
      (origin
        (method url-fetch)
@@ -1082,7 +1082,7 @@ for multiple LLM providers.")
              "https://cdn-zcode.z.ai/zcode/electron/releases/"
              version "/linux-x64/ZCode-" version "-linux-x64.deb"))
        (sha256
-        (base32 "0nvxsz2wack4fkqrfn3rcqsw57ilgyv0q15qw5hwy0hkccwbh4vx"))))
+        (base32 "03n695bv3dyck4dnhr3l07v4livspd3x1gvvc1ydbrggzilvs7v3"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -1242,7 +1242,7 @@ without friction.")
 (define-public cua-driver-bin
   (package
     (name "cua-driver-bin")
-    (version "0.28.0")
+    (version "0.28.2")
     (source
      (origin
        (method url-fetch)
@@ -1251,7 +1251,7 @@ without friction.")
              "cua-driver-rs-v" version
              "/cua-driver-rs-" version "-linux-x86_64-binary.tar.gz"))
        (sha256
-        (base32 "09l2wk2jkji447gvkn2d4a624zkn68wkkjia889f1ia00gsdf30j"))))
+        (base32 "0glwwsfdanx70k30zqb0mcmimdfq3swhxrnvzzspx4ml9g89znd1"))))
     (build-system gnu-build-system)
     (arguments
      (list
