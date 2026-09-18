@@ -23,6 +23,7 @@
   #:use-module (gnu packages bash)             ; bash-minimal
   #:use-module (gnu packages boost)
   #:use-module (gnu packages bootstrap)        ; glibc-dynamic-linker
+  #:use-module (gnu packages certs)            ; nss-certs
   #:use-module (gnu packages compression)      ; unzip, libzip, zlib
   #:use-module (gnu packages cups)
   #:use-module (gnu packages crypto)           ; keyutils
@@ -494,6 +495,12 @@ administration and backup.")
                   `("FONTCONFIG_FILE" =
                     (,(string-append #$(this-package-input "fontconfig-minimal")
                                      "/etc/fonts/fonts.conf")))
+                  ;; Bundled libcrypto looks for CAs in an Oracle-internal
+                  ;; OPENSSLDIR; mysqlsh's TLS connections need the Guix
+                  ;; CA store (hash directory layout, hence CERT_DIR).
+                  `("SSL_CERT_DIR" =
+                    (,(string-append #$(this-package-input "nss-certs")
+                                     "/etc/ssl/certs")))
                   `("XDG_DATA_DIRS" prefix
                     (,(string-append out "/share")))))))
           (add-after 'wrap-program 'prefer-wayland
@@ -523,7 +530,11 @@ administration and backup.")
               ("libxkbcommon" ,libxkbcommon)
               ("libxrandr" ,libxrandr)
               ("mesa" ,mesa)
-              ("nss" ,nss)))
+              ("nss" ,nss)
+              ;; The bundled libcrypto's compiled-in CA directory is an
+              ;; Oracle-internal path that does not exist here; TLS
+              ;; connections to real servers need the Guix CA store.
+              ("nss-certs" ,nss-certs)))
     (home-page "https://www.mysql.com/products/workbench/")
     (synopsis
      "Visual tool for MySQL database design, administration and development")
