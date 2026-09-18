@@ -506,7 +506,12 @@ administration and backup.")
 ;;; hardcode the FHS usr/ prefix and probe libproj/ldd at startup; they
 ;;; are retargeted at this output's layout, and PROJSO in the wrapper
 ;;; short-circuits the ldconfig probe (there is no ldconfig in a Guix
-;;; profile).
+;;; profile).  The launchers also pin GDK_BACKEND=x11 unconditionally;
+;;; that pin is relaxed to an x11 default with an explicitly exported
+;;; GDK_BACKEND winning, because XWayland rendering is
+;;; compositor-upscaled and blurry on fractionally scaled outputs
+;;; (GDK_BACKEND=wayland renders crisply there, but the model canvas
+;;; is X11-only upstream — see the patch-launchers phase).
 (define-public mysql-workbench-community-classic-bin
   (package
     (name "mysql-workbench-community-classic-bin")
@@ -545,6 +550,20 @@ administration and backup.")
               ;; line-based; every pattern below is a single line and
               ;; $ / | are escaped as literals.
               (substitute* "usr/bin/mysql-workbench"
+              ;; Upstream pins the x11 backend.  Keep x11 as the
+              ;; default — the diagram canvas renders through X11
+              ;; drawables and GLX (mdc_canvas_view_glx.cpp and
+              ;; gdk_x11_window_get_xid in GtkCanvas::create_canvas),
+              ;; and under GDK_BACKEND=wayland opening any model
+              ;; aborts with "Error creating cairo context: invalid
+              ;; value for an input Visual*" — but let an explicitly
+              ;; exported GDK_BACKEND through: on fractionally scaled
+              ;; Wayland outputs XWayland rendering is
+              ;; compositor-upscaled and blurry, while
+              ;; GDK_BACKEND=wayland renders natively and crisply (at
+              ;; the cost of the model canvas).
+              (("export GDK_BACKEND=x11")
+               "export GDK_BACKEND=\"${GDK_BACKEND:-x11}\"")
                 (("\\$destdir/usr/lib/mysql-workbench")
                  "$destdir/lib/mysql-workbench")
                 (("\\$destdir/usr/share/mysql-workbench")
