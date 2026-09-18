@@ -33,8 +33,9 @@
 
 | Package | Description |
 | --- | --- |
-| `mysql-workbench-community` | Visual tool for MySQL database design, administration and development |
 | `mysql-workbench-community-bin` | Visual tool for MySQL database design, administration and development |
+| `mysql-workbench-community-classic` | Visual tool for MySQL database design, administration and development |
+| `mysql-workbench-community-classic-bin` | Visual tool for MySQL database design, administration and development |
 
 ### (jeans packages desktop)
 
