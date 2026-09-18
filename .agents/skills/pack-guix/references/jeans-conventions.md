@@ -266,6 +266,17 @@ Guix 只有 ffmpeg 8.x/6.x/5.x/4.x，没有 7.x。预编译包链接 7.x sonames
 
 生效条件（读 case 逻辑）：hint-phase 只在用户未设置 `ELECTRON_OZONE_PLATFORM_HINT` 时 export；wayland-phase 在未设置（默认 auto）或显式设为 wayland 时注入，设为其他值（如 x11）则不注入。两者都不覆盖用户指向其他平台的选择。
 
+### Debian .deb 的 ABI 漂移适配（mysql-workbench classic-bin 模式）
+
+Ubuntu/Debian 构建的预编译 .deb 与 Guix 同名库之间有四类系统性 ABI 漂移，逐类判定（全部实证于 `databases.scm` 的 mysql-workbench-community-classic-bin，8.0.47 ubuntu24.04 deb）：
+
+- **soname 落后/领先**（Debian 保留上游旧 soname：`libzip.so.4`、`libsasl2.so.2`；Guix 是 `.so.5`/`.so.3`）→ 在包的 lib 目录建兼容 symlink（`databases.scm:631` compat-symlinks phase）。先决条件：`nm -D` 核对消费方 undefined 符号在目标库全部存在且无版本化节点要求。
+- **版本化符号引用 vs 无版本定义库**（deb 引用 `@LIBXML2_2.4.30`、`@NCURSES6_TINFO_*`，Guix 的 libxml2.so.16/libncursesw 无这些 verdef 节点）→ glibc 对**完全没有 `.gnu.version_d` 的提供方**宽容匹配任意版本引用，只打印无害的 `no version information available`（bundled mysql CLI 实证跑通，`databases.scm:631` 的 libtinfo.so.6→libncursesw.so.6 symlink）。但注意方向相反的陷阱：若提供方**有** verdef 而缺所需节点（Guix libxml2.so.16 恰有部分版本化符号）则硬失败——所以 libxml2 不能 symlink 到 Guix 版，必须私有构建未版本化的 `libxml2-legacy` 2.12.9（`databases.scm:247`）拿到干净的 `.so.2`。
+- **ABI 代际选择不同**（Guix libjpeg-turbo 一律 6b ABI = `libjpeg.so.62`，Debian 用 v8 ABI = `libjpeg.so.8`）→ 私有构建 `-DWITH_JPEG8=ON`（`databases.scm:278`），无法用 symlink 跨 ABI（结构体布局不同）。
+- **Guix 完全没有的依赖**（捆绑 libgdal 需要 `libLerc.so.4`，Guix 无 lerc 包）→ 私有 helper（`databases.scm:216`）。
+
+判定工具链：全 ELF `readelf -d` 求 NEEDED 并集 → `guix build` 后 `find … -type f | xargs ldd | grep "not found"` 必须为空；符号级用 `nm -D <deb ELF> | grep " U <prefix>"` 对照 `nm -D <guix lib>`。另外两个 deb 专属要点：compat symlink 必须建在 patch-elf **之后**（`find-files` 会遍历到指向只读 store 项的 symlink，patchelf 改写会失败，`databases.scm:598`）；deb 里未被任何 NEEDED/dlopen 引用、且自带重型依赖（如 GTK2）的辅助二进制可不装（iodbcadm-gtk，`databases.scm:575`），比拖整条 GTK2 闭包干净。
+
 ### Tauri 应用（prebuilt .deb）
 
 Tauri 预编译包的两个解析规则（motrix-next-bin 实证）：
