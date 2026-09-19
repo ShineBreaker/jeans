@@ -21,6 +21,7 @@
 | `reasonix-bin` | DeepSeek-native AI coding agent for the terminal |
 | `reasonix-studio-bin` | Desktop GUI for the Reasonix AI coding agent |
 | `zcode` | Desktop application for agent-assisted development |
+| `zcode-proxy-bin` | Local proxy exposing GLM coding plans as OpenAI/Anthropic APIs |
 
 ### (jeans packages browser)
 

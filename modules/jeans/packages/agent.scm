@@ -1232,6 +1232,84 @@ without friction.")
     (license (license:nonfree "https://zcode.z.ai/"))
     (supported-systems '("x86_64-linux"))))
 
+;;; ZCode Proxy: local OpenAI/Anthropic-compatible proxy spending Z.AI and
+;;; BigModel GLM coding-plan quotas (MIT, bun --compile single-file release).
+;;;
+;;; Upstream builds each release asset with `bun build --compile` (see the
+;;; build:* scripts in package.json), so the linux-x64 asset is a self-contained
+;;; binary with an embedded `.bun` section: `readelf -S` shows a PROGBITS `.bun`
+;;; segment, and strings show bun's "Error writing .bun section to ELF"
+;;; self-extraction message.  Rewriting the interpreter/RPATH with patchelf
+;;; would shift the ELF layout and corrupt that section, and a Guix ld-linux
+;;; wrapper would redirect /proc/self/exe away from the real binary — both are
+;;; forbidden for this category (see jeans-conventions.md "自定位二进制").  The
+;;; binary is therefore installed unpatched and runs through the system-wide
+;;; nix-ld-service-type, whose default library list already covers the only
+;;; NEEDED entries (`readelf -d`: libc.so.6, ld-linux-x86-64.so.2,
+;;; libpthread.so.0, libdl.so.2, libm.so.6 — all glibc).
+;;;
+;;; No exe-relative resources: the release is a single file with no sidecars,
+;;; config lives in ./config.yaml (auto-generated on first start) and every
+;;; credential/cache path is homedir-relative (~/.zcode-proxy, ~/.zcode,
+;;; ~/.zcode-captcha-cdn-cache — verified against src/), so installing the
+;;; binary directly to bin/ under its upstream name is safe.
+;;;
+;;; License evidence: the repo carries no LICENSE file and package.json has
+;;; no license field, but README.md ends with "## License / MIT".  Release
+;;; evidence: tag v4.6.7 (stable, not prerelease), asset zcode-proxy-linux-x64
+;;; (85 MB).  Tags are a single v* series, so no release-tag-prefix is needed;
+;;; upstream-name matches the version-less asset filename prefix (same shape
+;;; as herdr-bin).
+
+(define-public zcode-proxy-bin
+  (package
+    (name "zcode-proxy-bin")
+    (version "4.6.7")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://github.com/TriDefender/zcode-api/releases/download/"
+             "v" version "/zcode-proxy-linux-x64"))
+       (sha256
+        (base32 "0rgj8xbj7mkbc8v2svar1ax6br9d42n7ibnm3shm59scn7p5g6dv"))))
+    (build-system gnu-build-system)
+    (arguments
+     (list
+      #:tests? #f
+      #:validate-runpath? #f
+      #:strip-binaries? #f
+      #:modules '((guix build gnu-build-system)
+                  (guix build utils))
+      #:phases
+      #~(modify-phases %standard-phases
+          (delete 'configure)
+          (delete 'build)
+          (replace 'unpack
+            (lambda _
+              ;; The source is a raw ELF, not an archive: copy it in
+              ;; place and restore the executable bit.
+              (copy-file #$source "zcode-proxy")
+              (chmod "zcode-proxy" #o755)))
+          (replace 'install
+            (lambda _
+              (let ((bin (string-append #$output "/bin")))
+                (mkdir-p bin)
+                (install-file "zcode-proxy" bin)))))))
+    (properties `((upstream-name . "zcode-proxy")))
+    (home-page "https://github.com/TriDefender/zcode-api")
+    (synopsis "Local proxy exposing GLM coding plans as OpenAI/Anthropic APIs")
+    (description
+     "ZCode Proxy is a local proxy that exposes Z.AI and BigModel GLM
+coding-plan quotas through standard OpenAI, Anthropic, and Responses (Codex)
+interfaces on @code{http://127.0.0.1:8080}, so tools such as Claude Code and
+Codex CLI can spend plan quotas.  It ships an interactive terminal panel for
+login and start/stop control, a built-in @code{/webui} chat page, and an
+Android companion app.  This package provides the prebuilt @code{linux-x64}
+release and needs the @code{nix-ld} system service to run.")
+    (license license:expat)
+    (supported-systems '("x86_64-linux"))))
+
 ;;; cua-driver is the computer-use automation driver from the trycua/cua
 ;;; monorepo (MIT).  The release tarball ships an FHS dynamic ELF set that
 ;;; needs libX11/libXi/libxkbcommon and libgcc_s; every ELF gets the Guix
