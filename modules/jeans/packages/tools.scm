@@ -260,7 +260,7 @@ editor that supports the protocol to provide Java language features.")
 (define-public aria2-next-bin
   (package
     (name "aria2-next-bin")
-    (version "2.7.5")
+    (version "2.8.0")
     (source
      (origin
        (method url-fetch)
@@ -268,7 +268,7 @@ editor that supports the protocol to provide Java language features.")
              "https://github.com/AnInsomniacy/aria2-next/releases/download/"
              "v" version "/aria2-next-" version "-linux-x86_64"))
        (sha256
-        (base32 "08pr8m5jhr3xb7vykcgnzdp9ghpgvskn39ck51ih39f97psv942i"))))
+        (base32 "1rjv8cliw6kifhqlsb66kp3q1i73zsh9mxbqq0hfsjn2ipkad9v1"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -881,7 +881,7 @@ configurable knowledge-base root (@env{KB_ROOT}, default
 (define-public prettier-bin
   (package
     (name "prettier-bin")
-    (version "3.9.7")
+    (version "3.9.8")
     (source
       (origin
         (method url-fetch)
@@ -890,7 +890,7 @@ configurable knowledge-base root (@env{KB_ROOT}, default
               version
               ".tgz"))
         (sha256
-          (base32 "1lxdr6k7x55n2dsmj34a758zm3jgyh9ng0l4alv8pjv0qysb59sp"))))
+          (base32 "0kx4i97apjw3nh6r94s81aw8x1k9mifpbc2pqg5s9rc4ly81jgn3"))))
     (build-system gnu-build-system)
     (arguments
       (list

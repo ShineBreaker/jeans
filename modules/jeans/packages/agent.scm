@@ -869,7 +869,7 @@ telemetry or forced log-ins.")
 (define-public reasonix-bin
   (package
     (name "reasonix-bin")
-    (version "1.38.8")
+    (version "1.38.10")
     (source
      (origin
        (method url-fetch)
@@ -877,7 +877,7 @@ telemetry or forced log-ins.")
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
              "v" version "/reasonix-linux-amd64.tar.gz"))
        (sha256
-        (base32 "1px69pzny5jd6577g409sg7sj5ym5xi8i1vsqn2paldimbslbvl2"))))
+        (base32 "02fyq702wxl1q32c1pqlnmn8la7s859dbv9h81q7zrvrngjwwnvs"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -925,7 +925,7 @@ and ships as a single static binary with no runtime dependencies.")
 (define-public reasonix-studio-bin
   (package
     (name "reasonix-studio-bin")
-    (version "2.18.0")
+    (version "2.18.1")
     (source
      (origin
        (method url-fetch)
@@ -933,7 +933,7 @@ and ships as a single static binary with no runtime dependencies.")
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
              "studio-v" version "/ReasonixStudio-linux-amd64.deb"))
        (sha256
-        (base32 "1ily1mbf1zb0lnkdz8q7m6k5vsyhj4db6qpp56fply1qbd9200hl"))))
+        (base32 "1582jiqg270jh7jd76ny7xc2swvi0d9fwmdhhlg9s6fa4il6zzbg"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -1077,7 +1077,7 @@ for multiple LLM providers.")
 (define-public zcode
   (package
     (name "zcode")
-    (version "3.12.3")
+    (version "3.14.0")
     (source
      (origin
        (method url-fetch)
@@ -1085,7 +1085,7 @@ for multiple LLM providers.")
              "https://cdn-zcode.z.ai/zcode/electron/releases/"
              version "/linux-x64/ZCode-" version "-linux-x64.deb"))
        (sha256
-        (base32 "03n695bv3dyck4dnhr3l07v4livspd3x1gvvc1ydbrggzilvs7v3"))))
+        (base32 "0al428hr9jgiryp9scy4g05kbva1m6vqnwx8srsdwrq9siv7y75d"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -1264,7 +1264,7 @@ without friction.")
 (define-public zcode-proxy-bin
   (package
     (name "zcode-proxy-bin")
-    (version "4.6.7")
+    (version "4.6.8")
     (source
      (origin
        (method url-fetch)
@@ -1272,7 +1272,7 @@ without friction.")
              "https://github.com/TriDefender/zcode-api/releases/download/"
              "v" version "/zcode-proxy-linux-x64"))
        (sha256
-        (base32 "0rgj8xbj7mkbc8v2svar1ax6br9d42n7ibnm3shm59scn7p5g6dv"))))
+        (base32 "1rckjj6h2sblqcgyyawvpzdq05zqfns8fg2rx5n38m8nx2s0dx71"))))
     (build-system gnu-build-system)
     (arguments
      (list

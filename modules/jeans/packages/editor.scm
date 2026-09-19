@@ -208,8 +208,8 @@ the webview (GTK/WebKitGTK) frontend with an ncurses fallback.")
 ;;; e.g. tree-sitter-json and point LD_LIBRARY_PATH at its lib/ to
 ;;; enable syntax highlighting for that language.
 (define-public lem-next
-  (let ((commit "28d5abbd9543900168a100158d784b82eae3470a")
-        (revision "2"))
+  (let ((commit "f5ba7d83d9382c887c69f4e964d11214f54bbd5f")
+        (revision "3"))
     (package
       (inherit lem)
       (name "lem-next")
@@ -222,7 +222,7 @@ the webview (GTK/WebKitGTK) frontend with an ncurses fallback.")
                (commit commit)))
          (file-name (git-file-name name version))
          (sha256
-          (base32 "103x7jjrngz88v5ik6qbajawxbd9lkdjkqfa4fz1qczsaj8x2c1z"))
+          (base32 "1r6vpwnlkwc1shb0h81qsj5ddp4aqb9ag5r8zgh2mflnw6si9k23"))
          (patches
           (map canonicalize-path
                (search-patches
@@ -472,7 +472,7 @@ binary release.")
 (define-public zedg-bin
   (package
     (name "zedg-bin")
-    (version "1.19.2")
+    (version "1.20.2")
     (source
      (origin
        (method url-fetch)
@@ -480,7 +480,7 @@ binary release.")
              "https://github.com/x6nux/zed-globalization/releases/download/"
              "v" version "/zedg-zh-cn-linux-x86_64-v" version ".tar.gz"))
        (sha256
-        (base32 "1psaxvhq8qxnj2fg0gm505jypcik1686bi1x5drdszv8gb4va8dr"))))
+        (base32 "1i4hx7w3a7af1ydjny7nz4f3zd1sb0xk9w6qxid86c6x37yf7i8q"))))
     (build-system gnu-build-system)
     (outputs '("out" "shim"))
     (arguments
@@ -604,8 +604,8 @@ the editor under the plain @code{zed} command name.")
 ;;; are compiled in via include_str!, and the inherited install phases
 ;;; (binary + runtime + desktop entry, HELIX_RUNTIME wrapper) work unchanged.
 (define-public helix-steel
-  (let ((commit "02c1bd1ac9a4a2376207990179e6b316f49f86ed")
-        (revision "2"))
+  (let ((commit "09d67dfe7300ab18c267e6b0cbfbb493cce21d37")
+        (revision "3"))
     (package
       (inherit helix)
       (name "helix-steel")
@@ -618,7 +618,7 @@ the editor under the plain @code{zed} command name.")
                (commit commit)))
          (file-name (git-file-name name version))
          (sha256
-          (base32 "1nvz6ab1npjaf3nv44981yv6yxv7gxnhgxmwyvb33qr4sfxihqgs"))))
+          (base32 "0c36jhf0jm238lr5yjbrf6v0ckckjw4mgsq7mavgldmh488g43lc"))))
       (arguments
        (substitute-keyword-arguments (package-arguments helix)
          ((#:phases phases)
