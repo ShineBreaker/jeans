@@ -119,7 +119,7 @@
 (define-public emacs-ghostel
   (package
     (name "emacs-ghostel")
-    (version "0.55.0")
+    (version "0.56.0")
     (source
      (origin
        (method git-fetch)
@@ -128,7 +128,7 @@
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "065swxsqdhkvbjp676fp3k3h6zhp5snid741ihhhl1cyy8fnjw35"))
+        (base32 "1v6g18jl30kxidyadwcxx4kw8lx8p15fv66vqd6khw8012bfg5rn"))
        (patches %ghostel-patches)))
       (build-system emacs-build-system)
       (arguments
@@ -606,7 +606,7 @@ of Emacs Lisp projects.  This package provides the prebuilt binary release.")
 (define-public neomacs-bin
   (package
     (name "neomacs-bin")
-    (version "0.0.18")
+    (version "0.0.19")
     (source
      (origin
        (method url-fetch)
@@ -614,7 +614,7 @@ of Emacs Lisp projects.  This package provides the prebuilt binary release.")
              "https://github.com/eval-exec/neomacs/releases/download/"
              "v" version "/neomacs_" version "_amd64.deb"))
        (sha256
-        (base32 "0pr4gpwhzwaad0g0y2s6xidc4w2yfn3n07mn0fdh2gwn5z7cvj39"))))
+        (base32 "0x9d12dqfj9l3dw6cacic5zp9zjmsk67lb3bzdbqc6rdbvczgkys"))))
     (build-system gnu-build-system)
     (arguments
      (list

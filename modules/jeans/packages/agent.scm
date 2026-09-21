@@ -173,7 +173,7 @@ release.")
 (define-public crush-bin
   (package
     (name "crush-bin")
-    (version "0.95.0")
+    (version "0.96.0")
     (source
      (origin
        (method url-fetch)
@@ -181,7 +181,7 @@ release.")
              "https://github.com/charmbracelet/crush/releases/download/"
              "v" version "/crush_" version "_amd64.deb"))
        (sha256
-        (base32 "1pizcwb2mvjag5qh035b68a15v66gmm3gv9prxk4v0i8bd4lnfva"))))
+        (base32 "1bq08mcghjwgby3grmbn1ms0l276k72gln74wnwgfig5wcfs97py"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -285,7 +285,7 @@ This package provides the prebuilt binary release.")
 (define-public github-copilot
   (package
     (name "github-copilot")
-    (version "1.1.22")
+    (version "1.1.23")
     (source
      (origin
        (method url-fetch)
@@ -293,7 +293,7 @@ This package provides the prebuilt binary release.")
              "https://github.com/github/app/releases/download/"
              "v" version "/GitHub-Copilot-linux-x64.deb"))
        (sha256
-        (base32 "0aw9r5yfy4p2w7wi5jb6x10n13a2glh41f7z94fn5y8wjck9yafw"))))
+        (base32 "0qq6x46hp78mn7qx7yrbhp76mlhw34kllcn6mfrk2gv294n6fqqx"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -869,7 +869,7 @@ telemetry or forced log-ins.")
 (define-public reasonix-bin
   (package
     (name "reasonix-bin")
-    (version "1.38.10")
+    (version "1.38.11")
     (source
      (origin
        (method url-fetch)
@@ -877,7 +877,7 @@ telemetry or forced log-ins.")
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
              "v" version "/reasonix-linux-amd64.tar.gz"))
        (sha256
-        (base32 "02fyq702wxl1q32c1pqlnmn8la7s859dbv9h81q7zrvrngjwwnvs"))))
+        (base32 "06l2kyhqgmq2k492asqprlzqych8kip37lamlkcabsl19jpipbm8"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -1077,7 +1077,7 @@ for multiple LLM providers.")
 (define-public zcode
   (package
     (name "zcode")
-    (version "3.14.0")
+    (version "3.14.1")
     (source
      (origin
        (method url-fetch)
@@ -1085,7 +1085,7 @@ for multiple LLM providers.")
              "https://cdn-zcode.z.ai/zcode/electron/releases/"
              version "/linux-x64/ZCode-" version "-linux-x64.deb"))
        (sha256
-        (base32 "0al428hr9jgiryp9scy4g05kbva1m6vqnwx8srsdwrq9siv7y75d"))))
+        (base32 "1przv8m7iy2i28im4w6r5mqh0lzsi71a4mgm03sjmwpx638xk9ib"))))
     (build-system gnu-build-system)
     (arguments
      (list
