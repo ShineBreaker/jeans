@@ -159,6 +159,210 @@ release.")
     (license license:expat)
     (supported-systems '("x86_64-linux"))))
 
+;;; Cindy: open-source AI agent desktop client (Electron, Apache-2.0).
+;;;
+;;; The upstream .deb (data.tar.zst, unlike the xz used by opencode/paseo)
+;;; installs an Electron bundle under /usr/lib/cindy:
+;;;   - Cindy                 the Electron main executable (GUI entry)
+;;;   - chrome-sandbox        setuid sandbox helper; Guix users run with
+;;;                           --no-sandbox via kernel namespace sandbox,
+;;;                           installed but not setuid-root
+;;;   - resources/app.asar.unpacked/node_modules/...  native addons
+;;;     (better-sqlite3, node-pty, sharp) in nested directories; sharp
+;;;     carries its own $ORIGIN-relative RPATH pointing at the bundled
+;;;     libvips, so patchelf must --prepend-rpath (existing RPATH kept)
+;;;     rather than --set-rpath.
+;;;   - resources/tools/ripgrep/rg   statically linked, shipped as-is.
+;;;
+;;; Sidecars proxy.mjs / cc-mgr.mjs are "#!/usr/bin/env node" scripts;
+;;; Electron spawns them via ELECTRON_RUN_AS_NODE, so no Node.js input.
+;;; electron-updater: no resources/package-type file in this bundle, so
+;;; the disable-electron-updater phase is unnecessary.
+
+(define-public cindy-bin
+  (package
+    (name "cindy-bin")
+    (version "0.1.90")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://github.com/makecindy/cindy/releases/download/"
+             "v" version "/cindy-" version "-linux-x64-cn.deb"))
+       (sha256
+        (base32 "1bws9zh88fyc6a50gg86irwnakl6i0zfqq5lrrjbnqh1q35pj019"))))
+    (build-system gnu-build-system)
+    (arguments
+     (list
+      #:tests? #f
+      #:validate-runpath? #f
+      #:strip-binaries? #f
+      #:modules '((guix build gnu-build-system)
+                  (guix build utils)
+                  (ice-9 ftw)
+                  (ice-9 binary-ports)
+                  (ice-9 popen)
+                  (ice-9 rdelim))
+      #:phases
+      #~(modify-phases %standard-phases
+          (delete 'configure)
+          (delete 'build)
+          (replace 'unpack
+            (lambda _
+              (invoke "ar" "x" #$source)
+              (invoke "tar" "xf" "data.tar.zst")))
+          (replace 'install
+            (lambda _
+              (let ((out #$output))
+                (copy-recursively "usr/lib/cindy"
+                                  (string-append out "/lib/cindy"))
+                ;; desktop + icon: upstream ships icon at usr/share/pixmaps
+                (mkdir-p (string-append out "/share/applications"))
+                (copy-file "usr/share/applications/cindy.desktop"
+                           (string-append out "/share/applications/cindy.desktop"))
+                (mkdir-p (string-append out "/share/pixmaps"))
+                (copy-file "usr/share/pixmaps/cindy.png"
+                           (string-append out "/share/pixmaps/cindy.png"))
+                #t)))
+          (add-after 'install 'patch-elf
+            (lambda* (#:key inputs #:allow-other-keys)
+              (let* ((out #$output)
+                     (lib (string-append out "/lib/cindy"))
+                     (ld.so (string-append #$(this-package-input "glibc")
+                                           #$(glibc-dynamic-linker)))
+                     (rpath (string-join
+                             (append (list lib)
+                                     ;; direct NEEDED inputs
+                                     (map (lambda (label)
+                                            (string-append
+                                             (assoc-ref inputs label) "/lib"))
+                                          '("alsa-lib" "at-spi2-core" "cairo"
+                                            "cups" "dbus" "eudev" "expat"
+                                            "glib" "gtk+" "libx11" "libxcb"
+                                            "libxcomposite" "libxdamage"
+                                            "libxext" "libxfixes"
+                                            "libxkbcommon" "libxrandr"
+                                            "mesa" "nspr" "pango"))
+                                     ;; special layouts: NSS ships in /lib/nss,
+                                     ;; libgcc_s.so.1 lives in gcc's "lib" output
+                                     (list (string-append
+                                            (assoc-ref inputs "nss")
+                                            "/lib/nss")
+                                           (string-append
+                                            (assoc-ref inputs "gcc:lib")
+                                            "/lib")))
+                             ":")))
+                (define (read-rpath file)
+                  ;; Preserve the ELF's existing RPATH (sharp's .node addons
+                  ;; carry $ORIGIN-relative entries resolving the bundled
+                  ;; libvips); patchelf 0.18 has no --prepend-rpath, so read
+                  ;; then rewrite with ours in front.
+                  (let* ((port (open-input-pipe
+                                (string-append "patchelf --print-rpath "
+                                               file)))
+                         (rpath (read-line port)))
+                    (close-pipe port)
+                    (if (eof-object? rpath) "" rpath)))
+                (define (elf? file)
+                  ;; The deb ships cross-platform prebuilds too
+                  ;; (node-pty prebuilds/darwin-* are Mach-O); only
+                  ;; ELF files can be patched.
+                  (call-with-input-file file
+                    (lambda (port)
+                      (equal? (get-bytevector-n port 4)
+                              #u8(127 69 76 70)))))
+                (define (patch-elf file)
+                  (when (elf? file)
+                    (let ((old (read-rpath file)))
+                      (invoke "patchelf" "--set-rpath"
+                              (if (string-null? old)
+                                  rpath
+                                  (string-append rpath ":" old))
+                              file))
+                    ;; main ELF and helpers are dynamic; only set interpreter
+                    ;; on executables, not on .so / .node libraries
+                    (unless (or (string-contains file ".so")
+                                (string-contains file ".node"))
+                      (invoke "patchelf" "--set-interpreter" ld.so file))))
+                (let* ((tools (string-append
+                               lib "/resources/tools/remote-desktop"))
+                       (capture (string-append tools "/cindy-linux-desktop-capture"))
+                       (clipboard (string-append tools "/cindy-linux-desktop-clipboard"))
+                       (input (string-append tools "/cindy-linux-desktop-input")))
+                  (for-each patch-elf
+                            (append (find-files lib ".*\\.so(\\.[0-9]+)?$")
+                                    (find-files lib "\\.node$")
+                                    (list (string-append lib "/Cindy")
+                                          (string-append lib "/chrome-sandbox")
+                                          (string-append lib "/chrome_crashpad_handler")
+                                          capture clipboard input)))))))
+          (add-after 'patch-elf 'install-bin
+            (lambda _
+              (let* ((out #$output)
+                     (bin (string-append out "/bin"))
+                     (exe (string-append out "/lib/cindy/Cindy")))
+                (mkdir-p bin)
+                (symlink exe (string-append bin "/cindy")))))
+          (add-after 'install-bin 'fix-desktop-exec
+            (lambda _
+              (substitute* (string-append #$output "/share/applications/cindy.desktop")
+                (("Exec=cindy %U")
+                 (string-append "Exec=" #$output "/bin/cindy %U"))
+                (("Icon=cindy")
+                 (string-append "Icon=" #$output "/share/pixmaps/cindy.png")))))
+          (add-after 'fix-desktop-exec 'wrap-program
+            (lambda* (#:key inputs outputs #:allow-other-keys)
+              (let* ((out (assoc-ref outputs "out"))
+                     (lib (string-append out "/lib/cindy"))
+                     (mesa-lib (string-append (assoc-ref inputs "mesa") "/lib"))
+                     (nss-lib (string-append (assoc-ref inputs "nss") "/lib/nss")))
+                (wrap-program (string-append out "/bin/cindy")
+                  `("LD_LIBRARY_PATH" prefix
+                    (,lib ,mesa-lib ,nss-lib))
+                  `("FONTCONFIG_FILE" =
+                    (,(string-append #$(this-package-input "fontconfig-minimal")
+                                     "/etc/fonts/fonts.conf")))
+                  `("XDG_DATA_DIRS" prefix
+                    (,(string-append out "/share")))))))
+          (add-after 'wrap-program 'prefer-wayland
+            #$(prefer-electron-wayland-phase "cindy")))))
+    (native-inputs (list binutils patchelf tar xz zstd))
+    (inputs `(("alsa-lib" ,alsa-lib)
+              ("at-spi2-core" ,at-spi2-core)
+              ("bash-minimal" ,bash-minimal)
+              ("cairo" ,cairo)
+              ("cups" ,cups)
+              ("dbus" ,dbus)
+              ("eudev" ,eudev)
+              ("expat" ,expat)
+              ("fontconfig-minimal" ,fontconfig)
+              ("gcc:lib" ,gcc "lib")
+              ("glibc" ,glibc)
+              ("glib" ,glib)
+              ("gtk+" ,gtk+)
+              ("libx11" ,libx11)
+              ("libxcb" ,libxcb)
+              ("libxcomposite" ,libxcomposite)
+              ("libxdamage" ,libxdamage)
+              ("libxext" ,libxext)
+              ("libxfixes" ,libxfixes)
+              ("libxkbcommon" ,libxkbcommon)
+              ("libxrandr" ,libxrandr)
+              ("mesa" ,mesa)
+              ("nspr" ,nspr)
+              ("nss" ,nss)
+              ("pango" ,pango)))
+    (properties `((upstream-name . "cindy")
+                  (release-tag-prefix . "^v")))
+    (home-page "https://github.com/makecindy/cindy")
+    (synopsis "Open-source AI agent desktop client")
+    (description
+     "Cindy is an open-source AI agent desktop client that works out of the
+box.  It provides task orchestration with multiple AI models, remote device
+control, and a companion system.")
+    (license license:asl2.0)
+    (supported-systems '("x86_64-linux"))))
+
 ;;; Crush: AI-powered coding assistant (Go TUI binary).
 ;;;
 ;;; The upstream .deb ships a single Go ELF binary:
