@@ -173,7 +173,7 @@ release.")
 (define-public crush-bin
   (package
     (name "crush-bin")
-    (version "0.96.0")
+    (version "0.96.1")
     (source
      (origin
        (method url-fetch)
@@ -181,7 +181,7 @@ release.")
              "https://github.com/charmbracelet/crush/releases/download/"
              "v" version "/crush_" version "_amd64.deb"))
        (sha256
-        (base32 "1bq08mcghjwgby3grmbn1ms0l276k72gln74wnwgfig5wcfs97py"))))
+        (base32 "0l6k36aq3xqgr1d9adaqnz8mj42dlhh4biajcfja0plw2484svv3"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -506,7 +506,7 @@ This package provides the prebuilt binary release.")
 (define-public opencode-desktop-bin
   (package
     (name "opencode-desktop-bin")
-    (version "1.18.31")
+    (version "1.18.32")
     (source
      (origin
        (method url-fetch)
@@ -514,7 +514,7 @@ This package provides the prebuilt binary release.")
              "https://github.com/anomalyco/opencode/releases/download/"
              "v" version "/opencode-desktop-linux-amd64.deb"))
        (sha256
-        (base32 "0h7j8bv2zim3n3qvd6y6rr423kk8v8zrs0inz4px7pppprqws1k6"))))
+        (base32 "131npnxaw4v5hg34ql4wk67z026a9nis201p2n9n66nskzpnfrdz"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -1077,7 +1077,7 @@ for multiple LLM providers.")
 (define-public zcode
   (package
     (name "zcode")
-    (version "3.14.1")
+    (version "3.14.3")
     (source
      (origin
        (method url-fetch)
@@ -1085,7 +1085,7 @@ for multiple LLM providers.")
              "https://cdn-zcode.z.ai/zcode/electron/releases/"
              version "/linux-x64/ZCode-" version "-linux-x64.deb"))
        (sha256
-        (base32 "1przv8m7iy2i28im4w6r5mqh0lzsi71a4mgm03sjmwpx638xk9ib"))))
+        (base32 "0ksv1dxkfghdpapwkc0dl5aq4h3bdsl0k9livkncg1lni1wgn4l5"))))
     (build-system gnu-build-system)
     (arguments
      (list

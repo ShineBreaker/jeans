@@ -208,8 +208,8 @@ the webview (GTK/WebKitGTK) frontend with an ncurses fallback.")
 ;;; e.g. tree-sitter-json and point LD_LIBRARY_PATH at its lib/ to
 ;;; enable syntax highlighting for that language.
 (define-public lem-next
-  (let ((commit "f5ba7d83d9382c887c69f4e964d11214f54bbd5f")
-        (revision "3"))
+  (let ((commit "8cb20907afff571dddf2baa8feef606b9d2ad648")
+        (revision "4"))
     (package
       (inherit lem)
       (name "lem-next")
@@ -222,7 +222,7 @@ the webview (GTK/WebKitGTK) frontend with an ncurses fallback.")
                (commit commit)))
          (file-name (git-file-name name version))
          (sha256
-          (base32 "1r6vpwnlkwc1shb0h81qsj5ddp4aqb9ag5r8zgh2mflnw6si9k23"))
+          (base32 "19fmg0ak2wix9ymflhz3y8ghrkfhfqys1yh9aqx0dw76zr0fjdqc"))
          (patches
           (map canonicalize-path
                (search-patches
@@ -604,8 +604,8 @@ the editor under the plain @code{zed} command name.")
 ;;; are compiled in via include_str!, and the inherited install phases
 ;;; (binary + runtime + desktop entry, HELIX_RUNTIME wrapper) work unchanged.
 (define-public helix-steel
-  (let ((commit "09d67dfe7300ab18c267e6b0cbfbb493cce21d37")
-        (revision "3"))
+  (let ((commit "7915ec19939d8ae3ab4cfff278eaf23ae3784351")
+        (revision "4"))
     (package
       (inherit helix)
       (name "helix-steel")
@@ -618,7 +618,7 @@ the editor under the plain @code{zed} command name.")
                (commit commit)))
          (file-name (git-file-name name version))
          (sha256
-          (base32 "0c36jhf0jm238lr5yjbrf6v0ckckjw4mgsq7mavgldmh488g43lc"))))
+          (base32 "0j60b19ddc1piy1xmfnz30k9hzlkcq24dnd9xh0zli9bpl87vxki"))))
       (arguments
        (substitute-keyword-arguments (package-arguments helix)
          ((#:phases phases)

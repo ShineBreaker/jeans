@@ -177,7 +177,7 @@ release.")
 (define-public waywallen-bin
   (package
     (name "waywallen-bin")
-    (version "0.3.9")
+    (version "0.4.0")
     (source
      (origin
        (method url-fetch)
@@ -186,7 +186,7 @@ release.")
              version
              "/waywallen-" version "-x86_64.AppImage"))
        (sha256
-        (base32 "1pwskfwgl4fv3n7m5f2cf2c1jkxv405zqqzvq473sa56ghynvpz3"))))
+        (base32 "1i1335hnf36h60wwzfp8n5hrvqbrgv90bj6kc46fmcvg62xz1x4z"))))
     (build-system copy-build-system)
     (arguments
      (list
