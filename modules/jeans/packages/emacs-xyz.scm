@@ -537,9 +537,10 @@ of Emacs Lisp projects.  This package provides the prebuilt binary release.")
 ;;; == Runtime ELF dependencies ==
 ;;;
 ;;; readelf NEEDED: libtinfo.so.6, libstdc++.so.6, the GStreamer stack
-;;; (see below), libfontconfig.so.1, libz.so.1, libgcc_s.so.1,
-;;; libm/libc.so.6.  libtinfo comes from a private ncurses variant --
-;;; see ncurses-tinfo-versioned below for why the stock one will not do.
+;;; (see below), libfontconfig.so.1, libdbus-1.so.3 (since 0.0.19, see
+;;; below), libz.so.1, libgcc_s.so.1, libm/libc.so.6.  libtinfo comes
+;;; from a private ncurses variant -- see ncurses-tinfo-versioned below
+;;; for why the stock one will not do.
 ;;;
 ;;; 0.0.18 re-introduced the GStreamer stack that 0.0.16 had dropped:
 ;;; NEEDED carries libgstreamer-1.0 (gstreamer) together with
@@ -686,6 +687,7 @@ of Emacs Lisp projects.  This package provides the prebuilt binary release.")
                                     (assoc-ref inputs "gst-plugins-base") "/lib")
                                    (string-append (assoc-ref inputs "gstreamer") "/lib")
                                    (string-append (assoc-ref inputs "glib") "/lib")
+                                   (string-append (assoc-ref inputs "dbus") "/lib")
                                    (string-append (assoc-ref inputs "wayland") "/lib")
                                    (string-append
                                     (assoc-ref inputs "libxkbcommon") "/lib")
@@ -774,9 +776,12 @@ of Emacs Lisp projects.  This package provides the prebuilt binary release.")
               ("lcms" ,lcms)
               ;; GStreamer stack: hard NEEDED again since 0.0.18, after
               ;; having been dropped in 0.0.16.
+              ;; 0.0.19 added libdbus-1.so.3 (GStreamer's GLib event loop
+              ;; links it; a hard NEEDED entry, not a dlopen).
               ("gstreamer" ,gstreamer)
               ("gst-plugins-base" ,gst-plugins-base)
-              ("glib" ,glib)))
+              ("glib" ,glib)
+              ("dbus" ,dbus)))
     ;; Mirrors the native-search-paths of gnu/packages/emacs.scm's
     ;; emacs-minimal.  EMACSLOADPATH must point at share/emacs/site-lisp
     ;; -- the layout every Guix Emacs package (emacs-build-system)
