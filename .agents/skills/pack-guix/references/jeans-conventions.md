@@ -103,6 +103,17 @@ github updater 还有几个静默盲区（不报错、就是不识别），命�
 - **tag 带产品前缀 + 资产名带平台后缀**：`updated-url` 对 `/releases/download/` 只认 `v<ver>/<name>-<ver><ext>`、`<ver>/<repo>-<ver><ext>` 等固定形状；cua 的 `cua-driver-rs-v0.23.2/cua-driver-rs-0.23.2-linux-x86_64-binary.tar.gz`（monorepo 多产品）所有形状都不匹配，设了 `upstream-name` 也报 no updater（cua-driver-bin，2026-09-02）。
 - **monorepo 把 stable 刻意标成 prerelease**：cua 上游用 GitHub 的 prerelease 标签防止仓库级 Latest 指针被单个产品抢走，plain SemVer 稳定版（`cua-driver-rs-v0.23.2`）全是 prerelease——除了 `tag_prefix` 过滤 nightly 系列，还必须进 `check_pre_release` 放行（cua-driver-bin，2026-09-02）。
 
+### 上游改名（包名跟随上游时）
+
+上游把项目整体改名（repo、release 资产名、二进制名、desktop/图标全变）时，Guix 包名跟随新名，且以下位置必须一起改——漏一处是「静默不再更新」而不是报错：
+
+1. 包定义：`define-public` / `name` / URL（新 repo）/ 资产文件名 / `upstream-name` property。
+2. `.github/workflows/auto-update.yml` 里 `guix refresh -u` 的显式包列表：refresh 按**包名**取包（该列表是白名单，不是全模块），旧名报「找不到包」被日志淹没，新名完全收不到自动更新。
+3. `docs/packages.md`（`blue gen-docs` 重新生成）与 AGENTS.md 的包清单。
+4. 同文件内其他包注释对该包的交叉引用（`aria2-next-bin` 的注释曾描述它为 motrix 供引擎）。
+
+实证：motrix-next → rayburst（4.0.0，2026-09-24，issue #44）——guix refresh 与 Python updater 两层都在用已不存在的 `MotrixNext_<v>_amd64.deb` 重建 URL，404 即报「无法计算 hash」；改名后两包（rayburst-bin / aria2-next-bin）均通过 refresh dry-run 确认识别。
+
 ## Emacs 包（emacs-build-system）
 
 - **`install` 只装根目录 `.el`**：`%default-include` 为 `'("^[^/]*\\.el$" "^[^/]*\\.info$" "^doc/.*\\.info$")`，子目录（`test/`、`scripts/`、`lisp/`）里的 `.el` 不会被安装。上游把源码放在子目录时用 `#:lisp-directory`（`emacs-ghostel` 的 `#:lisp-directory "lisp"`），无需手写 `#:exclude`。
@@ -223,7 +234,7 @@ guile 能 `use-modules` 加载不代表语法正确（可能命中 `.go` cache�
 
 - **bun --compile 产物**：`patchelf` 写 interpreter/RPATH 会平移 ELF 内的 `.bun` 段，自解包随之损坏；Guix ld-linux wrapper 则让 `/proc/self/exe` 指向 wrapper 自身，触发循环解包（打包探索记录，仓库暂无此类包实例；nix-ld 侧基础设施已就位）。可行方案：**原样安装、不 patch**，依赖系统级 nix-ld 提供带回退搜索路径的 `/lib/ld-linux`（`jeans/services/nix-ld.scm` 的 `nix-ld-service-type`），运行库通过 `NIX_LD_LIBRARY_PATH` 提供。
 - **wrap-program 会把真实二进制改名为 `.<name>-real`**：neomacs 在该命名下死循环。解法：真实 ELF 以本名安装到 `libexec/<pkg>/`，`bin/` 下手写 thin shell wrapper 启动它；exe 同目录数据（`neomacs.pdump`）和上游按 exe 路径探测的 `../share/<name>` 随之回正，仍不够时用上游提供的环境变量（如 `NEOMACS_RUNTIME_ROOT`）显式指路。完整分析见 `emacs-xyz.scm` 的 `neomacs-bin` 包前注释。
-- **反例（能容忍 `.real` 命名）**：Tauri 的 resource/sidecar 解析以真实 exe 路径为基准，`wrap-program` 不影响（motrix-next-bin，见下方 Tauri 小节）。动手前先读上游定位自身资源的代码，不要按包类型猜。
+- **反例（能容忍 `.real` 命名）**：Tauri 的 resource/sidecar 解析以真实 exe 路径为基准，`wrap-program` 不影响（rayburst-bin，见下方 Tauri 小节）。动手前先读上游定位自身资源的代码，不要按包类型猜。
 
 ### dlopen / CFFI 写死的动态加载
 
@@ -279,10 +290,11 @@ Ubuntu/Debian 构建的预编译 .deb 与 Guix 同名库之间有四类系统性
 
 ### Tauri 应用（prebuilt .deb）
 
-Tauri 预编译包的两个解析规则（motrix-next-bin 实证）：
+Tauri 预编译包的两个解析规则（motrix-next-bin 实证，4.0.0 改名 rayburst-bin 后结构不变）：
 
 - **resource_dir()** = `exe_dir/../lib/<identifier>/`：资源树（配置、数据库、bootstrap 数据）必须装到 `lib/<identifier>/`，缺任一数据文件会在启动时崩溃。
 - **shell-plugin sidecar 按 `exe_dir` + basename 解析**（不在 resource dir）：替换 sidecar（如用独立 Guix 包替换 bundled 引擎）时，新二进制必须放在主 ELF 同目录。注意 `wrap-program` 会把真实二进制改名为 `.<name>-real`，`/proc/self/exe` 随之指向它——sidecar 与 resource 解析都以这个真实路径为基准。
+- **sidecar 的 basename 可能与独立包撞名**：上游 bundled 引擎叫 `aria2-next`，与独立的 `aria2-next-bin` 同 basename。两包同装一个 profile 时 Guix 报 collision warning 并选先到者（实测：`warning: collision encountered` 后 `choosing ...aria2-next-bin-2.8.2/bin/aria2-next`，profile 构建成功，非错误）。**无需为此改包装结构**：sidecar 从包自身 `exe_dir` 解析，不经 profile 的 `bin/`，程序始终用自带引擎（rayburst-bin 4.0.0 实证）。
 
 ## input label 规范（必须遵守以通过 `guix lint`）
 

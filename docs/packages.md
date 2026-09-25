@@ -140,7 +140,7 @@
 | `cc-switch-bin`            | All-in-One assistant for Claude Code, Codex & Gemini CLI         |
 | `git-credential-keepassxc` | Use KeePassXC as a command-line credential store                 |
 | `jdtls-bin`                | Java language server                                             |
-| `motrix-next-bin`          | Full-featured download manager                                   |
 | `prettier-bin`             | Opinionated multi-language code formatter                        |
+| `rayburst-bin`             | Full-featured download manager                                   |
 | `sunshine-bin`             | Self-hosted game stream host for Moonlight                       |
 | `winapps`                  | Run Windows applications on GNU/Linux                            |

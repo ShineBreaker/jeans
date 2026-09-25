@@ -249,18 +249,18 @@ editor that supports the protocol to provide Java language features.")
     (license license:expat)))
 
 ;;; aria2-next: prebuilt binary of a maintained aria2 fork (GPL-2.0, same as aria2).
-;;; This is the standalone CLI build; motrix-next-bin also wires it in as its
-;;; download engine (placing it at lib/MotrixNext/binaries/motrix-next-engine).
+;;; This is the standalone CLI build; rayburst-bin bundles the same version as a
+;;; Tauri sidecar, so the two packages no longer share a file.
 ;;;
-;;; The upstream release ships a single raw ELF executable (dynamically linked
-;;; against libssl/libcrypto/libstdc++/libgcc_s), so we use the bare-ELF pattern:
-;;; install under lib/aria2-next/ with a bin/ symlink so patchelf's RPATH finds
-;;; the store libs and the entry point is on PATH.
+;;; The upstream release ships a single raw ELF executable, dynamically linked
+;;; against libstdc++/libgcc_s only (OpenSSL is statically linked in since 2.8.2),
+;;; so we use the bare-ELF pattern: install under lib/aria2-next/ with a bin/
+;;; symlink so patchelf's RPATH finds the store libs and the entry point is on PATH.
 
 (define-public aria2-next-bin
   (package
     (name "aria2-next-bin")
-    (version "2.8.0")
+    (version "2.8.2")
     (source
      (origin
        (method url-fetch)
@@ -268,7 +268,7 @@ editor that supports the protocol to provide Java language features.")
              "https://github.com/AnInsomniacy/aria2-next/releases/download/"
              "v" version "/aria2-next-" version "-linux-x86_64"))
        (sha256
-        (base32 "1rjv8cliw6kifhqlsb66kp3q1i73zsh9mxbqq0hfsjn2ipkad9v1"))))
+        (base32 "1gw52nnxcgq4dcl9cqcmrsdv07vdfc0y4yglss2khiqg92qxlrjw"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -300,7 +300,7 @@ editor that supports the protocol to provide Java language features.")
                       (string-join
                        (map (lambda (pkg)
                               (string-append (assoc-ref inputs pkg) "/lib"))
-                            '("openssl" "glibc" "gcc:lib"))
+                            '("glibc" "gcc:lib"))
                        ":")))
                 ;; Install the real binary under libexec/ so RPATH lookups find
                 ;; sibling libs, and expose it on PATH via a bin/ symlink.
@@ -322,8 +322,7 @@ editor that supports the protocol to provide Java language features.")
      (inputs
       `(("bash-minimal" ,bash-minimal)
         ("glibc" ,glibc)
-        ("gcc:lib" ,gcc "lib")
-        ("openssl" ,openssl)))
+        ("gcc:lib" ,gcc "lib")))
      (properties `((upstream-name . "aria2-next")))
      (home-page "https://github.com/AnInsomniacy/aria2-next")
      (synopsis "Maintained aria2 fork with bug fixes and modernized architecture")
@@ -333,39 +332,57 @@ HTTP/HTTPS, FTP, SFTP, BitTorrent and Metalink.  This package provides the
 prebuilt binary release.")
      (license license:gpl2)))
 
-;;; Motrix-Next: prebuilt binary download manager (Tauri/WebKitGTK app).
+;;; Rayburst (formerly Motrix-Next): prebuilt binary download manager
+;;; (Tauri/WebKitGTK app).
 ;;;
-;;; The upstream .deb ships:
-;;;   - motrix-next        (Tauri app, dynamically linked to webkit2gtk-4.1, gtk3, etc.)
-;;;   - motrix-next-engine (aria2 RPC helper; we replace it with aria2-next-bin, see below)
-;;;   - lib/MotrixNext/{binaries,data}/ resource tree (aria2.conf, GeoIP db, ED2K bootstrap)
+;;; Upstream renamed the project from motrix-next to rayburst for 4.0.0 —
+;;; repository, release asset names, bundled binaries, desktop entry and icon
+;;; all changed — so the Guix package name follows the new upstream name.
+;;;
+;;; The upstream .deb ships three dynamically linked ELFs, all of which must
+;;; end up in bin/ (see the sidecar note below):
+;;;   - rayburst                  (Tauri app, links webkit2gtk-4.1, gtk3, ...)
+;;;   - aria2-next                (download engine, bundled upstream since 4.0.0;
+;;;                                no longer replaced by our aria2-next-bin)
+;;;   - rayburst-browser-launcher (native messaging host for the browser
+;;;                                extension)
+;;; plus the lib/Rayburst/ resource tree (data/ GeoIP db, BT peer blocklist,
+;;; ED2K bootstrap; native-messaging/ browser manifests).
 ;;;
 ;;; Because this is a prebuilt binary compiled on Ubuntu, we must:
 ;;;   1. Use patchelf to set the ELF interpreter to Guix's ld-linux.
-;;;   2. Use patchelf to set RPATH so the binary finds all shared libs in the store.
+;;;   2. Use patchelf to set RPATH so the binaries find all shared libs in the
+;;;      store (the main binary directly NEEDs libdbus-1, hence the dbus input).
 ;;;
-;;; The app resolves its resource dir via Tauri's resource_dir() (= lib/MotrixNext/),
-;;; then loads `binaries/aria2.conf`, `data/dbip-country-lite.mmdb`,
-;;; `data/ed2k-bootstrap/{server.met,nodes.dat}` relative to it.  Missing any of
-;;; these data files crashes the engine at startup (see ED2K/GeoIP errors).
+;;; The app resolves its resource dir via Tauri's resource_dir() (= lib/Rayburst/),
+;;; then loads `data/dbip-country-lite.mmdb`, `data/bt-peer-blocklist.txt` and
+;;; `data/ed2k-bootstrap/{server.met,nodes.dat}` relative to it.
 ;;;
-;;; The engine is a Tauri shell-plugin sidecar, resolved from the EXECUTABLE
-;;; directory (bin/, via exe_dir of the real binary) by basename
-;;; "motrix-next-engine" — NOT from the resource dir.  So we install
-;;; aria2-next-bin into bin/ as motrix-next-engine (see install phase).
+;;; The engine and the browser launcher are Tauri sidecars resolved from the
+;;; EXECUTABLE directory (bin/, via exe_dir of the real binary) by basename —
+;;; NOT from the resource dir — so both must sit next to the main binary in bin/.
+;;;
+;;; `lib/Rayburst/native-messaging/manifests/*.json` are installed verbatim:
+;;; the Windows paths they carry in the upstream deb are templates the launcher
+;;; rewrites at runtime, not something to fix here.
+;;;
+;;; NOTE: bin/aria2-next shares its basename with the standalone aria2-next-bin
+;;; package, so a profile holding both reports a collision warning.  It is
+;;; harmless: Tauri resolves the sidecar from *this* package's bin/, so the app
+;;; always runs the engine it ships (both currently carry upstream 2.8.2).
 
-(define-public motrix-next-bin
+(define-public rayburst-bin
   (package
-    (name "motrix-next-bin")
-    (version "3.9.9")
+    (name "rayburst-bin")
+    (version "4.0.0")
     (source
      (origin
        (method url-fetch)
        (uri (string-append
-             "https://github.com/AnInsomniacy/motrix-next/releases/download/"
-             "v" version "/MotrixNext_" version "_amd64.deb"))
+             "https://github.com/AnInsomniacy/rayburst/releases/download/"
+             "v" version "/Rayburst_" version "_amd64.deb"))
        (sha256
-        (base32 "0rm7almw22wvhrrlcrvgbkj6yz9xg22f274qzanfps6zbzf6a7dl"))))
+        (base32 "0gpj2qi7z607b48yfyikfzfm98argsb6x5c42q2rh77ndhnm0a7m"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -380,7 +397,7 @@ prebuilt binary release.")
           (delete 'build)
           (replace 'unpack
             (lambda _
-              (let ((debdir (string-append "motrix-next-" #$version)))
+              (let ((debdir (string-append "rayburst-" #$version)))
                 (mkdir debdir)
                 (with-directory-excursion debdir
                   (invoke "ar" "x" #$source)
@@ -390,8 +407,7 @@ prebuilt binary release.")
             (lambda* (#:key inputs #:allow-other-keys)
               (let* ((out #$output)
                      (bin (string-append out "/bin"))
-                     (lib-resource (string-append out "/lib/MotrixNext"))
-                     (lib-binaries (string-append lib-resource "/binaries"))
+                     (lib-resource (string-append out "/lib/Rayburst"))
                      (share (string-append out "/share"))
                      (patchelf-bin
                       (string-append (assoc-ref inputs "patchelf")
@@ -403,65 +419,51 @@ prebuilt binary release.")
                        (map (lambda (pkg)
                               (string-append (assoc-ref inputs pkg) "/lib"))
                              '("webkitgtk-for-gtk3" "gtk+" "glib" "cairo"
-                               "gdk-pixbuf" "libsoup" "glibc" "gcc:lib"
-                               "openssl" "libappindicator"))
+                               "gdk-pixbuf" "libsoup" "dbus" "glibc" "gcc:lib"
+                               "libappindicator"))
                        ":")))
-                ;; Place the main ELF binary directly in bin/.  wrap-program
-                ;; will rename it to .motrix-next-real and create a wrapper
-                ;; script.  When the wrapper execs the real binary, /proc/self/exe
-                ;; points to bin/.motrix-next-real, so Tauri's resource_dir()
-                ;; computes:  exe_dir/../lib/<identifier>/
-                ;;           = bin/../lib/MotrixNext/
-                ;;           = lib/MotrixNext/          ✅
+                ;; Place all three ELFs directly in bin/.  wrap-program
+                ;; will rename the main binary to .rayburst-real and create a
+                ;; wrapper script.  When the wrapper execs the real binary,
+                ;; /proc/self/exe points to bin/.rayburst-real, so Tauri's
+                ;; resource_dir() computes:  exe_dir/../lib/<identifier>/
+                ;;                        = bin/../lib/Rayburst/
+                ;;                        = lib/Rayburst/          ✅
+                ;; and the engine/launcher sidecars are found in that same bin/.
                 (mkdir-p bin)
-                (install-file "usr/bin/motrix-next" bin)
+                (install-file "usr/bin/rayburst" bin)
+                (install-file "usr/bin/aria2-next" bin)
+                (install-file "usr/bin/rayburst-browser-launcher" bin)
 
-                ;; Install the entire deb resource tree (binaries/ + data/) under
-                ;; lib/MotrixNext/ so every bundled asset is available relative to
-                ;; resource_dir().  This is the fix for the runtime crashes:
-                ;;   - data/dbip-country-lite.mmdb      (GeoIP db)
-                ;;   - data/ed2k-bootstrap/server.met   (ED2K bootstrap)
-                ;;   - data/ed2k-bootstrap/nodes.dat    (ED2K DHT nodes)
-                ;;   - binaries/aria2.conf              (engine config)
+                ;; Install the entire deb resource tree (data/ + native-messaging/)
+                ;; under lib/Rayburst/ so every bundled asset is available relative
+                ;; to resource_dir():
+                ;;   - data/dbip-country-lite.mmdb       (GeoIP db)
+                ;;   - data/bt-peer-blocklist.txt        (BT peer blocklist seed)
+                ;;   - data/ed2k-bootstrap/server.met    (ED2K bootstrap)
+                ;;   - data/ed2k-bootstrap/nodes.dat     (ED2K DHT nodes)
+                ;;   - native-messaging/manifests/*.json (browser host manifests)
                 ;; copy-recursively preserves the dir structure; :keep-mode? #t is
                 ;; unnecessary (these are data files, not executables).
                 (mkdir-p lib-resource)
-                (copy-recursively "usr/lib/MotrixNext" lib-resource)
+                (copy-recursively "usr/lib/Rayburst" lib-resource)
 
-                ;; Engine placement: the app uses Tauri's shell plugin to spawn its
-                ;; aria2 sidecar, resolved from the EXECUTABLE directory (exe_dir =
-                ;; bin/, because wrap-program execs bin/.motrix-next-real) by the
-                ;; basename motrix-next-engine.  So the engine MUST live next to the
-                ;; main binary in bin/, NOT under the resource dir.  Placing it under
-                ;; lib/MotrixNext/binaries/ makes the spawn fail with os error 2
-                ;; (confirmed by the live runtime log).  Replace the bundled engine
-                ;; (v2.4.9) with aria2-next-bin (v2.5.x): copy its binary into bin/
-                ;; under the sidecar name the app expects.
-                (let ((engine-src
-                       (string-append (assoc-ref inputs "aria2-next-bin")
-                                      "/lib/aria2-next/aria2-next"))
-                      (engine-dst
-                       (string-append bin "/motrix-next-engine")))
-                  (copy-file engine-src engine-dst)
-                  ;; copy-file preserves the read-only source mode; patchelf
-                  ;; needs write access to rewrite the ELF.
-                  (chmod engine-dst #o755)
-                  ;; Patch the engine copy's interpreter/RPATH.  It links against
-                  ;; libssl/libcrypto/libstdc++/libgcc_s (same as the main binary's
-                  ;; RPATH set, minus the GUI/webkit libs — but extra RPATH entries
-                  ;; are harmless, so we reuse the same rpath).
-                  (invoke patchelf-bin "--set-interpreter" ldso engine-dst)
-                  (invoke patchelf-bin "--set-rpath" rpath engine-dst))
+                ;; Patch ELF interpreter and RPATH on every shipped binary.
+                ;; The engine and the launcher link against a subset of the store
+                ;; libs the main binary needs (engine: libstdc++/libgcc_s;
+                ;; launcher: libgcc_s — its OpenSSL is statically linked), and
+                ;; extra RPATH entries are harmless, so one rpath covers all three.
+                (for-each
+                 (lambda (elf)
+                   (invoke patchelf-bin "--set-interpreter" ldso elf)
+                   (invoke patchelf-bin "--set-rpath" rpath elf))
+                 (list (string-append bin "/rayburst")
+                       (string-append bin "/aria2-next")
+                       (string-append bin "/rayburst-browser-launcher")))
 
-                ;; Patch ELF interpreter and RPATH for motrix-next.
-                (invoke patchelf-bin "--set-interpreter" ldso
-                        (string-append bin "/motrix-next"))
-                (invoke patchelf-bin "--set-rpath" rpath
-                        (string-append bin "/motrix-next"))
-
-                ;; wrap-program renames the real binary to .motrix-next-real
+                ;; wrap-program renames the real binary to .rayburst-real
                 ;; and creates a bash wrapper that sets env vars before exec.
-                (wrap-program (string-append bin "/motrix-next")
+                (wrap-program (string-append bin "/rayburst")
                   `("XDG_DATA_DIRS" ":" prefix
                     ,(list (string-append out "/share")
                            (string-append #$gtk+ "/share")
@@ -470,18 +472,18 @@ prebuilt binary release.")
 
                 ;; Install desktop entry.
                 (mkdir-p (string-append share "/applications"))
-                (copy-file "usr/share/applications/MotrixNext.desktop"
-                           (string-append share "/applications/MotrixNext.desktop"))
-                (substitute* (string-append share "/applications/MotrixNext.desktop")
-                  (("Exec=motrix-next")
-                   (string-append "Exec=" bin "/motrix-next")))
+                (copy-file "usr/share/applications/Rayburst.desktop"
+                           (string-append share "/applications/Rayburst.desktop"))
+                (substitute* (string-append share "/applications/Rayburst.desktop")
+                  (("Exec=rayburst")
+                   (string-append "Exec=" bin "/rayburst")))
 
                 ;; Install icons.
                 (for-each
                  (lambda (size-dir)
                    (let ((icon-src
                           (string-append "usr/share/icons/hicolor/"
-                                         size-dir "/apps/motrix-next.png"))
+                                         size-dir "/apps/rayburst.png"))
                          (icon-dst-dir
                           (string-append share "/icons/hicolor/"
                                          size-dir "/apps")))
@@ -489,7 +491,7 @@ prebuilt binary release.")
                        (mkdir-p icon-dst-dir)
                        (copy-file icon-src
                                   (string-append icon-dst-dir
-                                                 "/motrix-next.png")))))
+                                                 "/rayburst.png")))))
                  '("32x32" "128x128" "256x256@2"))))))))
      (native-inputs (list patchelf binutils))
      (inputs
@@ -502,19 +504,16 @@ prebuilt binary release.")
         ("cairo" ,cairo)
         ("gdk-pixbuf" ,gdk-pixbuf)
         ("libsoup" ,libsoup)
-        ("openssl" ,openssl)
-        ("libappindicator" ,libappindicator)
-        ;; aria2-next-bin provides the download engine, installed into the
-        ;; resource dir as binaries/motrix-next-engine (see install phase).
-        ("aria2-next-bin" ,aria2-next-bin)))
-    (properties `((upstream-name . "MotrixNext")))
-    (home-page "https://github.com/AnInsomniacy/motrix-next")
+        ("dbus" ,dbus)
+        ("libappindicator" ,libappindicator)))
+    (properties `((upstream-name . "Rayburst")))
+    (home-page "https://github.com/AnInsomniacy/rayburst")
     (synopsis "Full-featured download manager")
-     (description "Motrix-Next is a full-featured download manager that supports
-downloading HTTP, FTP, BitTorrent, and Magnet links.  It is built with Tauri
-and uses aria2 as the download backend.  This package provides the prebuilt
-binary release.")
-     (license license:expat)))
+    (description "Rayburst is a full-featured download manager that supports
+downloading HTTP, FTP, BitTorrent, and Magnet links.  It is built with Tauri,
+uses aria2 as the download backend, and integrates with browsers through a
+companion extension.  This package provides the prebuilt binary release.")
+    (license license:expat)))
 
 ;;; CC-Switch: prebuilt binary for AI coding assistant manager (Tauri/WebKitGTK).
 ;;;

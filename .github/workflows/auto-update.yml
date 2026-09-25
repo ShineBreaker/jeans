@@ -191,7 +191,7 @@ jobs:
           guix refresh -L modules -L /tmp/nonguix -u \
             crush-bin opencode-desktop-bin herdr-bin \
             codewhale-bin reasonix-bin github-copilot \
-            ellsp-bin eask-bin neomacs-bin motrix-next-bin cc-switch-bin \
+            ellsp-bin eask-bin neomacs-bin rayburst-bin cc-switch-bin \
             font-maple-font-nf-cn font-nerd-symbols font-nerd-font-iosevka \
             lr2oraja-endlessdream-bin osu-lazer-bin inso-bin zen-browser-bin \
             emacs-ghostel emacs-msgu emacs-ellsp \

@@ -60,7 +60,7 @@ modules/                          # 通道包目录（由 .guix-channel 指定�
 │  ├──nix-ld.scm                    # nix-ld（从上游镜像的 Rust 源码构建包）
 │  ├──python-xyz.scm                # python-jieba
 │  ├──theme.scm                     # colloid-gtk-theme, vimix-gtk-themes, vimix-kvantum-themes, orchis-kde-themes, colloid-kde-themes
-│  ├──tools.scm                     # winapps, jdtls-bin, motrix-next-bin, cc-switch-bin,
+│  ├──tools.scm                     # winapps, jdtls-bin, rayburst-bin, cc-switch-bin,
 │  │                                # git-credential-keepassxc, amber-pm
 │  └──rust-crates.scm               # Rust crate 源码 —— 由 guix import 管理，禁止手动编辑
 ├──jeans/services/
