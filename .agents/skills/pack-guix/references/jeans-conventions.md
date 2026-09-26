@@ -277,6 +277,13 @@ Guix 只有 ffmpeg 8.x/6.x/5.x/4.x，没有 7.x。预编译包链接 7.x sonames
 
 生效条件（读 case 逻辑）：hint-phase 只在用户未设置 `ELECTRON_OZONE_PLATFORM_HINT` 时 export；wayland-phase 在未设置（默认 auto）或显式设为 wayland 时注入，设为其他值（如 x11）则不注入。两者都不覆盖用户指向其他平台的选择。
 
+### Electron 主二进制被上游换成 launcher 脚本
+
+上游可能把 Electron 主二进制改名、原入口换成 POSIX launcher 脚本（Paseo 0.9.2：`Paseo` 变成脚本、真 ELF 移到 `Paseo.bin`）。两处要跟着改，漏第一处构建直接失败（`patchelf: not an ELF executable`，Paseo 0.9.2 实证）：
+
+- **patchelf 目标换成新 ELF 名**，并给新脚本打 store shebang（上游脚本带 `#!/bin/sh`）。脚本里的 sandbox 检测依赖宿主的 `readlink`/`unshare`/`stat`/`findmnt`/`grep`，这点和 bundle 的其它脚本一致，不用额外补 PATH。
+- **`wrap-program` 的 `exec -a "${0##*/}"` 会破坏按 `$0` 定位自身的脚本**：脚本用 `readlink -f -- "$0"` 推出 `${launcher}.bin`，而裸 basename 会被 readlink 解析到调用者的 CWD 而非 store。在 `wrap-program`（及 wayland helper）之后 substitute wrapper 换回真实路径，保持在 `exec -a ` 前缀上（helper 的 `^exec -a ` 锚点仍有效）：`(("exec -a \"[^\"]*\" ") (string-append "exec -a \"" #$output "/lib/<pkg>/<launcher>\" "))`——正则用 `[^"]*` 而不是手写 `${0##*/}`，避开 `$`/`{`/`*` 的转义。
+
 ### Debian .deb 的 ABI 漂移适配（mysql-workbench classic-bin 模式）
 
 Ubuntu/Debian 构建的预编译 .deb 与 Guix 同名库之间有四类系统性 ABI 漂移，逐类判定（全部实证于 `databases.scm` 的 mysql-workbench-community-classic-bin，8.0.47 ubuntu24.04 deb）：
