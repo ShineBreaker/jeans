@@ -208,8 +208,8 @@ the webview (GTK/WebKitGTK) frontend with an ncurses fallback.")
 ;;; e.g. tree-sitter-json and point LD_LIBRARY_PATH at its lib/ to
 ;;; enable syntax highlighting for that language.
 (define-public lem-next
-  (let ((commit "8cb20907afff571dddf2baa8feef606b9d2ad648")
-        (revision "4"))
+  (let ((commit "ef6c48eb56575bb3ffe648c30846321b2a5d7e2f")
+        (revision "5"))
     (package
       (inherit lem)
       (name "lem-next")
@@ -222,7 +222,7 @@ the webview (GTK/WebKitGTK) frontend with an ncurses fallback.")
                (commit commit)))
          (file-name (git-file-name name version))
          (sha256
-          (base32 "19fmg0ak2wix9ymflhz3y8ghrkfhfqys1yh9aqx0dw76zr0fjdqc"))
+          (base32 "16y2rkzc9hg7mp1cbazcsbyiziwzl08k4xn0ffirmm70y1b0xdpv"))
          (patches
           (map canonicalize-path
                (search-patches
@@ -472,7 +472,7 @@ binary release.")
 (define-public zedg-bin
   (package
     (name "zedg-bin")
-    (version "1.20.2")
+    (version "1.21.0")
     (source
      (origin
        (method url-fetch)
@@ -480,7 +480,7 @@ binary release.")
              "https://github.com/x6nux/zed-globalization/releases/download/"
              "v" version "/zedg-zh-cn-linux-x86_64-v" version ".tar.gz"))
        (sha256
-        (base32 "1i4hx7w3a7af1ydjny7nz4f3zd1sb0xk9w6qxid86c6x37yf7i8q"))))
+        (base32 "0l46pab2l48l1grfkhs8f0xxpc9flrd9vw28wphgdqy70m705nfs"))))
     (build-system gnu-build-system)
     (outputs '("out" "shim"))
     (arguments

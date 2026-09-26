@@ -101,7 +101,7 @@ and Xorg.")
 (define-public ai-usagebar-bin
   (package
     (name "ai-usagebar-bin")
-    (version "1.20.2")
+    (version "1.24.0")
     (source
      (origin
        (method url-fetch)
@@ -109,7 +109,7 @@ and Xorg.")
              "https://github.com/akitaonrails/ai-usagebar/releases/download/"
              "v" version "/ai-usagebar-linux-x86_64.tar.gz"))
        (sha256
-        (base32 "1fzw4knyz51aqdn2w5kb983b7ahkbld9jvgrjwjk6mcsikg54kkp"))))
+        (base32 "0mkvlgp3zlwdg0xlbbplq2z4bank5jpmvx8dj3z02wcscd8sfzmc"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -177,7 +177,7 @@ release.")
 (define-public waywallen-bin
   (package
     (name "waywallen-bin")
-    (version "0.4.0")
+    (version "0.4.1")
     (source
      (origin
        (method url-fetch)
@@ -186,7 +186,7 @@ release.")
              version
              "/waywallen-" version "-x86_64.AppImage"))
        (sha256
-        (base32 "1i1335hnf36h60wwzfp8n5hrvqbrgv90bj6kc46fmcvg62xz1x4z"))))
+        (base32 "1qah12zvaghww8gc4s8np9qc53cwdms4wa8r3473z3b8scy6jpcx"))))
     (build-system copy-build-system)
     (arguments
      (list
@@ -417,7 +417,7 @@ desktop through a Wayland layer shell and a QtQuick interface.")
 (define-public open-wallpaper-engine-bin
   (package
     (name "open-wallpaper-engine-bin")
-    (version "0.2.10")
+    (version "0.3.0")
     (source
      (origin
        (method url-fetch)
@@ -427,7 +427,7 @@ desktop through a Wayland layer shell and a QtQuick interface.")
              "/org.waywallen.open-wallpaper-engine-" version
              "-linux-x86_64.zip"))
        (sha256
-        (base32 "1jqc1i66ca6hjkdg8bj7j502x50xmq4vxkqk4vyizd7x29lpfg3h"))))
+        (base32 "12bmmqjf7s3xrpph4034r8h769fwiyy4d5lm1qsmczz7mvrkmi9f"))))
     (build-system copy-build-system)
     (arguments
      (list

@@ -106,7 +106,7 @@
 (define-public codewhale-bin
   (package
     (name "codewhale-bin")
-    (version "0.9.13")
+    (version "0.10.0")
     (source
      (origin
        (method url-fetch)
@@ -114,7 +114,7 @@
              "https://github.com/Hmbown/CodeWhale/releases/download/"
              "v" version "/codewhale-linux-x64.tar.gz"))
        (sha256
-        (base32 "0f5jknfmfzz4h2lgypjgag6cw46ncjmp232ws78389is8mxvdzkd"))))
+        (base32 "0gmzvz3xqkvh3sbfv2z3swwhizbzp7cqp1c2yi0gyg7y6gb2inz5"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -182,7 +182,7 @@ release.")
 (define-public cindy-bin
   (package
     (name "cindy-bin")
-    (version "0.1.90")
+    (version "0.1.93")
     (source
      (origin
        (method url-fetch)
@@ -190,7 +190,7 @@ release.")
              "https://github.com/makecindy/cindy/releases/download/"
              "v" version "/cindy-" version "-linux-x64-cn.deb"))
        (sha256
-        (base32 "1bws9zh88fyc6a50gg86irwnakl6i0zfqq5lrrjbnqh1q35pj019"))))
+        (base32 "19lynv61kyw8pjvc2kb2hpyy6mq6ss1xjksqy3xqyhv8ncadzdp1"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -866,9 +866,13 @@ coding experience with context awareness.")
 ;;;
 ;;; The upstream .deb installs an Electron bundle under /opt/Paseo.  The
 ;;; bundle keeps its upstream layout under lib/paseo:
-;;;   - Paseo                  the Electron main executable (GUI entry)
-;;;   - resources/bin/paseo    upstream CLI launcher; runs the main binary
-;;;                            with ELECTRON_RUN_AS_NODE=1.  Kept internal
+;;;   - Paseo                  POSIX launcher script (since 0.9.2, when the
+;;;                            Electron binary moved to Paseo.bin).  Resolves
+;;;                            its executable as "${0}.bin" via readlink, picks
+;;;                            a sandbox strategy, then execs it.
+;;;   - Paseo.bin              the Electron main executable (GUI entry)
+;;;   - resources/bin/paseo    upstream CLI launcher; runs Paseo.bin with
+;;;                            ELECTRON_RUN_AS_NODE=1.  Kept internal
 ;;;                            (not on PATH), matching the upstream .deb,
 ;;;                            which also leaves it out of /usr/bin.
 ;;;   - resources/app.asar.unpacked/node_modules/...  native addons
@@ -877,6 +881,10 @@ coding experience with context awareness.")
 ;;;     libraries (e.g. sherpa-onnx.node -> libsherpa-onnx-c-api.so)
 ;;;     without dragging their exact paths into the build recipe.
 ;;;
+;;; Both shell launchers rely on commands from the host PATH (readlink,
+;;; dirname, unshare, stat, findmnt, grep), so only their shebang is rewritten;
+;;; they keep assuming a POSIX userland like the rest of the Electron bundle.
+;;;
 ;;; License note: this release ships under Apache-2.0 (LICENSE at tag
 ;;; v0.7.0 is the full Apache text).  v0.6.1 shipped AGPLv3; upstream
 ;;; relicensed in commit a8734a9 (2026-08-27).
@@ -884,7 +892,7 @@ coding experience with context awareness.")
 (define-public paseo-bin
   (package
     (name "paseo-bin")
-    (version "0.8.0")
+    (version "0.9.2")
     (source
      (origin
        (method url-fetch)
@@ -892,7 +900,7 @@ coding experience with context awareness.")
              "https://github.com/getpaseo/paseo/releases/download/"
              "v" version "/Paseo-" version "-amd64.deb"))
        (sha256
-        (base32 "16m958gwbyw2lvsxclfyv9ifrf64f0y52wjvkscm431q66608zd4"))))
+        (base32 "1hzazvkxk377zzgw3zpxn2csb4xd9y097yvw2nrl13nr4ka8d2l4"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -921,12 +929,18 @@ coding experience with context awareness.")
             #$(disable-electron-updater-phase "paseo"))
           (add-after 'disable-electron-updater 'patch-cli-shebang
             (lambda* (#:key inputs #:allow-other-keys)
-              (substitute* (string-append #$output
-                                         "/lib/paseo/resources/bin/paseo")
-                (("#!/bin/sh")
-                 (string-append "#!"
-                                (search-input-file inputs
-                                                   "bin/bash"))))))
+              ;; Both the GUI launcher (Paseo, a script since 0.9.2) and the
+              ;; bundled CLI launcher are POSIX scripts with a host /bin/sh
+              ;; shebang.
+              (for-each
+               (lambda (script)
+                 (substitute* script
+                   (("#!/bin/sh")
+                    (string-append "#!"
+                                   (search-input-file inputs "bin/bash")))))
+               (list (string-append #$output "/lib/paseo/Paseo")
+                     (string-append #$output
+                                    "/lib/paseo/resources/bin/paseo")))))
           (add-after 'patch-cli-shebang 'patch-elf
             (lambda* (#:key inputs #:allow-other-keys)
               (let* ((ld.so (string-append #$(this-package-input "glibc")
@@ -951,7 +965,7 @@ coding experience with context awareness.")
                           (map (lambda (binary)
                                  (string-append #$output "/lib/paseo/"
                                                 binary))
-                               '("Paseo"
+                               '("Paseo.bin"
                                  "chrome_crashpad_handler"
                                  "chrome-sandbox")))
                 (for-each (lambda (file) (patch-elf file #f))
@@ -1019,7 +1033,17 @@ coding experience with context awareness.")
           (add-after 'wrap-program 'prefer-wayland
             ;; Paseo's argv parser rejects injected --ozone-platform flags
             ;; ("error: unknown option"), so use the env-hint variant.
-            #$(prefer-electron-wayland-hint-phase "paseo")))))
+            #$(prefer-electron-wayland-hint-phase "paseo"))
+          (add-after 'prefer-wayland 'point-wrapper-at-launcher
+            ;; wrap-program passes a bare basename as argv[0]
+            ;; (`exec -a "${0##*/}"`).  The launcher script derives its
+            ;; Electron binary as "${0}.bin", so a basename would be resolved
+            ;; against the caller's CWD; hand it the launcher's real path.
+            (lambda _
+              (substitute* (string-append #$output "/bin/paseo")
+                (("exec -a \"[^\"]*\" ")
+                 (string-append "exec -a \"" #$output
+                                "/lib/paseo/Paseo\" "))))))))
     (native-inputs (list binutils patchelf tar xz))
     (inputs `(("alsa-lib" ,alsa-lib)
               ("at-spi2-core" ,at-spi2-core)
@@ -1073,7 +1097,7 @@ telemetry or forced log-ins.")
 (define-public reasonix-bin
   (package
     (name "reasonix-bin")
-    (version "1.38.11")
+    (version "1.39.0")
     (source
      (origin
        (method url-fetch)
@@ -1081,7 +1105,7 @@ telemetry or forced log-ins.")
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
              "v" version "/reasonix-linux-amd64.tar.gz"))
        (sha256
-        (base32 "06l2kyhqgmq2k492asqprlzqych8kip37lamlkcabsl19jpipbm8"))))
+        (base32 "0cp3riym69sh3k2f1p9ifi6hjzrbx7rwfvb5y1m1ps39dxdwn9k7"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -1129,7 +1153,7 @@ and ships as a single static binary with no runtime dependencies.")
 (define-public reasonix-studio-bin
   (package
     (name "reasonix-studio-bin")
-    (version "2.18.1")
+    (version "2.20.0")
     (source
      (origin
        (method url-fetch)
@@ -1137,7 +1161,7 @@ and ships as a single static binary with no runtime dependencies.")
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
              "studio-v" version "/ReasonixStudio-linux-amd64.deb"))
        (sha256
-        (base32 "1582jiqg270jh7jd76ny7xc2swvi0d9fwmdhhlg9s6fa4il6zzbg"))))
+        (base32 "0bis1z7nsc9k1k077ahhawqasqv32capx3sjmr2ic6ff15lfgikc"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -1468,7 +1492,7 @@ without friction.")
 (define-public zcode-proxy-bin
   (package
     (name "zcode-proxy-bin")
-    (version "4.6.8")
+    (version "4.6.9")
     (source
      (origin
        (method url-fetch)
@@ -1476,7 +1500,7 @@ without friction.")
              "https://github.com/TriDefender/zcode-api/releases/download/"
              "v" version "/zcode-proxy-linux-x64"))
        (sha256
-        (base32 "1rckjj6h2sblqcgyyawvpzdq05zqfns8fg2rx5n38m8nx2s0dx71"))))
+        (base32 "1jmak0jw1zwj69fmwn91qvfi3malwnpb4akd5xi1gs8nz2kdkfyq"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -1527,7 +1551,7 @@ release and needs the @code{nix-ld} system service to run.")
 (define-public cua-driver-bin
   (package
     (name "cua-driver-bin")
-    (version "0.28.2")
+    (version "0.28.3")
     (source
      (origin
        (method url-fetch)
@@ -1536,7 +1560,7 @@ release and needs the @code{nix-ld} system service to run.")
              "cua-driver-rs-v" version
              "/cua-driver-rs-" version "-linux-x86_64-binary.tar.gz"))
        (sha256
-        (base32 "0glwwsfdanx70k30zqb0mcmimdfq3swhxrnvzzspx4ml9g89znd1"))))
+        (base32 "1kvg9qmcplgkc2352znrbqlghjy6lci6xw6g2fkcqmqygvimdpji"))))
     (build-system gnu-build-system)
     (arguments
      (list

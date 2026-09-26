@@ -527,7 +527,7 @@ companion extension.  This package provides the prebuilt binary release.")
 (define-public cc-switch-bin
   (package
     (name "cc-switch-bin")
-    (version "3.20.3")
+    (version "3.20.4")
     (source
      (origin
        (method url-fetch)
@@ -535,7 +535,7 @@ companion extension.  This package provides the prebuilt binary release.")
              "https://github.com/farion1231/cc-switch/releases/download/"
              "v" version "/CC-Switch-v" version "-Linux-x86_64.deb"))
        (sha256
-        (base32 "1ifn3p24k5v0bk04a44brj9mky2lgrb2nj3cnr2hamq529gygkr2"))))
+        (base32 "00884nxzz1is9fwkympd5inz76g70kqhhmcc2g495dq8mv9mfia3"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -830,16 +830,16 @@ It requires a writable @file{/var/lib/apm} directory at runtime; run the
 (define-public agenote
   (package
     (name "agenote")
-    (version "2026-09-22")
+    (version "2026-09-25")
     (source
      (origin
        (method git-fetch)
        (uri (git-reference
              (url "https://github.com/ShineBreaker/agenote")
-             (commit "e136de0fe65e968a49cf04b14845d559c8a5988d")))
+             (commit "08bbcf0ad6c2f4e1685e62e418e0b92c71037652")))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "101g2yhn04j0ghmq4kbd7aky4fa3j2akaa1vb12y35aqsw4gjpxx"))))
+        (base32 "10fyqavlli2y1q9qza74834gwjr9da8c8skn065h5zi8r439dnyr"))))
     (build-system pyproject-build-system)
     (arguments
      (list
@@ -880,7 +880,7 @@ configurable knowledge-base root (@env{KB_ROOT}, default
 (define-public prettier-bin
   (package
     (name "prettier-bin")
-    (version "3.9.8")
+    (version "3.9.9")
     (source
       (origin
         (method url-fetch)
@@ -889,7 +889,7 @@ configurable knowledge-base root (@env{KB_ROOT}, default
               version
               ".tgz"))
         (sha256
-          (base32 "0kx4i97apjw3nh6r94s81aw8x1k9mifpbc2pqg5s9rc4ly81jgn3"))))
+          (base32 "0f5k8lh2rx3kydwdw40d745154iy70wsaf33rirnh4j51k9n5cf3"))))
     (build-system gnu-build-system)
     (arguments
       (list
