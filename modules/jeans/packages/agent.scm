@@ -1492,7 +1492,7 @@ without friction.")
 (define-public zcode-proxy-bin
   (package
     (name "zcode-proxy-bin")
-    (version "4.6.9")
+    (version "4.7.0")
     (source
      (origin
        (method url-fetch)
@@ -1500,7 +1500,7 @@ without friction.")
              "https://github.com/TriDefender/zcode-api/releases/download/"
              "v" version "/zcode-proxy-linux-x64"))
        (sha256
-        (base32 "1jmak0jw1zwj69fmwn91qvfi3malwnpb4akd5xi1gs8nz2kdkfyq"))))
+        (base32 "0b5vzglws8nfxq7zimhinflaylfc5cpcv9dz244in7zl61c885hv"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -1551,7 +1551,7 @@ release and needs the @code{nix-ld} system service to run.")
 (define-public cua-driver-bin
   (package
     (name "cua-driver-bin")
-    (version "0.28.3")
+    (version "0.29.1")
     (source
      (origin
        (method url-fetch)
@@ -1560,7 +1560,7 @@ release and needs the @code{nix-ld} system service to run.")
              "cua-driver-rs-v" version
              "/cua-driver-rs-" version "-linux-x86_64-binary.tar.gz"))
        (sha256
-        (base32 "1kvg9qmcplgkc2352znrbqlghjy6lci6xw6g2fkcqmqygvimdpji"))))
+        (base32 "1w9n7n5pqv29zmlak4jm57jw3q7ans57aqs46wblkr3cgf6wsfng"))))
     (build-system gnu-build-system)
     (arguments
      (list
