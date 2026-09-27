@@ -14,7 +14,8 @@
     "sbcl-tree-sitter-cl",
     "sbcl-frugal-uuid",
     "sbcl-jsonrpc-lem",
-    "sbcl-micros-lem"
+    "sbcl-micros-lem",
+    "agenote"
   ],
   "skip_files": [
     "rust-crates.scm"
@@ -31,7 +32,7 @@
   },
   "notes": {
     "check_pre_release": "这个列表中的包会检查包括pre-release在内的所有版本。注意：emacs-ellsp/ellsp-bin 的 accept-pre-releases? property 已写在包定义里供 guix refresh 使用，此处保留给 Python updater 兜底。inso-bin 的上游 isakvik/inso 只发 prerelease（/releases/latest 恒 404），必须在此列表中才能被 updater 识别。zcode 在此列表中时会额外扫描 z.ai CDN 的灰度先行版（官网版本列表不展示、先发部分平台，如 3.8.1）。cua-driver-bin 的上游 trycua/cua 是 monorepo，所有 plain SemVer 稳定版（如 cua-driver-rs-v0.23.2）都刻意标成 prerelease 以防仓库级 Latest 指针被单个产品抢走，必须在此列表中才能被识别。reasonix-studio-bin 同理：上游 esengine/DeepSeek-Reasonix 把整条 studio-v* 线都标成 prerelease（Latest 指针留给 reasonix 本体的 v* 线），不在此列表中 updater 会在 tag_prefix 过滤时跳过全部 studio-v* release 而误报无法获取最新release信息",
-    "skip_packages": "这个列表中的包会被跳过更新检查。git-credential-keepassxc 当前固定在 0.14.2：0.14.3 的 sysinfo-0.39.1 需要 rustc >= 1.95，Guix 上游尚未打包 rust-1.95，升级会让 build-test 失败；等 Guix 有了 rust-1.95 再用 scripts/check-updates/merge_crate_inputs.py 重做依赖合并并移除此条。webview / sbcl-webview / sbcl-tree-sitter-cl / sbcl-frugal-uuid / sbcl-jsonrpc-lem / sbcl-micros-lem 是 lem-next 的 qlfile.lock pin 集（webview 与 sbcl-webview 共用 lem-project/webview 的 pin commit，tree-sitter-cl 同理），必须与 lem-next 的 pin 同步更新，禁止独立自动更新",
+    "skip_packages": "这个列表中的包会被跳过更新检查。git-credential-keepassxc 当前固定在 0.14.2：0.14.3 的 sysinfo-0.39.1 需要 rustc >= 1.95，Guix 上游尚未打包 rust-1.95，升级会让 build-test 失败；等 Guix 有了 rust-1.95 再用 scripts/check-updates/merge_crate_inputs.py 重做依赖合并并移除此条。webview / sbcl-webview / sbcl-tree-sitter-cl / sbcl-frugal-uuid / sbcl-jsonrpc-lem / sbcl-micros-lem 是 lem-next 的 qlfile.lock pin 集（webview 与 sbcl-webview 共用 lem-project/webview 的 pin commit，tree-sitter-cl 同理），必须与 lem-next 的 pin 同步更新，禁止独立自动更新。agenote 上游打 v 前缀 release tag、由 guix refresh 的 generic-git updater 接管；Python updater 对 commit 为固定 sha 的 git-fetch 包会走「追踪 main HEAD + version 写 commit 日期」路径，把 version 覆盖成日期格式——日期版本在版本比较中恒大于 0.x.y 语义版本，会让 guix refresh 误判「高于已知最新版本」而永久跳过更新（2026-09-26 实测复现），故必须在此列表中让 refresh 独家管理",
     "skip_files": "这个列表中的文件不会被检查或更新。rust-crates.scm 只含 crate-source origin，由 blue import-crate / guix import crate --lockfile 管理，禁止手动编辑",
     "tag_prefix": "当同一个 GitHub repo 有多个 release 系列（如 v* 和 desktop-v*）时，指定每个包跟踪的 tag 前缀。注意：reasonix-bin 的 release-tag-prefix property 已写在包定义里供 guix refresh 使用；reasonix-studio-bin 因资产文件名不含版本号（ReasonixStudio-linux-amd64.deb，refresh 的 URL 重建无法处理），仍由此处 Python 规则管理。inso-bin 自 v0.3.7 起上游改用大写 V 前缀（tag 为 \"V0.3.7\"），Python 兜底同样需要该前缀才能剥离出正确版本号。cua-driver-bin 的上游有 nightly-cua-driver-rs-v*（每日快照）和 cua-driver-rs-v*（plain SemVer 稳定版）两个系列，前缀过滤掉 nightly；guix refresh 的 URL 形状匹配不认该 repo 的 tag/资产命名，包定义里的 upstream-name property 保留但不生效",
     "stale_days": "stale_watch 中的包超此天数（默认 14 天）无手动更新时，CI 发提醒 issue。判定方法：更新时的 git diff 若无此包相关改动，视为无手动更新",

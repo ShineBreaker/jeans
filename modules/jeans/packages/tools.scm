@@ -826,20 +826,27 @@ It requires a writable @file{/var/lib/apm} directory at runtime; run the
 ;;; updater takes over from here).  The @code{jieba} extra (Chinese
 ;;; segmentation for the @code{dream} sub-command) is optional and not
 ;;; packaged here.
+;;;
+;;; agenote is listed in the Python updater's config.json skip_packages:
+;;; for a git-fetch package whose commit is a fixed sha the Python updater
+;;; follows main HEAD and rewrites version as the commit date, which is
+;;; always greater than a 0.x.y tag version and makes guix refresh skip the
+;;; package forever ("高于已知的最新版本" warning).  Version tracking is
+;;; therefore exclusively guix refresh's generic-git updater.
 
 (define-public agenote
   (package
     (name "agenote")
-    (version "2026-09-25")
+    (version "0.2.0.2")
     (source
      (origin
        (method git-fetch)
        (uri (git-reference
              (url "https://github.com/ShineBreaker/agenote")
-             (commit "08bbcf0ad6c2f4e1685e62e418e0b92c71037652")))
+             (commit "v0.2.0.2")))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "10fyqavlli2y1q9qza74834gwjr9da8c8skn065h5zi8r439dnyr"))))
+        (base32 "02labr0fx3h1dfip3dv51rmsf1ichvaz0p4lb6z1bfm36q1nnhl0"))))
     (build-system pyproject-build-system)
     (arguments
      (list

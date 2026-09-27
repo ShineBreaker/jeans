@@ -178,6 +178,11 @@ jobs:
           fi
 
           echo "=== guix refresh: GitHub release + git-fetch 包 ==="
+          # -L 必须是绝对路径：refresh -u 通过 package-field-location 定位并改写
+          # 包源文件，相对 load path 下该定位静默失败（报「源中无 version 字段；
+          # 跳过」且退出码 0），所有包零改写。2026-09-27 前的 CI 即处于此状态
+          # ——dry-run 不经过改写代码所以从不暴露，历来 auto-update 提交实际
+          # 全是 Python updater 的产物。
           # 显式列出归 refresh 管的包（不用 -s module:jeans，避免误伤
           # librewolf-nongnu 等 inherit 包，也避免模块加载敏感问题）。
           # 不交给 refresh 的包：zcode（z.ai CDN 官网 JS 版本列表）、
@@ -188,10 +193,13 @@ jobs:
           # git-credential-keepassxc 也暂不交 refresh：0.14.3 的 sysinfo-0.39.1
           # 需要 rustc >= 1.95，Guix 上游尚未打包 rust-1.95，升级后会卡死
           # build-test；先固定 0.14.2，等 Guix 有了 rust-1.95 再恢复。
-          guix refresh -L modules -L /tmp/nonguix -u \
+          # agenote 上游打 v 前缀 release tag，由 generic-git updater 独家
+          # 管理（已在 config.json 的 skip_packages 排除 Python updater，
+          # 避免日期版本覆盖导致 refresh 永久误判无更新）。
+          guix refresh -L "$GITHUB_WORKSPACE/modules" -L /tmp/nonguix -u \
             crush-bin opencode-desktop-bin herdr-bin \
             codewhale-bin reasonix-bin github-copilot \
-            ellsp-bin eask-bin neomacs-bin rayburst-bin cc-switch-bin \
+            ellsp-bin eask-bin neomacs-bin rayburst-bin cc-switch-bin agenote \
             font-maple-font-nf-cn font-nerd-symbols font-nerd-font-iosevka \
             lr2oraja-endlessdream-bin osu-lazer-bin inso-bin zen-browser-bin \
             emacs-ghostel emacs-msgu emacs-ellsp \
