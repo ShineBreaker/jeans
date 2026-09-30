@@ -250,6 +250,7 @@ guile 能 `use-modules` 加载不代表语法正确（可能命中 `.go` cache�
 
 - `patchelf` 用于设置 ELF 解释器（`ld-linux`）和 RPATH（指向 Guix store 路径）。
 - 先探测 linkage 再动手：`patchelf --print-interpreter` 非零退出（找不到 `.interp` 段）说明是静态二进制（static-pie），直接复制安装即可，不做任何 interpreter/RPATH 处理。`agent.scm` 的 crush 在构建时探测、只在 dynamic 时 `--set-interpreter`；CodeWhale 已知 fully static，直接安装、连 patchelf 都不进 native-inputs。
+- 探测结论只对该次 `--set-*` 有效，**每个设置型操作前要独立确认对象是动态 ELF**：reasonix-studio 2.22.0 的 Go sidecar（原为动态、注释写「libc only」）转静态后，旧代码「`.so` 跳过 interpreter + 无条件 `--set-rpath`」在 `--set-rpath` 处炸出 `cannot find section '.dynamic'`（issue #47）。修法是 phase 内以 `--print-interpreter` 退出码存 `dynamic?`，静态文件 interpreter 和 rpath 全跳过；`--set-rpath` 对静态 ELF 同样必炸，别只防 `--set-interpreter`。**上游升级可能翻转单个二进制的链接方式**——deb 里的 sidecar/子二进制升级后逐个 `file` 检查，别信包注释。
 - 设置 `#:tests? #f`（无源码 → 无测试）。
 - 设置 `#:validate-runpath? #f`（预编译二进制无法通过 Guix 的 runpath 校验）。
 - 设置 `#:strip-binaries? #f`（预编译二进制不支持 Guix 的 strip，会导致损坏）。

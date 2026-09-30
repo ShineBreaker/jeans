@@ -1143,7 +1143,8 @@ and ships as a single static binary with no runtime dependencies.")
 ;;; is replaced by this package.  The .deb ships an Electron tree:
 ;;;   - opt/Reasonix Studio/reasonix-studio-electron  (main Electron binary)
 ;;;   - opt/Reasonix Studio/resources/bin/reasonix-studio-host
-;;;     (Go sidecar serving the loopback host, libc only)
+;;;     (Go sidecar serving the loopback host; statically linked since
+;;;     2.22.0, previously dynamically linked against libc)
 ;;;   - opt/Reasonix Studio/resources/app.asar  (frontend)
 ;;;
 ;;; The polkit update helper (/usr/lib/reasonix-studio/...) only serves
@@ -1153,7 +1154,7 @@ and ships as a single static binary with no runtime dependencies.")
 (define-public reasonix-studio-bin
   (package
     (name "reasonix-studio-bin")
-    (version "2.20.0")
+    (version "2.22.0")
     (source
      (origin
        (method url-fetch)
@@ -1161,7 +1162,7 @@ and ships as a single static binary with no runtime dependencies.")
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
              "studio-v" version "/ReasonixStudio-linux-amd64.deb"))
        (sha256
-        (base32 "0bis1z7nsc9k1k077ahhawqasqv32capx3sjmr2ic6ff15lfgikc"))))
+        (base32 "187r062rsgk7gkgkiydxzkxmahr4qm0m3xja2k4f1i0sjl1dxx06"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -1200,11 +1201,18 @@ and ships as a single static binary with no runtime dependencies.")
                                          inputs))
                              ":")))
                 (define (patch-elf file)
-                  (format #t "Patching ~a ..." file)
-                  (unless (string-contains file ".so")
-                    (invoke "patchelf" "--set-interpreter" ld.so file))
-                  (invoke "patchelf" "--set-rpath" rpath file)
-                  (display " done\n"))
+                  (format #t "Patching ~a ... " file)
+                  ;; Statically linked binaries (e.g. the Go sidecar since
+                  ;; 2.22.0) have no .interp/.dynamic section; probe first,
+                  ;; patch only what is dynamic.
+                  (let ((dynamic? (zero? (system* "patchelf"
+                                                  "--print-interpreter" file))))
+                    (when dynamic?
+                      (invoke "patchelf" "--set-interpreter" ld.so file))
+                    (when (or dynamic?
+                              (zero? (system* "patchelf" "--print-rpath" file)))
+                      (invoke "patchelf" "--set-rpath" rpath file)))
+                  (display "done\n"))
                 (for-each patch-elf
                           (append (find-files (string-append #$output
                                                              "/lib/reasonix-studio")
