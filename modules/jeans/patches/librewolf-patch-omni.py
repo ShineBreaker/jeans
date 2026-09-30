@@ -16,11 +16,13 @@ with tempfile.TemporaryDirectory() as td:
         zin.extractall(root)
 
     # Patch 1: Fix MOZ_APP_VERSION in AppConstants
-    # 版本号段数不固定（149.0 / 152.0.4），字符类 [0-9.]+ 兼容任意段数
+    # 上游 156 起 MOZ_APP_VERSION 已不带发行版后缀，仅 MOZ_APP_VERSION_DISPLAY
+    # 保留（如 "156.0.1-1"）；152 时代两行都带后缀。正则对两种格式都工作：
+    # 有后缀则剥离，无后缀原样保留。
     app = root / "modules" / "AppConstants.sys.mjs"
     text = app.read_text()
     text, n_ver = re.subn(
-        r'MOZ_APP_VERSION(_DISPLAY)?: "([0-9.]+)-[0-9]+"',
+        r'MOZ_APP_VERSION(_DISPLAY)?: "([0-9.]+)(?:-[0-9]+)?"',
         r'MOZ_APP_VERSION\1: "\2"',
         text,
     )
@@ -29,6 +31,8 @@ with tempfile.TemporaryDirectory() as td:
             f"ERROR: only {n_ver}/2 MOZ_APP_VERSION patterns found in AppConstants "
             "(upstream changed?)"
         )
+    if re.search(r'MOZ_APP_VERSION(?:_DISPLAY)?: "[0-9.]+-[0-9]+"', text):
+        sys.exit("ERROR: MOZ_APP_VERSION still carries a release suffix after patching")
     app.write_text(text)
 
     # Patch 2: Skip compat check for locale addons in XPIDatabase
