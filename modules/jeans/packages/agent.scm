@@ -1097,7 +1097,7 @@ telemetry or forced log-ins.")
 (define-public reasonix-bin
   (package
     (name "reasonix-bin")
-    (version "1.39.5")
+    (version "1.39.6")
     (source
      (origin
        (method url-fetch)
@@ -1105,7 +1105,7 @@ telemetry or forced log-ins.")
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
              "v" version "/reasonix-linux-amd64.tar.gz"))
        (sha256
-        (base32 "0816fdr3p0szak9dybp5jr446jkr6bj2p503z3nc0im1i84bbiz3"))))
+        (base32 "1kd2l17i1k5bx8x9ymib0zhch9r34cw4x8y5rynk3iyv1zfb50yq"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -1154,7 +1154,7 @@ and ships as a single static binary with no runtime dependencies.")
 (define-public reasonix-studio-bin
   (package
     (name "reasonix-studio-bin")
-    (version "2.23.0")
+    (version "2.24.0")
     (source
      (origin
        (method url-fetch)
@@ -1162,7 +1162,7 @@ and ships as a single static binary with no runtime dependencies.")
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
              "studio-v" version "/ReasonixStudio-linux-amd64.deb"))
        (sha256
-        (base32 "03n3napzd5gdfddccb3znmlx4v10zis3vs4xl9nrb3vq6xchgjr1"))))
+        (base32 "04y8d26wq1p57sj41rf7fdi4rizd2sflsrnmyyi5fbpbhqfa50s7"))))
     (build-system gnu-build-system)
     (arguments
      (list
