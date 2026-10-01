@@ -831,8 +831,8 @@ x86_64 release.")
 ;;; presence on PATH, the lookup itself stays dynamic.
 
 (define-public emacs-agenote
-  (let ((commit "ef392001936b62f881f6eb7557ded68f32214bd2")
-        (revision "1"))
+  (let ((commit "f1bb33001decaef6669cc76f3a1983bb241f9be5")
+        (revision "2"))
     (package
       (name "emacs-agenote")
       (version (git-version "0" revision commit))
@@ -844,7 +844,7 @@ x86_64 release.")
                (commit commit)))
          (file-name (git-file-name name version))
          (sha256
-          (base32 "1dzm869lm6xf5v8fmrkc3yfwdxw118fjgw63brlg9xnpnlikhccd"))))
+          (base32 "0pnx0g29zq5y8sdphk6f9ai3mzi83y83cmymbyvy2vlcjl7iaal9"))))
       (build-system emacs-build-system)
       (arguments
        (list #:tests? #f))
