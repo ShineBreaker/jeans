@@ -190,6 +190,12 @@ jobs:
           # master）、jdtls-bin（Eclipse 目录页 + 日期戳）、
           # librewolf-nongnu（inherit）、reasonix-desktop-bin（desktop-v
           # 前缀 URL 重建失败）——这些交给 Python updater 的特殊源处理器。
+          # zen-browser-bin 不交 refresh：Guix version> 把字母后缀段排在
+          # 数字段之后（1.22b > 1.22.3b），refresh 每次都会把版本降回 1.22b。
+          # ellsp-bin / emacs-ellsp 不交 refresh：0.2.0 是 pre-release，
+          # 只有 Python updater（config.json check_pre_release）会考虑它，
+          # refresh 只认 stable release，会反复降级回 0.1.0（2026-10-01
+          # 本地更新流程实证，二者均已回滚）。
           # git-credential-keepassxc 也暂不交 refresh：0.14.3 的 sysinfo-0.39.1
           # 需要 rustc >= 1.95，Guix 上游尚未打包 rust-1.95，升级后会卡死
           # build-test；先固定 0.14.2，等 Guix 有了 rust-1.95 再恢复。
@@ -199,10 +205,10 @@ jobs:
           guix refresh -L "$GITHUB_WORKSPACE/modules" -L /tmp/nonguix -u \
             crush-bin opencode-desktop-bin herdr-bin \
             codewhale-bin reasonix-bin github-copilot \
-            ellsp-bin eask-bin neomacs-bin rayburst-bin cc-switch-bin agenote \
+            eask-bin neomacs-bin rayburst-bin cc-switch-bin agenote \
             font-maple-font-nf-cn font-nerd-symbols font-nerd-font-iosevka \
-            lr2oraja-endlessdream-bin osu-lazer-bin inso-bin zen-browser-bin \
-            emacs-ghostel emacs-msgu emacs-ellsp \
+            lr2oraja-endlessdream-bin osu-lazer-bin inso-bin \
+            emacs-ghostel emacs-msgu \
             colloid-gtk-theme vimix-gtk-themes vimix-kvantum-themes \
             nix-ld opentabletdriver-udev-rules waypaper \
             2>&1 | tee /tmp/refresh.log
