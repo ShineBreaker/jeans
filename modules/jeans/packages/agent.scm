@@ -1310,6 +1310,218 @@ for multiple LLM providers.")
     (license license:expat)
     (supported-systems '("x86_64-linux"))))
 
+;;; ThinkRail: JetBrains' AI coding environment ("Vibe code with pi"),
+;;; shipped as an Electrobun desktop application (Apache-2.0).
+;;;
+;;; The release publishes the same tree twice: thinkrail-desktop-linux-x64
+;;; .tar.gz wraps it in a Zig self-extractor that installs into
+;;; ~/.local/share, while the plain "stable" update bundle
+;;; (stable-linux-x64-ThinkRail-<version>.tar.zst, covered by the release's
+;;; SHA256SUMS) is the bare application directory.  This package uses the
+;;; latter (file lists verified identical):
+;;;   bin/launcher              native GTK/WebKit host entry point (Zig)
+;;;   bin/bun                   Bun runtime that executes Resources/main.js
+;;;   bin/libElectrobunCore.so  core library, dlopen'd by main.js
+;;;   bin/libNativeWrapper.so   GTK/WebKit window and tray layer
+;;;   Resources/                app code (bun/index.js), views, skills, ...
+;;;
+;;; Packaging notes:
+;;;  - launcher resolves Resources/ and bin/bun from its own path
+;;;    (/proc/self/exe) and chdirs into bin/ before spawning bun, so the
+;;;    upstream bin/ + Resources/ sibling layout is preserved under
+;;;    lib/thinkrail-bin/ (an ld-linux wrapper would break that lookup).
+;;;    launcher gets the Guix interpreter plus an RPATH; bun only gets the
+;;;    interpreter, because patchelf --set-rpath rewrites the dynamic
+;;;    section and breaks the file-offset lookups into Bun's embedded blob
+;;;    (SIGSEGV, reproduced with bun 1.4.0).  bun and the dlopen'd
+;;;    libraries resolve their dependencies via the wrapper's
+;;;    LD_LIBRARY_PATH, which every child process inherits.
+;;;  - libNativeWrapper.so needs libayatana-appindicator3.so.1, which Guix
+;;;    does not ship.  Guix's libappindicator exports the same unversioned
+;;;    app_indicator_* symbols (all five referenced ones included), so the
+;;;    NEEDED entry is repointed with patchelf.
+;;;  - The bundled self-updater and uninstaller (bin/bspatch, bin/zig-zstd,
+;;;    Resources/uninstall) are removed: upgrades are owned by the channel.
+;;;    The upstream ThinkRail.desktop is dropped too: its Exec=launcher
+;;;    would resolve wrongly here, and this package installs its own file.
+
+(define-public thinkrail-bin
+  (package
+    (name "thinkrail-bin")
+    (version "0.1.5")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://github.com/JetBrains/thinkrail/releases/download/"
+             "v" version "/stable-linux-x64-ThinkRail-" version ".tar.zst"))
+       (sha256
+        (base32 "07lrwprhrmwgv6dydjbx4cipqavg2w1h07kjsa096b1zyrp8vvd4"))))
+    (build-system gnu-build-system)
+    (arguments
+     (list
+      #:tests? #f
+      #:validate-runpath? #f
+      #:strip-binaries? #f
+      #:modules '((guix build gnu-build-system)
+                  (guix build utils))
+      #:phases
+      #~(modify-phases %standard-phases
+          (delete 'configure)
+          (delete 'build)
+          (replace 'unpack
+            (lambda _
+              (invoke "tar" "--zstd" "-xf" #$source)))
+          (replace 'install
+            (lambda _
+              (let* ((out #$output)
+                     (libdir (string-append out "/lib/thinkrail-bin"))
+                     (bindir (string-append libdir "/bin")))
+                (copy-recursively "ThinkRail" libdir)
+                ;; Upgrades are owned by the channel, not the app, and the
+                ;; upstream desktop file points at a bare "launcher" name.
+                (for-each delete-file
+                          (list (string-append bindir "/bspatch")
+                                (string-append bindir "/zig-zstd")
+                                (string-append libdir "/Resources/uninstall")
+                                (string-append libdir "/ThinkRail.desktop")))
+                ;; wrap-program rewrites this symlink into a wrapper around
+                ;; the real launcher; /proc/self/exe then still resolves to
+                ;; the launcher itself.
+                (mkdir-p (string-append out "/bin"))
+                (symlink (string-append bindir "/launcher")
+                         (string-append out "/bin/thinkrail")))))
+          (add-after 'install 'patch-elf
+            (lambda* (#:key inputs #:allow-other-keys)
+              (let* ((out #$output)
+                     (libdir (string-append out "/lib/thinkrail-bin"))
+                     (bindir (string-append libdir "/bin"))
+                     (ld.so (string-append #$(this-package-input "glibc")
+                                           #$(glibc-dynamic-linker)))
+                     ;; Flat RPATH of the runtime inputs only: taking every
+                     ;; #:inputs entry would pull build tools (and even the
+                     ;; source tarball) into the package's references.
+                     (rpath (string-join
+                             (cons* "$ORIGIN" bindir
+                                    (map (lambda (name)
+                                           (string-append
+                                            (assoc-ref inputs name) "/lib"))
+                                         '("cairo" "fontconfig-minimal"
+                                           "gcc:lib" "gdk-pixbuf" "glib"
+                                           "glibc" "gtk+" "libappindicator"
+                                           "libsoup" "mesa"
+                                           "webkitgtk-for-gtk3")))
+                             ":")))
+                ;; launcher is an ordinary Zig executable: interpreter + RPATH.
+                (invoke "patchelf" "--set-interpreter" ld.so
+                        "--set-rpath" rpath (string-append bindir "/launcher"))
+                ;; bun keeps its dynamic section untouched: patchelf
+                ;; --set-rpath rewrites it and breaks the file-offset
+                ;; lookups into Bun's embedded blob (SIGSEGV; verified
+                ;; against bun 1.4.0, while the interpreter alone is safe).
+                (invoke "patchelf" "--set-interpreter" ld.so
+                        (string-append bindir "/bun"))
+                ;; libNativeWrapper.so's tray layer links against the
+                ;; ayatana fork's soname, which Guix does not ship.  Guix's
+                ;; libappindicator exports the same five unversioned
+                ;; app_indicator_* symbols; the shorter replacement name is
+                ;; rewritten in place.  The remaining shared libraries
+                ;; (libElectrobunCore, libasar, librust_pty) are left
+                ;; untouched and resolve everything via LD_LIBRARY_PATH.
+                (invoke "patchelf" "--replace-needed"
+                        "libayatana-appindicator3.so.1"
+                        "libappindicator3.so.1"
+                        (string-append bindir "/libNativeWrapper.so")))))
+          (add-after 'patch-elf 'install-desktop
+            (lambda _
+              (let* ((out #$output)
+                     (apps (string-append out "/share/applications")))
+                (mkdir-p apps)
+                (make-desktop-entry-file
+                 (string-append apps "/thinkrail-bin.desktop")
+                 #:name "ThinkRail"
+                 #:comment #$(package-synopsis this-package)
+                 #:exec (string-append out "/bin/thinkrail")
+                 #:icon "thinkrail"
+                 #:categories '("Development" "IDE")
+                 #:startup-w-m-class "ThinkRail"))))
+          (add-after 'install-desktop 'install-icons
+            (lambda _
+              (let* ((src (string-append #$output "/lib/thinkrail-bin"
+                                         "/Resources/appIcon.png"))
+                     (dst (string-append #$output "/share/icons/hicolor"
+                                         "/512x512/apps/thinkrail.png")))
+                (mkdir-p (dirname dst))
+                (copy-file src dst))))
+          (add-after 'install-icons 'wrap-program
+            (lambda* (#:key inputs outputs #:allow-other-keys)
+              (let* ((out (assoc-ref outputs "out"))
+                     (libdir (string-append out "/lib/thinkrail-bin"))
+                     (fontconfig (assoc-ref inputs "fontconfig-minimal"))
+                     (runtime-dirs
+                      (map (lambda (name) (assoc-ref inputs name))
+                           '("cairo" "fontconfig-minimal" "gcc:lib"
+                             "gdk-pixbuf" "glib" "glibc" "gtk+"
+                             "libappindicator" "libsoup" "mesa"
+                             "webkitgtk-for-gtk3")))
+                     (lib-paths (map (lambda (dir)
+                                       (string-append dir "/lib"))
+                                     runtime-dirs))
+                     (share-paths (map (lambda (dir)
+                                         (string-append dir "/share"))
+                                       runtime-dirs)))
+                (wrap-program (string-append out "/bin/thinkrail")
+                  `("LD_LIBRARY_PATH" prefix
+                    (,(string-append libdir "/bin") ,libdir ,@lib-paths))
+                  ;; Keep the system value (prefix semantics): overwriting
+                  ;; XDG_DATA_DIRS breaks gdk-pixbuf loader/mime resolution.
+                  `("XDG_DATA_DIRS" prefix
+                    (,(string-append out "/share") ,@share-paths))
+                  `("GI_TYPELIB_PATH" prefix
+                    (,(string-append (assoc-ref inputs "glib")
+                                     "/lib/girepository-1.0")
+                     ,(string-append (assoc-ref inputs "gtk+")
+                                     "/lib/girepository-1.0")
+                     ,(string-append
+                       (assoc-ref inputs "webkitgtk-for-gtk3")
+                       "/lib/girepository-1.0")))
+                  `("GIO_EXTRA_MODULES" prefix
+                    (,(string-append (assoc-ref inputs "glib")
+                                     "/lib/gio/modules")))
+                  `("FONTCONFIG_FILE" =
+                    (,(string-append fontconfig "/etc/fonts/fonts.conf"))))))))))
+    (native-inputs (list patchelf tar zstd))
+    (inputs `(("bash-minimal" ,bash-minimal)
+              ("cairo" ,cairo)
+              ("fontconfig-minimal" ,fontconfig)
+              ("gcc:lib" ,gcc "lib")
+              ("gdk-pixbuf" ,gdk-pixbuf)
+              ("glib" ,glib)
+              ("glibc" ,glibc)
+              ("gtk+" ,gtk+)
+              ;; libNativeWrapper.so's tray layer links against the
+              ;; ayatana fork's soname; repointed to this implementation.
+              ("libappindicator" ,libappindicator)
+              ("libsoup" ,libsoup)
+              ("mesa" ,mesa)
+              ("webkitgtk-for-gtk3" ,webkitgtk-for-gtk3)))
+    ;; The github updater matches the release asset URL against
+    ;; "<name>-<version>"-style patterns, so upstream-name must be the
+    ;; asset filename prefix that precedes the version: the source asset is
+    ;; stable-linux-x64-ThinkRail-<version>.tar.zst.  With "thinkrail" here,
+    ;; guix refresh reports "no updater" and the package never gets updates.
+    (properties `((upstream-name . "stable-linux-x64-ThinkRail")))
+    (home-page "https://thinkrail.ai/")
+    (synopsis "JetBrains' lightweight AI coding IDE with the pi agent")
+    (description
+     "ThinkRail is a desktop coding environment from JetBrains that pairs a
+lightweight IDE with the pi coding agent.  The agent can read code, edit
+files, run commands, and review its own results, while projects stay in
+regular local git repositories and connect to the LLM providers you
+configure.  This package provides the prebuilt desktop release.")
+    (license license:asl2.0)
+    (supported-systems '("x86_64-linux"))))
+
 (define-public zcode
   (package
     (name "zcode")
