@@ -944,8 +944,8 @@ install it on demand when it is missing.")
 ;;; replicated here in batch mode, which is all it ever needed.
 
 (define-public emacs-minibuffer-frame
-  (let ((commit "f8205be3bbae4199a618f06a753cc91a5c378e01")
-        (revision "0"))
+  (let ((commit "48d84b60773d194d3f896844f52c6cce7c325971")
+        (revision "1"))
     (package
       (name "emacs-minibuffer-frame")
       (version (git-version "1.0.0" revision commit))
@@ -957,7 +957,7 @@ install it on demand when it is missing.")
                (commit commit)))
          (file-name (git-file-name name version))
          (sha256
-          (base32 "1sh73jg20dv655sxdv329cxxi548cj6afdw72zl3wn71x948sk5n"))))
+          (base32 "0rfphkcm8h6avpkzg4338xj2bb4py6xppfj1i2450bilyabzidcr"))))
       (build-system emacs-build-system)
       (arguments
        (list #:test-command

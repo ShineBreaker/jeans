@@ -489,7 +489,7 @@ This package provides the prebuilt binary release.")
 (define-public github-copilot
   (package
     (name "github-copilot")
-    (version "1.1.25")
+    (version "1.1.26")
     (source
      (origin
        (method url-fetch)
@@ -497,7 +497,7 @@ This package provides the prebuilt binary release.")
              "https://github.com/github/app/releases/download/"
              "v" version "/GitHub-Copilot-linux-x64.deb"))
        (sha256
-        (base32 "1nlh7fii4yqqgzbhkjb798w95i7m7zsccj12zv6wwzzffp0vf7gm"))))
+        (base32 "0giimqndm7gfgh7m0zpzw3vk1w5ysc4ndf9wxx4yyd66rc67b2fb"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -892,7 +892,7 @@ coding experience with context awareness.")
 (define-public paseo-bin
   (package
     (name "paseo-bin")
-    (version "0.10.2")
+    (version "0.10.3")
     (source
      (origin
        (method url-fetch)
@@ -900,7 +900,7 @@ coding experience with context awareness.")
              "https://github.com/getpaseo/paseo/releases/download/"
              "v" version "/Paseo-" version "-amd64.deb"))
        (sha256
-        (base32 "1b0nqxi88h6bjzx9ccsvpv3hh03h6n2pmavww7531c29api71v6q"))))
+        (base32 "00hphr88kkppppwy9x2af54jfvmjzyww85vkqlr3a92mdm6afksa"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -1097,7 +1097,7 @@ telemetry or forced log-ins.")
 (define-public reasonix-bin
   (package
     (name "reasonix-bin")
-    (version "1.39.6")
+    (version "1.39.7")
     (source
      (origin
        (method url-fetch)
@@ -1105,7 +1105,7 @@ telemetry or forced log-ins.")
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
              "v" version "/reasonix-linux-amd64.tar.gz"))
        (sha256
-        (base32 "1kd2l17i1k5bx8x9ymib0zhch9r34cw4x8y5rynk3iyv1zfb50yq"))))
+        (base32 "0mpdq075yvzb6fq3bm6bwrqiq6313rix7mapa0859mzqvbnjc49c"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -1154,7 +1154,7 @@ and ships as a single static binary with no runtime dependencies.")
 (define-public reasonix-studio-bin
   (package
     (name "reasonix-studio-bin")
-    (version "2.24.0")
+    (version "2.26.0")
     (source
      (origin
        (method url-fetch)
@@ -1162,7 +1162,7 @@ and ships as a single static binary with no runtime dependencies.")
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
              "studio-v" version "/ReasonixStudio-linux-amd64.deb"))
        (sha256
-        (base32 "04y8d26wq1p57sj41rf7fdi4rizd2sflsrnmyyi5fbpbhqfa50s7"))))
+        (base32 "18nymcnkr8cwspckngw39iy2qp2z8a69ragamcjgh8q8mc5p7szm"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -1712,7 +1712,7 @@ without friction.")
 (define-public zcode-proxy-bin
   (package
     (name "zcode-proxy-bin")
-    (version "4.7.5")
+    (version "4.7.6")
     (source
      (origin
        (method url-fetch)
@@ -1720,7 +1720,7 @@ without friction.")
              "https://github.com/TriDefender/zcode-api/releases/download/"
              "v" version "/zcode-proxy-linux-x64"))
        (sha256
-        (base32 "13c87sa985csm1qaljj6ql4di7vpn5mfpqk5305xj85yq63lkyx4"))))
+        (base32 "0pw5cxpn90wwq2j1vzm99bcp4civimmbsqfchf4h862cv06h7mkm"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -1771,7 +1771,7 @@ release and needs the @code{nix-ld} system service to run.")
 (define-public cua-driver-bin
   (package
     (name "cua-driver-bin")
-    (version "0.31.0")
+    (version "0.33.0")
     (source
      (origin
        (method url-fetch)
@@ -1780,7 +1780,7 @@ release and needs the @code{nix-ld} system service to run.")
              "cua-driver-rs-v" version
              "/cua-driver-rs-" version "-linux-x86_64-binary.tar.gz"))
        (sha256
-        (base32 "1waz51f3p7r5mf7l2p0b83g29rzq0jd27kz0i074290gmlkx1msr"))))
+        (base32 "1rci9qh5lwjr0ilpxb54cabsagyk09613h2hf04qwcr0k6ynjs0n"))))
     (build-system gnu-build-system)
     (arguments
      (list
