@@ -821,37 +821,45 @@ It requires a writable @file{/var/lib/apm} directory at runtime; run the
 ;;;
 ;;; A pure-stdlib Python CLI (hatchling build backend) that manages a shared
 ;;; knowledge base of experience cards, memory, curation and workflow
-;;; distillation across multiple AI coding agents.  Upstream publishes
-;;; v-prefixed git tags; this pins the latest release tag (the generic-git
-;;; updater takes over from here).  The @code{jieba} extra (Chinese
-;;; segmentation for the @code{dream} sub-command) is optional and not
-;;; packaged here.
+;;; distillation across multiple AI coding agents.  The @code{jieba} extra
+;;; (Chinese segmentation for the @code{dream} sub-command) is optional and
+;;; not packaged here.
 ;;;
-;;; agenote is listed in the Python updater's config.json skip_packages:
-;;; for a git-fetch package whose commit is a fixed sha the Python updater
-;;; follows main HEAD and rewrites version as the commit date, which is
-;;; always greater than a 0.x.y tag version and makes guix refresh skip the
-;;; package forever ("高于已知的最新版本" warning).  Version tracking is
-;;; therefore exclusively guix refresh's generic-git updater.
+;;; Part of the ShineBreaker/agenote monorepo (ADR 0005): the CLI source sits
+;;; in packages/agenote/ and releases are tagged per component
+;;; (agenote-vX.Y.Z), so the build chdirs into that sub-directory.  Version
+;;; tracking is the Python updater, which reads the release-tag-prefix
+;;; property below (stripping the ^ anchor) and follows the agenote-v* series
+;;; only.  The package is kept out of the CI guix refresh list: guix's GitHub
+;;; updater takes precedence over generic-git and ignores release-tag-prefix,
+;;; so it misreads sibling component tags (agenote-zcode-v0.1.0 became
+;;; "zcode-v0.1.0" in a 2026-10-03 check).
 
 (define-public agenote
   (package
     (name "agenote")
-    (version "0.2.0.2")
+    (version "0.2.0.3")
     (source
      (origin
        (method git-fetch)
        (uri (git-reference
              (url "https://github.com/ShineBreaker/agenote")
-             (commit "v0.2.0.2")))
+             (commit (string-append "agenote-v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "02labr0fx3h1dfip3dv51rmsf1ichvaz0p4lb6z1bfm36q1nnhl0"))))
+        (base32 "0yfhcr1xzs2v8qrcniq2rymfyy6gldxgbjlqsrvrq1a5rfznrc0q"))))
     (build-system pyproject-build-system)
     (arguments
      (list
-      ;; No upstream test suite.
-      #:tests? #f))
+      ;; The upstream pytest suite does not survive the Guix build sandbox:
+      ;; 2 of 484 tests fail there (the bash-completion runtime probe in
+      ;; test_completions_derived.py and the bare-word search check in
+      ;; test_noise_and_fingerprint.py) while passing in a normal user
+      ;; environment.
+      #:tests? #f
+      #:phases #~(modify-phases %standard-phases
+                   (add-after 'unpack 'chdir-package
+                     (lambda _ (chdir "packages/agenote"))))))
     (native-inputs (list python-hatchling))
     ;; jieba (Chinese segmentation) is a hard runtime dependency since
     ;; 0.1.2: the @code{dream} sub-command imports it for real word
@@ -873,6 +881,7 @@ shim for hook extensions) and @code{orgfmt} (generic Org-mode
 formatter).  Card data and runtime artefacts are written to a
 configurable knowledge-base root (@env{KB_ROOT}, default
 @file{~/Documents/Org}), not into the package itself.")
+    (properties `((release-tag-prefix . "^agenote-v")))
     (license license:expat)))
 
 ;;; Prettier: opinionated code formatter (MIT).  Upstream publishes no

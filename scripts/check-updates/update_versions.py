@@ -1855,9 +1855,13 @@ def main():
                     if not latest_release:
                         print(f"     ℹ️  无 release，尝试获取最新 tag...")
                         try:
+                            # tag_prefix 一并下传：仓库有多个 tag 系列时
+                            # （如 monorepo 的 <component>-v*），不过滤会
+                            # 抓到兄弟组件的 tag 并解析出错误版本号。
                             latest_release = with_retry(
                                 get_latest_github_tag,
                                 github_repo,
+                                pkg_tag_prefix,
                                 max_retries=2,
                                 base_delay=5,
                             )

@@ -199,13 +199,17 @@ jobs:
           # git-credential-keepassxc 也暂不交 refresh：0.14.3 的 sysinfo-0.39.1
           # 需要 rustc >= 1.95，Guix 上游尚未打包 rust-1.95，升级后会卡死
           # build-test；先固定 0.14.2，等 Guix 有了 rust-1.95 再恢复。
-          # agenote 上游打 v 前缀 release tag，由 generic-git updater 独家
-          # 管理（已在 config.json 的 skip_packages 排除 Python updater，
-          # 避免日期版本覆盖导致 refresh 永久误判无更新）。
+          # agenote / emacs-agenote 不交 refresh：上游合仓为 monorepo 后按
+          # <component>-v<version> 逐组件发 tag，而 guix 的 GitHub updater
+          # 优先级高于 generic-git 且忽略 release-tag-prefix，会把兄弟组件
+          # 的 tag 误读成版本（agenote-zcode-v0.1.0 被解析成 zcode-v0.1.0，
+          # 2026-10-03 实测）。二者交给 Python updater：由其读取包定义的
+          # release-tag-prefix property（剥 ^ 锚点）过滤 agenote-v* /
+          # agenote-el-v* 系列。
           guix refresh -L "$GITHUB_WORKSPACE/modules" -L /tmp/nonguix -u \
             crush-bin opencode-desktop-bin herdr-bin \
             codewhale-bin reasonix-bin github-copilot \
-            eask-bin neomacs-bin rayburst-bin cc-switch-bin agenote \
+            eask-bin neomacs-bin rayburst-bin cc-switch-bin \
             font-maple-font-nf-cn font-nerd-symbols font-nerd-font-iosevka \
             lr2oraja-endlessdream-bin osu-lazer-bin inso-bin \
             emacs-ghostel emacs-msgu \
