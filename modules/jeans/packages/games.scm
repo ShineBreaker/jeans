@@ -275,7 +275,7 @@ fonts, IR jars, and other assets at runtime.  The game requires OpenGL
 (define-public osu-lazer-bin
   (package
     (name "osu-lazer-bin")
-    (version "2026.921.0-lazer")
+    (version "2026.1005.0-lazer")
     (source
       (origin
         (method url-fetch)
@@ -284,7 +284,7 @@ fonts, IR jars, and other assets at runtime.  The game requires OpenGL
                          version
                          "/osu.AppImage"))
         (sha256
-          (base32 "0zgwll27qfycn7skchzfhkxjxk0a5yyim2gdvfarq001nmir9vfw"))))
+          (base32 "0bns13jzhfbn80hypqbcpmvw2a0m9g0y4h6axsdk7a3kagk0hh98"))))
     (build-system copy-build-system)
     (arguments
      (list #:tests? #f
