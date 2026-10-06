@@ -17,6 +17,7 @@
 | `cua-driver-bin`       | Cross-platform computer-use automation driver                  |
 | `github-copilot`       | Agent-native GitHub Copilot desktop application                |
 | `herdr-bin`            | Terminal workspace manager for AI coding agents                |
+| `magpie-bin`           | Menu-bar hub that routes AI coding agents to any model         |
 | `minimax-code-bin`     | Open-source coding agent for your terminal, powered by MiniMax |
 | `opencode-desktop-bin` | AI coding agent desktop application                            |
 | `paseo-bin`            | Self-hosted desktop client for orchestrating coding agents     |

@@ -1519,3 +1519,110 @@ so the bundled self-updater should not be used.")
                   (release-tag-prefix . "^cua-driver-rs-v")))
     (license license:expat)
     (supported-systems '("x86_64-linux"))))
+
+;;; Magpie: menu-bar hub that routes AI coding agents to any model
+;;; (yetone/magpie, MIT).
+;;;
+;;; The Linux release is a single dynamically-linked Go ELF built with
+;;; Wails (GTK3 + webkit2gtk-4.1, same stack as Tauri).  All web assets
+;;; are embedded in the binary (Go embed) and no sidecar files ship in
+;;; the release.
+;;;
+;;; patchelf must not touch this ELF: --set-interpreter/--set-rpath
+;;; rewrite the program headers and leave the .note/.dynsym sections
+;;; outside any PT_LOAD, after which the dynamic loader segfaults in
+;;; dl_main before main() runs (gdb: "Loadable section outside of ELF
+;;; segments"; the unpatched binary runs fine).  Same category as the
+;;; bun --compile lesson — instead of patching, the unmodified ELF is
+;;; installed under its upstream name in libexec/ and launched through
+;;; the Guix ld-linux wrapper with --argv0 and --library-path (the
+;;; github-copilot pattern).
+;;;
+;;; NEEDED at 0.1.1084 (re-check with `patchelf --print-needed` on
+;;; upgrades; Go rebuilds can add or drop entries): libgtk-3, libgdk-3,
+;;; libgdk_pixbuf-2.0, libgio-2.0, libgobject-2.0, libglib-2.0, libX11,
+;;; libwebkit2gtk-4.1, libsoup-3.0, libjavascriptcoregtk-4.1, libc.
+;;;
+;;; The Wails self-updater (wails:updater:* IPC) is runtime-only —
+;;; there is no package-type file to remove — and upgrades are owned by
+;;; the channel.  Plugins and sign-in state live under the user's XDG
+;;; data dirs, which the wrapper leaves untouched (prefix semantics).
+(define-public magpie-bin
+  (package
+    (name "magpie-bin")
+    (version "0.1.1084")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://github.com/yetone/magpie-releases/releases/download/"
+             "v" version "/magpie-linux-amd64"))
+       (sha256
+        (base32 "1f4dvdjzwq8iyki1f6j22drgpmnazgy4kyplmsg5fkzjkg49nbx6"))))
+    (build-system jeans-binary-build-system)
+    (arguments
+     (list
+      ;; Single raw ELF, no archive; unpatched — see the comment above.
+      #:unpack-method 'file
+      #:install-plan
+      #~'(("magpie-linux-amd64" "libexec/magpie-bin/magpie"))
+      #:patchelf? #f
+      #:wrap? #f
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'install 'install-wrapper
+            (lambda* (#:key inputs #:allow-other-keys)
+              (let* ((out #$output)
+                     (bin (string-append out "/bin"))
+                     (real (string-append out "/libexec/magpie-bin/magpie"))
+                     (ld.so (string-append (assoc-ref inputs "glibc")
+                                           #$(glibc-dynamic-linker)))
+                     (libs (string-join
+                            (map (lambda (name)
+                                   (string-append
+                                    (assoc-ref inputs name) "/lib"))
+                                 '("gdk-pixbuf" "glib" "glibc" "gtk+"
+                                   "libx11" "libsoup"
+                                   "webkitgtk-for-gtk3"))
+                            ":"))
+                     (fontconf (assoc-ref inputs "fontconfig-minimal"))
+                     (gtk-share (string-append (assoc-ref inputs "gtk+")
+                                               "/share"))
+                     (webkit-share
+                      (string-append
+                       (assoc-ref inputs "webkitgtk-for-gtk3") "/share")))
+                (mkdir-p bin)
+                (call-with-output-file (string-append bin "/magpie")
+                  (lambda (port)
+                    (format port "#!~a/bin/bash
+export FONTCONFIG_FILE=~a/etc/fonts/fonts.conf
+# Prefix (not =) so the system XDG_DATA_DIRS is kept behind the bundle.
+export XDG_DATA_DIRS=~a:~a${XDG_DATA_DIRS:+:$XDG_DATA_DIRS}
+exec ~a --argv0 ~a --library-path ~a ~a \"$@\""
+                            (assoc-ref inputs "bash-minimal")
+                            fontconf
+                            gtk-share
+                            webkit-share
+                            ld.so real libs real)))
+                (chmod (string-append bin "/magpie") #o555)))))))
+    (inputs `(("bash-minimal" ,bash-minimal)
+              ("fontconfig-minimal" ,fontconfig)
+              ("gdk-pixbuf" ,gdk-pixbuf)
+              ("glib" ,glib)
+              ("glibc" ,glibc)
+              ("gtk+" ,gtk+)
+              ("libx11" ,libx11)
+              ("libsoup" ,libsoup)
+              ("webkitgtk-for-gtk3" ,webkitgtk-for-gtk3)))
+    (properties `((upstream-name . "magpie")))
+    (home-page "https://usemagpie.ai")
+    (synopsis "Menu-bar hub that routes AI coding agents to any model")
+    (description
+     "Magpie is a menu-bar companion for AI coding agents: it connects
+agents such as Codex CLI and Claude Code to the provider of your choice
+(DeepSeek, Kimi, GLM, Copilot, OpenRouter, and many more), keeps their
+credentials and usage in one place, and exposes its own
+OpenAI-compatible proxy endpoint.  This package provides the prebuilt
+binary release.")
+    (license license:expat)
+    (supported-systems '("x86_64-linux"))))
