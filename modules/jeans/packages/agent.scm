@@ -178,7 +178,7 @@ release.")
 (define-public cindy-bin
   (package
     (name "cindy-bin")
-    (version "0.1.95")
+    (version "0.1.97")
     (source
      (origin
        (method url-fetch)
@@ -186,7 +186,7 @@ release.")
              "https://github.com/makecindy/cindy/releases/download/"
              "v" version "/cindy-" version "-linux-x64-cn.deb"))
        (sha256
-        (base32 "1rqzk17n80mjnivsh0ghgmixs05767sldigha0nf5ylv7myj9r72"))))
+        (base32 "0fkz76h0p9ib6gh4p52d2bwm21r50zra3qk6wqjn646v4nxfjnw0"))))
     (build-system jeans-electron-build-system)
     (arguments
      (list
@@ -891,7 +891,7 @@ telemetry or forced log-ins.")
 (define-public reasonix-bin
   (package
     (name "reasonix-bin")
-    (version "1.39.7")
+    (version "2.29.0")
     (source
      (origin
        (method url-fetch)
@@ -899,7 +899,7 @@ telemetry or forced log-ins.")
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
              "v" version "/reasonix-linux-amd64.tar.gz"))
        (sha256
-        (base32 "0mpdq075yvzb6fq3bm6bwrqiq6313rix7mapa0859mzqvbnjc49c"))))
+        (base32 "16wz88kyfym0ca27172zb5sf5ih9rdz890viw4bw1mys029ndfwb"))))
     (build-system jeans-binary-build-system)
     (arguments
      (list
@@ -939,7 +939,7 @@ and ships as a single static binary with no runtime dependencies.")
 (define-public reasonix-studio-bin
   (package
     (name "reasonix-studio-bin")
-    (version "2.26.0")
+    (version "2.29.0")
     (source
      (origin
        (method url-fetch)
@@ -947,7 +947,7 @@ and ships as a single static binary with no runtime dependencies.")
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
              "studio-v" version "/ReasonixStudio-linux-amd64.deb"))
        (sha256
-        (base32 "18nymcnkr8cwspckngw39iy2qp2z8a69ragamcjgh8q8mc5p7szm"))))
+        (base32 "0yi9k27lpjihvz4i86yak1pg80qflxmsxnq7fb5wqfw53cq0a86r"))))
     (build-system jeans-electron-build-system)
     (arguments
      (list
@@ -1443,7 +1443,7 @@ release and needs the @code{nix-ld} system service to run.")
 (define-public cua-driver-bin
   (package
     (name "cua-driver-bin")
-    (version "0.33.0")
+    (version "0.34.0")
     (source
      (origin
        (method url-fetch)
@@ -1452,7 +1452,7 @@ release and needs the @code{nix-ld} system service to run.")
              "cua-driver-rs-v" version
              "/cua-driver-rs-" version "-linux-x86_64-binary.tar.gz"))
        (sha256
-        (base32 "1rci9qh5lwjr0ilpxb54cabsagyk09613h2hf04qwcr0k6ynjs0n"))))
+        (base32 "19vhrm0sfxq7navyzrcixlx82baw2vrg68gjbkylv7c2zxpck6k2"))))
     (build-system jeans-binary-build-system)
     (arguments
      (list
