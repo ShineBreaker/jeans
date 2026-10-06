@@ -189,8 +189,10 @@
                           "LC_ALL" "LC_MESSAGES" "LANG"))))
 
 ;;; jdtls: Eclipse JDT Language Server 预编译发行包（Java，无 ELF）。
-;;; 已迁移到 jeans-binary-build-system：纯参数迁移 + chmod/symlink 小 phase；
-;;; 无 ELF 故 #:patchelf? #f。
+;;; 已迁移到 jeans-binary-build-system：chmod/symlink 小 phase；无 ELF 故
+;;; #:patchelf? #f。unpack 必须自定义：milestones tarball 无单顶层目录
+;;; （bin/、plugins/ 等直接在顶层），gnu unpack「进入第一个子目录」的行为
+;;; 会误入 bin/，与 install-plan 的顶层相对路径错位。
 (define-public jdtls-bin
   (package
     (name "jdtls-bin")
@@ -209,7 +211,6 @@
     (build-system jeans-binary-build-system)
     (arguments
      (list
-      #:unpack-method 'tar
       #:install-plan
       #~'(("bin" "share/jdtls/bin")
           ("plugins" "share/jdtls/plugins")
@@ -222,11 +223,16 @@
            ("PATH" ":" prefix
             (#$(file-append openjdk "/bin")
              #$(file-append python "/bin")))
-           ("JAVA_HOME" "=" (#$(file-append openjdk)))))
+           ("JAVA_HOME" = (#$(file-append openjdk)))))
       #:modules '((jeans build binary)
                   (guix build utils))
       #:phases
       #~(modify-phases %standard-phases
+          (replace 'unpack
+            (lambda _
+              ;; milestones tarball 无单顶层目录，解到构建目录顶层即可；
+              ;; 基座 gnu unpack 会误入第一个子目录 bin/（见包前注释）。
+              (invoke "tar" "xzf" #$source)))
           (add-after 'install 'chmod-and-link
             (lambda _
               (chmod (string-append #$output "/share/jdtls/bin/jdtls")
