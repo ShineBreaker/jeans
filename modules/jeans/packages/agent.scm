@@ -29,7 +29,9 @@
   #:use-module (gnu packages linux)        ; eudev
   #:use-module (gnu packages nss)          ; nss
   #:use-module (gnu packages ncurses)
+  #:use-module (gnu packages node)         ; node
   #:use-module (gnu packages pulseaudio)   ; pulseaudio
+  #:use-module (gnu packages rust-apps)    ; ripgrep
   #:use-module (gnu packages tls)          ; openssl
   #:use-module (gnu packages version-control) ; git
   #:use-module (gnu packages webkit)       ; webkitgtk-for-gtk3
@@ -706,6 +708,76 @@ This package provides the prebuilt binary release.")
     (license license:agpl3+)
     (properties `((upstream-name . "herdr")))
     (supported-systems '("x86_64-linux"))))
+
+;;; MiniMax Code: open-source AI coding agent for the terminal
+;;; (MiniMax-AI/minimax-code, MIT).
+;;;
+;;; The upstream tarball is a self-contained npm-style distribution: a
+;;; "package/" tree whose cli.js entry runs on Node (engines: >=22.19<23
+;;; or >=24.2<27) with all JavaScript bundled into cli.js + chunks/.
+;;; The Linux payload ships no native addons — SQLite goes through
+;;; Node's built-in node:sqlite and the only Linux ELF
+;;; (vendor/seccomp/*/apply-seccomp) is statically linked — so the tree
+;;; installs verbatim, with no patchelf and no ld-linux wrapper.  The
+;;; bundle carries no @vscode/ripgrep Linux binary and falls back to
+;;; `rg` from PATH, hence the wrapper export.  bin/mcode execs cli.js
+;;; through the store node.
+
+(define-public minimax-code-bin
+  (package
+    (name "minimax-code-bin")
+    (version "0.6.2")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://github.com/MiniMax-AI/minimax-code/releases/download/"
+             "v" version "/minimax-code-" version ".tar.gz"))
+       (sha256
+        (base32 "0yb45l3d0d3lkk7vf4csp0p54hgqs2q0ys1llivpgwblnqq2d1w2"))))
+    (build-system copy-build-system)
+    (arguments
+     (list
+      #:tests? #f
+      #:validate-runpath? #f
+      #:strip-binaries? #f
+      #:install-plan #~'(("." "lib/minimax-code"))
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'install 'install-wrapper
+            (lambda _
+              (let* ((out #$output)
+                     (bin (string-append out "/bin"))
+                     (sh #$(this-package-input "bash-minimal"))
+                     (node #$(this-package-input "node"))
+                     ;; The bundle ships no @vscode/ripgrep Linux binary
+                     ;; and falls back to `rg` from PATH.
+                     (rg (string-append #$(this-package-input "ripgrep")
+                                        "/bin")))
+                (mkdir-p bin)
+                (with-output-to-file (string-append bin "/mcode")
+                  (lambda ()
+                    (display
+                     (string-append
+                      "#!" sh "/bin/sh\n"
+                      "export PATH=" rg ":${PATH}\n"
+                      "exec " node "/bin/node "
+                      out "/lib/minimax-code/cli.js \"$@\"\n"))))
+                (chmod (string-append bin "/mcode") #o755)))))))
+    (inputs `(("bash-minimal" ,bash-minimal)
+              ("node" ,node)
+              ("ripgrep" ,ripgrep)))
+    (properties `((upstream-name . "minimax-code")))
+    (home-page "https://github.com/MiniMax-AI/minimax-code")
+    (synopsis "Open-source coding agent for your terminal, powered by MiniMax")
+    (description
+     "MiniMax Code (command @command{mcode}) is an open-source terminal
+coding agent powered by MiniMax models.  It reads, edits and searches a
+local code base, runs shell commands and drives sub-agents from an
+interactive TUI, and authenticates with MiniMax or any custom
+OpenAI-compatible endpoint.  This package installs the upstream
+prebuilt distribution and launches it with the store Node.js runtime.")
+    (license license:expat)))
 
 (define-public opencode-desktop-bin
   (package

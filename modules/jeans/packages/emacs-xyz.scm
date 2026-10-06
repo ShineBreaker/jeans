@@ -973,3 +973,48 @@ minibuffer exits, with focus kept on it while the minibuffer is active.  Width
 and top offset are customizable as fractions of the parent frame size.")
       (properties `((with-latest-git-commit . #t)))
       (license license:gpl3+))))
+
+;;; magit-fast is a single-file global minor mode that speeds up Magit:
+;;; it swaps the diff-heavy status-buffer section functions (untracked
+;;; files, unstaged/staged changes, recent commits) for cached
+;;; `git status --porcelain' output and freezes static repository info
+;;; across refresh cycles.  The hard runtime dependency is Magit >= 3.0
+;;; (require 'magit at top level), hence the propagated emacs-magit.
+;;;
+;;; Upstream publishes no tags or releases; like emacs-minibuffer-frame
+;;; above (same author) the header Version serves as the git-version
+;;; base and main-branch HEAD is tracked via the let + git-version
+;;; structure with the with-latest-git-commit property, picked up by
+;;; the Python updater.  No test infrastructure ships with the single
+;;; file (no Makefile, no ERT/buttercup tree), so #:tests? is #f.
+
+(define-public emacs-magit-fast
+  (let ((commit "d4210fa3d18044b9b6b7264a9e92bb3c2820a289")
+        (revision "1"))
+    (package
+      (name "emacs-magit-fast")
+      (version (git-version "1.0.0" revision commit))
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://github.com/zHaOdANiuu/magit-fast")
+               (commit commit)))
+         (file-name (git-file-name name version))
+         (sha256
+          (base32 "0cqgvjr5gq73phk9hws97idqp6jrdq9hga7hgaihligsn10yx09i"))))
+      (build-system emacs-build-system)
+      (arguments
+       (list #:tests? #f))
+      (propagated-inputs (list emacs-magit))
+      (home-page "https://github.com/zHaOdANiuu/magit-fast")
+      (synopsis "Speed up Magit by caching Git status across refreshes")
+      (description
+       "Magit-fast is a global minor mode that reduces Magit's diff
+overhead.  It replaces the expensive status-buffer sections (untracked
+files, unstaged and staged changes, recent commits) with cached
+@command{git status --porcelain} output, skips redundant Git invocations,
+and disables a few Magit hooks that trigger avoidable work.  It is a
+companion to Magit, not a replacement.")
+      (properties `((with-latest-git-commit . #t)))
+      (license license:gpl3+))))

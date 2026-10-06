@@ -17,6 +17,7 @@
 | `cua-driver-bin`       | Cross-platform computer-use automation driver                  |
 | `github-copilot`       | Agent-native GitHub Copilot desktop application                |
 | `herdr-bin`            | Terminal workspace manager for AI coding agents                |
+| `minimax-code-bin`     | Open-source coding agent for your terminal, powered by MiniMax |
 | `opencode-desktop-bin` | AI coding agent desktop application                            |
 | `paseo-bin`            | Self-hosted desktop client for orchestrating coding agents     |
 | `reasonix-bin`         | DeepSeek-native AI coding agent for the terminal               |
@@ -70,6 +71,7 @@
 | `emacs-dsh`              | Emacs client for the DeepSeek Harness server                 |
 | `emacs-ellsp`            | Elisp Language Server Protocol server (Emacs backend)        |
 | `emacs-ghostel`          | Terminal emulator powered by libghostty                      |
+| `emacs-magit-fast`       | Speed up Magit by caching Git status across refreshes        |
 | `emacs-minibuffer-frame` | Display the minibuffer in a centered child frame             |
 | `emacs-msgu`             | Utility functions for message output in Emacs                |
 | `neomacs-bin`            | Extensible text editor built on Emacs Lisp and the Neovim VM |
