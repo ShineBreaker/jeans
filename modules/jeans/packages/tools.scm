@@ -19,6 +19,7 @@
   #:use-module (gnu packages bash)
   #:use-module (gnu packages python)
   #:use-module (gnu packages python-build) ; python-hatchling
+  #:use-module (jeans build-system binary)
   #:use-module (jeans packages python-xyz) ; python-jieba
   #:use-module (gnu packages java)
   #:use-module (gnu packages rdesktop)
@@ -187,6 +188,9 @@
       #:leaked-env-vars '("http_proxy" "https_proxy" "no_proxy"
                           "LC_ALL" "LC_MESSAGES" "LANG"))))
 
+;;; jdtls: Eclipse JDT Language Server 预编译发行包（Java，无 ELF）。
+;;; 已迁移到 jeans-binary-build-system：纯参数迁移 + chmod/symlink 小 phase；
+;;; 无 ELF 故 #:patchelf? #f。
 (define-public jdtls-bin
   (package
     (name "jdtls-bin")
@@ -202,42 +206,34 @@
              "-202609031315.tar.gz"))
        (sha256
         (base32 "0r2cjfwgz6rhj8h380vw9vmn79sgsfh1jfa5l8dnadhqsrrpx3ik"))))
-    (build-system gnu-build-system)
+    (build-system jeans-binary-build-system)
     (arguments
-      (list
-        #:tests? #f
-        #:validate-runpath? #f
-        #:strip-binaries? #f
-        #:phases
-        #~(modify-phases %standard-phases
-            (delete 'configure)
-            (delete 'build)
-            (replace 'unpack
-              (lambda _
-                (let ((srcdir (string-append "jdtls-" #$version)))
-                  (mkdir srcdir)
-                  (with-directory-excursion srcdir
-                    (invoke "tar" "xzf" #$source))
-                  (chdir srcdir))))
-            (replace 'install
-              (lambda _
-                (let ((share (string-append #$output "/share/jdtls")))
-                  (mkdir-p share)
-                  (for-each
-                    (lambda (dir)
-                      (when (file-exists? dir)
-                        (copy-recursively dir (string-append share "/" dir))))
-                    '("bin" "plugins" "features"
-                      "config_linux" "config_ss_linux"))
-                  (chmod (string-append share "/bin/jdtls") #o755)
-                  (wrap-program (string-append share "/bin/jdtls")
-                    `("PATH" ":" prefix
-                      ,(list (string-append #$openjdk "/bin")
-                             (string-append #$python "/bin")))
-                    `("JAVA_HOME" = (,(string-append #$openjdk))))
-                  (mkdir-p (string-append #$output "/bin"))
-                  (symlink (string-append share "/bin/jdtls")
-                           (string-append #$output "/bin/jdtls"))))))))
+     (list
+      #:unpack-method 'tar
+      #:install-plan
+      #~'(("bin" "share/jdtls/bin")
+          ("plugins" "share/jdtls/plugins")
+          ("features" "share/jdtls/features")
+          ("config_linux" "share/jdtls/config_linux")
+          ("config_ss_linux" "share/jdtls/config_ss_linux"))
+      #:patchelf? #f
+      #:wrap-plan
+      #~'(("share/jdtls/bin/jdtls"
+           ("PATH" ":" prefix
+            (#$(file-append openjdk "/bin")
+             #$(file-append python "/bin")))
+           ("JAVA_HOME" "=" (#$(file-append openjdk)))))
+      #:modules '((jeans build binary)
+                  (guix build utils))
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'install 'chmod-and-link
+            (lambda _
+              (chmod (string-append #$output "/share/jdtls/bin/jdtls")
+                     #o755)
+              (mkdir-p (string-append #$output "/bin"))
+              (symlink (string-append #$output "/share/jdtls/bin/jdtls")
+                       (string-append #$output "/bin/jdtls")))))))
     (inputs `(("openjdk" ,openjdk)
               ("python" ,python)
               ("bash-minimal" ,bash-minimal)))
@@ -253,9 +249,10 @@ editor that supports the protocol to provide Java language features.")
 ;;; Tauri sidecar, so the two packages no longer share a file.
 ;;;
 ;;; The upstream release ships a single raw ELF executable, dynamically linked
-;;; against libstdc++/libgcc_s only (OpenSSL is statically linked in since 2.8.2),
-;;; so we use the bare-ELF pattern: install under lib/aria2-next/ with a bin/
-;;; symlink so patchelf's RPATH finds the store libs and the entry point is on PATH.
+;;; against libstdc++/libgcc_s only (OpenSSL is statically linked in since 2.8.2).
+;;; 已迁移到 jeans-binary-build-system：#:unpack-method 'file 直装 bin/（无
+;;; 同目录 .so，RPATH 绝对路径即可，不必经 lib/ 中转）；file-name 取静态名，
+;;; 使 'file 解包名与 install-plan 在版本更新时保持稳定。
 
 (define-public aria2-next-bin
   (package
@@ -267,59 +264,18 @@ editor that supports the protocol to provide Java language features.")
        (uri (string-append
              "https://github.com/AnInsomniacy/aria2-next/releases/download/"
              "v" version "/aria2-next-" version "-linux-x86_64"))
+       (file-name "aria2-next")
        (sha256
         (base32 "0plvp5n52x0m90agxb7z9amri5pcx10kzbyw6s5mal4kis1hh252"))))
-    (build-system gnu-build-system)
+    (build-system jeans-binary-build-system)
     (arguments
      (list
-      #:tests? #f
-      #:validate-runpath? #f
-      #:strip-binaries? #f
-      #:modules '((guix build gnu-build-system)
-                  (guix build utils))
-      #:phases
-      #~(modify-phases %standard-phases
-          (delete 'configure)
-          (delete 'build)
-          (replace 'unpack
-            (lambda _
-              ;; Source is a single raw ELF executable; just copy it into the
-              ;; build dir so the install phase can place and patch it.
-              (copy-file #$source "aria2-next")))
-          (replace 'install
-            (lambda* (#:key inputs #:allow-other-keys)
-              (let* ((out #$output)
-                     (bin (string-append out "/bin"))
-                     (libexec (string-append out "/lib/aria2-next"))
-                     (patchelf-bin
-                      (string-append (assoc-ref inputs "patchelf")
-                                     "/bin/patchelf"))
-                     (ldso (string-append (assoc-ref inputs "glibc")
-                                          "/lib/ld-linux-x86-64.so.2"))
-                     (rpath
-                      (string-join
-                       (map (lambda (pkg)
-                              (string-append (assoc-ref inputs pkg) "/lib"))
-                            '("glibc" "gcc:lib"))
-                       ":")))
-                ;; Install the real binary under libexec/ so RPATH lookups find
-                ;; sibling libs, and expose it on PATH via a bin/ symlink.
-                ;; install-file preserves the (read-only) source mode, so we
-                ;; must chmod before patchelf can rewrite the ELF.
-                (mkdir-p libexec)
-                (install-file "aria2-next" libexec)
-                (chmod (string-append libexec "/aria2-next") #o755)
-                (mkdir-p bin)
-                (symlink (string-append libexec "/aria2-next")
-                         (string-append bin "/aria2-next"))
-
-                ;; Patch ELF interpreter and RPATH.
-                (invoke patchelf-bin "--set-interpreter" ldso
-                        (string-append libexec "/aria2-next"))
-                (invoke patchelf-bin "--set-rpath" rpath
-                        (string-append libexec "/aria2-next"))))))))
-     (native-inputs (list patchelf binutils))
-     (inputs
+      #:unpack-method 'file
+      #:install-plan
+      #~'(("aria2-next" "bin/aria2-next"))
+      #:patchelf-plan
+      #~'(("bin/aria2-next"))))
+    (inputs
       `(("bash-minimal" ,bash-minimal)
         ("glibc" ,glibc)
         ("gcc:lib" ,gcc "lib")))
@@ -334,6 +290,7 @@ prebuilt binary release.")
 
 ;;; Rayburst (formerly Motrix-Next): prebuilt binary download manager
 ;;; (Tauri/WebKitGTK app).
+;;; non-migratable: Tauri resource/sidecar 按 exe_dir 解析，通用 install-plan 会打散。
 ;;;
 ;;; Upstream renamed the project from motrix-next to rayburst for 4.0.0 —
 ;;; repository, release asset names, bundled binaries, desktop entry and icon
@@ -516,6 +473,7 @@ companion extension.  This package provides the prebuilt binary release.")
     (license license:expat)))
 
 ;;; CC-Switch: prebuilt binary for AI coding assistant manager (Tauri/WebKitGTK).
+;;; non-migratable: Tauri resource/sidecar 按 exe_dir 解析，通用 install-plan 会打散。
 ;;;
 ;;; The upstream .deb ships one ELF binary:
 ;;;   - cc-switch       (Tauri app, dynamically linked to webkit2gtk-4.1, gtk3, etc.)
@@ -890,6 +848,8 @@ configurable knowledge-base root (@env{KB_ROOT}, default
 ;;; bundle with zero runtime dependencies, executed directly by node.
 ;;; Installed in the standard lib/node_modules layout; bin/prettier.cjs
 ;;; ships non-executable (npm convention) so we chmod before wrapping.
+;;; 已迁移到 jeans-binary-build-system：install-plan 装整树 + wrap-plan 声明
+;;; PATH；无 ELF 故 #:patchelf? #f。
 ;;; guix refresh has no npm updater, so version bumps go through the
 ;;; Python updater's "prettier-bin" special handler (npm registry
 ;;; dist-tags; the URI embeds `version` so only the version field changes).
@@ -906,30 +866,30 @@ configurable knowledge-base root (@env{KB_ROOT}, default
               ".tgz"))
         (sha256
           (base32 "0f5k8lh2rx3kydwdw40d745154iy70wsaf33rirnh4j51k9n5cf3"))))
-    (build-system gnu-build-system)
+    (build-system jeans-binary-build-system)
     (arguments
-      (list
-        #:tests? #f
-        #:validate-runpath? #f
-        #:strip-binaries? #f
-        #:phases
-        #~(modify-phases %standard-phases
-            (delete 'configure)
-            (delete 'build)
-            ;; npm tarballs always unpack to a generic "package/" directory,
-            ;; which the default unpack phase already chdirs into.
-            (replace 'install
-              (lambda _
-                (let ((dir (string-append #$output "/lib/node_modules/prettier")))
-                  (mkdir-p dir)
-                  (copy-recursively "." dir)
-                  (chmod (string-append dir "/bin/prettier.cjs") #o555)
-                  (wrap-program (string-append dir "/bin/prettier.cjs")
-                    `("PATH" ":" prefix
-                      (,(string-append #$node "/bin"))))
-                  (mkdir-p (string-append #$output "/bin"))
-                  (symlink (string-append dir "/bin/prettier.cjs")
-                           (string-append #$output "/bin/prettier"))))))))
+     (list
+      #:unpack-method 'gnu-unpack
+      #:install-plan
+      #~'(("./" "lib/node_modules/prettier/"))
+      #:patchelf? #f
+      #:wrap-plan
+      #~'(("lib/node_modules/prettier/bin/prettier.cjs"
+           ("PATH" ":" prefix
+            (#$(file-append node "/bin")))))
+      #:modules '((jeans build binary)
+                  (guix build utils))
+      #:phases
+      #~(modify-phases %standard-phases
+          ;; npm tarballs always unpack to a generic "package/" directory,
+          ;; which the default unpack phase already chdirs into.
+          (add-after 'install 'chmod-and-link
+            (lambda _
+              (let ((cjs (string-append #$output
+                                     "/lib/node_modules/prettier/bin/prettier.cjs")))
+                (chmod cjs #o555)
+                (mkdir-p (string-append #$output "/bin"))
+                (symlink cjs (string-append #$output "/bin/prettier"))))))))
     (inputs `(("node" ,node)
               ("bash-minimal" ,bash-minimal)))
     (synopsis "Opinionated multi-language code formatter")
@@ -965,6 +925,8 @@ JSON, YAML, Markdown and GraphQL.")
 ;; sunshine-service-type picks them up; modules-load.d and the systemd user
 ;; unit ship in the payload for reference, Guix uses kernel-module-loader
 ;; and the home shepherd service instead.
+;; 已迁移到 jeans-binary-build-system：解包/install/patchelf 走参数，thin wrapper、
+;; udev 与 desktop 保留自定义 phase。
 (define-public sunshine-bin
   (package
     (name "sunshine-bin")
@@ -977,62 +939,29 @@ JSON, YAML, Markdown and GraphQL.")
              version "/Sunshine_" version "_x86_64.AppImage"))
        (sha256
         (base32 "0ik841a9rhq43zp3v71adbcs9jd8q2sk3wag27d8rkrvhmx2k03g"))))
-    (build-system copy-build-system)
+    (build-system jeans-binary-build-system)
     (arguments
      (list
-      #:tests? #f
-      #:validate-runpath? #f
-      #:strip-binaries? #f
-      #:modules '((guix build utils)
-                  (guix build copy-build-system)
-                  (ice-9 ftw)
-                  (ice-9 format))
+      #:unpack-method 'appimage-7z
       #:install-plan
       #~'(("usr" "lib/sunshine/usr")
           ("usr/share/applications/" "share/applications/")
           ("usr/share/icons/" "share/icons/"))
+      ;; lib-dir 必须是旧 RPATH 首项的 usr/lib，故 app-dir 取嵌套路径。
+      #:app-dir "sunshine/usr/lib"
+      #:patchelf-plan
+      #~'(("lib/sunshine"
+           "glibc" "gcc:lib" "mesa" "libglvnd" "libdrm" "wayland"
+           "libx11" "libxcb" "libice" "libsm" "pipewire"
+           "fontconfig-minimal" "freetype" "harfbuzz" "zlib" "avahi"
+           "x265" "e2fsprogs" "gmp" "libgpg-error"))
+      #:modules '((jeans build binary)
+                  (guix build utils)
+                  (ice-9 ftw)
+                  (ice-9 format))
       #:phases
       #~(modify-phases %standard-phases
-          (delete 'install-license-files)
-          ;; The source is a bare AppImage (not an archive): extract it with
-          ;; 7z's static parsing, never the runtime's --appimage-extract
-          ;; self-extraction (exec on the build tree is denied on CI).
-          (add-after 'unpack 'extract-appimage
-            (lambda _
-              (invoke "7z" "x" #$source)))
-          (add-after 'install 'patch-elf
-            (lambda* (#:key inputs #:allow-other-keys)
-              (let* ((ld.so (string-append (assoc-ref inputs "glibc")
-                                           #$(glibc-dynamic-linker)))
-                     (lib-dir (string-append #$output "/lib/sunshine/usr/lib"))
-                     ;; Build-side `inputs' preserves the sub-output path
-                     ;; for "gcc:lib"; the "fontconfig-minimal" label is the
-                     ;; package's actual name, not the variable name.
-                     (rpath
-                      (string-join
-                       (cons lib-dir
-                             (map (lambda (label)
-                                    (string-append
-                                     (assoc-ref inputs label) "/lib"))
-                                  '("glibc" "gcc:lib" "mesa" "libglvnd"
-                                    "libdrm" "wayland" "libx11" "libxcb"
-                                    "libice" "libsm" "pipewire"
-                                    "fontconfig-minimal" "freetype" "harfbuzz"
-                                    "zlib" "avahi" "x265" "e2fsprogs" "gmp"
-                                    "libgpg-error")))
-                       ":")))
-                (define (patch-elf file)
-                  (format #t "Patching ~a ..." file)
-                  (unless (string-contains file ".so")
-                    (invoke "patchelf" "--set-interpreter" ld.so file))
-                  (invoke "patchelf" "--set-rpath" rpath file)
-                  (display " done\n"))
-                (for-each patch-elf
-                          (find-files (string-append #$output "/lib/sunshine")
-                                      (lambda (file stat)
-                                        (and (eq? 'regular (stat:type stat))
-                                             (elf-file? file))))))))
-          (add-after 'patch-elf 'make-executable
+          (add-after 'patchelf 'make-executable
             (lambda _
               (let ((root (string-append #$output "/lib/sunshine")))
                 (chmod (string-append root "/usr/bin/sunshine") #o555)
@@ -1056,8 +985,11 @@ JSON, YAML, Markdown and GraphQL.")
                     (format port "set -e~%")
                     (format port "ROOT=\"~a\"~%" root)
                     (format port "cd \"$ROOT\" || exit 1~%")
-                    (format port "exec -a sunshine \"$ROOT/usr/bin/sunshine\" \"$@\"~%")))
-                (chmod wrapper #o755))))
+                    (format port (string-append
+                                     "exec -a sunshine "
+                                     "\"$ROOT/usr/bin/sunshine\" \"$@\""
+                                     "~%")))))
+                (chmod wrapper #o755)))
           (add-after 'build-wrapper 'install-udev-rules
             (lambda _
               (install-file
@@ -1070,7 +1002,7 @@ JSON, YAML, Markdown and GraphQL.")
                                           "dev.lizardbyte.app.Sunshine.desktop")
                 (("^Exec=sunshine$")
                  (string-append "Exec=" #$output "/bin/sunshine"))))))))
-    (native-inputs (list p7zip patchelf))
+    (native-inputs (list p7zip))
     (inputs
      `(("bash-minimal" ,bash-minimal)
        ("glibc" ,glibc)

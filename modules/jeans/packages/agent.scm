@@ -43,11 +43,17 @@
   #:use-module (guix download)
   #:use-module (guix gexp)
   #:use-module (guix packages)
+  #:use-module (jeans build-system binary)
+  #:use-module (jeans build-system electron)
   #:use-module ((guix licenses)
                 #:prefix license:)
   #:use-module ((nonguix licenses)
                 #:prefix license:))
 
+;;; NOTE: 三个 Electron phase helper 已有新家 (jeans build electron)
+;;; （builder 侧直调 procedure，shell 负载与此处逐行同形，staging 由 gexp
+;;; 工厂改为 #:key 直读）。此处三处 define 暂时保留，供未迁移包向后兼容；
+;;; 新包请用 jeans-electron-build-system，不再各写各的。
 
 (define (disable-electron-updater-phase application-directory)
   #~(lambda _
@@ -117,34 +123,22 @@
              "v" version "/codewhale-linux-x64.tar.gz"))
        (sha256
         (base32 "0gmzvz3xqkvh3sbfv2z3swwhizbzp7cqp1c2yi0gyg7y6gb2inz5"))))
-    (build-system gnu-build-system)
+    (build-system jeans-binary-build-system)
     (arguments
      (list
-      #:tests? #f
-      #:validate-runpath? #f
-      #:strip-binaries? #f
-      #:modules '((guix build gnu-build-system)
-                  (guix build utils))
+      #:unpack-method 'tar
+      #:install-plan
+      #~'(("codewhale" "bin/codewhale")
+          ("codew" "bin/codew"))
+      ;; Fully static: no patchelf.  The archive stores the binaries as
+      ;; 0644, so restore the executable bit before install.
+      #:patchelf? #f
       #:phases
       #~(modify-phases %standard-phases
-          (delete 'configure)
-          (delete 'build)
-          (replace 'unpack
+          (add-before 'install 'fix-permissions
             (lambda _
-              (invoke "tar" "xzf" #$source)
-              ;; The archive stores the binaries as 0644; restore the
-              ;; executable bit so install-file (and the user) can run them.
               (for-each (lambda (b) (chmod b #o755))
-                        '("codewhale-linux-x64/codewhale"
-                          "codewhale-linux-x64/codew"))))
-          (replace 'install
-            (lambda _
-              (let ((bin (string-append #$output "/bin")))
-                (mkdir-p bin)
-                (for-each (lambda (b)
-                            (install-file b bin))
-                          '("codewhale-linux-x64/codewhale"
-                            "codewhale-linux-x64/codew"))))))))
+                        '("codewhale" "codew")))))))
     (properties `((upstream-name . "codewhale")))
     (home-page "https://codewhale.net")
     (synopsis "Multi-provider AI coding agent for the terminal")
@@ -193,142 +187,36 @@ release.")
              "v" version "/cindy-" version "-linux-x64-cn.deb"))
        (sha256
         (base32 "1rqzk17n80mjnivsh0ghgmixs05767sldigha0nf5ylv7myj9r72"))))
-    (build-system gnu-build-system)
+    (build-system jeans-electron-build-system)
     (arguments
      (list
-      #:tests? #f
-      #:validate-runpath? #f
-      #:strip-binaries? #f
-      #:modules '((guix build gnu-build-system)
-                  (guix build utils)
-                  (ice-9 ftw)
-                  (ice-9 binary-ports)
-                  (ice-9 popen)
-                  (ice-9 rdelim))
+      #:program "cindy"
+      #:app-dir "lib/cindy"
+      #:application-directory "cindy"
+      #:unpack-method 'deb-zst
+      #:install-plan
+      #~'(("usr/lib/cindy" "lib/cindy")
+          ("usr/share/applications/cindy.desktop"
+           "share/applications/cindy.desktop")
+          ("usr/share/pixmaps/cindy.png"
+           "share/pixmaps/cindy.png"))
+      ;; sharp's .node addons carry $ORIGIN-relative RPATH resolving the
+      ;; bundled libvips: prepend instead of replacing.
+      #:preserve-rpath? #t
+      #:desktop-files
+      #~'(("share/applications/cindy.desktop"
+           "bin/cindy"
+           "share/pixmaps/cindy.png"))
       #:phases
       #~(modify-phases %standard-phases
-          (delete 'configure)
-          (delete 'build)
-          (replace 'unpack
-            (lambda _
-              (invoke "ar" "x" #$source)
-              (invoke "tar" "xf" "data.tar.zst")))
-          (replace 'install
-            (lambda _
-              (let ((out #$output))
-                (copy-recursively "usr/lib/cindy"
-                                  (string-append out "/lib/cindy"))
-                ;; desktop + icon: upstream ships icon at usr/share/pixmaps
-                (mkdir-p (string-append out "/share/applications"))
-                (copy-file "usr/share/applications/cindy.desktop"
-                           (string-append out "/share/applications/cindy.desktop"))
-                (mkdir-p (string-append out "/share/pixmaps"))
-                (copy-file "usr/share/pixmaps/cindy.png"
-                           (string-append out "/share/pixmaps/cindy.png"))
-                #t)))
-          (add-after 'install 'patch-elf
-            (lambda* (#:key inputs #:allow-other-keys)
-              (let* ((out #$output)
-                     (lib (string-append out "/lib/cindy"))
-                     (ld.so (string-append #$(this-package-input "glibc")
-                                           #$(glibc-dynamic-linker)))
-                     (rpath (string-join
-                             (append (list lib)
-                                     ;; direct NEEDED inputs
-                                     (map (lambda (label)
-                                            (string-append
-                                             (assoc-ref inputs label) "/lib"))
-                                          '("alsa-lib" "at-spi2-core" "cairo"
-                                            "cups" "dbus" "eudev" "expat"
-                                            "glib" "gtk+" "libx11" "libxcb"
-                                            "libxcomposite" "libxdamage"
-                                            "libxext" "libxfixes"
-                                            "libxkbcommon" "libxrandr"
-                                            "mesa" "nspr" "pango"))
-                                     ;; special layouts: NSS ships in /lib/nss,
-                                     ;; libgcc_s.so.1 lives in gcc's "lib" output
-                                     (list (string-append
-                                            (assoc-ref inputs "nss")
-                                            "/lib/nss")
-                                           (string-append
-                                            (assoc-ref inputs "gcc:lib")
-                                            "/lib")))
-                             ":")))
-                (define (read-rpath file)
-                  ;; Preserve the ELF's existing RPATH (sharp's .node addons
-                  ;; carry $ORIGIN-relative entries resolving the bundled
-                  ;; libvips); patchelf 0.18 has no --prepend-rpath, so read
-                  ;; then rewrite with ours in front.
-                  (let* ((port (open-input-pipe
-                                (string-append "patchelf --print-rpath "
-                                               file)))
-                         (rpath (read-line port)))
-                    (close-pipe port)
-                    (if (eof-object? rpath) "" rpath)))
-                (define (elf? file)
-                  ;; The deb ships cross-platform prebuilds too
-                  ;; (node-pty prebuilds/darwin-* are Mach-O); only
-                  ;; ELF files can be patched.
-                  (call-with-input-file file
-                    (lambda (port)
-                      (equal? (get-bytevector-n port 4)
-                              #u8(127 69 76 70)))))
-                (define (patch-elf file)
-                  (when (elf? file)
-                    (let ((old (read-rpath file)))
-                      (invoke "patchelf" "--set-rpath"
-                              (if (string-null? old)
-                                  rpath
-                                  (string-append rpath ":" old))
-                              file))
-                    ;; main ELF and helpers are dynamic; only set interpreter
-                    ;; on executables, not on .so / .node libraries
-                    (unless (or (string-contains file ".so")
-                                (string-contains file ".node"))
-                      (invoke "patchelf" "--set-interpreter" ld.so file))))
-                (let* ((tools (string-append
-                               lib "/resources/tools/remote-desktop"))
-                       (capture (string-append tools "/cindy-linux-desktop-capture"))
-                       (clipboard (string-append tools "/cindy-linux-desktop-clipboard"))
-                       (input (string-append tools "/cindy-linux-desktop-input")))
-                  (for-each patch-elf
-                            (append (find-files lib ".*\\.so(\\.[0-9]+)?$")
-                                    (find-files lib "\\.node$")
-                                    (list (string-append lib "/Cindy")
-                                          (string-append lib "/chrome-sandbox")
-                                          (string-append lib "/chrome_crashpad_handler")
-                                          capture clipboard input)))))))
-          (add-after 'patch-elf 'install-bin
+          (add-after 'patchelf 'install-bin
             (lambda _
               (let* ((out #$output)
                      (bin (string-append out "/bin"))
                      (exe (string-append out "/lib/cindy/Cindy")))
                 (mkdir-p bin)
-                (symlink exe (string-append bin "/cindy")))))
-          (add-after 'install-bin 'fix-desktop-exec
-            (lambda _
-              (substitute* (string-append #$output "/share/applications/cindy.desktop")
-                (("Exec=cindy %U")
-                 (string-append "Exec=" #$output "/bin/cindy %U"))
-                (("Icon=cindy")
-                 (string-append "Icon=" #$output "/share/pixmaps/cindy.png")))))
-          (add-after 'fix-desktop-exec 'wrap-program
-            (lambda* (#:key inputs outputs #:allow-other-keys)
-              (let* ((out (assoc-ref outputs "out"))
-                     (lib (string-append out "/lib/cindy"))
-                     (mesa-lib (string-append (assoc-ref inputs "mesa") "/lib"))
-                     (nss-lib (string-append (assoc-ref inputs "nss") "/lib/nss")))
-                (wrap-program (string-append out "/bin/cindy")
-                  `("LD_LIBRARY_PATH" prefix
-                    (,lib ,mesa-lib ,nss-lib))
-                  `("FONTCONFIG_FILE" =
-                    (,(string-append #$(this-package-input "fontconfig-minimal")
-                                     "/etc/fonts/fonts.conf")))
-                  `("XDG_DATA_DIRS" prefix
-                    (,(string-append out "/share")))))))
-          (add-after 'wrap-program 'prefer-wayland
-            #$(prefer-electron-wayland-phase "cindy")))))
-    (native-inputs (list binutils patchelf tar xz zstd))
+                (symlink exe (string-append bin "/cindy"))))))))
+    (native-inputs (list binutils tar xz zstd))
     (inputs `(("alsa-lib" ,alsa-lib)
               ("at-spi2-core" ,at-spi2-core)
               ("bash-minimal" ,bash-minimal)
@@ -375,6 +263,7 @@ control, and a companion system.")
 ;;; the ELF interpreter when dynamic; statically linked binaries are
 ;;; left untouched.  Wrap with PATH so crush can find git and other
 ;;; runtime tools regardless.
+;;; 已迁移到 jeans-binary-build-system（首试点，纯参数迁移）。
 
 (define-public crush-bin
   (package
@@ -388,75 +277,30 @@ control, and a companion system.")
              "v" version "/crush_" version "_amd64.deb"))
        (sha256
         (base32 "1iw2xnj5dvrjqkxi4khbb6n13pc7qd0278piyw01d0dh75b4yxjg"))))
-    (build-system gnu-build-system)
+    (build-system jeans-binary-build-system)
     (arguments
      (list
-      #:tests? #f
-      #:validate-runpath? #f
-      #:strip-binaries? #f
-      #:modules '((guix build gnu-build-system)
-                  (guix build utils))
-      #:phases
-      #~(modify-phases %standard-phases
-          (delete 'configure)
-          (delete 'build)
-          (replace 'unpack
-            (lambda _
-              (let ((debdir (string-append "crush-" #$version)))
-                (mkdir debdir)
-                (with-directory-excursion debdir
-                  (invoke "ar" "x" #$source)
-                  (invoke "tar" "xzf" "data.tar.gz"))
-                (chdir debdir))))
-          (replace 'install
-            (lambda* (#:key inputs #:allow-other-keys)
-              (let* ((out #$output)
-                     (bin (string-append out "/bin"))
-                     (share (string-append out "/share"))
-                     (patchelf-bin
-                      (string-append (assoc-ref inputs "patchelf")
-                                     "/bin/patchelf"))
-                     (ldso (string-append (assoc-ref inputs "glibc")
-                                          "/lib/ld-linux-x86-64.so.2"))
-                     (crush-target (string-append bin "/crush")))
-                (mkdir-p bin)
-                (install-file "usr/bin/crush" bin)
-
-                ;; crush >= 0.78.0 ships a statically linked Go binary
-                ;; (no .interp section); patchelf --set-interpreter
-                ;; errors out on such binaries with "cannot find
-                ;; section '.interp'".  Probe via --print-interpreter
-                ;; (exits 0 for dynamic, non-zero for static) and only
-                ;; patch when dynamic linkage is present.
-                (when (zero? (system* patchelf-bin
-                                     "--print-interpreter"
-                                     crush-target))
-                  (invoke patchelf-bin "--set-interpreter" ldso
-                          crush-target))
-
-                (wrap-program crush-target
-                  `("PATH" ":" prefix
-                    ,(list (string-append #$bash-minimal "/bin")
-                           (string-append #$coreutils-minimal "/bin")
-                           (string-append #$git "/bin")
-                           (string-append #$go "/bin"))))
-
-                (mkdir-p (string-append share "/bash-completion/completions"))
-                (copy-file "etc/bash_completion.d/crush"
-                           (string-append share "/bash-completion/completions/crush"))
-
-                (mkdir-p (string-append share "/fish/vendor_completions.d"))
-                (copy-file "usr/share/fish/vendor_completions.d/crush.fish"
-                           (string-append share "/fish/vendor_completions.d/crush.fish"))
-
-                (mkdir-p (string-append share "/zsh/site-functions"))
-                (copy-file "usr/share/zsh/site-functions/_crush"
-                           (string-append share "/zsh/site-functions/_crush"))
-
-                (mkdir-p (string-append share "/man/man1"))
-                (copy-file "usr/share/man/man1/crush.1.gz"
-                           (string-append share "/man/man1/crush.1.gz"))))))))
-    (native-inputs (list patchelf binutils))
+      #:unpack-method 'deb
+      #:install-plan
+      #~'(("usr/bin/crush" "bin/crush")
+          ("etc/bash_completion.d/crush"
+           "share/bash-completion/completions/crush")
+          ("usr/share/fish/vendor_completions.d/crush.fish"
+           "share/fish/vendor_completions.d/crush.fish")
+          ("usr/share/zsh/site-functions/_crush"
+           "share/zsh/site-functions/_crush")
+          ("usr/share/man/man1/crush.1.gz"
+           "share/man/man1/crush.1.gz"))
+      #:patchelf-plan
+      #~'(("bin/crush"))
+      #:wrap-plan
+      #~'(("bin/crush"
+           ("PATH" ":" prefix
+            (#$(file-append bash-minimal "/bin")
+             #$(file-append coreutils-minimal "/bin")
+             #$(file-append git "/bin")
+             #$(file-append go "/bin")))))))
+    (native-inputs (list binutils))
     (inputs
      `(("bash-minimal" ,bash-minimal)
        ("glibc" ,glibc)
@@ -488,6 +332,9 @@ This package provides the prebuilt binary release.")
 ;;; libsoup, javascriptcore and the rest come transitively from
 ;;; webkitgtk-for-gtk3.
 
+;;; 跳过迁移：Tauri 包。resource_dir/sidecar 按 exe_dir 基准解析，基座通用
+;;; install-plan 会打散布局；且主程序走手写 ld-linux wrapper（非 wrap-program），
+;;; 基座表达不了，保留现状。
 (define-public github-copilot
   (package
     (name "github-copilot")
@@ -673,29 +520,14 @@ release; the application itself is proprietary.")
              "v" version "/herdr-linux-x86_64"))
        (sha256
         (base32 "19yvyj3l0gqrisknzx3cy3313nfgl7g5chrlhic4iyn2y5jxra0q"))))
-    (build-system gnu-build-system)
+    (build-system jeans-binary-build-system)
     (arguments
      (list
-      #:tests? #f
-      #:validate-runpath? #f
-      #:strip-binaries? #f
-      #:modules '((guix build gnu-build-system)
-                  (guix build utils))
-      #:phases
-      #~(modify-phases %standard-phases
-          (delete 'configure)
-          (delete 'build)
-          (replace 'unpack
-            (lambda _
-              ;; The source is a raw ELF, not an archive: copy it in
-              ;; place and restore the executable bit.
-              (copy-file #$source "herdr")
-              (chmod "herdr" #o755)))
-          (replace 'install
-            (lambda _
-              (let ((bin (string-append #$output "/bin")))
-                (mkdir-p bin)
-                (install-file "herdr" bin)))))))
+      ;; Fully static raw ELF: 'file unpack restores the exec bit.
+      #:unpack-method 'file
+      #:install-plan
+      #~'(("herdr-linux-x86_64" "bin/herdr"))
+      #:patchelf? #f))
     (home-page "https://herdr.dev")
     (synopsis "Terminal workspace manager for AI coding agents")
     (description
@@ -735,13 +567,13 @@ This package provides the prebuilt binary release.")
              "v" version "/minimax-code-" version ".tar.gz"))
        (sha256
         (base32 "0yb45l3d0d3lkk7vf4csp0p54hgqs2q0ys1llivpgwblnqq2d1w2"))))
-    (build-system copy-build-system)
+    (build-system jeans-binary-build-system)
     (arguments
      (list
-      #:tests? #f
-      #:validate-runpath? #f
-      #:strip-binaries? #f
+      ;; npm-style tree installs verbatim; nothing dynamic to patch.
+      #:unpack-method 'tar
       #:install-plan #~'(("." "lib/minimax-code"))
+      #:patchelf? #f
       #:phases
       #~(modify-phases %standard-phases
           (add-after 'install 'install-wrapper
@@ -791,61 +623,31 @@ prebuilt distribution and launches it with the store Node.js runtime.")
              "v" version "/opencode-desktop-linux-amd64.deb"))
        (sha256
         (base32 "1p1kway8rbwlnshfb8yq5y8bik3895gqg44izfdxzdmv7jv7ajv8"))))
-    (build-system gnu-build-system)
+    (build-system jeans-electron-build-system)
     (arguments
      (list
-      #:tests? #f
-      #:validate-runpath? #f
-      #:strip-binaries? #f
+      #:program "opencode-desktop"
+      #:app-dir "lib/opencode-desktop"
+      #:application-directory "opencode-desktop"
+      #:unpack-method 'deb-xz
+      #:install-plan
+      #~'(("opt/OpenCode" "lib/opencode-desktop"))
+      ;; install-bin symlink, generated desktop entry and per-size icon
+      ;; rename are beyond install-plan/desktop-files: kept as small
+      ;; escape-hatch phases on top of the electron defaults.
       #:modules '((guix build gnu-build-system)
                   (guix build utils)
                   (ice-9 ftw)
                   (ice-9 regex)
                   (srfi srfi-26))
+      #:imported-modules '((guix build gnu-build-system)
+                           (guix build utils)
+                           (ice-9 ftw)
+                           (ice-9 regex)
+                           (srfi srfi-26))
       #:phases
       #~(modify-phases %standard-phases
-          (delete 'configure)
-          (delete 'build)
-          (replace 'unpack
-            (lambda _
-              (invoke "ar" "x" #$source)
-              (invoke "tar" "xf" "data.tar.xz")))
-          (replace 'install
-            (lambda _
-              (let ((out #$output))
-                (copy-recursively "opt/OpenCode"
-                                  (string-append out "/lib/opencode-desktop"))
-                #t)))
-          (add-after 'install 'disable-electron-updater
-            #$(disable-electron-updater-phase "opencode-desktop"))
-          (add-after 'install 'patch-elf
-            (lambda* (#:key inputs #:allow-other-keys)
-              (let* ((ld.so (string-append #$(this-package-input "glibc")
-                                           #$(glibc-dynamic-linker)))
-                     (rpath (string-join
-                             (cons* (string-append #$output "/lib/opencode-desktop")
-                                    (map (lambda (input)
-                                           (string-append (cdr input) "/lib"))
-                                         inputs))
-                             ":")))
-                (define (patch-elf file)
-                  (format #t "Patching ~a ..." file)
-                  (unless (string-contains file ".so")
-                    (invoke "patchelf" "--set-interpreter" ld.so file))
-                  (invoke "patchelf" "--set-rpath" rpath file)
-                  (display " done\n"))
-                (for-each patch-elf
-                          (append (find-files (string-append #$output
-                                                             "/lib/opencode-desktop")
-                                              ".*\\.so(\\.[0-9]+)?$")
-                                  (map (lambda (binary)
-                                         (string-append #$output
-                                                        "/lib/opencode-desktop/"
-                                                        binary))
-                                       '("ai.opencode.desktop"
-                                         "chrome_crashpad_handler"
-                                         "chrome-sandbox")))))))
-          (add-after 'patch-elf 'install-bin
+          (add-after 'patchelf 'install-bin
             (lambda _
               (let* ((out #$output)
                      (bin (string-append out "/bin"))
@@ -885,24 +687,8 @@ prebuilt distribution and launches it with the store Node.js runtime.")
                                                 "/apps/opencode-desktop.png"))))
                        (when (file-exists? old)
                          (copy-file old new))))
-                   (find-files icon-dst "ai\\.opencode\\.desktop\\.png$"))))))
-          (add-after 'install-icons 'wrap-program
-            (lambda* (#:key inputs outputs #:allow-other-keys)
-              (let* ((out (assoc-ref outputs "out"))
-                     (lib (string-append out "/lib/opencode-desktop"))
-                     (mesa-lib (string-append (assoc-ref inputs "mesa") "/lib"))
-                     (nss-lib (string-append (assoc-ref inputs "nss") "/lib/nss")))
-                (wrap-program (string-append out "/bin/opencode-desktop")
-                  `("LD_LIBRARY_PATH" prefix
-                    (,lib ,mesa-lib ,nss-lib))
-                  `("FONTCONFIG_FILE" =
-                    (,(string-append #$(this-package-input "fontconfig-minimal")
-                                     "/etc/fonts/fonts.conf")))
-                  `("XDG_DATA_DIRS" prefix
-                    (,(string-append out "/share")))))))
-          (add-after 'wrap-program 'prefer-wayland
-            #$(prefer-electron-wayland-phase "opencode-desktop")))))
-    (native-inputs (list binutils patchelf tar xz))
+                   (find-files icon-dst "ai\\.opencode\\.desktop\\.png$")))))))))
+    (native-inputs (list binutils tar xz))
     (inputs `(("alsa-lib" ,alsa-lib)
               ("at-spi2-core" ,at-spi2-core)
               ("bash-minimal" ,bash-minimal)
@@ -973,81 +759,38 @@ coding experience with context awareness.")
              "v" version "/Paseo-" version "-amd64.deb"))
        (sha256
         (base32 "00hphr88kkppppwy9x2af54jfvmjzyww85vkqlr3a92mdm6afksa"))))
-    (build-system gnu-build-system)
+    (build-system jeans-electron-build-system)
     (arguments
      (list
-      #:tests? #f
-      #:validate-runpath? #f
-      #:strip-binaries? #f
+      #:program "paseo"
+      #:app-dir "lib/paseo"
+      #:application-directory "paseo"
+      ;; Paseo's argv parser rejects injected --ozone-platform flags
+      ;; ("error: unknown option"), so use the env-hint variant.
+      #:wayland? 'hint-env
+      #:unpack-method 'deb-xz
+      #:install-plan
+      #~'(("opt/Paseo" "lib/paseo"))
+      ;; $ORIGIN-first RPATH so .node addons resolve sibling libraries
+      ;; (e.g. sherpa-onnx.node -> libsherpa-onnx-c-api.so).
+      #:preserve-rpath? #t
+      ;; install-bin symlink, generated desktop/icons and the launcher
+      ;; argv[0] fixup stay as escape-hatch phases.  The launcher scripts'
+      ;; #!/bin/sh shebangs are covered by the retained gnu patch-shebangs
+      ;; phase instead of a custom one.
       #:modules '((guix build gnu-build-system)
                   (guix build utils)
                   (ice-9 ftw)
                   (ice-9 regex)
                   (srfi srfi-26))
+      #:imported-modules '((guix build gnu-build-system)
+                           (guix build utils)
+                           (ice-9 ftw)
+                           (ice-9 regex)
+                           (srfi srfi-26))
       #:phases
       #~(modify-phases %standard-phases
-          (delete 'configure)
-          (delete 'build)
-          (replace 'unpack
-            (lambda _
-              (invoke "ar" "x" #$source)
-              (invoke "tar" "xf" "data.tar.xz")))
-          (replace 'install
-            (lambda _
-              (copy-recursively "opt/Paseo"
-                                (string-append #$output "/lib/paseo"))
-              #t))
-          (add-after 'install 'disable-electron-updater
-            #$(disable-electron-updater-phase "paseo"))
-          (add-after 'disable-electron-updater 'patch-cli-shebang
-            (lambda* (#:key inputs #:allow-other-keys)
-              ;; Both the GUI launcher (Paseo, a script since 0.9.2) and the
-              ;; bundled CLI launcher are POSIX scripts with a host /bin/sh
-              ;; shebang.
-              (for-each
-               (lambda (script)
-                 (substitute* script
-                   (("#!/bin/sh")
-                    (string-append "#!"
-                                   (search-input-file inputs "bin/bash")))))
-               (list (string-append #$output "/lib/paseo/Paseo")
-                     (string-append #$output
-                                    "/lib/paseo/resources/bin/paseo")))))
-          (add-after 'patch-cli-shebang 'patch-elf
-            (lambda* (#:key inputs #:allow-other-keys)
-              (let* ((ld.so (string-append #$(this-package-input "glibc")
-                                           #$(glibc-dynamic-linker)))
-                     (rpath (string-join
-                             (cons* "$ORIGIN"
-                                    (string-append #$output "/lib/paseo")
-                                    (map (lambda (input)
-                                           (string-append (cdr input) "/lib"))
-                                         inputs))
-                             ":")))
-                (define (patch-elf file patch-interp?)
-                  (format #t "Patching ~a ..." file)
-                  (when patch-interp?
-                    (invoke "patchelf" "--set-interpreter" ld.so file))
-                  (invoke "patchelf" "--set-rpath" rpath file)
-                  (display " done\n"))
-                ;; Electron executables get a new interpreter; shared
-                ;; libraries and .node addons have no PT_INTERP and only
-                ;; get RPATH.
-                (for-each (lambda (file) (patch-elf file #t))
-                          (map (lambda (binary)
-                                 (string-append #$output "/lib/paseo/"
-                                                binary))
-                               '("Paseo.bin"
-                                 "chrome_crashpad_handler"
-                                 "chrome-sandbox")))
-                (for-each (lambda (file) (patch-elf file #f))
-                          (append (find-files (string-append #$output
-                                                             "/lib/paseo")
-                                              ".*\\.so(\\.[0-9]+)?$")
-                                  (find-files (string-append #$output
-                                                             "/lib/paseo")
-                                              ".*\\.node$"))))))
-          (add-after 'patch-elf 'install-bin
+          (add-after 'patchelf 'install-bin
             (lambda _
               (let* ((out #$output)
                      (bin (string-append out "/bin"))
@@ -1085,28 +828,7 @@ coding experience with context awareness.")
                      (mkdir-p (dirname new))
                      (copy-file old new)))
                  (find-files icon-src "Paseo\\.png$")))))
-          (add-after 'install-icons 'wrap-program
-            (lambda* (#:key inputs outputs #:allow-other-keys)
-              (let* ((out (assoc-ref outputs "out"))
-                     (lib (string-append out "/lib/paseo"))
-                     (mesa-lib (string-append (assoc-ref inputs "mesa")
-                                              "/lib"))
-                     (nss-lib (string-append (assoc-ref inputs "nss")
-                                             "/lib/nss")))
-                (wrap-program (string-append out "/bin/paseo")
-                  `("LD_LIBRARY_PATH" prefix
-                    (,lib ,mesa-lib ,nss-lib))
-                  `("FONTCONFIG_FILE" =
-                    (,(string-append
-                       #$(this-package-input "fontconfig-minimal")
-                       "/etc/fonts/fonts.conf")))
-                  `("XDG_DATA_DIRS" prefix
-                    (,(string-append out "/share")))))))
-          (add-after 'wrap-program 'prefer-wayland
-            ;; Paseo's argv parser rejects injected --ozone-platform flags
-            ;; ("error: unknown option"), so use the env-hint variant.
-            #$(prefer-electron-wayland-hint-phase "paseo"))
-          (add-after 'prefer-wayland 'point-wrapper-at-launcher
+          (add-after 'prefer-wayland-hint 'point-wrapper-at-launcher
             ;; wrap-program passes a bare basename as argv[0]
             ;; (`exec -a "${0##*/}"`).  The launcher script derives its
             ;; Electron binary as "${0}.bin", so a basename would be resolved
@@ -1116,7 +838,7 @@ coding experience with context awareness.")
                 (("exec -a \"[^\"]*\" ")
                  (string-append "exec -a \"" #$output
                                 "/lib/paseo/Paseo\" "))))))))
-    (native-inputs (list binutils patchelf tar xz))
+    (native-inputs (list binutils tar xz))
     (inputs `(("alsa-lib" ,alsa-lib)
               ("at-spi2-core" ,at-spi2-core)
               ("bash-minimal" ,bash-minimal)
@@ -1178,23 +900,14 @@ telemetry or forced log-ins.")
              "v" version "/reasonix-linux-amd64.tar.gz"))
        (sha256
         (base32 "0mpdq075yvzb6fq3bm6bwrqiq6313rix7mapa0859mzqvbnjc49c"))))
-    (build-system gnu-build-system)
+    (build-system jeans-binary-build-system)
     (arguments
      (list
-      #:tests? #f
-      #:validate-runpath? #f
-      #:strip-binaries? #f
-      #:modules '((guix build gnu-build-system)
-                  (guix build utils))
-      #:phases
-      #~(modify-phases %standard-phases
-          (delete 'configure)
-          (delete 'build)
-          (replace 'install
-            (lambda _
-              (let ((bin (string-append #$output "/bin")))
-                (mkdir-p bin)
-                (install-file "reasonix" bin)))))))
+      ;; Single static Go binary: default unpack layout + plain install.
+      #:unpack-method 'tar
+      #:install-plan
+      #~'(("reasonix" "bin/reasonix"))
+      #:patchelf? #f))
     (home-page "https://github.com/esengine/DeepSeek-Reasonix")
     (synopsis "DeepSeek-native AI coding agent for the terminal")
     (description
@@ -1235,69 +948,31 @@ and ships as a single static binary with no runtime dependencies.")
              "studio-v" version "/ReasonixStudio-linux-amd64.deb"))
        (sha256
         (base32 "18nymcnkr8cwspckngw39iy2qp2z8a69ragamcjgh8q8mc5p7szm"))))
-    (build-system gnu-build-system)
+    (build-system jeans-electron-build-system)
     (arguments
      (list
-      #:tests? #f
-      #:validate-runpath? #f
-      #:strip-binaries? #f
+      #:program "reasonix-studio"
+      #:app-dir "lib/reasonix-studio"
+      #:application-directory "reasonix-studio"
+      #:unpack-method 'deb-xz
+      #:install-plan
+      #~'(("opt/Reasonix Studio" "lib/reasonix-studio"))
+      ;; install-bin symlink, generated desktop entry and icon rename are
+      ;; beyond install-plan: kept as small escape-hatch phases.  The static
+      ;; Go sidecar is auto-skipped by the builder's link probe.
       #:modules '((guix build gnu-build-system)
                   (guix build utils)
                   (ice-9 ftw)
                   (ice-9 regex)
                   (srfi srfi-26))
+      #:imported-modules '((guix build gnu-build-system)
+                           (guix build utils)
+                           (ice-9 ftw)
+                           (ice-9 regex)
+                           (srfi srfi-26))
       #:phases
       #~(modify-phases %standard-phases
-          (delete 'configure)
-          (delete 'build)
-          (replace 'unpack
-            (lambda _
-              (invoke "ar" "x" #$source)
-              (invoke "tar" "xf" "data.tar.xz")))
-          (replace 'install
-            (lambda _
-              (let ((out #$output))
-                (copy-recursively "opt/Reasonix Studio"
-                                  (string-append out "/lib/reasonix-studio"))
-                #t)))
-          (add-after 'install 'disable-electron-updater
-            #$(disable-electron-updater-phase "reasonix-studio"))
-          (add-after 'install 'patch-elf
-            (lambda* (#:key inputs #:allow-other-keys)
-              (let* ((ld.so (string-append #$(this-package-input "glibc")
-                                           #$(glibc-dynamic-linker)))
-                     (rpath (string-join
-                             (cons* (string-append #$output "/lib/reasonix-studio")
-                                    (map (lambda (input)
-                                           (string-append (cdr input) "/lib"))
-                                         inputs))
-                             ":")))
-                (define (patch-elf file)
-                  (format #t "Patching ~a ... " file)
-                  ;; Statically linked binaries (e.g. the Go sidecar since
-                  ;; 2.22.0) have no .interp/.dynamic section; probe first,
-                  ;; patch only what is dynamic.
-                  (let ((dynamic? (zero? (system* "patchelf"
-                                                  "--print-interpreter" file))))
-                    (when dynamic?
-                      (invoke "patchelf" "--set-interpreter" ld.so file))
-                    (when (or dynamic?
-                              (zero? (system* "patchelf" "--print-rpath" file)))
-                      (invoke "patchelf" "--set-rpath" rpath file)))
-                  (display "done\n"))
-                (for-each patch-elf
-                          (append (find-files (string-append #$output
-                                                             "/lib/reasonix-studio")
-                                              ".*\\.so(\\.[0-9]+)?$")
-                                  (map (lambda (binary)
-                                         (string-append #$output
-                                                        "/lib/reasonix-studio/"
-                                                        binary))
-                                       '("reasonix-studio-electron"
-                                         "chrome_crashpad_handler"
-                                         "chrome-sandbox"
-                                         "resources/bin/reasonix-studio-host")))))))
-          (add-after 'patch-elf 'install-bin
+          (add-after 'patchelf 'install-bin
             (lambda _
               (let* ((out #$output)
                      (bin (string-append out "/bin"))
@@ -1327,26 +1002,8 @@ and ships as a single static binary with no runtime dependencies.")
                      (dst (string-append
                             out "/share/icons/hicolor/512x512/apps/reasonix-studio.png")))
                 (mkdir-p (dirname dst))
-                (copy-file src dst))))
-          (add-after 'install-icons 'wrap-program
-            (lambda* (#:key inputs outputs #:allow-other-keys)
-              (let* ((out (assoc-ref outputs "out"))
-                     (lib (string-append out "/lib/reasonix-studio"))
-                     (mesa-lib (string-append (assoc-ref inputs "mesa") "/lib"))
-                     (nss-lib (string-append (assoc-ref inputs "nss") "/lib/nss"))
-                     (fontconfig-file (string-append
-                                      (assoc-ref inputs "fontconfig-minimal")
-                                      "/etc/fonts/fonts.conf")))
-                (wrap-program (string-append out "/bin/reasonix-studio")
-                  `("LD_LIBRARY_PATH" prefix
-                    (,lib ,mesa-lib ,nss-lib))
-                  `("FONTCONFIG_FILE" =
-                    (,fontconfig-file))
-                  `("XDG_DATA_DIRS" prefix
-                    (,(string-append out "/share")))))))
-          (add-after 'wrap-program 'prefer-wayland
-            #$(prefer-electron-wayland-phase "reasonix-studio")))))
-    (native-inputs (list binutils patchelf tar xz))
+                (copy-file src dst)))))))
+    (native-inputs (list binutils tar xz))
     (inputs `(("alsa-lib" ,alsa-lib)
               ("at-spi2-core" ,at-spi2-core)
               ("bash-minimal" ,bash-minimal)
@@ -1417,6 +1074,10 @@ for multiple LLM providers.")
 ;;;    The upstream ThinkRail.desktop is dropped too: its Exec=launcher
 ;;;    would resolve wrongly here, and this package installs its own file.
 
+;;; 跳过迁移：bun 自定位混合体。launcher 要 interpreter+RPATH 而 bun 只能动
+;;; interpreter（动 RPATH 会破坏内嵌 .bun 段）；另需 replace-needed 改 soname、
+;;; 手写 LD_LIBRARY_PATH wrapper、删除自带 updater。基座 patch-one 按文件类型
+;;; 一刀切，做不到“同包内不同 ELF 不同打法”，保留现状。
 (define-public thinkrail-bin
   (package
     (name "thinkrail-bin")
@@ -1606,61 +1267,31 @@ configure.  This package provides the prebuilt desktop release.")
              version "/linux-x64/ZCode-" version "-linux-x64.deb"))
        (sha256
         (base32 "1gp4d6x1caad1xm7vvyyan9xkj5411y93hybkk15gq758n462lyp"))))
-    (build-system gnu-build-system)
+    (build-system jeans-electron-build-system)
     (arguments
      (list
-      #:tests? #f
-      #:validate-runpath? #f
-      #:strip-binaries? #f
+      #:program "zcode"
+      #:app-dir "lib/zcode"
+      #:application-directory "zcode"
+      #:unpack-method 'deb-xz
+      #:install-plan
+      #~'(("opt/ZCode" "lib/zcode"))
+      ;; install-bin symlink, generated desktop entry and the quirky
+      ;; icon rename+prune are beyond install-plan: kept as small
+      ;; escape-hatch phases on top of the electron defaults.
       #:modules '((guix build gnu-build-system)
                   (guix build utils)
                   (ice-9 ftw)
                   (ice-9 regex)
                   (srfi srfi-26))
+      #:imported-modules '((guix build gnu-build-system)
+                           (guix build utils)
+                           (ice-9 ftw)
+                           (ice-9 regex)
+                           (srfi srfi-26))
       #:phases
       #~(modify-phases %standard-phases
-          (delete 'configure)
-          (delete 'build)
-          (replace 'unpack
-            (lambda _
-              (invoke "ar" "x" #$source)
-              (invoke "tar" "xf" "data.tar.xz")))
-          (replace 'install
-            (lambda _
-              (let ((out #$output))
-                (copy-recursively "opt/ZCode"
-                                  (string-append out "/lib/zcode"))
-                #t)))
-          (add-after 'install 'disable-electron-updater
-            #$(disable-electron-updater-phase "zcode"))
-          (add-after 'install 'patch-elf
-            (lambda* (#:key inputs #:allow-other-keys)
-              (let* ((ld.so (string-append #$(this-package-input "glibc")
-                                           #$(glibc-dynamic-linker)))
-                     (rpath (string-join
-                             (cons* (string-append #$output "/lib/zcode")
-                                    (map (lambda (input)
-                                           (string-append (cdr input) "/lib"))
-                                         inputs))
-                             ":")))
-                (define (patch-elf file)
-                  (format #t "Patching ~a ..." file)
-                  (unless (string-contains file ".so")
-                    (invoke "patchelf" "--set-interpreter" ld.so file))
-                  (invoke "patchelf" "--set-rpath" rpath file)
-                  (display " done\n"))
-                (for-each patch-elf
-                          (append (find-files (string-append #$output
-                                                             "/lib/zcode")
-                                              ".*\\.so(\\.[0-9]+)?$")
-                                  (map (lambda (binary)
-                                         (string-append #$output
-                                                        "/lib/zcode/"
-                                                        binary))
-                                       '("zcode"
-                                         "chrome_crashpad_handler"
-                                         "chrome-sandbox")))))))
-          (add-after 'patch-elf 'install-bin
+          (add-after 'patchelf 'install-bin
             (lambda _
               (let* ((out #$output)
                      (bin (string-append out "/bin"))
@@ -1701,26 +1332,8 @@ configure.  This package provides the prebuilt desktop release.")
                          (copy-file old new))))
                    (find-files icon-dst "zcode\\.png$"))
                   (for-each delete-file
-                           (find-files icon-dst "zcode\\.png$"))))))
-          (add-after 'install-icons 'wrap-program
-            (lambda* (#:key inputs outputs #:allow-other-keys)
-              (let* ((out (assoc-ref outputs "out"))
-                     (lib (string-append out "/lib/zcode"))
-                     (mesa-lib (string-append (assoc-ref inputs "mesa") "/lib"))
-                     (nss-lib (string-append (assoc-ref inputs "nss") "/lib/nss"))
-                     (fontconfig-file (string-append
-                                      (assoc-ref inputs "fontconfig-minimal")
-                                      "/etc/fonts/fonts.conf")))
-                (wrap-program (string-append out "/bin/zcode")
-                  `("LD_LIBRARY_PATH" prefix
-                    (,lib ,mesa-lib ,nss-lib))
-                  `("FONTCONFIG_FILE" =
-                    (,fontconfig-file))
-                  `("XDG_DATA_DIRS" prefix
-                    (,(string-append out "/share")))))))
-          (add-after 'wrap-program 'prefer-wayland
-            #$(prefer-electron-wayland-phase "zcode")))))
-    (native-inputs (list binutils patchelf tar xz))
+                           (find-files icon-dst "zcode\\.png$")))))))))
+    (native-inputs (list binutils tar xz))
     (inputs `(("alsa-lib" ,alsa-lib)
               ("at-spi2-core" ,at-spi2-core)
               ("bash-minimal" ,bash-minimal)
@@ -1793,29 +1406,16 @@ without friction.")
              "v" version "/zcode-proxy-linux-x64"))
        (sha256
         (base32 "0pw5cxpn90wwq2j1vzm99bcp4civimmbsqfchf4h862cv06h7mkm"))))
-    (build-system gnu-build-system)
+    (build-system jeans-binary-build-system)
     (arguments
      (list
-      #:tests? #f
-      #:validate-runpath? #f
-      #:strip-binaries? #f
-      #:modules '((guix build gnu-build-system)
-                  (guix build utils))
-      #:phases
-      #~(modify-phases %standard-phases
-          (delete 'configure)
-          (delete 'build)
-          (replace 'unpack
-            (lambda _
-              ;; The source is a raw ELF, not an archive: copy it in
-              ;; place and restore the executable bit.
-              (copy-file #$source "zcode-proxy")
-              (chmod "zcode-proxy" #o755)))
-          (replace 'install
-            (lambda _
-              (let ((bin (string-append #$output "/bin")))
-                (mkdir-p bin)
-                (install-file "zcode-proxy" bin)))))))
+      ;; bun --compile self-locating single file: install unpatched and
+      ;; unwrapped, runs through the system-wide nix-ld service.
+      #:unpack-method 'file
+      #:install-plan
+      #~'(("zcode-proxy-linux-x64" "bin/zcode-proxy"))
+      #:patchelf? #f
+      #:wrap? #f))
     (properties `((upstream-name . "zcode-proxy")))
     (home-page "https://github.com/TriDefender/zcode-api")
     (synopsis "Local proxy exposing GLM coding plans as OpenAI/Anthropic APIs")
@@ -1853,59 +1453,42 @@ release and needs the @code{nix-ld} system service to run.")
              "/cua-driver-rs-" version "-linux-x86_64-binary.tar.gz"))
        (sha256
         (base32 "1rci9qh5lwjr0ilpxb54cabsagyk09613h2hf04qwcr0k6ynjs0n"))))
-    (build-system gnu-build-system)
+    (build-system jeans-binary-build-system)
     (arguments
      (list
-      #:tests? #f
-      #:validate-runpath? #f
-      #:strip-binaries? #f
-      #:modules '((guix build gnu-build-system)
-                  (guix build utils))
+      ;; Flat tarball (no top-level dir); FHS ELF set with a thin
+      ;; hand-written launcher.  wayland-helper/ installs verbatim and
+      ;; stays unpatched, as before.
+      #:unpack-method 'tar
+      #:install-plan
+      #~'(("cua-driver" "libexec/cua-driver/cua-driver")
+          ("cua-cursor-theme" "libexec/cua-driver/cua-cursor-theme")
+          ("libcua_driver_sdk.so" "libexec/cua-driver/libcua_driver_sdk.so")
+          ("cua_driver_node_runtime.node"
+           "libexec/cua-driver/cua_driver_node_runtime.node")
+          ("wayland-helper" "libexec/cua-driver/wayland-helper"))
+      #:patchelf-plan
+      #~'(("libexec/cua-driver/cua-driver"
+           "libx11" "libxi" "libxkbcommon" "gcc:lib")
+          ("libexec/cua-driver/cua-cursor-theme"
+           "libx11" "libxi" "libxkbcommon" "gcc:lib")
+          ("libexec/cua-driver/libcua_driver_sdk.so"
+           "libx11" "libxi" "libxkbcommon" "gcc:lib")
+          ("libexec/cua-driver/cua_driver_node_runtime.node"
+           "libx11" "libxi" "libxkbcommon" "gcc:lib"))
       #:phases
       #~(modify-phases %standard-phases
-          (delete 'configure)
-          (delete 'build)
-          ;; The tarball has no single top-level directory; unpack flat
-          ;; into the build directory instead of relying on the default
-          ;; phase's top-level detection.
+          ;; Flat tarball: several top-level files plus wayland-helper/.  The
+          ;; default unpack would chdir into wayland-helper, so unpack flat.
           (replace 'unpack
             (lambda _
-              (invoke "tar" "xvf" #$source)
-              #t))
-          (replace 'install
+              (invoke "tar" "xvf" #$source)))
+          (add-after 'install 'install-wrapper
             (lambda _
               (let* ((out #$output)
                      (bin (string-append out "/bin"))
-                     (libexec (string-append out "/libexec/cua-driver"))
-                     (ld.so (string-append #$(this-package-input "glibc")
-                                           #$(glibc-dynamic-linker)))
-                     (rpath (string-join
-                             (list (string-append #$(this-package-input "libx11") "/lib")
-                                   (string-append #$(this-package-input "libxi") "/lib")
-                                   (string-append #$(this-package-input "libxkbcommon")
-                                                  "/lib")
-                                   (string-append #$(this-package-input "gcc:lib")
-                                                  "/lib"))
-                             ":")))
+                     (libexec (string-append out "/libexec/cua-driver")))
                 (mkdir-p bin)
-                (for-each
-                 (lambda (file) (install-file file libexec))
-                 '("cua-driver" "cua-cursor-theme"
-                   "libcua_driver_sdk.so" "cua_driver_node_runtime.node"))
-                (copy-recursively "wayland-helper"
-                                  (string-append libexec "/wayland-helper"))
-                ;; Shared objects (.so/.node) have no .interp section;
-                ;; only patch the interpreter on PIE executables.
-                (for-each
-                 (lambda (elf)
-                   (when (zero? (system* "patchelf" "--print-interpreter" elf))
-                     (invoke "patchelf" "--set-interpreter" ld.so elf))
-                   (invoke "patchelf" "--set-rpath" rpath elf))
-                 (map (lambda (file)
-                        (string-append libexec "/" file))
-                      '("cua-driver" "cua-cursor-theme"
-                        "libcua_driver_sdk.so"
-                        "cua_driver_node_runtime.node")))
                 (call-with-output-file (string-append bin "/cua-driver")
                   (lambda (port)
                     (format port "#!~a/bin/bash
@@ -1916,9 +1499,7 @@ export CUA_DRIVER_RS_TELEMETRY_ENABLED=0
 exec ~a \"$@\""
                             #$(this-package-input "bash-minimal")
                             (string-append libexec "/cua-driver"))))
-                (chmod (string-append bin "/cua-driver") #o555)
-                #t))))))
-    (native-inputs (list patchelf))
+                (chmod (string-append bin "/cua-driver") #o555)))))))
     (inputs `(("bash-minimal" ,bash-minimal)
               ("gcc:lib" ,gcc "lib")
               ("glibc" ,glibc)

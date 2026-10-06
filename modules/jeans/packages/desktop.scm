@@ -43,6 +43,7 @@
   #:use-module (guix gexp)
   #:use-module (guix git-download)
   #:use-module (guix packages)
+  #:use-module (jeans build-system binary)
   #:use-module (guix utils)               ; substitute-keyword-arguments
   #:use-module ((guix licenses)
                 #:prefix license:))
@@ -98,6 +99,7 @@ and Xorg.")
 ;; external program it may spawn (grok) is located via an absolute path in
 ;; config.toml, so no PATH wrapper is needed.  Patch the interpreter and
 ;; append a RUNPATH covering glibc and libgcc_s, then install both binaries.
+;; 已迁移到 jeans-binary-build-system（纯参数迁移，等价 RPATH）。
 (define-public ai-usagebar-bin
   (package
     (name "ai-usagebar-bin")
@@ -110,36 +112,16 @@ and Xorg.")
              "v" version "/ai-usagebar-linux-x86_64.tar.gz"))
        (sha256
         (base32 "0y9a23s3xnzaf3fx50y8i5w2nxh49khr3avhmrs57z6d45rnf3ph"))))
-    (build-system gnu-build-system)
+    (build-system jeans-binary-build-system)
     (arguments
      (list
-      #:tests? #f
-      #:validate-runpath? #f
-      #:strip-binaries? #f
-      #:modules '((guix build gnu-build-system)
-                  (guix build utils))
-      #:phases
-      #~(modify-phases %standard-phases
-          (delete 'configure)
-          (delete 'build)
-          (replace 'install
-            (lambda* (#:key inputs #:allow-other-keys)
-              (let* ((bin (string-append #$output "/bin"))
-                     (ld.so (string-append (assoc-ref inputs "glibc")
-                                           #$(glibc-dynamic-linker)))
-                     (rpath (string-append (assoc-ref inputs "glibc")
-                                           "/lib:"
-                                           (assoc-ref inputs "gcc:lib")
-                                           "/lib")))
-                (mkdir-p bin)
-                (for-each
-                 (lambda (program)
-                   (let ((target (string-append bin "/" program)))
-                     (install-file program bin)
-                     (invoke "patchelf" "--set-interpreter" ld.so target)
-                     (invoke "patchelf" "--set-rpath" rpath target)))
-                 '("ai-usagebar" "ai-usagebar-tui"))))))))
-    (native-inputs (list patchelf))
+      #:unpack-method 'tar
+      #:install-plan
+      #~'(("ai-usagebar" "bin/ai-usagebar")
+          ("ai-usagebar-tui" "bin/ai-usagebar-tui"))
+      #:patchelf-plan
+      #~'(("bin/ai-usagebar")
+          ("bin/ai-usagebar-tui"))))
     (inputs
      `(("glibc" ,glibc)
        ("gcc:lib" ,gcc "lib")))
@@ -174,6 +156,8 @@ release.")
 ;; upstream scans only <exec>/../share/waywallen and $XDG_DATA_HOME/waywallen,
 ;; never XDG_DATA_DIRS, so every XDG_DATA_DIRS entry containing a
 ;; waywallen/plugins/ tree is passed as a --plugin root.
+;; 已迁移到 jeans-binary-build-system：解包/install/patchelf 走参数（目录条目），
+;; 手写 Qt wrapper 与 desktop 入口保留自定义 phase。
 (define-public waywallen-bin
   (package
     (name "waywallen-bin")
@@ -187,12 +171,10 @@ release.")
              "/waywallen-" version "-x86_64.AppImage"))
        (sha256
         (base32 "0klp29grlb21v5l87sn1gbk62i1ad3l3787pizlxs4hl9a799ikq"))))
-    (build-system copy-build-system)
+    (build-system jeans-binary-build-system)
     (arguments
      (list
-      #:tests? #f
-      #:validate-runpath? #f
-      #:strip-binaries? #f
+      #:unpack-method 'appimage-7z
       #:install-plan
       #~'(("usr/" "lib/waywallen/")
           ;; The AppImage root carries org.waywallen.waywallen.svg as a
@@ -200,55 +182,21 @@ release.")
           ;; copy the real file instead.
           ("usr/share/icons/hicolor/scalable/apps/org.waywallen.waywallen.svg"
            "share/icons/hicolor/scalable/apps/"))
-      #:modules '((guix build utils)
-                  (guix build copy-build-system)
+      ;; lib-dir 必须指向旧 RPATH 首项 lib/waywallen/lib，故 app-dir 取嵌套路径。
+      #:app-dir "waywallen/lib"
+      ;; 无 SPEC 条目：RPATH 取 lib-dir + 全部 inputs 的 /lib（与旧逻辑一致，
+      ;; 旧逻辑里不存在 /lib 的 input 本就是死条目）。
+      #:patchelf-plan
+      #~'(("lib/waywallen"))
+      #:modules '((jeans build binary)
+                  (guix build utils)
                   (ice-9 format)
                   (srfi srfi-26))
       #:phases
       #~(modify-phases %standard-phases
-          (delete 'install-license-files)
-          ;; The source is a bare AppImage (not an archive), so the default
-          ;; unpack is replaced by a plain copy to the build directory.
-          ;; Extraction uses 7z's static parsing of the AppImage container:
-          ;; the runtime's built-in --appimage-extract self-extraction needs
-          ;; exec permission on the build-tree copy, which GitHub runners'
-          ;; build directories deny (issue #32).
-          (replace 'unpack
-            (lambda* (#:key source #:allow-other-keys)
-              (copy-file source "waywallen.AppImage")
-              (invoke "7z" "x" "waywallen.AppImage")))
-          (add-after 'install 'patch-elf
-            (lambda* (#:key inputs #:allow-other-keys)
-              (let* ((ld.so (string-append (assoc-ref inputs "glibc")
-                                           #$(glibc-dynamic-linker)))
-                     (lib-dir (string-append #$output "/lib/waywallen/lib"))
-                     ;; RUNPATH keeps the bundled Qt/ffmpeg stack first
-                     ;; ($ORIGIN/../lib is already baked in) and appends the
-                     ;; Guix store dirs for every input, so the non-bundled
-                     ;; transitive deps (zlib, libdrm, dbus, fontconfig,
-                     ;; freetype, libglvnd, harfbuzz, the X11/xcb/xkbcommon
-                     ;; stack, glibc, gcc:lib, mesa, vulkan-loader, wayland)
-                     ;; all resolve.  Build-side `inputs' preserves the
-                     ;; sub-output path for "gcc:lib".
-                     (rpath
-                      (string-join
-                       (cons* lib-dir
-                              (map (lambda (input)
-                                     (string-append (cdr input) "/lib"))
-                                   inputs))
-                       ":")))
-                (define (patch-elf file)
-                  (format #t "Patching ~a ..." file)
-                  (unless (string-contains file ".so")
-                    (invoke "patchelf" "--set-interpreter" ld.so file))
-                  (invoke "patchelf" "--set-rpath" rpath file)
-                  (display " done\n"))
-                (for-each patch-elf
-                          (find-files (string-append #$output "/lib/waywallen")
-                                      (lambda (file stat)
-                                        (and (eq? 'regular (stat:type stat))
-                                             (elf-file? file))))))))
-          (add-after 'patch-elf 'build-wrapper
+          ;; 解包/install/patchelf 已由上参数承担；此处只保留手写 Qt
+          ;; wrapper 与 desktop 入口。
+          (add-after 'patchelf 'build-wrapper
             (lambda _
               ;; Reproduce the AppRun contract: expose the bundled Qt
               ;; plugins / QML modules and the bundled libs, then exec the
@@ -331,7 +279,7 @@ release.")
                     (format port "Categories=Graphics;Qt;~%")
                     (format port "Keywords=wallpaper;pipewire;vulkan;~%")
                     (format port "StartupNotify=true~%")))))))))
-    (native-inputs (list p7zip patchelf))
+    (native-inputs (list p7zip))
     ;; The AppImage bundles Qt6, ffmpeg and the codec stack; these inputs only
     ;; cover the libraries the bundle expects from the host (the C runtime,
     ;; GL/Vulkan dispatch, Wayland, X11/xcb/xkbcommon, and the font stack).
@@ -414,6 +362,8 @@ desktop through a Wayland layer shell and a QtQuick interface.")
 ;; Workshop source.  Upstream ships a single prebuilt zstd-zipped plugin tree
 ;; per architecture; this package installs it verbatim under the directory
 ;; Waywallen's plugin scanner searches for system plugins.
+;; 已迁移到 jeans-binary-build-system：install-plan 逐项落盘 + 目录 patchelf-plan
+;;（#:preserve-rpath? #t 保 $ORIGIN 首项）+ renderer chmod 小 phase。
 (define-public open-wallpaper-engine-bin
   (package
     (name "open-wallpaper-engine-bin")
@@ -428,77 +378,43 @@ desktop through a Wayland layer shell and a QtQuick interface.")
              "-linux-x86_64.zip"))
        (sha256
         (base32 "12bmmqjf7s3xrpph4034r8h769fwiyy4d5lm1qsmczz7mvrkmi9f"))))
-    (build-system copy-build-system)
+    (build-system jeans-binary-build-system)
     (arguments
      (list
-      #:tests? #f
-      #:validate-runpath? #f
-      #:strip-binaries? #f
-      #:modules '((guix build utils)
-                  (guix build copy-build-system)
-                  (ice-9 format))
+      ;; zstd 压缩的 zip（PK 6.3），系统 unzip 读不了，走 bsdtar。
+      #:unpack-method 'bsdtar
+      #:install-plan
+      #~'(("bin" "share/waywallen/plugins/org.waywallen.open-wallpaper-engine/bin")
+          ("lib" "share/waywallen/plugins/org.waywallen.open-wallpaper-engine/lib")
+          ("wallpaper_engine"
+           "share/waywallen/plugins/org.waywallen.open-wallpaper-engine/wallpaper_engine")
+          ("i18n" "share/waywallen/plugins/org.waywallen.open-wallpaper-engine/i18n")
+          ("main.lua"
+           "share/waywallen/plugins/org.waywallen.open-wallpaper-engine/main.lua")
+          ("plugin.toml"
+           "share/waywallen/plugins/org.waywallen.open-wallpaper-engine/plugin.toml")
+          ("files.txt"
+           "share/waywallen/plugins/org.waywallen.open-wallpaper-engine/files.txt"))
+      ;; 目录条目递归整棵插件树；#:preserve-rpath? #t 保留 $ORIGIN 首项，
+      ;; 使 bundled CEF 库互相找到（旧逻辑 $ORIGIN 写死首项）。
+      #:preserve-rpath? #t
+      #:patchelf-plan
+      #~'(("share/waywallen/plugins/org.waywallen.open-wallpaper-engine"))
+      #:modules '((jeans build binary)
+                  (guix build utils))
       #:phases
       #~(modify-phases %standard-phases
-          (delete 'install-license-files)
-          ;; The upstream archive uses zstd compression (PK 6.3), which the
-          ;; system unzip cannot read; libarchive's bsdtar handles it.
-          (replace 'unpack
-            (lambda* (#:key source #:allow-other-keys)
-              (invoke "bsdtar" "-xf" source)))
-          ;; The release zip is already laid out as a plugin directory
-          ;; (plugin.toml, main.lua, files.txt, wallpaper_engine/*.lua and
-          ;; bin/).  Install it verbatim under the id Waywallen indexes it by.
-          ;; Since 0.2.8 the release zip also carries the CEF web renderer
-          ;; under lib/weweb/ (previously bin/weweb/) and i18n catalogs.
-          (replace 'install
-            (lambda* (#:key outputs #:allow-other-keys)
-              (let* ((out (assoc-ref outputs "out"))
-                     (dest (string-append
-                            out "/share/waywallen/plugins/"
-                            "org.waywallen.open-wallpaper-engine")))
-                (mkdir-p dest)
-                (for-each
-                 (lambda (dir) (copy-recursively dir (string-append dest "/" dir)))
-                 '("bin" "lib" "wallpaper_engine" "i18n"))
-                (for-each (lambda (f) (install-file f dest))
-                          '("main.lua" "plugin.toml" "files.txt"))
-                (for-each
-                 (lambda (f) (chmod (string-append dest "/" f) #o755))
-                 '("bin/waywallen-wescene-renderer"
-                   "lib/weweb/waywallen-weweb-renderer")))))
-          ;; Repoint the interpreter and RUNPATH of every ELF in the plugin
-          ;; tree.  The bundled CEF libraries (libcef.so, libGLESv2.so,
-          ;; libEGL.so, libvk_swiftshader.so, libvulkan.so.1) keep finding
-          ;; each other through $ORIGIN; the Guix store directories cover
-          ;; every external dependency of both renderers and of libcef.so
-          ;; (ffmpeg 7, Vulkan/GBM, the X11/cairo/pango/nss stack, etc.).
-          ;; Build-side `inputs' preserves the sub-output path for "gcc:lib".
-          (add-after 'install 'patch-elf
-            (lambda* (#:key inputs #:allow-other-keys)
-              (let* ((ld.so (string-append (assoc-ref inputs "glibc")
-                                           #$(glibc-dynamic-linker)))
-                     (root (string-append
-                            #$output "/share/waywallen/plugins/"
-                            "org.waywallen.open-wallpaper-engine"))
-                     (rpath
-                      (string-join
-                       (cons "$ORIGIN"
-                             (map (lambda (input)
-                                    (string-append (cdr input) "/lib"))
-                                  inputs))
-                       ":")))
-                (define (patch-elf file)
-                  (format #t "Patching ~a ..." file)
-                  (unless (string-contains file ".so")
-                    (invoke "patchelf" "--set-interpreter" ld.so file))
-                  (invoke "patchelf" "--set-rpath" rpath file)
-                  (display " done\n"))
-                (for-each patch-elf
-                          (find-files root
-                                      (lambda (file stat)
-                                        (and (eq? 'regular (stat:type stat))
-                                             (elf-file? file)))))))))))
-    (native-inputs (list patchelf libarchive))
+          (add-after 'install 'make-executable
+            (lambda _
+              (for-each
+               (lambda (f) (chmod (string-append #$output "/" f) #o755))
+               (list (string-append "share/waywallen/plugins/"
+                                    "org.waywallen.open-wallpaper-engine/bin/"
+                                    "waywallen-wescene-renderer")
+                     (string-append "share/waywallen/plugins/"
+                                    "org.waywallen.open-wallpaper-engine/lib/weweb/"
+                                    "waywallen-weweb-renderer"))))))))
+    (native-inputs (list libarchive))
     ;; The plugin bundles CEF (Chromium) and the scene/web renderer binaries;
     ;; these inputs cover only the libraries those binaries expect from the
     ;; host.  ffmpeg-7 supplies the libav*/libsw* sonames the wescene-renderer

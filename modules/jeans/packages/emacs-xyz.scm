@@ -33,6 +33,7 @@
   #:use-module (gnu packages emacs)
   #:use-module (gnu packages emacs-xyz)
   #:use-module (gnu packages emacs-build)
+  #:use-module (jeans build-system binary)
   #:use-module (jeans packages tools)          ; agenote (propagated by emacs-agenote)
   #:use-module ((guix licenses) #:prefix license:))
 
@@ -377,17 +378,17 @@ It requires lsp-mode, company, and several utility libraries to function.")
              version "/ellsp_linux-x64.tar.gz"))
        (sha256
         (base32 "15ra839lvab22dm135swygn2v4l1ib4li52p0f7mh6y9yc5nbhaj"))))
-    (build-system copy-build-system)
+    (build-system jeans-binary-build-system)
     (arguments
      (list
-      #:validate-runpath? #f
-      #:strip-binaries? #f
-      #:tests? #f
+      #:unpack-method 'gnu-unpack
       #:install-plan
       #~'(("ellsp" "libexec/ellsp/"))
+      #:patchelf? #f
+      #:wrap? #f
+      #:modules '((guix build utils) (ice-9 format))
       #:phases
       #~(modify-phases %standard-phases
-          (delete 'install-license-files)
           (add-after 'install 'make-binary-executable
             (lambda _
               (chmod (string-append #$output "/libexec/ellsp/ellsp") #o555)))
@@ -442,33 +443,30 @@ the prebuilt proxy binary.")
              version "/eask_" version "_linux-x64.tar.gz"))
        (sha256
         (base32 "0nkdmiii8biyyfjzz9pg7w2l4jwb2dkkh7inaxa807af0in38rk3"))))
-    (build-system gnu-build-system)
+    (build-system jeans-binary-build-system)
     (arguments
      (list
-      #:validate-runpath? #f
-      #:strip-binaries? #f
-      #:tests? #f
-      #:modules '((guix build gnu-build-system)
-                  (guix build utils))
+      #:unpack-method 'gnu-unpack
+      #:install-plan
+      #~'(("eask" "libexec/eask/")
+          ("lisp/" "libexec/eask/lisp/"))
+      #:patchelf? #f
+      #:wrap? #f
+      #:modules '((guix build utils) (ice-9 format))
       #:phases
       #~(modify-phases %standard-phases
-          (delete 'configure)
-          (delete 'build)
           (add-after 'unpack 'back-to-root
             (lambda _
-              ;; gnu-build-system unpack chdirs into first subdir (lisp/);
+              ;; gnu unpack chdirs into first subdir (lisp/);
               ;; go back so we can access both eask binary and lisp/.
               (chdir "..")))
-          (replace 'install
+          (add-after 'install 'install-wrapper
             (lambda* (#:key inputs #:allow-other-keys)
               (let* ((out #$output)
                      (bin (string-append out "/bin"))
                      (libexec (string-append out "/libexec/eask"))
                      (emacs-bin (search-input-file inputs "bin/emacs")))
-                (mkdir-p libexec)
-                (install-file "eask" libexec)
                 (chmod (string-append libexec "/eask") #o555)
-                (copy-recursively "lisp" (string-append libexec "/lisp"))
                 (mkdir-p bin)
                 (call-with-output-file (string-append bin "/eask")
                   (lambda (port)
@@ -604,6 +602,9 @@ of Emacs Lisp projects.  This package provides the prebuilt binary release.")
        ((#:configure-flags flags)
         #~(cons* "--with-termlib=tinfo" "--with-versioned-syms" #$flags))))))
 
+;;; NOTE: neomacs-bin 永不迁移到 jeans-binary-build-system：自定位二进制
+;;; （按 current_exe/argv[0] 探测资源与运行模式，wrap 改名即破坏），且
+;;; archlib 版本化布局 + local-file 输入需手写 phases，通用参数覆盖不了。
 (define-public neomacs-bin
   (package
     (name "neomacs-bin")

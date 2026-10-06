@@ -37,6 +37,7 @@
   #:use-module (gnu packages xdisorg)
   #:use-module (gnu packages xorg)
   #:use-module (gnu packages)
+  #:use-module (jeans build-system binary)
   #:use-module (jeans packages lisp))
 
 ;;; lem-next-bin tracks Lem's rolling nightly release (built from master).
@@ -67,12 +68,10 @@
              "nightly-latest/Lem-x86_64.AppImage"))
        (sha256
         (base32 "1k37fr76w0sknss90nj8hgr3c7b4nbnrk03dlbdlfdnc9iib6rqs"))))
-    (build-system copy-build-system)
+    (build-system jeans-binary-build-system)
     (arguments
      (list
-      #:tests? #f
-      #:validate-runpath? #f
-      #:strip-binaries? #f
+      #:unpack-method 'appimage-7z
       #:install-plan
       #~'(("usr/libexec/lem.real" "libexec/lem-next/")
           ("usr/lib/libwebview.so.0.12.0" "libexec/lem-next/")
@@ -80,12 +79,12 @@
           ("usr/lib/terminal.so" "libexec/lem-next/")
           ("usr/share/icons/hicolor/256x256/apps/lem.png"
            "share/icons/hicolor/256x256/apps/"))
+      #:patchelf? #f
+      #:wrap? #f
       #:phases
       #~(modify-phases %standard-phases
-          (delete 'install-license-files)
-          (add-after 'unpack 'extract-appimage
-            (lambda _
-              (invoke "7z" "x" (car (find-files "." "\\.AppImage$")))))
+          ;; 7z 静态解包由 #:unpack-method 'appimage-7z 承担，不再需要
+          ;; 自定义 extract-appimage phase。
           (add-after 'install 'install-desktop-entry
             (lambda _
               (let ((apps (string-append #$output "/share/applications")))
@@ -376,61 +375,23 @@ the webview (GTK/WebKitGTK) frontend with an ncurses fallback.")
              "v" version "/fresh-editor_" version "-1_amd64.deb"))
        (sha256
         (base32 "04144p7i77k90lfkakw3zv1i1yiix32nik9h5flx5pfaq8ca5hw7"))))
-    (build-system gnu-build-system)
+    (build-system jeans-binary-build-system)
     (arguments
      (list
-      #:tests? #f
-      #:validate-runpath? #f
-      #:strip-binaries? #f
-      #:modules '((guix build gnu-build-system)
-                  (guix build utils))
-      #:phases
-      #~(modify-phases %standard-phases
-          (delete 'configure)
-          (delete 'build)
-          (replace 'unpack
-            (lambda _
-              (let ((debdir (string-append "fresh-editor-" #$version)))
-                (mkdir debdir)
-                (with-directory-excursion debdir
-                  (invoke "ar" "x" #$source)
-                  (invoke "tar" "xf" "data.tar.xz"))
-                (chdir debdir))))
-          (replace 'install
-            (lambda* (#:key inputs #:allow-other-keys)
-              (let* ((out #$output)
-                     (bin (string-append out "/bin"))
-                     (share (string-append out "/share"))
-                     (patchelf-bin
-                      (string-append (assoc-ref inputs "patchelf")
-                                     "/bin/patchelf"))
-                     (ldso (string-append (assoc-ref inputs "glibc")
-                                          "/lib/ld-linux-x86-64.so.2"))
-                     (rpath
-                      (string-join
-                       (list (string-append (assoc-ref inputs "glibc") "/lib")
-                             (string-append (assoc-ref inputs "gcc:lib")
-                                            "/lib")
-                             (string-append (assoc-ref inputs "gpm") "/lib"))
-                       ":")))
-                ;; Patch ELF interpreter and RPATH, then install.
-                (invoke patchelf-bin "--set-interpreter" ldso "usr/bin/fresh")
-                (invoke patchelf-bin "--set-rpath" rpath "usr/bin/fresh")
-                (install-file "usr/bin/fresh" bin)
-                ;; Install desktop entry with an absolute Exec path.
-                (mkdir-p (string-append share "/applications"))
-                (copy-file "usr/share/applications/fresh.desktop"
-                           (string-append share "/applications/fresh.desktop"))
-                (substitute* (string-append share "/applications/fresh.desktop")
-                  (("Exec=fresh")
-                   (string-append "Exec=" bin "/fresh")))
-
-                ;; Install all hicolor icon sizes and the man page.
-                (copy-recursively "usr/share/icons"
-                                  (string-append share "/icons"))
-                (install-file "usr/share/man/man1/fresh.1.gz"
-                              (string-append share "/man/man1"))))))))
-    (native-inputs (list patchelf binutils))
+      ;; data.tar 是 xz 压缩，'deb 只认 data.tar.gz，此处必须用 'deb-xz。
+      #:unpack-method 'deb-xz
+      #:install-plan
+      #~'(("usr/bin/fresh" "bin/fresh")
+          ("usr/share/applications/fresh.desktop"
+           "share/applications/fresh.desktop")
+          ("usr/share/icons/" "share/icons/")
+          ("usr/share/man/man1/fresh.1.gz" "share/man/man1/"))
+      ;; RPATH 取全部 inputs 的 /lib（glibc、gcc:lib、gpm），与原手写值一致。
+      #:patchelf-plan
+      #~'(("bin/fresh"))
+      #:desktop-files
+      #~'(("share/applications/fresh.desktop"))))
+    (native-inputs (list binutils))
     (inputs
      `(("glibc" ,glibc)
        ("gcc:lib" ,gcc "lib")
@@ -481,86 +442,71 @@ binary release.")
              "v" version "/zedg-zh-cn-linux-x86_64-v" version ".tar.gz"))
        (sha256
         (base32 "0x55wdcdslk7gdzscfa2jal643g1gwiri9lb8mbk59jh8k7l9fv3"))))
-    (build-system gnu-build-system)
+    (build-system jeans-binary-build-system)
     (outputs '("out" "shim"))
     (arguments
      (list
-      #:tests? #f
-      #:validate-runpath? #f
-      #:strip-binaries? #f
-      #:modules '((guix build gnu-build-system)
-                  (guix build utils))
+      ;; tarball 顶层是 ./usr，需 --strip-components=1；基座 unpack 由下方
+      ;; 自定义 phase 接管，此处 'none 仅满足显式声明要求。
+      #:unpack-method 'none
+      #:install-plan
+      #~'(("usr/bin/zedg" "lib/zedg-bin/zedg")
+          ("usr/libexec/zedg" "lib/zedg-bin/libexec/zedg"))
+      ;; RPATH 自动取 lib-dir（lib/zedg-bin）+ 全部 inputs 的 /lib。
+      #:patchelf-plan
+      #~'(("lib/zedg-bin/zedg")
+          ("lib/zedg-bin/libexec/zedg"))
+      #:wrap-plan
+      #~'(("lib/zedg-bin/zedg"
+           ("ZED_UPDATE_EXPLANATION" "="
+            ("Updates are handled by the Guix package manager."))
+           ("XKB_CONFIG_ROOT" ":" prefix
+            (#$(file-append xkeyboard-config "/share/X11/xkb")))))
+      #:modules '((guix build utils) (ice-9 regex))
       #:phases
       #~(modify-phases %standard-phases
-          (delete 'configure)
-          (delete 'build)
           (replace 'unpack
             (lambda _
               ;; tarball top level is ./usr/{bin,libexec,share}
               (invoke "tar" "--strip-components=1" "-xzf" #$source)))
-          (replace 'install
-            (lambda* (#:key inputs #:allow-other-keys)
+          (add-after 'install 'install-alias-and-links
+            (lambda _
               (let* ((out #$output)
                      (shim #$output:shim)
-                     (libdir (string-append out "/lib/zedg-bin"))
-                     (patchelf (assoc-ref inputs "patchelf"))
-                     (ldso (string-append (assoc-ref inputs "glibc")
-                                          "/lib/ld-linux-x86-64.so.2"))
-                     (rpath
-                      (string-join
-                       (map (lambda (label)
-                              (string-append (assoc-ref inputs label) "/lib"))
-                            '("glibc" "gcc:lib" "glib" "libx11" "libxcb"
-                              "libxkbcommon" "mesa" "libdrm" "wayland"
-                              "alsa-lib"))
-                       ":")))
-                (for-each
-                 (lambda (file)
-                   (invoke (string-append patchelf "/bin/patchelf")
-                           "--set-interpreter" ldso file)
-                   (invoke (string-append patchelf "/bin/patchelf")
-                           "--set-rpath" rpath file))
-                 (list "usr/bin/zedg" "usr/libexec/zedg"))
-                ;; Keep bin/ and libexec/ sibling directories so the
-                ;; built-in ../libexec lookup keeps resolving.
-                (install-file "usr/bin/zedg" libdir)
-                (install-file "usr/libexec/zedg"
-                              (string-append libdir "/libexec"))
+                     (libdir (string-append out "/lib/zedg-bin")))
+                ;; Alias for the built-in ../libexec lookup path.
                 (symlink "zedg"
                          (string-append libdir "/libexec/zed-editor"))
-                (wrap-program (string-append libdir "/zedg")
-                  `("ZED_UPDATE_EXPLANATION" =
-                    ("Updates are handled by the Guix package manager."))
-                  `("XKB_CONFIG_ROOT" ":" prefix
-                    (,(string-append (assoc-ref inputs "xkeyboard-config")
-                                     "/share/X11/xkb"))))
+                ;; Keep bin/ and libexec/ sibling directories so the
+                ;; built-in ../libexec lookup keeps resolving.
                 (mkdir-p (string-append out "/bin"))
                 (symlink (string-append libdir "/zedg")
                          (string-append out "/bin/zedg"))
                 (mkdir-p (string-append shim "/bin"))
                 (symlink (string-append libdir "/zedg")
-                         (string-append shim "/bin/zed"))
-                (let ((share (string-append out "/share")))
-                  (mkdir-p (string-append share "/applications"))
-                  (copy-file "usr/share/applications/zedg.desktop"
-                             (string-append share "/applications/zedg.desktop"))
-                  (substitute* (string-append share "/applications/zedg.desktop")
-                    (("Exec=zedg %F")
-                     (string-append "Exec=" out "/bin/zedg %F"))
-                    (("TryExec=zedg\n") "")
-                    (("Icon=zedg") "Icon=zed"))
-                  ;; Install the icon under upstream's "zed" name so icon
-                  ;; themes and icon packs can resolve the desktop entry.
-                  (copy-recursively "usr/share/icons"
-                                    (string-append share "/icons"))
-                  (for-each
-                   (lambda (size)
-                     (let ((apps (string-append share "/icons/hicolor/"
-                                                size "/apps")))
-                       (rename-file (string-append apps "/zedg.png")
-                                    (string-append apps "/zed.png"))))
-                   '("512x512" "1024x1024")))))))))
-    (native-inputs (list patchelf))
+                         (string-append shim "/bin/zed")))))
+          (add-after 'install 'install-desktop-and-icons
+            (lambda _
+              (let ((share (string-append #$output "/share")))
+                (mkdir-p (string-append share "/applications"))
+                (copy-file "usr/share/applications/zedg.desktop"
+                           (string-append share "/applications/zedg.desktop"))
+                (substitute* (string-append share "/applications/zedg.desktop")
+                  (("Exec=zedg %F")
+                   (string-append "Exec=" #$output "/bin/zedg %F"))
+                  (("TryExec=zedg\n") "")
+                  (("Icon=zedg") "Icon=zed"))
+                ;; Install the icon under upstream's "zed" name so icon
+                ;; themes and icon packs can resolve the desktop entry.
+                (copy-recursively "usr/share/icons"
+                                  (string-append share "/icons"))
+                (for-each
+                 (lambda (size)
+                   (let ((apps (string-append share "/icons/hicolor/"
+                                          size "/apps")))
+                     (rename-file (string-append apps "/zedg.png")
+                                  (string-append apps "/zed.png"))))
+                 '("512x512" "1024x1024"))))))))
     (inputs
      `(("bash-minimal" ,bash-minimal)
        ("glibc" ,glibc)

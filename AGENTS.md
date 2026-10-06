@@ -99,6 +99,7 @@ blueprint.scm                     # BLUE 蓝图：任务运行器（build/upgrad
 - **`description` 只描述软件本身** —— 打包过程、wrapper 机制、安装布局等细节写成包定义前的 `;;;` 注释，不进 `description`；面向用户的使用须知（运行时数据目录、初始化步骤）和单句 prebuilt 来源声明可保留。可泛化的打包经验凝练进 `.agents/skills/pack-guix/references/jeans-conventions.md`。
 - **`#:use-module ((guix licenses) #:prefix license:)`** 是许可证的标准导入模式 —— 总是以 `license:` 为前缀。
 - **`jeans.scm`** 重新导出所有子模块 —— 添加新包文件时，将其模块加入 `jeans.scm` 的 `%public-modules`。
+- **预编译包必须用仓库自有 build-system** —— 单二进制/deb/tarball/AppImage/裸文件用 `jeans-binary-build-system`（`(jeans build-system binary)`），Electron 包用 `jeans-electron-build-system`（`(jeans build-system electron)`，必填 `#:program`/`#:app-dir`/`#:application-directory`）；`#:unpack-method` 必须显式声明（无扩展名探测）；迁移时 `properties/version/uri/sha256/inputs` 禁动，`native-inputs` 删 `patchelf`（自动注入）；永不迁移的特例（自定位/bun、Tauri resource、dotnet 内嵌 runtime symlink、deb ABI 漂移、私有 helper）在包定义前用注释注明原因。实现见 `modules/jeans/build/` + `modules/jeans/build-system/`。
 
 ## 更新工作流
 

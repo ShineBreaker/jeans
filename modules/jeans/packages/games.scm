@@ -49,6 +49,7 @@
   #:use-module (guix git-download)
   #:use-module (guix packages)
   #:use-module (guix utils)
+  #:use-module (jeans build-system binary)
   #:use-module (jeans packages hardware))
 
 
@@ -285,94 +286,66 @@ fonts, IR jars, and other assets at runtime.  The game requires OpenGL
                          "/osu.AppImage"))
         (sha256
           (base32 "0zgwll27qfycn7skchzfhkxjxk0a5yyim2gdvfarq001nmir9vfw"))))
-    (build-system copy-build-system)
+    (build-system jeans-binary-build-system)
     (arguments
-     (list #:tests? #f
-           #:validate-runpath? #f
-           #:strip-binaries? #f
-           #:install-plan
-            #~'(("usr/share/" "share/")
-                ("usr/bin/" "lib/osu/")
-                ("osu!.desktop" "share/applications/"))
-            #:modules '((guix build utils)
-                        (guix build copy-build-system)
-                        (ice-9 format))
-            #:phases
-            #~(modify-phases %standard-phases
-                (delete 'install-license-files)
-                (add-after 'unpack 'extract-appimage
-                  (lambda _
-                    (invoke "7z" "x" "osu.AppImage")))
-                (add-after 'extract-appimage 'remove-unused-files
-                  (lambda _
-                    (map delete-file '("usr/bin/UpdateNix"))))
-                (add-after 'install 'patch-elf
-                  (lambda* (#:key inputs #:allow-other-keys)
-                    (let ((ld.so (string-append #$(this-package-input "glibc")
-                                                #$(glibc-dynamic-linker)))
-                          (rpath (string-join
-                                   (cons*
-                                     (string-append #$output "/lib/osu")
-                                     (map
-                                       (lambda (input)
-                                         (string-append (cdr input) "/lib"))
-                                       inputs))
-                                   ":")))
-                      ;; Got this proc from hako's Rosenthal, thanks
-                      (define (patch-elf file)
-                        (format #t "Patching ~a ..." file)
-                        (unless (string-contains file ".so")
-                          (invoke "patchelf" "--set-interpreter" ld.so file))
-                        (invoke "patchelf" "--set-rpath" rpath file)
-                        (display " done\n"))
-                      (for-each
-                        (lambda (binary)
-                          (patch-elf binary))
-                        (append
-                          (map
-                            (lambda (binary)
-                              (string-append #$output "/lib/osu/" binary))
-                            '("osu!"))
-                          (find-files (string-append #$output "/lib/osu")
-                                      ".*\\.so.*"))))))
-                (add-after 'patch-elf 'wrap-program
-                  (lambda _
-                    (let* ((bin (string-append #$output "/lib/osu/osu!"))
-                           (wrapper (string-append #$output "/bin/osu!")))
-                      (mkdir-p (dirname wrapper))
-                      (symlink bin wrapper)
-                      (wrap-program wrapper
-                        `("OSU_EXTERNAL_UPDATE_PROVIDER" = ("1"))
-                        `("LD_LIBRARY_PATH" prefix
-                          (,(string-append #$output "/lib/osu")))))))
-                (add-after 'wrap-program 'fix-so
-                  (lambda _
-                    (symlink #$(file-append lttng-ust
-                                            "/lib/liblttng-ust.so")
-                             (string-append
-                              #$output "/lib/osu/liblttng-ust.so.0"))
-                    (symlink #$(file-append eudev "/lib/libudev.so.1")
-                             (string-append #$output "/lib/osu/libudev.so.0"))))
-                (add-after 'wrap-program 'make-files-executable
-                  (lambda _
-                    (let* ((lib-osu (string-append #$output "/lib/osu")))
-                      (map (lambda (file)
-                             (chmod file #o555))
-                           (cons* (string-append lib-osu "/osu!")
-                                  (append (find-files lib-osu ".*\\.dll")
-                                          (find-files lib-osu ".*\\.so.*")))))))
-                (add-after 'install 'install-udev-rules
-                  (lambda _
-                    (let* ((relative-rules.d "/lib/udev/rules.d")
-                           (rules-package
-                            #$(this-package-native-input
-                               "opentabletdriver-udev-rules"))
-                           (otd-rules (string-append rules-package
-                                                     relative-rules.d
-                                                     "/70-opentabletdriver.rules"))
-                           (rules.d (string-append #$output relative-rules.d)))
-                      (install-file otd-rules rules.d)))))))
-    (native-inputs (list p7zip patchelf opentabletdriver-udev-rules))
+     (list
+      #:unpack-method 'appimage-7z
+      #:install-plan
+      #~'(("usr/share/" "share/")
+          ("usr/bin/" "lib/osu/")
+          ("osu!.desktop" "share/applications/"))
+      ;; 资源根是 lib/osu（ derivation 名去版本得 osu-lazer-bin，对不上），
+      ;; 必须显式指定，否则 RPATH 缺第一项。
+      #:app-dir "osu"
+      ;; RPATH 自动取 lib-dir + 全部 inputs 的 /lib，与原手写值一致。
+      #:patchelf-plan
+      #~'(("lib/osu"))
+      #:modules '((guix build utils)
+                  (ice-9 format))
+      #:phases
+      #~(modify-phases %standard-phases
+          ;; 7z 解包由基座承担；仅删掉不需安装的更新器。
+          (add-after 'unpack 'remove-unused-files
+            (lambda _
+              (map delete-file '("usr/bin/UpdateNix"))))
+          (add-after 'patchelf 'wrap-program
+            (lambda _
+              (let* ((bin (string-append #$output "/lib/osu/osu!"))
+                     (wrapper (string-append #$output "/bin/osu!")))
+                (mkdir-p (dirname wrapper))
+                (symlink bin wrapper)
+                (wrap-program wrapper
+                  `("OSU_EXTERNAL_UPDATE_PROVIDER" = ("1"))
+                  `("LD_LIBRARY_PATH" prefix
+                    (,(string-append #$output "/lib/osu")))))))
+          (add-after 'wrap-program 'fix-so
+            (lambda _
+              (symlink #$(file-append lttng-ust
+                                      "/lib/liblttng-ust.so")
+                       (string-append
+                        #$output "/lib/osu/liblttng-ust.so.0"))
+              (symlink #$(file-append eudev "/lib/libudev.so.1")
+                       (string-append #$output "/lib/osu/libudev.so.0"))))
+          (add-after 'wrap-program 'make-files-executable
+            (lambda _
+              (let* ((lib-osu (string-append #$output "/lib/osu")))
+                (map (lambda (file)
+                       (chmod file #o555))
+                     (cons* (string-append lib-osu "/osu!")
+                            (append (find-files lib-osu ".*\\.dll")
+                                    (find-files lib-osu ".*\\.so.*")))))))
+          (add-after 'install 'install-udev-rules
+            (lambda _
+              (let* ((relative-rules.d "/lib/udev/rules.d")
+                     (rules-package
+                      #$(this-package-native-input
+                        "opentabletdriver-udev-rules"))
+                     (otd-rules (string-append rules-package
+                                              relative-rules.d
+                                              "/70-opentabletdriver.rules"))
+                     (rules.d (string-append #$output relative-rules.d)))
+                (install-file otd-rules rules.d)))))))
+    (native-inputs (list p7zip opentabletdriver-udev-rules))
     (inputs
       (list bash-minimal
             alsa-lib

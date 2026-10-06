@@ -22,7 +22,7 @@
    #:use-module (gnu packages web)
    #:use-module (gnu packages xorg)
    #:use-module (guix build utils)
-   #:use-module (nonguix build-system binary)
+  #:use-module (jeans build-system binary)
    #:use-module (guix build-system gnu)
    #:use-module (guix download)
    #:use-module (guix git-download)
@@ -131,54 +131,55 @@
               version "/dotnet-runtime-" version "-linux-x64.tar.gz"))
         (sha256
          (base32 "1q46wfbk8y5dcxr1yqf2h9giv2fg2s7jnwfq3mf2yhrkgiyyf102"))))
-     (build-system binary-build-system)
-    ;; NOTE: arguments MUST stay an outer-backquoted template (nonguix
-    ;; shape): binary-build-system splices plan values into the builder
-    ;; unquoted, so they have to arrive as quasiquote forms evaluated
-    ;; build-side.  A (list ...) + gexp here serializes the evaluated
-    ;; data into the builder as code ("Wrong type to apply", 2026-09-08).
-    ;; Only ,, escapes (definition-time: package field `version').
-     (arguments
-      `(#:patchelf-plan
-        `(("dotnet" ("gcc:lib" "zlib"))
-          (,,(string-append "host/fxr/" version "/libhostfxr.so")
-           ("gcc:lib"))
-          (,,(string-append "shared/Microsoft.NETCore.App/" version "/createdump")
-           ("gcc:lib"))
-          (,,(string-append "shared/Microsoft.NETCore.App/" version "/libclrjit.so")
-           ("gcc:lib"))
-          (,,(string-append "shared/Microsoft.NETCore.App/" version "/libclrgc.so")
-           ("gcc:lib"))
-          (,,(string-append "shared/Microsoft.NETCore.App/" version "/libcoreclr.so")
-           ("gcc:lib" "icu4c"))
-          (,,(string-append "shared/Microsoft.NETCore.App/" version "/libcoreclrtraceptprovider.so")
-           ("gcc:lib" "lttng-ust"))
-          (,,(string-append "shared/Microsoft.NETCore.App/" version "/libhostpolicy.so")
-           ("gcc:lib"))
-          (,,(string-append "shared/Microsoft.NETCore.App/" version "/libmscordaccore.so")
-           ("gcc:lib"))
-          (,,(string-append "shared/Microsoft.NETCore.App/" version "/libmscordbi.so")
-           ("gcc:lib"))
-          (,,(string-append "shared/Microsoft.NETCore.App/" version "/libSystem.Native.so")
-           ("gcc:lib"))
-          (,,(string-append "shared/Microsoft.NETCore.App/" version "/libSystem.Globalization.Native.so")
-           ("gcc:lib"))
-          (,,(string-append "shared/Microsoft.NETCore.App/" version "/libSystem.IO.Compression.Native.so")
-           ("zlib"))
-          (,,(string-append "shared/Microsoft.NETCore.App/" version "/libSystem.Net.Security.Native.so")
-           ("gcc:lib"))
-          (,,(string-append "shared/Microsoft.NETCore.App/" version "/libSystem.Net.Security.Native.so")
-           ("mit-krb5"))
-          (,,(string-append "shared/Microsoft.NETCore.App/" version "/libSystem.Security.Cryptography.Native.OpenSsl.so")
-           ("openssl")))
-        #:install-plan
-        `(("." "share/dotnet/"))
-        #:phases
-        (modify-phases %standard-phases
-          (add-before 'patchelf 'patchelf-writable
-            (lambda _
-              (for-each make-file-writable (find-files ".")))))))
-     (inputs
+    (build-system jeans-binary-build-system)
+    (arguments
+     (list #:unpack-method 'tar
+           ;; source 是 url-fetch/tarbomb（下载时已解包的目录）：目录分支只拷贝
+           ;; 不 chdir；若是未解包的归档文件，散装 tarball 才会 chdir 进首个子目录。
+           ;; 'bsdtar 在此不适用（它只能读归档文件）。
+           #:install-plan
+           #~'(("./" "share/dotnet/"))
+           #:patchelf-plan
+           ;; nonguix 形状 ((BIN (SPECS ...))) 展平为 ((PATH SPEC ...) ...)。
+           ;; PATH 是输出内相对路径（nonguix 是构建目录相对，故多了 share/dotnet/ 前缀）。
+           ;; 版本号写死面值，随 version 一起 bump（见上注释）。末两条同路径
+           ;; （与现状一致：后者覆盖前者的 RPATH）。
+           #~'(("share/dotnet/dotnet" "gcc:lib" "zlib")
+               ("share/dotnet/host/fxr/8.0.25/libhostfxr.so" "gcc:lib")
+               ("share/dotnet/shared/Microsoft.NETCore.App/8.0.25/createdump" "gcc:lib")
+               ("share/dotnet/shared/Microsoft.NETCore.App/8.0.25/libclrjit.so" "gcc:lib")
+               ("share/dotnet/shared/Microsoft.NETCore.App/8.0.25/libclrgc.so" "gcc:lib")
+               ("share/dotnet/shared/Microsoft.NETCore.App/8.0.25/libcoreclr.so"
+                "gcc:lib" "icu4c")
+               (#$(string-append "share/dotnet/shared/Microsoft.NETCore.App/8.0.25/"
+                                 "libcoreclrtraceptprovider.so")
+                "gcc:lib" "lttng-ust")
+               ("share/dotnet/shared/Microsoft.NETCore.App/8.0.25/libhostpolicy.so"
+                "gcc:lib")
+               ("share/dotnet/shared/Microsoft.NETCore.App/8.0.25/libmscordaccore.so"
+                "gcc:lib")
+               ("share/dotnet/shared/Microsoft.NETCore.App/8.0.25/libmscordbi.so"
+                "gcc:lib")
+               ("share/dotnet/shared/Microsoft.NETCore.App/8.0.25/libSystem.Native.so"
+                "gcc:lib")
+               (#$(string-append "share/dotnet/shared/Microsoft.NETCore.App/8.0.25/"
+                                 "libSystem.Globalization.Native.so")
+                "gcc:lib")
+               (#$(string-append "share/dotnet/shared/Microsoft.NETCore.App/8.0.25/"
+                                 "libSystem.IO.Compression.Native.so")
+                "zlib")
+               (#$(string-append "share/dotnet/shared/Microsoft.NETCore.App/8.0.25/"
+                                 "libSystem.Net.Security.Native.so")
+                "gcc:lib")
+               (#$(string-append "share/dotnet/shared/Microsoft.NETCore.App/8.0.25/"
+                                 "libSystem.Net.Security.Native.so")
+                "mit-krb5")
+               (#$(string-append "share/dotnet/shared/Microsoft.NETCore.App/8.0.25/"
+                                 "libSystem.Security.Cryptography.Native.OpenSsl.so")
+                "openssl"))))
+    ;; patchelf 由 jeans-binary 按 #:patchelf? 自动注入，无需 native-inputs。
+    ;; 旧 nonguix 模板里的 patchelf-writable 阶段不再需要（基座逐文件 chmod）。
+    (inputs
       `(("gcc:lib" ,gcc "lib")
         ("icu4c" ,icu4c)
         ("lttng-ust" ,lttng-ust)
