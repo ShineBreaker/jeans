@@ -1,160 +1,28 @@
 # AGENTS.md — jeans Guix Channel
 
-## 这是什么
+个人 [Guix channel](https://github.com/ShineBreaker/jeans)（Just Enough AI-geNerated Slops），用 AI 辅助打包前沿软件和闭源软件。包定义在 `modules/`（由 `.guix-channel` 声明），硬依赖 [nonguix](https://gitlab.com/nonguix/nonguix)——构建时必须可用。
 
-一个个人 [Guix channel](https://guix.gnu.org/manual/en/html_node/Channels.html)，名为 **jeans**（Just Enough AI-geNerated Slops）。
-用 AI 辅助打包前沿软件和闭源软件，供 GNU Guix 使用。
+<critical>开始任何操作前先 `git pull`，再 `git status --short`。自动更新 CI 每周二/四/六 02:00 UTC 抢先提交包更新，不同步就是在过期的包定义上改东西。pull 后保留工作区已有的修改。</critical>
 
-- 主仓库：`https://github.com/ShineBreaker/jeans.git`（`main` 分支）
-- Codeberg 镜像：从 GitHub 自动同步
-- 硬依赖 [nonguix](https://gitlab.com/nonguix/nonguix)（在 `.guix-channel` 中声明）。部分包从 `(nongnu ...)` 模块导入（如 `hardware.scm` 使用 `nongnu packages dotnet`）
+## 按分支读，不要预先全读
 
-<critical> 在进行任何操作前，请先执行 `git pull` ，以防止CI的提交未被拉取到本地</critical>
+- **写或改任何 `.scm`**（包定义、服务定义、build-system）→ `CODING_STANDARDS.md`：文件头、`description` 边界、许可证导入、build-system 选型、模块导出门禁、只能由工具改写的文件。
+- **新增、修改或评审一个包定义**，或动取源、解包、wrapper、lint、运行时验证 → `.agents/skills/pack-guix/SKILL.md` 走它的 runbook；通道特有的坑查 `references/jeans-conventions.md`。命名（`-bin` 决策）、input label 规范、properties 写法都在那里，本文不重复。
+- **版本、hash、自动更新、CI**——"这个包为什么不动""它现在该是哪个版本""updater 报错"、或要改 `scripts/check-updates/` 与 `.github/workflows/auto-update.yml` → `.agents/skills/auto-update/SKILL.md`。
 
-## 构建命令
+## 命令
 
-任务运行器使用 [BLUE](https://codeberg.org/lapislazuli/blue)，定义在 `blueprint.scm`（已从原先的 `maak` 迁移）。所有命令在仓库根目录执行。
+任务运行器是 [BLUE](https://codeberg.org/lapislazuli/blue)，定义在 `blueprint.scm`；`blue help` 列出命令，`blue help <命令>` 看单条细节。以下均在仓库根目录执行。
 
-```bash
-# 列出所有可用命令
-blue help
+| 命令 | 作用 |
+| --- | --- |
+| `blue build <包名>...` | 构建一个或多个包，等价于 `guix build --load-path=./modules <包名>` |
+| `blue upgrade` | 跑兜底 updater（Python 一层，不含主力 `guix refresh`） |
+| `blue import-crate <crate名>[@版本]` | 从 crates.io 导入 Rust crate 源码，写入 `rust-crates.scm` |
+| `blue gen-docs` | 由包定义重生成 `docs/packages.md` |
 
-# 构建单个包
-blue build <包名>
-# 等价于: guix build --load-path=./modules <包名>
-# 支持多包: blue build pkg-a pkg-b
+包定义新增、改名、改 `synopsis` 或 `description` 后跑一次 `blue gen-docs`，让文档与代码不漂移。
 
-# 检查所有包的上游更新
-blue upgrade
-# 内部调用 scripts/check-updates/update_versions.py
+## 提交
 
-# 从 crates.io 导入 Rust crate 源码
-blue import-crate <crate名>[@版本]
-# 使用 guix import crate，自动检测 ./Cargo.lock
-# 在 rust-crates.scm 的 ssss-separator 前插入 crate-source 定义
-
-# 根据 modules/ 里的包定义重新生成 docs/packages.md
-blue gen-docs
-# 内部通过 guix repl 运行 scripts/gen-docs.scm，读取每个包的 name/synopsis
-# 加载失败的模块会被跳过并给出警告（例如依赖未满足时）
-
-# 直接 guix 构建（替代方案）
-guix build -L modules <包名>
-```
-
-## 仓库结构
-
-```
-modules/                          # 通道包目录（由 .guix-channel 指定）
-├──jeans.scm                       # 顶层模块：通过 %public-modules 重新导出所有子模块
-├──jeans/packages/                 # 按类别组织的包定义
-│  ├──agent.scm                     # OpenCode/Orca/ZCode 及其他 AI agent 包；开源预编译包使用 -bin，闭源/限制性许可证包不使用 -bin
-│  ├──browser.scm                   # librewolf-nongnu（trivial-build-system，omni.ja 补丁）
-│  ├──desktop.scm                   # python-screeninfo, waypaper
-│  ├──editor.scm                    # lem-next-bin, lem-next, fresh-editor-bin, zedg-bin, helix-steel
-│  ├──emacs-xyz.scm                 # emacs-ghostel, emacs-msgu, emacs-agenote, eask-bin, ellsp-bin, neomacs-bin
-│  ├──fonts.scm                     # font-maple-font-nf-cn, font-misans, font-nerd-symbols, font-nerd-font-iosevka
-│  ├──games.scm                     # lr2oraja-endlessdream-bin, osu-lazer-bin（开源预编译包，AppImage/JAR 提取）
-│  ├──hardware.scm                  # opentabletdriver-udev-rules
-│  ├──lisp.scm                      # sbcl-frugal-uuid, sbcl-tree-sitter-cl, webview, sbcl-webview, sbcl-micros-lem, sbcl-jsonrpc-lem
-│  ├──nix-ld.scm                    # nix-ld（从上游镜像的 Rust 源码构建包）
-│  ├──python-xyz.scm                # python-jieba
-│  ├──theme.scm                     # colloid-gtk-theme, vimix-gtk-themes, vimix-kvantum-themes, orchis-kde-themes, colloid-kde-themes
-│  ├──tools.scm                     # winapps, jdtls-bin, rayburst-bin, cc-switch-bin,
-│  │                                # git-credential-keepassxc, amber-pm
-│  └──rust-crates.scm               # Rust crate 源码 —— 由 guix import 管理，禁止手动编辑
-├──jeans/services/
-│  ├──hardware.scm                  # Guix 服务定义（opentabletdriver-service-type）
-│  └──nix-ld.scm                    # nix-ld 系统服务（activation / etc-profile / profile 三扩展）
-├──jeans/home/services/
-│  └──emacs-xyz.scm                   # home-neomacs-service-type（参照 rosenthal home-emacs，含 wrapper 机制说明）
-└──jeans/patches/
-   └──winapps-fix-install-paths.patch # 通过 search-patches 被包定义引用的补丁
-
-scripts/
-├──check-updates/
-│  ├──update_versions.py            # 自动版本检查器（GitHub API）
-│  ├──test_updated_packages.py      # 对所有本次更新的包进行构建测试
-│  ├──config.json                   # 更新器的跳过/预发布配置
-│  └──manifest.scm                  # guix shell 环境：python + python-requests
-├──jgen-docs.scm                    # 由 `blue gen-docs` 调用，生成 docs/packages.md
-blueprint.scm                     # BLUE 蓝图：任务运行器（build/upgrade/import-crate/gen-docs）
-```
-
-## 提交信息规范
-
-遵循 [Conventional Commits](https://www.conventionalcommits.org/zh-hans/)：`<type>(<scope>): <简短描述>`，详细规则（scope、描述、BREAKING CHANGE 等）见 `~/.config/git/gitmessage`。
-
-旧前缀映射：`ADD:`/`FEATURE:` → `feat:`，`FIX:` → `fix:`，`UPDATE:` → `feat:`，`MIGRATE:` → `refactor:`。
-自动更新 CI 使用 `feat(packages): auto package update YYYY-MM-DD`（2026-08-19 前的历史提交为旧前缀 `UPDATE:`）。
-
-## 仓库约定与陷阱
-
-仓库级别的硬性约定；具体 Guix 打包细节（包定义模式、构建系统、命名规范、input label 规范、阶段修改等）见 `.agents/skills/pack-guix/SKILL.md`。
-
-- **`nonguix` 通道是硬依赖** —— 在 `.guix-channel` 中声明，构建时必须可用。
-- **不要从其他通道复制 `rust-crates.scm`**。版本不匹配会导致 `cargo build --offline` 失败。始终使用 `blue import-crate` 或 `guix import crate --lockfile`。
-- **channel 内文件引用用 `search-path %load-path`**：`local-file` 的相对路径在此环境按 CWD 解析（源文件目录信息丢失），应写 `(local-file (search-path %load-path "jeans/licenses/misans.txt"))`（`font-misans` 模式，文件在 `modules/jeans/licenses/misans.txt`）。另：`install-file` 会保留 store item 含哈希的完整 basename，目标文件名必须精确时用 `copy-file`。
-- **文件头**：所有 `.scm` 文件使用 `SPDX-FileCopyrightText` 和 `SPDX-License-Identifier` 头。新文件应包含 `BrokenShine <xchai404@gmail.com>` 版权。
-- **`description` 只描述软件本身** —— 打包过程、wrapper 机制、安装布局等细节写成包定义前的 `;;;` 注释，不进 `description`；面向用户的使用须知（运行时数据目录、初始化步骤）和单句 prebuilt 来源声明可保留。可泛化的打包经验凝练进 `.agents/skills/pack-guix/references/jeans-conventions.md`。
-- **`#:use-module ((guix licenses) #:prefix license:)`** 是许可证的标准导入模式 —— 总是以 `license:` 为前缀。
-- **`jeans.scm`** 重新导出所有子模块 —— 添加新包文件时，将其模块加入 `jeans.scm` 的 `%public-modules`。
-- **预编译包必须用仓库自有 build-system** —— 单二进制/deb/tarball/AppImage/裸文件用 `jeans-binary-build-system`（`(jeans build-system binary)`），Electron 包用 `jeans-electron-build-system`（`(jeans build-system electron)`，必填 `#:program`/`#:app-dir`/`#:application-directory`）；`#:unpack-method` 必须显式声明（无扩展名探测）；迁移时 `properties/version/uri/sha256/inputs` 禁动，`native-inputs` 删 `patchelf`（自动注入）；永不迁移的特例（自定位/bun、Tauri resource、dotnet 内嵌 runtime symlink、deb ABI 漂移、私有 helper）在包定义前用注释注明原因。实现见 `modules/jeans/build/` + `modules/jeans/build-system/`。
-
-## 更新工作流
-
-自动更新采用 **guix refresh 主力 + Python 脚本兜底** 的分层架构。两层都在 CI 的同一个 job 内串行执行，先 refresh 后 Python，最后合并两路的更新集合统一构建测试。
-
-### 第 1 层：guix refresh（主力）
-
-`guix refresh -u` 接管大部分包的上游版本检测和源码改写（version + base32）。要让 refresh 正确识别一个包，包定义需要带合适的 `properties`：
-
-- **`upstream-name`**：几乎对所有 `-bin` 包必需。github updater 用它匹配 release 资产文件名前缀（如 `crush-bin` 的 upstream-name 是 `crush`，因为资产文件名是 `crush_*.deb` 而非 `crush-bin_*`）。
-- **`release-tag-prefix`**：正则，当 repo 有多个 tag 系列时指定跟踪哪个（如 reasonix-bin 用 `"^v"`）。
-- **`accept-pre-releases?`**：布尔，允许 refresh 考虑预发布版本。
-
-refresh 覆盖：GitHub release 包（带 upstream-name）和 git-fetch 有 tag 包（generic-git updater）。`rust-crates.scm` 中是私有 `crate-source` origin，不是可供 `guix refresh -t crate` 更新的 package；依赖更新必须通过 `blue import-crate` / `guix import crate --lockfile` 重新生成。
-
-### 第 2 层：Python 脚本（兜底）
-
-`scripts/check-updates/update_versions.py` 处理 guix refresh 力不能及的包，分三类：
-
-- **通用逻辑**（GitHub 源）：url-fetch 包（从 release 资产发现版本）和 git-fetch 包（tag / commit / let-绑定 git-version 追踪），其中无 tag 固定 commit 包（`winapps`/`orchis-kde-themes`/`colloid-kde-themes`）用 `let`+`git-version` 结构，脚本追踪 main 分支 commit 并更新 let 绑定的 commit + 自增 revision；`with-latest-git-commit` property 已写入但本机 Guix 尚未实现该功能。
-- **特殊源处理器**（`SPECIAL_UPDATERS` 映射，按包名分发，版本信号不在 GitHub 上）：
-  - `zcode`：z.ai CDN 无目录列表，从官网 `zcode.z.ai/cn` 的 JS 内嵌版本列表（`releases/X.Y.Z`）取最新稳定版；在 `check_pre_release` 中时还会扫描 CDN 灰度先行版（官网不展示、先发部分平台，靠 `<v>/linux-x64/latest.yml` 递增探测发现）
-  - `amber-pm`：gitee 仓库无 tag，用 gitee API `/branches/master` 追踪 master 最新 commit（通用逻辑只认 GitHub）
-  - `jdtls-bin`：GitHub tags 发现版本 + 抓 `download.eclipse.org/jdtls/milestones/<v>/` 目录页提取归档时间戳（`-YYYYMMDDHHMM` 不在 version 里，通过 `extra_replacements` 一并改写）
-  - `font-misans`：zip 无版本号，以 `Last-Modified` 为更新信号，基线存 `font-misans-state.json`（227MB zip 不能每次下载算 hash；`ETag/Last-Modified` 变了才下载）
-- **stale 监控**：`config.json` 的 `stale_watch` 中的包无法自动更新（继承上游 / 有意冻结），超 `stale_days`（默认 14）天无手动更新则在 CI 发提醒 issue；周期记忆存 `stale-state.json`。
-
-Python 脚本也用 `config.json` 的 `tag_prefix`/`check_pre_release` 作为兜底规则。三个状态文件（`report.json`、`font-misans-state.json`、`stale-state.json`）中只有后两个入库，且每次提交时随包改动一起更新。
-
-### 合并与构建测试
-
-- `refresh-changed-packages.sh` 从 git diff 提取 refresh 改动的包名 → `refresh-updates.json`
-- `test_updated_packages.py` 合并 Python 的 `report.json`（`status == "updated"`）和 `refresh-updates.json`，对并集逐个 `guix build`
-- 不要通过包名后缀跳过闭源或预编译包
-
-### 版本号约定
-
-- 版本格式完全遵从 Guix 上游规定。`generic-git` updater 会把日期 tag（如 `2025-07-31`）规范化为 `2025.07.31`，这是预期行为。
-- 无 tag 包用 `(git-version base revision commit)` 生成版本号（如 `0-0.7f6b6ab`），格式为 `base-revision.commit前7位`。
-- GitHub 标签的 `v` 前缀会被去除（Guix 约定：不带 `v` 前缀）。
-
-### 退出码（Python updater）
-
-0 = 无更新，1 = 已应用更新，2 = 出错。
-
-## CI 流水线
-
-`auto-update.yml` 工作流每周运行（周二、四、六 02:00 UTC）或手动触发：
-
-1. 安装 Guix + `guix pull` + checkout nonguix（提前、无条件，供 refresh 使用）
-2. **guix refresh**（主力）：改写 GitHub release 包 + git-fetch 包；记录改动的包到 `refresh-updates.json`
-3. **Python updater**（兜底）：通用逻辑 + 特殊源处理器（zcode/amber-pm/jdtls-bin/font-misans），写 `report.json`
-4. 检测变更（含未跟踪的 state 文件）→ 合并两路更新集合 → 构建测试所有更新的包
-5. 全部通过后 GPG 签名提交（含 state 文件）→ 推送到 GitHub → 镜像到 Codeberg
-6. 构建失败则阻止提交，并创建 GitHub Issue 通知
-7. **stale 监控**：无法自动更新的包（`stale_watch`）超 14 天无手动更新，发提醒 issue
-
-关键环境变量：`GUIX_GITHUB_TOKEN`（映射自 `GITHUB_TOKEN`）是 guix refresh 读 GitHub API 的专属变量名，必须单独设置。
+`<type>(<scope>): <简短描述>`（Conventional Commits），scope 取值与 BREAKING CHANGE 细则见 `~/.config/git/gitmessage`。自动更新 CI 自己发 `feat(packages): auto package update YYYY-MM-DD`，`git log` 里见到这条是 CI 的改动，不是你写的。

@@ -14,7 +14,7 @@
 ;;;
 ;;; 使用方法（在仓库根目录执行）：
 ;;;
-;;;   blue --list            列出所有可用命令
+;;;   blue help             列出所有可用命令
 ;;;   blue help <命令>       查看某条命令的详细帮助
 ;;;   blue build <包名> ...  用 guix 构建包
 ;;;   blue upgrade           检查所有包的上游更新

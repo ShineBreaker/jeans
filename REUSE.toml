@@ -10,6 +10,7 @@ path = [
   ".guix-authorizations",
   ".guix-channel",
   "AGENTS.md",
+  "CODING_STANDARDS.md",
   "NEWS",
   "README.md",
   "scripts/**",
