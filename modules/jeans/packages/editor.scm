@@ -458,7 +458,7 @@ binary release.")
           ("lib/zedg-bin/libexec/zedg"))
       #:wrap-plan
       #~'(("lib/zedg-bin/zedg"
-           ("ZED_UPDATE_EXPLANATION" "="
+           ("ZED_UPDATE_EXPLANATION" =
             ("Updates are handled by the Guix package manager."))
            ("XKB_CONFIG_ROOT" ":" prefix
             (#$(file-append xkeyboard-config "/share/X11/xkb")))))

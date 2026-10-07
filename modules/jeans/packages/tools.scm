@@ -994,8 +994,8 @@ JSON, YAML, Markdown and GraphQL.")
                     (format port (string-append
                                      "exec -a sunshine "
                                      "\"$ROOT/usr/bin/sunshine\" \"$@\""
-                                     "~%")))))
-                (chmod wrapper #o755)))
+                                     "~%"))))
+                (chmod wrapper #o755))))
           (add-after 'build-wrapper 'install-udev-rules
             (lambda _
               (install-file

@@ -207,8 +207,9 @@ release.")
       #~'(("share/applications/cindy.desktop"
            "bin/cindy"
            "share/pixmaps/cindy.png"))
+      #:modules '((guix build utils))
       #:phases
-      #~(modify-phases %standard-phases
+      #~(modify-phases (@ (jeans build electron) %standard-phases)
           (add-after 'patchelf 'install-bin
             (lambda _
               (let* ((out #$output)
@@ -635,18 +636,16 @@ prebuilt distribution and launches it with the store Node.js runtime.")
       ;; install-bin symlink, generated desktop entry and per-size icon
       ;; rename are beyond install-plan/desktop-files: kept as small
       ;; escape-hatch phases on top of the electron defaults.
-      #:modules '((guix build gnu-build-system)
-                  (guix build utils)
+      #:modules '((guix build utils)
                   (ice-9 ftw)
                   (ice-9 regex)
                   (srfi srfi-26))
-      #:imported-modules '((guix build gnu-build-system)
-                           (guix build utils)
+      #:imported-modules '((guix build utils)
                            (ice-9 ftw)
                            (ice-9 regex)
                            (srfi srfi-26))
       #:phases
-      #~(modify-phases %standard-phases
+      #~(modify-phases (@ (jeans build electron) %standard-phases)
           (add-after 'patchelf 'install-bin
             (lambda _
               (let* ((out #$output)
@@ -775,21 +774,19 @@ coding experience with context awareness.")
       ;; (e.g. sherpa-onnx.node -> libsherpa-onnx-c-api.so).
       #:preserve-rpath? #t
       ;; install-bin symlink, generated desktop/icons and the launcher
-      ;; argv[0] fixup stay as escape-hatch phases.  The launcher scripts'
-      ;; #!/bin/sh shebangs are covered by the retained gnu patch-shebangs
-      ;; phase instead of a custom one.
-      #:modules '((guix build gnu-build-system)
-                  (guix build utils)
+      ;; argv[0] fixup stay as escape-hatch phases on top of the electron
+      ;; defaults.  The launcher scripts' #!/bin/sh shebangs are covered by
+      ;; the retained patch-shebangs phase instead of a custom one.
+      #:modules '((guix build utils)
                   (ice-9 ftw)
                   (ice-9 regex)
                   (srfi srfi-26))
-      #:imported-modules '((guix build gnu-build-system)
-                           (guix build utils)
+      #:imported-modules '((guix build utils)
                            (ice-9 ftw)
                            (ice-9 regex)
                            (srfi srfi-26))
       #:phases
-      #~(modify-phases %standard-phases
+      #~(modify-phases (@ (jeans build electron) %standard-phases)
           (add-after 'patchelf 'install-bin
             (lambda _
               (let* ((out #$output)
@@ -960,18 +957,16 @@ and ships as a single static binary with no runtime dependencies.")
       ;; install-bin symlink, generated desktop entry and icon rename are
       ;; beyond install-plan: kept as small escape-hatch phases.  The static
       ;; Go sidecar is auto-skipped by the builder's link probe.
-      #:modules '((guix build gnu-build-system)
-                  (guix build utils)
+      #:modules '((guix build utils)
                   (ice-9 ftw)
                   (ice-9 regex)
                   (srfi srfi-26))
-      #:imported-modules '((guix build gnu-build-system)
-                           (guix build utils)
+      #:imported-modules '((guix build utils)
                            (ice-9 ftw)
                            (ice-9 regex)
                            (srfi srfi-26))
       #:phases
-      #~(modify-phases %standard-phases
+      #~(modify-phases (@ (jeans build electron) %standard-phases)
           (add-after 'patchelf 'install-bin
             (lambda _
               (let* ((out #$output)
@@ -1279,18 +1274,16 @@ configure.  This package provides the prebuilt desktop release.")
       ;; install-bin symlink, generated desktop entry and the quirky
       ;; icon rename+prune are beyond install-plan: kept as small
       ;; escape-hatch phases on top of the electron defaults.
-      #:modules '((guix build gnu-build-system)
-                  (guix build utils)
+      #:modules '((guix build utils)
                   (ice-9 ftw)
                   (ice-9 regex)
                   (srfi srfi-26))
-      #:imported-modules '((guix build gnu-build-system)
-                           (guix build utils)
+      #:imported-modules '((guix build utils)
                            (ice-9 ftw)
                            (ice-9 regex)
                            (srfi srfi-26))
       #:phases
-      #~(modify-phases %standard-phases
+      #~(modify-phases (@ (jeans build electron) %standard-phases)
           (add-after 'patchelf 'install-bin
             (lambda _
               (let* ((out #$output)
