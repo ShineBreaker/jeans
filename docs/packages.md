@@ -48,6 +48,10 @@
 | --------------------------- | ---------------------------------------------------------- |
 | `ai-usagebar-bin`           | Waybar widget for AI coding assistant usage                |
 | `linux-wallpaperengine`     | Run Wallpaper Engine wallpapers on the Linux desktop       |
+| `nosd-blur`                 | Pre-blur wallpapers for nosDshell                          |
+| `nosd-helpers`              | Small helper tools for nosDshell                           |
+| `nosd-theme`                | Material theme processor for nosDshell                     |
+| `nosdshell`                 | Wayland desktop shell in the DDE 15 visual language        |
 | `open-wallpaper-engine-bin` | Wallpaper Engine plugin for the Waywallen wallpaper daemon |
 | `waypaper`                  | GUI wallpaper manager for Wayland and Xorg Linux systems   |
 | `waywallen-bin`             | Dynamic wallpaper manager for Linux desktops               |

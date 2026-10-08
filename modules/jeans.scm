@@ -26,6 +26,7 @@
                   (jeans packages python-xyz)
                   (jeans packages tools)
 
+                  (jeans home services desktop)
                   (jeans home services emacs-xyz)
                   (jeans home services hardware)
                   (jeans home services tools)

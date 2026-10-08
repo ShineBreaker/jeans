@@ -5,11 +5,14 @@
 
 (define-module (jeans packages desktop)
   #:use-module (gnu packages)
+  #:use-module (gnu packages admin)       ; fastfetch-minimal
   #:use-module (gnu packages assembly)    ; nasm
+  #:use-module (gnu packages audio)       ; cava
   #:use-module (gnu packages backup)      ; libarchive
   #:use-module (gnu packages base)        ; glibc
   #:use-module (gnu packages bash)        ; bash-minimal
   #:use-module (gnu packages bootstrap)   ; glibc-dynamic-linker
+  #:use-module (gnu packages calendar)    ; khal
   #:use-module (gnu packages compression) ; zlib, lz4
   #:use-module (gnu packages cups)        ; cups
   #:use-module (gnu packages elf)         ; patchelf
@@ -18,7 +21,11 @@
   #:use-module (gnu packages gcc)         ; gcc:lib
   #:use-module (gnu packages gl)          ; mesa (libgbm), libglvnd
   #:use-module (gnu packages glib)        ; dbus, gobject-introspection
+  #:use-module (gnu packages gnome)       ; network-manager
   #:use-module (gnu packages gtk)         ; gtk+, harfbuzz, cairo, pango, at-spi2-core
+  #:use-module (gnu packages guile)       ; guile-3.0
+  #:use-module (gnu packages hardware)    ; ddcutil
+  #:use-module (gnu packages imagemagick) ; imagemagick
   #:use-module (gnu packages linux)       ; alsa-lib, eudev
   #:use-module (gnu packages maths)       ; glm
   #:use-module (gnu packages multiprecision) ; gmp
@@ -26,15 +33,19 @@
   #:use-module (gnu packages nss)         ; nss, nspr
   #:use-module (gnu packages pkg-config)
   #:use-module (gnu packages pulseaudio)  ; pulseaudio
+  #:use-module (gnu packages python)      ; python-minimal
   #:use-module (gnu packages python-build) ; python-setuptools-scm
   #:use-module (gnu packages python-xyz)  ; python-screeninfo, python-platformdirs, python-pillow, ...
-  #:use-module (gnu packages qt)          ; qtsvg
+  #:use-module (gnu packages qt)          ; qtbase, qtsvg
   #:use-module (gnu packages sdl)         ; sdl2
   #:use-module (gnu packages video)       ; ffmpeg, mpv
+  #:use-module (gnu packages version-control) ; git-minimal
   #:use-module (gnu packages vulkan)      ; vulkan-loader
+  #:use-module (gnu packages window-management) ; quickshell
   #:use-module (gnu packages xml)         ; expat
   #:use-module (gnu packages xdisorg)     ; libdrm, libxkbcommon
   #:use-module (gnu packages xorg)        ; libice, libsm, libx11, libxcb, libxcomposite, ...
+  #:use-module (guix build-system cargo)
   #:use-module (guix build-system cmake)
   #:use-module (guix build-system copy)
   #:use-module (guix build-system gnu)
@@ -44,6 +55,7 @@
   #:use-module (guix git-download)
   #:use-module (guix packages)
   #:use-module (jeans build-system binary)
+  #:use-module (jeans packages rust-crates)
   #:use-module (guix utils)               ; substitute-keyword-arguments
   #:use-module ((guix licenses)
                 #:prefix license:))
@@ -702,3 +714,249 @@ the usual Steam library locations or can be pointed at with
 renderer relies on the upstream Chromium binary distribution.")
       (license (list license:gpl3 license:bsd-3))
       (supported-systems '("x86_64-linux")))))
+
+
+;;;
+;;; nosDshell: a quickshell-based Wayland desktop shell and its Rust helpers.
+;;;
+
+;; The three helper crates and the shell share one git checkout: the
+;; tools/ sub-trees evolve with the shell repository, so pinning them
+;; separately makes no sense.  Auto-update only maintains the nosdshell
+;; version/hash; the helpers follow the shared origin object.
+(define %nosdshell-version "1.0.2")
+(define %nosdshell-commit "f47127c28247a14ad56989ba926f2500daacdee6")
+
+(define %nosdshell-source
+  (origin
+    (method git-fetch)
+    (uri (git-reference
+          (url "https://github.com/ShineBreaker/nosDshell")
+          (commit %nosdshell-commit)))
+    (file-name (git-file-name "nosdshell" %nosdshell-version))
+    (sha256
+     (base32
+      "1nk1jnx5zbqkbsg98khjfsq4vb22wcq2l5kcfida0nc672mkw9r6"))))
+
+;; Our quickshell fork (ShineBreaker/quickshell-nosd): upstream master at
+;; the version 0.3.2 commit plus the two pipewire use-after-free fixes the
+;; archived noctalia-qs fork carried and upstream never merged — dangling
+;; raw PwNode pointers in the default-device tracker (903a70a) and in the
+;; PwNodeIface-bound volume/peak readers (08e6406).  Both crash the shell
+;; when a pipewire node (USB audio, headphones) disappears; they are now
+;; real commits in the fork rather than patches applied here.
+;;
+;; Upstream's adjacent destructor-order fixes (36517a2, 91dcb41, 13fe9b0)
+;; do not remove the dangling-pointer windows, so both fixes are still
+;; needed.  The fork carries no tags; bump it by hand after rebasing onto
+;; a new quickshell release.
+(define quickshell/nosd
+  (package
+    (inherit quickshell)
+    (name "quickshell-nosd")
+    (version "0.3.2")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/ShineBreaker/quickshell-nosd")
+             (commit "903a70a9cc7a98834e79db25a8c708acfcffd248")))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32
+         "0b2gb4cb9w8x71r7ik0s9sl5jm1smgs3chfd9halcr8pd549820w"))))))
+
+(define-public nosd-blur
+  (package
+    (name "nosd-blur")
+    (version %nosdshell-version)
+    (source %nosdshell-source)
+    (build-system cargo-build-system)
+    (arguments
+     (list #:install-source? #f
+           ;; The crate lives in tools/nosd-blur inside the shared checkout.
+           #:phases #~(modify-phases %standard-phases
+                        (add-after 'unpack 'chdir
+                          (lambda _ (chdir "tools/nosd-blur"))))))
+    (inputs (cargo-inputs 'nosd-blur #:module '(jeans packages rust-crates)))
+    (home-page "https://github.com/ShineBreaker/nosDshell")
+    (synopsis "Pre-blur wallpapers for nosDshell")
+    (description
+     "nosd-blur produces a cover-resized, blurred variant of a wallpaper at
+exact screen size, so nosDshell surfaces (lock screen, launcher, session
+menu) can skip a live blur pass and just draw the cached image.")
+    (license license:expat)))
+
+(define-public nosd-helpers
+  (package
+    (name "nosd-helpers")
+    (version %nosdshell-version)
+    (source %nosdshell-source)
+    (build-system cargo-build-system)
+    (arguments
+     (list #:install-source? #f
+           #:phases #~(modify-phases %standard-phases
+                        (add-after 'unpack 'chdir
+                          (lambda _ (chdir "tools/nosd-helpers"))))))
+    (inputs (cargo-inputs 'nosd-helpers #:module '(jeans packages rust-crates)))
+    (home-page "https://github.com/ShineBreaker/nosDshell")
+    (synopsis "Small helper tools for nosDshell")
+    (description
+     "nosd-helpers is the single Rust binary behind nosDshell's helper
+subcommands (vscode-themes, kde-apply-scheme, gtk-refresh, khal-events,
+bluetooth-pair, eds-check, eds-calendars, eds-events, apply, wl-probe,
+vinput).  QML callers require it; the Scripts/python and Scripts/bash
+helpers were removed after the ports reached parity.")
+    (license license:gpl3+)))
+
+(define-public nosd-theme
+  (package
+    (name "nosd-theme")
+    (version %nosdshell-version)
+    (source %nosdshell-source)
+    (build-system cargo-build-system)
+    (arguments
+     (list #:install-source? #f
+           #:phases #~(modify-phases %standard-phases
+                        (add-after 'unpack 'chdir
+                          (lambda _ (chdir "tools/nosd-theme"))))))
+    (inputs (cargo-inputs 'nosd-theme #:module '(jeans packages rust-crates)))
+    (home-page "https://github.com/ShineBreaker/nosDshell")
+    (synopsis "Material theme processor for nosDshell")
+    (description
+     "nosd-theme is the Rust port of the former nosDshell theming tree:
+wallpaper color extraction, Material tonal schemes and Matugen-compatible
+template rendering.")
+    (license license:gpl3+)))
+
+(define-public nosdshell
+  (package
+    (name "nosdshell")
+    (version %nosdshell-version)
+    (source %nosdshell-source)
+    (build-system copy-build-system)
+    (arguments
+     (list
+      #:install-plan
+      #~'(("." "etc/xdg/quickshell/nosdshell"))
+      #:imported-modules
+      `((guix build qt-utils)
+        ,@%copy-build-system-modules)
+      #:modules
+      '((srfi srfi-26)
+        (guix build copy-build-system)
+        (guix build qt-utils)
+        (guix build utils))
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'unpack 'reduce-output-size
+            (lambda _
+              (delete-file-recursively "Assets/Screenshots")))
+          (add-after 'install 'embed-rfkill-path
+            (lambda* (#:key inputs #:allow-other-keys)
+              ;; rfkill lives in util-linux/sbin, which the wrapper PATH
+              ;; does not cover; point the unblock call at the store path.
+              (substitute* (string-append
+                            #$output
+                            "/etc/xdg/quickshell/nosdshell"
+                            "/Services/Networking/BluetoothService.qml")
+                (("\\[\"rfkill\", \"unblock\", \"bluetooth\"\\]")
+                 (string-append "[\"" (search-input-file inputs "sbin/rfkill")
+                                "\", \"unblock\", \"bluetooth\"]")))))
+          (add-after 'install 'make-wrapper
+            (lambda* (#:key inputs #:allow-other-keys)
+              (let ((script "nosdshell"))
+                (with-output-to-file script
+                  (lambda ()
+                    (format #t "~
+#!~a
+exec ~a --config ~a/etc/xdg/quickshell/nosdshell \"$@\"~%"
+                            (search-input-file inputs "bin/sh")
+                            (search-input-file inputs "bin/quickshell")
+                            #$output)))
+                (wrap-script script
+                  `("PATH"
+                    suffix
+                    ,(map (compose dirname
+                                   (cut search-input-file inputs <>))
+                          '("bin/bluetoothctl"
+                            "bin/brightnessctl"
+                            "bin/cava"
+                            "bin/cliphist"
+                            "bin/convert"
+                            "bin/ddcutil"
+                            "bin/dbus-send"
+                            "bin/elogind-inhibit"
+                            "bin/fastfetch"
+                            "bin/fc-list"
+                            "bin/find"
+                            "bin/getent"
+                            "bin/git"
+                            "bin/grep"
+                            "bin/khal"
+                            "bin/ls"
+                            "bin/nmcli"
+                            "bin/nosd-blur"
+                            "bin/nosd-helpers"
+                            "bin/nosd-theme"
+                            "bin/pgrep"
+                            "bin/pkill"
+                            "bin/python3"
+                            "bin/sh"
+                            "bin/which"
+                            "bin/wl-paste"
+                            "bin/wlsunset"
+                            "bin/wtype"))))
+                (chmod script #o555)
+                (install-file script (in-vicinity #$output "bin")))))
+          (add-after 'make-wrapper 'qt-wrap
+            (lambda args
+              (apply wrap-all-qt-programs
+                     #:qtbase #$(this-package-input "qtbase")
+                     args))))))
+    (inputs
+     (list bash-minimal
+           bluez
+           brightnessctl
+           cava
+           cliphist
+           coreutils-minimal
+           ddcutil
+           dbus
+           elogind
+           fastfetch-minimal
+           findutils
+           fontconfig
+           git-minimal
+           glibc
+           grep
+           guile-3.0
+           imagemagick
+           khal
+           network-manager
+           nosd-blur
+           nosd-helpers
+           nosd-theme
+           procps
+           python-minimal
+           qtbase
+           qtdeclarative
+           qtmultimedia
+           qtwayland
+           quickshell/nosd
+           util-linux
+           which
+           wl-clipboard
+           wlsunset
+           wtype))
+    (home-page "https://github.com/ShineBreaker/nosDshell")
+    (properties `((upstream-name . "nosDshell")
+                  (release-tag-prefix . "^v")))
+    (synopsis "Wayland desktop shell in the DDE 15 visual language")
+    (description
+     "nosDshell is a desktop shell for Wayland built on the @code{quickshell}
+framework, derived from Noctalia v4.  It renders every part of the shell —
+taskbar, launcher, control center, notifications, OSD, lock screen — in the
+visual language of deepin 15 (DDE 15).  It supports compositors like
+@code{niri}, @code{hyprland}, and @code{sway}.")
+    (license license:gpl3+)))

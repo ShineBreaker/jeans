@@ -214,7 +214,7 @@ jobs:
             lr2oraja-endlessdream-bin osu-lazer-bin inso-bin \
             emacs-ghostel emacs-msgu \
             colloid-gtk-theme vimix-gtk-themes vimix-kvantum-themes \
-            nix-ld opentabletdriver-udev-rules waypaper \
+            nix-ld opentabletdriver-udev-rules waypaper nosdshell \
             2>&1 | tee /tmp/refresh.log
           # guix refresh 对"无更新"返回 0，对个别包失败不阻塞整体；
           # 不用 set -e，让后续步骤继续。
