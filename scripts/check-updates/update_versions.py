@@ -1019,19 +1019,27 @@ def parse_package_definitions(content: str, _file_path: Path) -> list[dict[str, 
     packages = []
 
     # 使用正则表达式匹配 define-public 后面的包定义
-    # 这个正则表达式需要匹配从 (define-public name 到下一个 define-public 或文件结尾
+    # 这个正则表达式需要匹配从 (define-public name 到下一个顶层 define 或文件结尾
 
-    # 首先找到所有 define-public 的位置
-    pattern = r"\(define-public\s+(\S+)"
-    matches = list(re.finditer(pattern, content))
+    # 顶层 define（含 define-public 与私有 define）都是块边界：
+    # 私有 helper（如 quickshell/nosd、ffmpeg-7、%nosdshell-source）若不作为
+    # 边界，会被吸入上一个 define-public 的块，导致 version 误取
+    # （linux-wallpaperengine 误取 quickshell/nosd 的 0.3.2，2026-10-09 实证）。
+    # 私有块只做边界，不产生更新条目（pinned fork 不应自动更新）。
+    # 顶层判定用行首锚点：包内缩进的 define 不受影响。
+    boundary_pattern = r"^\(define-public\s+(\S+)|^\(define\*?\s+(\S+)"
+    boundaries = list(re.finditer(boundary_pattern, content, re.MULTILINE))
 
-    for i, match in enumerate(matches):
-        package_name = match.group(1)
+    for i, match in enumerate(boundaries):
+        is_public = match.group(0).startswith("(define-public")
+        package_name = match.group(1) if is_public else match.group(2)
+        if not is_public:
+            continue
         start_pos = match.start()
 
-        # 确定结束位置（下一个 define-public 或文件结尾）
-        if i + 1 < len(matches):
-            end_pos = matches[i + 1].start()
+        # 确定结束位置（下一个顶层 define-public/define 或文件结尾）
+        if i + 1 < len(boundaries):
+            end_pos = boundaries[i + 1].start()
         else:
             end_pos = len(content)
 
