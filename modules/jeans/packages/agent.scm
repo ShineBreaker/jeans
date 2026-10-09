@@ -114,7 +114,7 @@
 (define-public codewhale-bin
   (package
     (name "codewhale-bin")
-    (version "0.10.0")
+    (version "0.10.1")
     (source
      (origin
        (method url-fetch)
@@ -122,7 +122,7 @@
              "https://github.com/Hmbown/CodeWhale/releases/download/"
              "v" version "/codewhale-linux-x64.tar.gz"))
        (sha256
-        (base32 "0gmzvz3xqkvh3sbfv2z3swwhizbzp7cqp1c2yi0gyg7y6gb2inz5"))))
+        (base32 "1h0bhz4p2xkzln8fyqg2y7ci9z859d0lbba1a7a8rwk0pjbk668h"))))
     (build-system jeans-binary-build-system)
     (arguments
      (list
@@ -269,7 +269,7 @@ control, and a companion system.")
 (define-public crush-bin
   (package
     (name "crush-bin")
-    (version "0.97.1")
+    (version "0.98.0")
     (source
      (origin
        (method url-fetch)
@@ -277,7 +277,7 @@ control, and a companion system.")
              "https://github.com/charmbracelet/crush/releases/download/"
              "v" version "/crush_" version "_amd64.deb"))
        (sha256
-        (base32 "1iw2xnj5dvrjqkxi4khbb6n13pc7qd0278piyw01d0dh75b4yxjg"))))
+        (base32 "07vswn1nqsijqr5ah80f4n8hilw147wysicl3nh3678zg83nq4q7"))))
     (build-system jeans-binary-build-system)
     (arguments
      (list
@@ -339,7 +339,7 @@ This package provides the prebuilt binary release.")
 (define-public github-copilot
   (package
     (name "github-copilot")
-    (version "1.1.26")
+    (version "1.1.28")
     (source
      (origin
        (method url-fetch)
@@ -347,7 +347,7 @@ This package provides the prebuilt binary release.")
              "https://github.com/github/app/releases/download/"
              "v" version "/GitHub-Copilot-linux-x64.deb"))
        (sha256
-        (base32 "0giimqndm7gfgh7m0zpzw3vk1w5ysc4ndf9wxx4yyd66rc67b2fb"))))
+        (base32 "0c2fva3f85p0y7w2slnmw5l6rp7wxm8dajy6yz3vkd8z605x35q1"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -559,7 +559,7 @@ This package provides the prebuilt binary release.")
 (define-public minimax-code-bin
   (package
     (name "minimax-code-bin")
-    (version "0.6.2")
+    (version "0.6.5")
     (source
      (origin
        (method url-fetch)
@@ -567,7 +567,7 @@ This package provides the prebuilt binary release.")
              "https://github.com/MiniMax-AI/minimax-code/releases/download/"
              "v" version "/minimax-code-" version ".tar.gz"))
        (sha256
-        (base32 "0yb45l3d0d3lkk7vf4csp0p54hgqs2q0ys1llivpgwblnqq2d1w2"))))
+        (base32 "00lzvbz39j23srkzxhfh675895c5vjsiwy8ax990f73f5plpldqn"))))
     (build-system jeans-binary-build-system)
     (arguments
      (list
@@ -615,7 +615,7 @@ prebuilt distribution and launches it with the store Node.js runtime.")
 (define-public opencode-desktop-bin
   (package
     (name "opencode-desktop-bin")
-    (version "1.18.34")
+    (version "1.18.35")
     (source
      (origin
        (method url-fetch)
@@ -623,7 +623,7 @@ prebuilt distribution and launches it with the store Node.js runtime.")
              "https://github.com/anomalyco/opencode/releases/download/"
              "v" version "/opencode-desktop-linux-amd64.deb"))
        (sha256
-        (base32 "1p1kway8rbwlnshfb8yq5y8bik3895gqg44izfdxzdmv7jv7ajv8"))))
+        (base32 "19jgqygwncncyyikcwgh5vyiqn1z5w1gyalazq2qdh1s3vwbyhr2"))))
     (build-system jeans-electron-build-system)
     (arguments
      (list
@@ -749,7 +749,7 @@ coding experience with context awareness.")
 (define-public paseo-bin
   (package
     (name "paseo-bin")
-    (version "0.10.3")
+    (version "0.11.1")
     (source
      (origin
        (method url-fetch)
@@ -757,7 +757,7 @@ coding experience with context awareness.")
              "https://github.com/getpaseo/paseo/releases/download/"
              "v" version "/Paseo-" version "-amd64.deb"))
        (sha256
-        (base32 "00hphr88kkppppwy9x2af54jfvmjzyww85vkqlr3a92mdm6afksa"))))
+        (base32 "10ig4ixngsf4njpkyfn4p68dknv3hkpc2kv51x3qnnmr4vc0rraq"))))
     (build-system jeans-electron-build-system)
     (arguments
      (list
@@ -888,7 +888,7 @@ telemetry or forced log-ins.")
 (define-public reasonix-bin
   (package
     (name "reasonix-bin")
-    (version "2.29.0")
+    (version "2.33.0")
     (source
      (origin
        (method url-fetch)
@@ -896,7 +896,7 @@ telemetry or forced log-ins.")
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
              "v" version "/reasonix-linux-amd64.tar.gz"))
        (sha256
-        (base32 "16wz88kyfym0ca27172zb5sf5ih9rdz890viw4bw1mys029ndfwb"))))
+        (base32 "0m8nabh3mszhwj77b9zdrnmy1m4ymk8v80w1xyvv5wb6458xfjdy"))))
     (build-system jeans-binary-build-system)
     (arguments
      (list
@@ -936,7 +936,7 @@ and ships as a single static binary with no runtime dependencies.")
 (define-public reasonix-studio-bin
   (package
     (name "reasonix-studio-bin")
-    (version "2.29.0")
+    (version "2.33.0")
     (source
      (origin
        (method url-fetch)
@@ -944,7 +944,7 @@ and ships as a single static binary with no runtime dependencies.")
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
              "studio-v" version "/ReasonixStudio-linux-amd64.deb"))
        (sha256
-        (base32 "0yi9k27lpjihvz4i86yak1pg80qflxmsxnq7fb5wqfw53cq0a86r"))))
+        (base32 "0pazjp3hi0p0yrvmc9s90pgh76nx8g67qb670s93bq5bls84a892"))))
     (build-system jeans-electron-build-system)
     (arguments
      (list
@@ -1076,7 +1076,7 @@ for multiple LLM providers.")
 (define-public thinkrail-bin
   (package
     (name "thinkrail-bin")
-    (version "0.1.5")
+    (version "0.1.6")
     (source
      (origin
        (method url-fetch)
@@ -1084,7 +1084,7 @@ for multiple LLM providers.")
              "https://github.com/JetBrains/thinkrail/releases/download/"
              "v" version "/stable-linux-x64-ThinkRail-" version ".tar.zst"))
        (sha256
-        (base32 "07lrwprhrmwgv6dydjbx4cipqavg2w1h07kjsa096b1zyrp8vvd4"))))
+        (base32 "08mfigg4rvfvvskqijrmcp1xbdpkn7nl9kqy7jrfsdjxsi3ssvj9"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -1253,7 +1253,7 @@ configure.  This package provides the prebuilt desktop release.")
 (define-public zcode
   (package
     (name "zcode")
-    (version "3.14.4")
+    (version "3.14.5")
     (source
      (origin
        (method url-fetch)
@@ -1261,7 +1261,7 @@ configure.  This package provides the prebuilt desktop release.")
              "https://cdn-zcode.z.ai/zcode/electron/releases/"
              version "/linux-x64/ZCode-" version "-linux-x64.deb"))
        (sha256
-        (base32 "1gp4d6x1caad1xm7vvyyan9xkj5411y93hybkk15gq758n462lyp"))))
+        (base32 "1ksvzk16nh184sm9y5mskjr427dshk0fb8a8y4851n2vlv5qs6mc"))))
     (build-system jeans-electron-build-system)
     (arguments
      (list
@@ -1543,7 +1543,7 @@ so the bundled self-updater should not be used.")
 (define-public magpie-bin
   (package
     (name "magpie-bin")
-    (version "0.1.1084")
+    (version "0.1.1137")
     (source
      (origin
        (method url-fetch)
@@ -1551,7 +1551,7 @@ so the bundled self-updater should not be used.")
              "https://github.com/yetone/magpie-releases/releases/download/"
              "v" version "/magpie-linux-amd64"))
        (sha256
-        (base32 "1f4dvdjzwq8iyki1f6j22drgpmnazgy4kyplmsg5fkzjkg49nbx6"))))
+        (base32 "06p4my2h87jdv9gr1n78wsay0g1ypflyxy142zb9x33w98p2bnah"))))
     (build-system jeans-binary-build-system)
     (arguments
      (list

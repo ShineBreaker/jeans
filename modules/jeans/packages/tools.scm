@@ -337,7 +337,7 @@ prebuilt binary release.")
 (define-public rayburst-bin
   (package
     (name "rayburst-bin")
-    (version "4.0.0")
+    (version "4.0.1")
     (source
      (origin
        (method url-fetch)
@@ -345,7 +345,7 @@ prebuilt binary release.")
              "https://github.com/AnInsomniacy/rayburst/releases/download/"
              "v" version "/Rayburst_" version "_amd64.deb"))
        (sha256
-        (base32 "0gpj2qi7z607b48yfyikfzfm98argsb6x5c42q2rh77ndhnm0a7m"))))
+        (base32 "125xjnj61f04b34vxgbk3jgwlkqcz70yg3ynkgjl31b1ffnfbxn5"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -491,7 +491,7 @@ companion extension.  This package provides the prebuilt binary release.")
 (define-public cc-switch-bin
   (package
     (name "cc-switch-bin")
-    (version "3.20.4")
+    (version "4.0.5")
     (source
      (origin
        (method url-fetch)
@@ -499,7 +499,7 @@ companion extension.  This package provides the prebuilt binary release.")
              "https://github.com/farion1231/cc-switch/releases/download/"
              "v" version "/CC-Switch-v" version "-Linux-x86_64.deb"))
        (sha256
-        (base32 "00884nxzz1is9fwkympd5inz76g70kqhhmcc2g495dq8mv9mfia3"))))
+        (base32 "037cg3rshwdi7zksf81ssjgh5zg0ibklcd6a8b2vwss9wii992vq"))))
     (build-system gnu-build-system)
     (arguments
      (list
