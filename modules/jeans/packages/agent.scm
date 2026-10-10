@@ -178,7 +178,7 @@ release.")
 (define-public cindy-bin
   (package
     (name "cindy-bin")
-    (version "0.1.101")
+    (version "0.1.103")
     (source
      (origin
        (method url-fetch)
@@ -186,7 +186,7 @@ release.")
              "https://github.com/makecindy/cindy/releases/download/"
              "v" version "/cindy-" version "-linux-x64-cn.deb"))
        (sha256
-        (base32 "1sy7wqcz7xd6cv4yhbiah0qx3b5w4fxmi658krpbmn784vm02fdb"))))
+        (base32 "1804b4hlzar8njnj8cix9cdx2c2jdwll89z33a5kx8ds57yf6k7r"))))
     (build-system jeans-electron-build-system)
     (arguments
      (list
@@ -1253,7 +1253,7 @@ configure.  This package provides the prebuilt desktop release.")
 (define-public zcode
   (package
     (name "zcode")
-    (version "3.14.5")
+    (version "3.15.1")
     (source
      (origin
        (method url-fetch)
@@ -1261,7 +1261,7 @@ configure.  This package provides the prebuilt desktop release.")
              "https://cdn-zcode.z.ai/zcode/electron/releases/"
              version "/linux-x64/ZCode-" version "-linux-x64.deb"))
        (sha256
-        (base32 "1ksvzk16nh184sm9y5mskjr427dshk0fb8a8y4851n2vlv5qs6mc"))))
+        (base32 "1y6lg6j63h66bcxzf8pkxcg6fziqk3fc96p5mcsnk8vidzjbp1w7"))))
     (build-system jeans-electron-build-system)
     (arguments
      (list
@@ -1612,7 +1612,7 @@ so the bundled self-updater should not be used.")
 (define-public magpie-bin
   (package
     (name "magpie-bin")
-    (version "0.1.1157")
+    (version "0.1.1165")
     (source
      (origin
        (method url-fetch)
@@ -1620,7 +1620,7 @@ so the bundled self-updater should not be used.")
              "https://github.com/yetone/magpie-releases/releases/download/"
              "v" version "/magpie-linux-amd64"))
        (sha256
-        (base32 "1sg55s8lx7s4mj69bdfgc9md2d9jnwszy69xx77rk4q2b1ln911n"))))
+        (base32 "0c98hxq0dply0b8ix8nyasxxnrsxcfsqsk5af8n66z0f85r52fwh"))))
     (build-system jeans-binary-build-system)
     (arguments
      (list

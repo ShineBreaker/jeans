@@ -862,7 +862,7 @@ configurable knowledge-base root (@env{KB_ROOT}, default
 (define-public prettier-bin
   (package
     (name "prettier-bin")
-    (version "3.9.9")
+    (version "3.9.10")
     (source
       (origin
         (method url-fetch)
@@ -871,7 +871,7 @@ configurable knowledge-base root (@env{KB_ROOT}, default
               version
               ".tgz"))
         (sha256
-          (base32 "0f5k8lh2rx3kydwdw40d745154iy70wsaf33rirnh4j51k9n5cf3"))))
+          (base32 "1ds6jab5bphy4v0shzqam6m93azp4a3vfbs3fbwxz4qpb52j1iwx"))))
     (build-system jeans-binary-build-system)
     (arguments
      (list
