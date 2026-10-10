@@ -284,6 +284,97 @@ def is_version_ref(commit_expr: str) -> bool:
     return False
 
 
+def _extract_define_block(content: str, var: str) -> Optional[Tuple[int, int, str]]:
+    """提取顶层 (define <var> ...) 完整块，括号配平（跳过字符串与注释）。
+
+    返回 (start, end, text)，找不到或括号不平衡返回 None。
+    """
+    m = re.search(r"\(define\s+" + re.escape(var) + r"(?=[\s)])", content)
+    if not m:
+        return None
+    pos = m.start()
+    depth = 0
+    end = len(content)
+    while pos < end:
+        ch = content[pos]
+        if ch == ";":
+            nl = content.find("\n", pos)
+            pos = end if nl == -1 else nl + 1
+            continue
+        if ch == '"':
+            pos += 1
+            while pos < end:
+                if content[pos] == "\\":
+                    pos += 2
+                    continue
+                if content[pos] == '"':
+                    pos += 1
+                    break
+                pos += 1
+            continue
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+            if depth == 0:
+                return (m.start(), pos + 1, content[m.start():pos + 1])
+        pos += 1
+    return None
+
+
+def _resolve_shared_source(
+    content: str, version_var: str, source_var: str
+) -> Optional[Dict[str, Any]]:
+    """解析模块级共享变量：version 字面量 + source 块内的 git 信息。
+
+    即 nosdshell 结构：包体只写 (version %v)/(source %s)，真值在顶层
+    (define %v \"...\") 与 (define %s (origin ...)) 里。任一步失败返回 None，
+    调用方回落到旧行为（skipped），不抛异常。
+    """
+    try:
+        vm = re.search(
+            r"\(define\s+" + re.escape(version_var) + r'\s+"([^"]+)"', content
+        )
+        if not vm:
+            return None
+        block = _extract_define_block(content, source_var)
+        if not block:
+            return None
+        _, _, origin = block
+        if not re.search(r"\(method\s+git-fetch\s*\)", origin):
+            return None
+        url_m = re.search(r'\(url\s+"([^"]+)"', origin)
+        base32_m = re.search(r'\(base32\s+"([^"]+)"', origin)
+        if not url_m or not base32_m:
+            return None
+        commit_expr = extract_commit_expr(origin)
+        commit_var = None
+        commit_value = None
+        if commit_expr:
+            if commit_expr.startswith("%"):
+                commit_var = commit_expr
+                cm = re.search(
+                    r"\(define\s+" + re.escape(commit_var) + r'\s+"([0-9a-f]{40})"',
+                    content,
+                )
+                if not cm:
+                    return None
+                commit_value = cm.group(1)
+            elif re.fullmatch(r"[0-9a-f]{40}", commit_expr):
+                commit_value = commit_expr
+            else:
+                return None
+        return {
+            "version": vm.group(1),
+            "git_url": url_m.group(1),
+            "base32": base32_m.group(1),
+            "commit_var": commit_var,
+            "commit_value": commit_value,
+        }
+    except Exception:
+        return None
+
+
 def format_commit_version(current_version: str, new_date: str) -> str:
     """保留原版本号前缀，只替换日期部分
 
@@ -498,6 +589,44 @@ def get_latest_commit(repo: str, branch: Optional[str] = None) -> Optional[Tuple
     except KeyError as e:
         print(f"     ⚠️  无法获取最新 commit: {e}")
         return None
+
+
+def get_tag_commit_sha(url: str, tag: str) -> Optional[str]:
+    """取 tag peel 后的 commit sha（annotated tag 取 ^{} 行，否则取 tag 本行）。
+
+    供共享变量结构落盘：%xxx-commit 定义里写的是 peel sha，不是 tag 名。
+    网络/超时失败抛 RetryableError；tag 不存在返回 None。
+    """
+    if not re.fullmatch(r"[A-Za-z0-9._/+~-]+", tag):
+        return None
+    try:
+        result = subprocess.run(
+            # ls-remote 精确匹配单个 tag 名时不输出 ^{} peel 行，必须同时
+            # 传 <tag>^{}，否则 annotated tag 只能拿到 tag 对象 sha。
+            ["git", "ls-remote", url, tag, tag + "^{}"],
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+    except subprocess.TimeoutExpired as e:
+        cmd = " ".join(e.cmd) if isinstance(e.cmd, list) else str(e.cmd)
+        raise RetryableError(f"命令超时: {cmd}")
+    if result.returncode != 0:
+        err = result.stderr.strip()
+        if is_retryable_command_failure(err):
+            raise RetryableError(f"git ls-remote 失败: {err}")
+        print(f"     ⚠️  git ls-remote 失败: {err}")
+        return None
+    fallback = None
+    for line in result.stdout.splitlines():
+        sha, _, ref = line.partition("\t")
+        if not re.fullmatch(r"[0-9a-f]{40}", sha):
+            continue
+        if ref.endswith("^{}"):
+            return sha
+        if "refs/tags/" in ref and fallback is None:
+            fallback = sha
+    return fallback
 
 
 # ── 特殊源包处理器（guix refresh / GitHub 通用逻辑力不能及的包） ────────────────
@@ -1048,10 +1177,22 @@ def parse_package_definitions(content: str, _file_path: Path) -> list[dict[str, 
         # 提取版本号
         version_match = re.search(r'\(version\s+"([^"]+)"', package_content)
         version = version_match.group(1) if version_match else None
+        # 共享变量引用 (version %v)：仅字面量缺失时记录候选
+        shared_version_var = None
+        if version is None:
+            svm = re.search(r"\(version\s+(%[\w-]+)\)", package_content)
+            if svm:
+                shared_version_var = svm.group(1)
 
         # 提取完整的 URI 表达式
         uri_match = re.search(r"\(uri\s+(.+?)\)\s*\(sha256", package_content, re.DOTALL)
         uri_expr = uri_match.group(1).strip() if uri_match else None
+        # 共享变量引用 (source %s)：仅 uri 缺失时记录候选
+        shared_source_var = None
+        if uri_expr is None:
+            ssm = re.search(r"\(source\s+(%[\w-]+)\)", package_content)
+            if ssm:
+                shared_source_var = ssm.group(1)
 
         # 提取base32
         base32_match = re.search(r'\(base32\s+"([^"]+)"', package_content)
@@ -1065,6 +1206,32 @@ def parse_package_definitions(content: str, _file_path: Path) -> list[dict[str, 
         is_git = uri_expr is not None and "git-reference" in uri_expr
         git_url = extract_git_reference_url(uri_expr) if is_git and uri_expr else None
         commit_expr = extract_commit_expr(uri_expr) if is_git and uri_expr else None
+
+        # 共享变量回退（nosdshell 类结构）：包体只有 (version %v) 与
+        # (source %s) 引用，真值在模块级 define 里。resolve 成功才覆盖
+        # 字段；失败则保持 None，走原 skipped 路径（无回归）。
+        is_shared_source = False
+        shared_commit_var = None
+        shared_commit_value = None
+        if (
+            version is None
+            and shared_version_var is not None
+            and uri_expr is None
+            and shared_source_var is not None
+        ):
+            shared_info = _resolve_shared_source(
+                content, shared_version_var, shared_source_var
+            )
+            if shared_info is not None:
+                is_shared_source = True
+                version = shared_info["version"]
+                base32 = shared_info["base32"]
+                method = "git-fetch"
+                is_git = True
+                git_url = shared_info["git_url"]
+                commit_expr = shared_info["commit_var"] or shared_info["commit_value"]
+                shared_commit_var = shared_info["commit_var"]
+                shared_commit_value = shared_info["commit_value"]
 
         # 识别 let-绑定的 git-version 结构（无 tag 追踪 commit 模式）。
         # 结构形如：(let ((commit "...") (revision "...")) (package (version (git-version ...)) ...))
@@ -1117,6 +1284,12 @@ def parse_package_definitions(content: str, _file_path: Path) -> list[dict[str, 
                 "git_version_base": git_version_base,
                 "release_tag_prefix": release_tag_prefix,
                 "git_branch": git_branch,
+                # 共享变量结构（nosdshell 类）：常规包全为 False/None
+                "is_shared_source": is_shared_source,
+                "shared_version_var": shared_version_var,
+                "shared_commit_var": shared_commit_var,
+                "shared_source_var": shared_source_var,
+                "shared_commit_value": shared_commit_value,
                 "content": package_content,
                 "start_pos": start_pos,
                 "end_pos": end_pos,
@@ -1334,6 +1507,44 @@ def build_let_git_version_change(
         return None
 
 
+def build_shared_source_change(
+    file_path: Path,
+    package: dict[str, Any],
+    new_version: str,
+    new_commit: str,
+    new_base32: str,
+) -> Optional[Dict[str, Any]]:
+    """为共享变量结构（nosdshell 类）构建更新描述。
+
+    只改模块级三个 define：%xxx-version、%xxx-commit、%xxx-source 块内 base32。
+    file-name 里的版本引用与 git-reference 里的 commit 引用都是变量，
+    求值时自动跟随，无需改写。
+    """
+    try:
+        return {
+            "file_path": file_path,
+            "package": package["name"],
+            "old_version": package["version"],
+            "new_version": new_version,
+            "new_base32": new_base32,
+            "new_commit": new_commit,
+            "content": package["content"],
+            "start_pos": package["start_pos"],
+            "end_pos": package["end_pos"],
+            "old_commit_expr": None,
+            "old_base32": package.get("base32"),
+            # 共享变量专用字段
+            "is_shared_source": True,
+            "shared_version_var": package["shared_version_var"],
+            "shared_commit_var": package.get("shared_commit_var"),
+            "shared_source_var": package["shared_source_var"],
+            "old_commit_value": package.get("shared_commit_value"),
+        }
+    except Exception as e:
+        print(f"  ❌ 构建共享变量更新失败: {e}")
+        return None
+
+
 def apply_pending_updates(pending: List[Dict[str, Any]]) -> bool:
     """应用所有待写入更新（按文件聚合，每个文件写入一次）"""
     try:
@@ -1395,6 +1606,41 @@ def apply_pending_updates(pending: List[Dict[str, Any]]) -> bool:
                     file_content = (
                         file_content[:start_pos] + package_content + file_content[end_pos:]
                     )
+                    continue
+
+                # 共享变量结构：改模块级 define，不碰包块区间。
+                # 三处替换任一找不到旧值即整体失败，避免静默半写。
+                if change.get("is_shared_source"):
+                    applied = file_content
+                    vvar = change["shared_version_var"]
+                    old_v = rf'\(define\s+{re.escape(vvar)}\s+"{re.escape(change["old_version"])}"'
+                    new_v = f'(define {vvar} "{change["new_version"]}"'
+                    applied, n_v = re.subn(old_v, new_v, applied, count=1)
+                    n_c = 1
+                    cvar = change.get("shared_commit_var")
+                    if cvar and change.get("old_commit_value") and change.get("new_commit"):
+                        old_c = (
+                            rf'\(define\s+{re.escape(cvar)}\s+'
+                            rf'"{re.escape(change["old_commit_value"])}"'
+                        )
+                        new_c = f'(define {cvar} "{change["new_commit"]}"'
+                        applied, n_c = re.subn(old_c, new_c, applied, count=1)
+                    n_b = 0
+                    if change.get("old_base32"):
+                        src_block = _extract_define_block(
+                            applied, change["shared_source_var"]
+                        )
+                        if src_block is not None:
+                            s, e, text = src_block
+                            old_b = rf'\(base32\s+"{re.escape(change["old_base32"])}"'
+                            new_b = f'(base32 "{change["new_base32"]}"'
+                            replaced, n_b = re.subn(old_b, new_b, text, count=1)
+                            if n_b:
+                                applied = applied[:s] + replaced + applied[e:]
+                    if not (n_v and n_c and n_b):
+                        print(f"  ❌ 共享变量替换失败: {change['package']}")
+                        return False
+                    file_content = applied
                     continue
 
                 old_version_pattern = rf'\(version\s+"{re.escape(change["old_version"])}"\)'
@@ -1622,6 +1868,9 @@ def main():
     has_updates = False
     has_errors = False
     pending_updates: List[Dict[str, Any]] = []
+    # 共享变量组去重：同文件同 source 变量只检查一次，后续同组包复用结论
+    handled_shared: set = set()
+    shared_results: Dict[Any, Tuple[str, str, str]] = {}
     report: Dict[str, Any] = {
         "timestamp": datetime.now().isoformat(timespec="seconds"),
         "total": 0,
@@ -1720,7 +1969,7 @@ def main():
                 finalize_package_report()
                 continue
 
-            if not package["uri_expr"]:
+            if not package["uri_expr"] and not package.get("is_shared_source"):
                 print(f"     ⚠️  无法提取 URI，跳过")
                 package_report["status"] = "skipped"
                 package_report["error"] = "无法提取 URI"
@@ -1839,6 +2088,137 @@ def main():
 
                     finalize_package_report()
                     continue
+
+                # --- 共享变量结构（nosdshell 类）：version/source 都在模块级 ---
+                # commit 引用的是独立版本变量（非 version 非固定 hash），走
+                # release/tag 发现流程；落盘改三个模块级 define。
+                if package.get("is_shared_source"):
+                    shared_key = (str(scm_file), package["shared_source_var"])
+                    if shared_key in handled_shared:
+                        prev_status, prev_new, prev_err = shared_results[shared_key]
+                        package_report["new_version"] = prev_new
+                        package_report["status"] = prev_status
+                        if prev_err:
+                            package_report["error"] = prev_err
+                        finalize_package_report()
+                        continue
+                    print(f"     共享变量源: {package['shared_source_var']}（version 变量 {package['shared_version_var']}）")
+                    print(f"     Git URL: {package['git_url']}")
+
+                    def finish_shared(status: str, new_ver: str, err: str = "") -> None:
+                        package_report["new_version"] = new_ver
+                        package_report["status"] = status
+                        if err:
+                            package_report["error"] = err
+                        shared_results[shared_key] = (status, new_ver, err)
+                        handled_shared.add(shared_key)
+                        finalize_package_report()
+
+                    github_repo = extract_github_repo(package["git_url"])
+                    if not github_repo:
+                        print(f"     ⚠️  不是GitHub仓库，跳过检查")
+                        finish_shared("skipped", package["version"], "不是 GitHub 仓库")
+                        continue
+                    print(f"     GitHub仓库: {github_repo}")
+                    include_pre_release = package_name in check_pre_release_packages
+                    if include_pre_release:
+                        print(f"     🔍 包含pre-release检查")
+                    pkg_tag_prefix = package_tag_prefix(package, tag_prefix_map)
+                    try:
+                        latest_release = with_retry(
+                            get_latest_github_release,
+                            github_repo,
+                            include_pre_release,
+                            pkg_tag_prefix,
+                            max_retries=2,
+                            base_delay=5,
+                        )
+                        add_retries("get_latest_github_release")
+                    except Exception as e:
+                        print(f"     ⚠️  无法获取最新版本信息: {e}")
+                        has_errors = True
+                        finish_shared("failed", package["version"], f"无法获取最新版本信息: {e}")
+                        continue
+                    if not latest_release:
+                        print(f"     ℹ️  无 release，尝试获取最新 tag...")
+                        try:
+                            latest_release = with_retry(
+                                get_latest_github_tag,
+                                github_repo,
+                                pkg_tag_prefix,
+                                max_retries=2,
+                                base_delay=5,
+                            )
+                            add_retries("get_latest_github_tag")
+                        except Exception as e:
+                            print(f"     ⚠️  无法获取最新 tag: {e}")
+                            has_errors = True
+                            finish_shared("failed", package["version"], f"无法获取最新 tag: {e}")
+                            continue
+                    if not latest_release:
+                        print(f"     ⚠️  无法获取最新版本信息")
+                        has_errors = True
+                        finish_shared("failed", package["version"], "无法获取最新版本信息")
+                        continue
+                    print(f"     最新版本: {latest_release}")
+                    normalized_version = normalize_tag_to_version(latest_release, pkg_tag_prefix)
+                    if not compare_versions(package["version"], normalized_version):
+                        print(f"     ✓ 版本已是最新")
+                        finish_shared("uptodate", package["version"])
+                        continue
+                    print(f"     ✅ 发现新版本: {latest_release}")
+                    try:
+                        new_sha = with_retry(
+                            get_tag_commit_sha,
+                            package["git_url"],
+                            latest_release,
+                            max_retries=2,
+                            base_delay=5,
+                        )
+                        add_retries("get_tag_commit_sha")
+                    except Exception as e:
+                        new_sha = None
+                        add_retries("get_tag_commit_sha")
+                        print(f"     ⚠️  无法获取 tag commit: {e}")
+                    if not new_sha:
+                        print(f"     ❌ 无法获取 tag peel commit，已标记为失败并跳过更新")
+                        has_errors = True
+                        finish_shared("failed", normalized_version, "无法获取 tag commit")
+                        continue
+                    try:
+                        new_base32 = with_retry(
+                            get_base32_for_git,
+                            package["git_url"],
+                            latest_release,
+                            max_retries=2,
+                            base_delay=5,
+                        )
+                        add_retries("get_base32_for_git")
+                    except Exception as e:
+                        new_base32 = None
+                        add_retries("get_base32_for_git")
+                        print(f"     ⚠️  无法计算 hash: {e}")
+                    if not (new_base32 and re.fullmatch(r"[0-9a-z]{52}", new_base32)
+                            and not re.fullmatch(r"0{52}", new_base32)):
+                        print(f"     ❌ 无法计算 git-fetch base32，已标记为失败并跳过更新")
+                        has_errors = True
+                        finish_shared("failed", normalized_version, "无法计算 hash")
+                        continue
+                    print(f"     ✓ 计算得到 base32: {new_base32}")
+                    change = build_shared_source_change(
+                        scm_file, package, normalized_version, new_sha, new_base32
+                    )
+                    if change:
+                        pending_updates.append(change)
+                        print(f"     ✓ 已更新: {package_name}")
+                        has_updates = True
+                        finish_shared("updated", normalized_version)
+                    else:
+                        print(f"     ❌ 更新失败")
+                        has_errors = True
+                        finish_shared("failed", normalized_version, "更新文件失败")
+                    continue
+
 
                 # --- commit 引用 version 变量：走 release/tag 流程 ---
                 if is_version_ref(package["commit_expr"]):
