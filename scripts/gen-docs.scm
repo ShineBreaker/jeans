@@ -117,12 +117,16 @@
            (format port "| `~a` | ~a |\n"
                    (package-name pkg)
                    (package-synopsis pkg))))
-       pkgs)
-      (format port "\n"))))
+       pkgs))))
 
 ;; ─── 主流程 ─────────────────────────────────────────────────────────────
 ;;;
-;; 先写头部，再逐个模块写表格。表格之间用空行分隔。
+;; 先写头部，再逐个模块写表格。空行只输出在表格之间，
+;; 文件以单个换行结束（尾部空行会让 git diff --check 报警）。
 (display %header)
-(for-each (lambda (m) (render-module m (current-output-port)))
-          %package-modules)
+(let loop ((modules %package-modules))
+  (unless (null? modules)
+    (render-module (car modules) (current-output-port))
+    (unless (null? (cdr modules))
+      (newline))
+    (loop (cdr modules))))
