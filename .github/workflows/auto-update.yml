@@ -207,7 +207,7 @@ jobs:
           # release-tag-prefix property（剥 ^ 锚点）过滤 agenote-v* /
           # agenote-el-v* 系列。
           guix refresh -L "$GITHUB_WORKSPACE/modules" -L /tmp/nonguix -u \
-            crush-bin opencode-desktop-bin herdr-bin \
+            crush-bin opencode-desktop-bin herdr-bin omo-bin \
             codewhale-bin reasonix-bin github-copilot \
             eask-bin neomacs-bin rayburst-bin cc-switch-bin \
             font-maple-font-nf-cn font-nerd-symbols font-nerd-font-iosevka \

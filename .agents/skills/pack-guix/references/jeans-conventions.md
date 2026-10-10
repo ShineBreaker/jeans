@@ -36,6 +36,13 @@ github updater 用 release 资产 URL 的文件名前缀匹配包。`package-ups
 ;; 如 mypackage-1.0.tar.gz 且 Guix 包名就是 mypackage → 不加
 ```
 
+资产文件名**不含版本号**（`omo-linux-x64`）不必然让 refresh 失效：tag 是
+plain `v<ver>` 且资产名以 upstream-name 开头时，refresh 会原样保留资产名、
+只替换 tag 段，整条升级链（版本发现 → URL 重建 → hash 重算）实测可用
+（omo-bin 5.1.27→5.1.28 降级实验，2026-10-10）。与
+reasonix-studio-bin（refresh 无法重建）的关键差异在 tag 形状：后者是
+`studio-v*` 产品前缀系列，不是"无版本号资产"本身。
+
 多个 property 用 alist 合并：
 
 ```scheme

@@ -19,6 +19,7 @@
 | `herdr-bin`            | Terminal workspace manager for AI coding agents                |
 | `magpie-bin`           | Menu-bar hub that routes AI coding agents to any model         |
 | `minimax-code-bin`     | Open-source coding agent for your terminal, powered by MiniMax |
+| `omo-bin`              | AI coding agent CLI with memory system and extensions          |
 | `opencode-desktop-bin` | AI coding agent desktop application                            |
 | `paseo-bin`            | Self-hosted desktop client for orchestrating coding agents     |
 | `reasonix-bin`         | DeepSeek-native AI coding agent for the terminal               |

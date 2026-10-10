@@ -1423,6 +1423,75 @@ release and needs the @code{nix-ld} system service to run.")
     (license license:expat)
     (supported-systems '("x86_64-linux"))))
 
+;;; OmO is an AI coding-agent CLI built on the pi agent core (memory
+;;; system, CodeMode, Anthropic subscriptions, installable extensions).
+;;; Upstream naming is split three ways: the GitHub repo is
+;;; oh-my-openagent, the npm package still carries the pre-rename name
+;;; oh-my-opencode, while the product, release assets and CLI all say
+;;; OmO/omo -- hence package name omo-bin with upstream-name "omo"
+;;; (the release asset filename prefix).
+;;;
+;;; Upstream builds the release asset with `bun build --compile`:
+;;; readelf -S shows the self-locating `.bun` / `.bun_builtins` sections,
+;;; so patchelf and ld-linux wrappers are both forbidden here
+;;; (jeans-conventions.md "自定位二进制").  Installed unpatched; runs
+;;; through the system-wide nix-ld-service-type, whose default library
+;;; list already covers the only NEEDED entries (readelf -d: libc.so.6,
+;;; ld-linux-x86-64.so.2, libpthread.so.0, libdl.so.2, libm.so.6 -- all
+;;; glibc).  The senpi-desktop-engine sidecar ships embedded in bunfs
+;;; (/$bunfs/root/omo-runtime/native/prebuilds/linux-x64/...) and every
+;;; config path is homedir-relative (~/.omo), so one file in bin/ is the
+;;; whole runtime.
+;;;
+;;; License evidence: LICENSE.md is the Sustainable Use License 1.0 (the
+;;; n8n model; package.json license field "SUL-1.0") -- source-visible
+;;; but nonfree, so -bin naming with nonguix nonfree.  Release evidence:
+;;; tag v5.1.28 (stable, GitHub Latest), asset omo-linux-x64 (150 MB).
+;;; guix refresh handles the whole update cycle despite the version-less
+;;; asset filename (verified end-to-end: with the package downgraded to
+;;; 5.1.27, `refresh -u` rebuilt the download URL, recomputed the hash
+;;; and restored 5.1.28), so it belongs on the auto-update workflow's
+;;; refresh list.
+
+(define-public omo-bin
+  (package
+    (name "omo-bin")
+    (version "5.1.28")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://github.com/code-yeongyu/oh-my-openagent/releases/download/"
+             "v" version "/omo-linux-x64"))
+       (sha256
+        (base32
+         "1xqvifbabl8019v4xqxih29wywyxhxd4xsbmnh1wsqycvg9vdlx0"))))
+    (build-system jeans-binary-build-system)
+    (arguments
+     (list
+      ;; bun --compile self-locating single file: install unpatched and
+      ;; unwrapped, runs through the system-wide nix-ld service.
+      #:unpack-method 'file
+      #:install-plan
+      #~'(("omo-linux-x64" "bin/omo"))
+      #:patchelf? #f
+      #:wrap? #f))
+    (properties `((upstream-name . "omo")))
+    (home-page "https://github.com/code-yeongyu/oh-my-openagent")
+    (synopsis "AI coding agent CLI with memory system and extensions")
+    (description
+     "OmO is an AI coding agent command-line interface built on the pi
+agent core: it drives multi-model coding sessions with read, bash, edit
+and write tools, a built-in memory system, durable scheduled prompts, and
+installable extension packages (@command{omo install}).  Configuration
+lives in @file{~/.omo}; on first start it migrates a pre-existing
+@file{~/.pi/agent} directory.  This package provides the prebuilt
+@code{linux-x64} release and needs the @code{nix-ld} system service to
+run.")
+    (license (license:nonfree
+              "https://github.com/code-yeongyu/oh-my-openagent/blob/main/LICENSE.md"))
+    (supported-systems '("x86_64-linux"))))
+
 ;;; cua-driver is the computer-use automation driver from the trycua/cua
 ;;; monorepo (MIT).  The release tarball ships an FHS dynamic ELF set that
 ;;; needs libX11/libXi/libxkbcommon and libgcc_s; every ELF gets the Guix
