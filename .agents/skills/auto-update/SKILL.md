@@ -49,7 +49,7 @@ blue upgrade   # = guix shell --manifest=scripts/check-updates/manifest.scm \
 
 ## 闸门
 
-`scripts/check-updates/test_updated_packages.py` 合并 `report.json`（`status == "updated"`）与 `refresh-updates.json`，对并集逐个 `guix build`。闭源与预编译包同样过这道闸门，不按包名后缀跳过。构建失败时不提交更新，CI 会开 issue 记录失败包。
+`scripts/check-updates/tests/test_updated_packages.py` 合并 `report.json`（`status == "updated"`）与 `refresh-updates.json`，对并集逐个 `guix build`。闭源与预编译包同样过这道闸门，不按包名后缀跳过。构建失败时不提交更新，CI 会开 issue 记录失败包。
 
 ## Hard guards
 
