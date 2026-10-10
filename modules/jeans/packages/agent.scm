@@ -1456,7 +1456,7 @@ release and needs the @code{nix-ld} system service to run.")
 (define-public omo-bin
   (package
     (name "omo-bin")
-    (version "5.1.28")
+    (version "5.1.29")
     (source
      (origin
        (method url-fetch)
@@ -1465,7 +1465,7 @@ release and needs the @code{nix-ld} system service to run.")
              "v" version "/omo-linux-x64"))
        (sha256
         (base32
-         "1xqvifbabl8019v4xqxih29wywyxhxd4xsbmnh1wsqycvg9vdlx0"))))
+         "1xwy4qna3dj42i30h3rhgn81abmifwkg1hl1waq3bx4w9vn3rwkm"))))
     (build-system jeans-binary-build-system)
     (arguments
      (list
