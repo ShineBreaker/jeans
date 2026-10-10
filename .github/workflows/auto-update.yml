@@ -37,7 +37,11 @@ jobs:
 
       - name: Test updater release tag prefixes
         shell: bash
-        run: python3 scripts/check-updates/test_tag_prefix.py
+        run: python3 scripts/check-updates/tests/test_tag_prefix.py
+
+      - name: Test updater shared-variable sources
+        shell: bash
+        run: python3 scripts/check-updates/tests/test_shared_source.py
 
       # ── Guix 环境准备（提前到 updater 之前，供 guix refresh 使用）──
       # 原先这些步骤受 has_changes 条件控制，因为只有 Python updater 产生
@@ -297,10 +301,10 @@ jobs:
             . "$HOME/.config/guix/current/etc/profile"
           fi
           if [ -n "${TEST_PACKAGES:-}" ]; then
-            python3 scripts/check-updates/test_updated_packages.py \
+            python3 scripts/check-updates/tests/test_updated_packages.py \
               --packages "$TEST_PACKAGES"
           else
-            python3 scripts/check-updates/test_updated_packages.py
+            python3 scripts/check-updates/tests/test_updated_packages.py
           fi
 
       - name: Upload build report artifact

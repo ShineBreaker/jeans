@@ -21,9 +21,10 @@ from typing import Any, Dict, List
 
 import requests
 
-REPORT_FILE = Path(__file__).parent / "report.json"
-REFRESH_UPDATES_FILE = Path(__file__).parent / "refresh-updates.json"
-BUILD_REPORT_FILE = Path(os.path.realpath(Path(__file__).parent / "build-report.json"))
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from common.paths import BUILD_REPORT_FILE, REFRESH_UPDATES_FILE, REPORT_FILE
 
 
 def load_report(path: Path) -> Dict[str, Any]:

@@ -3,31 +3,30 @@
 # SPDX-License-Identifier: GPL-3.0-only
 """Regression checks for release-tag-prefix handling in the updater."""
 
-import importlib.util
 import json
+import sys
 from pathlib import Path
 
 
-ROOT = Path(__file__).parents[2]
-UPDATER_PATH = Path(__file__).with_name("update_versions.py")
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from common.scm import parse_package_definitions
+from common.versions import (
+    construct_download_url_from_uri,
+    normalize_tag_to_version,
+    package_tag_prefix,
+)
 
 
-def load_updater():
-    spec = importlib.util.spec_from_file_location("jeans_update_versions", UPDATER_PATH)
-    if spec is None or spec.loader is None:
-        raise RuntimeError(f"cannot load {UPDATER_PATH}")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+ROOT = Path(__file__).resolve().parents[3]
 
 
 def main() -> None:
-    updater = load_updater()
     package_file = ROOT / "modules/jeans/packages/agent.scm"
     config_file = ROOT / "scripts/check-updates/config.json"
     packages = {
         package["name"]: package
-        for package in updater.parse_package_definitions(
+        for package in parse_package_definitions(
             package_file.read_text(encoding="utf-8"), package_file
         )
     }
@@ -41,9 +40,9 @@ def main() -> None:
     )
     for name, prefix, tag, version in cases:
         package = packages[name]
-        actual_prefix = updater.package_tag_prefix(package, configured_prefixes)
-        normalized = updater.normalize_tag_to_version(tag, actual_prefix)
-        download_url = updater.construct_download_url_from_uri(
+        actual_prefix = package_tag_prefix(package, configured_prefixes)
+        normalized = normalize_tag_to_version(tag, actual_prefix)
+        download_url = construct_download_url_from_uri(
             package["uri_expr"], normalized
         )
         assert actual_prefix == prefix, (name, actual_prefix)

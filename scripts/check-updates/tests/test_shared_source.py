@@ -8,23 +8,21 @@
 落盘三处替换且不误伤同版本字面量的其它包。
 """
 
-import importlib.util
+import importlib
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
 
-UPDATER_PATH = Path(__file__).with_name("update_versions.py")
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from common.changes import apply_pending_updates, build_shared_source_change
+from common.scm import parse_package_definitions
 
 
-def load_updater():
-    spec = importlib.util.spec_from_file_location("jeans_update_versions", UPDATER_PATH)
-    if spec is None or spec.loader is None:
-        raise RuntimeError(f"cannot load {UPDATER_PATH}")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+common_github = importlib.import_module("common.github")
 
 
 SHARED_SCM = """\
@@ -70,7 +68,7 @@ SHARED_SCM = """\
 """
 
 
-def check_tag_peel(updater) -> None:
+def check_tag_peel() -> None:
     """get_tag_commit_sha：annotated tag 取 ^{} peel 行、lightweight 取 tag 行、
     无 tags 命中回 None；argv 必须同时传 <tag> 与 <tag>^{}（单 pattern 的精确
     匹配不会带回 ^{} 行，2026-10-10 审查实证）。"""
@@ -89,15 +87,15 @@ def check_tag_peel(updater) -> None:
             captured.append(cmd)
             return subprocess.CompletedProcess(cmd, 0, stdout=stdout, stderr="")
 
-        with patch.object(updater.subprocess, "run", run):
-            got = updater.get_tag_commit_sha(
+        with patch.object(common_github.subprocess, "run", run):
+            got = common_github.get_tag_commit_sha(
                 "https://github.com/example/sample", "v1.1.1"
             )
         assert got == expected, (stdout, got, expected)
         assert captured[0][-2:] == ["v1.1.1", "v1.1.1^{}"], captured[0]
 
 
-def check_apply_atomicity(updater) -> None:
+def check_apply_atomicity() -> None:
     """三处 define 任一找不到旧值时整体失败，文件保持原样（不半写）。"""
     with tempfile.NamedTemporaryFile(
         "w", suffix=".scm", delete=False, encoding="utf-8"
@@ -107,11 +105,11 @@ def check_apply_atomicity(updater) -> None:
     try:
         pkgs = {
             p["name"]: p
-            for p in updater.parse_package_definitions(
+            for p in parse_package_definitions(
                 tmp.read_text(encoding="utf-8"), tmp
             )
         }
-        change = updater.build_shared_source_change(
+        change = build_shared_source_change(
             tmp, pkgs["sample-a"], "1.1.0", "b" * 40, "5" * 52
         )
         assert change is not None
@@ -124,18 +122,17 @@ def check_apply_atomicity(updater) -> None:
             encoding="utf-8",
         )
         before = tmp.read_text(encoding="utf-8")
-        assert updater.apply_pending_updates([change]) is False
+        assert apply_pending_updates([change]) is False
         assert tmp.read_text(encoding="utf-8") == before
     finally:
         tmp.unlink()
 
 
 def main() -> None:
-    updater = load_updater()
     fake_path = Path("/tmp/sample.scm")
     packages = {
         p["name"]: p
-        for p in updater.parse_package_definitions(SHARED_SCM, fake_path)
+        for p in parse_package_definitions(SHARED_SCM, fake_path)
     }
 
     # 正例：两个引用包都解析出共享真值
@@ -174,7 +171,7 @@ def main() -> None:
        (uri (string-append "https://example.com/foo-" version ".tar.gz"))
        (sha256 (base32 "2222222222222222222222222222222222222222222222222222"))))))
 """
-    foo = updater.parse_package_definitions(plain, fake_path)[0]
+    foo = parse_package_definitions(plain, fake_path)[0]
     assert foo["is_shared_source"] is False, foo
     assert foo["version"] == "1.2.3", foo["version"]
 
@@ -192,7 +189,7 @@ def main() -> None:
              (commit commit)))
        (sha256 (base32 "3333333333333333333333333333333333333333333333333333"))))))
 """
-    bar = updater.parse_package_definitions(let_scm, fake_path)[0]
+    bar = parse_package_definitions(let_scm, fake_path)[0]
     assert bar["is_shared_source"] is False, bar
 
     # 负例 4：只有 (version %v) 没有 (source %s)，不 resolve，回落旧行为
@@ -209,7 +206,7 @@ def main() -> None:
        (uri (string-append "https://example.com/half-" version ".tar.gz"))
        (sha256 (base32 "4444444444444444444444444444444444444444444444444444"))))))
 """
-    half_pkg = updater.parse_package_definitions(half, fake_path)[0]
+    half_pkg = parse_package_definitions(half, fake_path)[0]
     assert half_pkg["is_shared_source"] is False, half_pkg
     assert half_pkg["version"] is None, half_pkg["version"]
 
@@ -222,17 +219,17 @@ def main() -> None:
     try:
         pkgs = {
             p["name"]: p
-            for p in updater.parse_package_definitions(
+            for p in parse_package_definitions(
                 tmp.read_text(encoding="utf-8"), tmp
             )
         }
-        change = updater.build_shared_source_change(
+        change = build_shared_source_change(
             tmp, pkgs["sample-a"], "1.1.0",
             "b" * 40, "5" * 52,
         )
         assert change is not None
         assert change["is_shared_source"] is True
-        assert updater.apply_pending_updates([change]) is True
+        assert apply_pending_updates([change]) is True
         out = tmp.read_text(encoding="utf-8")
         assert '(define %sample-version "1.1.0")' in out, out
         assert f'(define %sample-commit "{"b" * 40}")' in out, out
@@ -247,8 +244,8 @@ def main() -> None:
     finally:
         tmp.unlink()
 
-    check_tag_peel(updater)
-    check_apply_atomicity(updater)
+    check_tag_peel()
+    check_apply_atomicity()
 
     print("shared-variable source regression checks passed")
 
