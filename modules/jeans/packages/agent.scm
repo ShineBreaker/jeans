@@ -888,7 +888,7 @@ telemetry or forced log-ins.")
 (define-public reasonix-bin
   (package
     (name "reasonix-bin")
-    (version "2.33.0")
+    (version "2.34.0")
     (source
      (origin
        (method url-fetch)
@@ -896,7 +896,7 @@ telemetry or forced log-ins.")
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
              "v" version "/reasonix-linux-amd64.tar.gz"))
        (sha256
-        (base32 "0m8nabh3mszhwj77b9zdrnmy1m4ymk8v80w1xyvv5wb6458xfjdy"))))
+        (base32 "1azc0css6azzjg6jbdpnj47bzicir6qgmfb4gzksz8x8l61p5gxv"))))
     (build-system jeans-binary-build-system)
     (arguments
      (list
@@ -936,7 +936,7 @@ and ships as a single static binary with no runtime dependencies.")
 (define-public reasonix-studio-bin
   (package
     (name "reasonix-studio-bin")
-    (version "2.33.0")
+    (version "2.34.0")
     (source
      (origin
        (method url-fetch)
@@ -944,7 +944,7 @@ and ships as a single static binary with no runtime dependencies.")
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
              "studio-v" version "/ReasonixStudio-linux-amd64.deb"))
        (sha256
-        (base32 "0pazjp3hi0p0yrvmc9s90pgh76nx8g67qb670s93bq5bls84a892"))))
+        (base32 "050nvn4b9n76i2klqyw61q91kcb8f4b6wzy3324wgy9q4kb050kd"))))
     (build-system jeans-electron-build-system)
     (arguments
      (list
@@ -1612,7 +1612,7 @@ so the bundled self-updater should not be used.")
 (define-public magpie-bin
   (package
     (name "magpie-bin")
-    (version "0.1.1165")
+    (version "0.1.1167")
     (source
      (origin
        (method url-fetch)
@@ -1620,7 +1620,7 @@ so the bundled self-updater should not be used.")
              "https://github.com/yetone/magpie-releases/releases/download/"
              "v" version "/magpie-linux-amd64"))
        (sha256
-        (base32 "0c98hxq0dply0b8ix8nyasxxnrsxcfsqsk5af8n66z0f85r52fwh"))))
+        (base32 "1f3srwhc5v2ygilxl26gk4vj8bal25skbg88ha4ijfg7kxs4p9yg"))))
     (build-system jeans-binary-build-system)
     (arguments
      (list
