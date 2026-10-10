@@ -42,6 +42,12 @@
 ;;;   有 .dynamic 段，静态 sidecar 不会炸）。
 ;;; - #:preserve-rpath?（默认 #f）：#t 时新 RPATH =
 ;;;   $ORIGIN:旧RPATH:计算值（prepend 保 $ORIGIN 且保留旧值）。
+;;; - #:patchelf-exclude：输出内相对路径前缀列表（文件或目录均可），
+;;;   命中的 ELF 整体跳过 patchelf，保留上游 RPATH/interpreter 原状。
+;;;   用于自包含 bundle（如 sharp-libvips 的 $ORIGIN RPATH 本就自足），
+;;;   以及规避 patchelf 扩 phdr 移位 .init/.plt 后不更新 DT_INIT/DT_FINI
+;;;   的上游 bug——命中特征是 .init 紧贴 ELF 头（vaddr ~0x25c）的 .so，
+;;;   patch 后 DT_INIT 仍指旧址，ld.so 调用即段错误。
 ;;; - #:wrap?（默认 #t）/#:wrap-plan：((PROG SPEC ...) ...)，直通 wrap-program；
 ;;;   PROG 为输出内相对路径或绝对路径。
 ;;; - #:desktop-files：((DESKTOP [EXEC [ICON]]) ...)，只重写 [Desktop Entry]
@@ -333,11 +339,13 @@ lib/<SHORT>/，跳过 gnu-build 每阶段落盘的环境快照 environment-varia
 (define* (patchelf #:key inputs outputs
                    (patchelf? #t)
                    (patchelf-plan '())
+                   (patchelf-exclude '())
                    (preserve-rpath? #f)
                    (lib-dir #f)
                    (package-name #f)
                    #:allow-other-keys)
-  "给 patchelf-plan 内的 ELF 打 interpreter/RPATH（默认全 inputs 的 /lib）。"
+  "给 patchelf-plan 内的 ELF 打 interpreter/RPATH（默认全 inputs 的 /lib）。
+命中 patchelf-exclude 相对路径前缀的文件整体跳过。"
   (if (not patchelf?)
       #t
       (let* ((out (assoc-ref outputs "out"))
@@ -384,7 +392,19 @@ lib/<SHORT>/，跳过 gnu-build 每阶段落盘的环境快照 environment-varia
                       (map (lambda (file) (cons file specs))
                            (plan-entry-files out path)))
                      (entry (error "patchelf: 非法的 patchelf-plan 条目" entry)))
-                   patchelf-plan))))
+                   patchelf-plan)))
+             (targets
+              (if (null? patchelf-exclude)
+                  targets
+                  (remove (match-lambda
+                            ((file . _)
+                             (let ((rel (string-drop
+                                         file
+                                         (min (1+ (string-length out))
+                                              (string-length file)))))
+                               (any (lambda (ex) (string-prefix? ex rel))
+                                    patchelf-exclude))))
+                          targets))))
         (unless interpreter
           (format (current-error-port)
                   "warning: patchelf: 找不到 glibc ld-linux，只设 RPATH 不设 interpreter~%"))

@@ -11,7 +11,7 @@
 
 | Package                | Description                                                    |
 | ---------------------- | -------------------------------------------------------------- |
-| `cindy-bin`            | Open-source AI agent desktop client                            |
+| `cindy-cn-bin`         | Open-source AI agent desktop client                            |
 | `codewhale-bin`        | Multi-provider AI coding agent for the terminal                |
 | `crush-bin`            | AI-powered coding assistant for the CLI                        |
 | `cua-driver-bin`       | Cross-platform computer-use automation driver                  |

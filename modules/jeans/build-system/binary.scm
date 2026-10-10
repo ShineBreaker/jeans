@@ -109,6 +109,7 @@
                              (install-plan #f)
                              (patchelf? #t)
                              (patchelf-plan ''())
+                             (patchelf-exclude ''())
                              (preserve-rpath? #f)
                              (wrap? #t)
                              (wrap-plan ''())
@@ -158,6 +159,9 @@
                               #:patchelf-plan #$(if (pair? patchelf-plan)
                                                     (sexp->gexp patchelf-plan)
                                                     patchelf-plan)
+                              #:patchelf-exclude #$(if (pair? patchelf-exclude)
+                                                       (sexp->gexp patchelf-exclude)
+                                                       patchelf-exclude)
                               #:preserve-rpath? #$preserve-rpath?
                               #:wrap? #$wrap?
                               #:wrap-plan #$(if (pair? wrap-plan)

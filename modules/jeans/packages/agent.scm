@@ -26,6 +26,7 @@
   #:use-module (gnu packages gnome)        ; libsoup
   #:use-module (gnu packages golang)       ; go
   #:use-module (gnu packages gtk)          ; gtk+, cairo, gdk-pixbuf, at-spi2-core
+  #:use-module (gnu packages image)        ; libjpeg-turbo, libpng
   #:use-module (gnu packages linux)        ; eudev
   #:use-module (gnu packages nss)          ; nss
   #:use-module (gnu packages ncurses)
@@ -34,6 +35,7 @@
   #:use-module (gnu packages rust-apps)    ; ripgrep
   #:use-module (gnu packages tls)          ; openssl
   #:use-module (gnu packages version-control) ; git
+  #:use-module (gnu packages web)          ; json-c
   #:use-module (gnu packages webkit)       ; webkitgtk-for-gtk3
   #:use-module (gnu packages xdisorg)      ; libxkbcommon
   #:use-module (gnu packages xml)          ; expat
@@ -160,24 +162,32 @@ release.")
 ;;; The upstream .deb (data.tar.zst, unlike the xz used by opencode/paseo)
 ;;; installs an Electron bundle under /usr/lib/cindy:
 ;;;   - Cindy                 the Electron main executable (GUI entry)
-;;;   - chrome-sandbox        setuid sandbox helper; Guix users run with
-;;;                           --no-sandbox via kernel namespace sandbox,
-;;;                           installed but not setuid-root
+;;;   - chrome-sandbox        setuid sandbox helper; installed but not
+;;;                           setuid-root (namespace sandbox suffices)
 ;;;   - resources/app.asar.unpacked/node_modules/...  native addons
 ;;;     (better-sqlite3, node-pty, sharp) in nested directories; sharp
 ;;;     carries its own $ORIGIN-relative RPATH pointing at the bundled
 ;;;     libvips, so patchelf must --prepend-rpath (existing RPATH kept)
 ;;;     rather than --set-rpath.
 ;;;   - resources/tools/ripgrep/rg   statically linked, shipped as-is.
+;;;   - resources/tools/remote-desktop/cindy-linux-desktop-{capture,
+;;;     clipboard,input}  Wayland 远程桌面 sidecar，NEEDED
+;;;     libwayland-client/libturbojpeg/libpng——对应 wayland、
+;;;     libjpeg-turbo、libpng 三个 input，升级时重查。
+;;;
+;;; @img/ 子树（sharp 的预编译 libvips 与 .node）自包含：$ORIGIN RPATH
+;;; 已自足，patchelf-exclude 原样保留。libvips-cpp.so 的 .init 紧贴
+;;; ELF 头（vaddr 0x25c），patchelf 扩 phdr 将其移位后不更新 DT_INIT，
+;;; patch 即变砖（ld.so 调旧址段错误，0.1.103 实证）。
 ;;;
 ;;; Sidecars proxy.mjs / cc-mgr.mjs are "#!/usr/bin/env node" scripts;
 ;;; Electron spawns them via ELECTRON_RUN_AS_NODE, so no Node.js input.
 ;;; electron-updater: no resources/package-type file in this bundle, so
 ;;; the disable-electron-updater phase is unnecessary.
 
-(define-public cindy-bin
+(define-public cindy-cn-bin
   (package
-    (name "cindy-bin")
+    (name "cindy-cn-bin")
     (version "0.1.103")
     (source
      (origin
@@ -203,6 +213,10 @@ release.")
       ;; sharp's .node addons carry $ORIGIN-relative RPATH resolving the
       ;; bundled libvips: prepend instead of replacing.
       #:preserve-rpath? #t
+      ;; @img/：$ORIGIN RPATH 自足，patch 反而触发 DT_INIT 失步 bug（见包
+      ;; 上方注释）。
+      #:patchelf-exclude
+      #~'("lib/cindy/resources/app.asar.unpacked/node_modules/@img/")
       #:desktop-files
       #~'(("share/applications/cindy.desktop"
            "bin/cindy"
@@ -231,18 +245,22 @@ release.")
               ("glibc" ,glibc)
               ("glib" ,glib)
               ("gtk+" ,gtk+)
+              ("json-c" ,json-c)
               ("libx11" ,libx11)
               ("libxcb" ,libxcb)
               ("libxcomposite" ,libxcomposite)
               ("libxdamage" ,libxdamage)
               ("libxext" ,libxext)
               ("libxfixes" ,libxfixes)
+              ("libjpeg-turbo" ,libjpeg-turbo)
+              ("libpng" ,libpng)
               ("libxkbcommon" ,libxkbcommon)
               ("libxrandr" ,libxrandr)
               ("mesa" ,mesa)
               ("nspr" ,nspr)
               ("nss" ,nss)
-              ("pango" ,pango)))
+              ("pango" ,pango)
+              ("wayland" ,wayland)))
     (properties `((upstream-name . "cindy")
                   (release-tag-prefix . "^v")))
     (home-page "https://github.com/makecindy/cindy")
