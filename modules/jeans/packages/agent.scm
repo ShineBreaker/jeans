@@ -23,7 +23,7 @@
   #:use-module (gnu packages gcc)          ; gcc "lib"
   #:use-module (gnu packages gl)           ; mesa
   #:use-module (gnu packages glib)         ; glib, dbus
-  #:use-module (gnu packages gnome)        ; libsoup
+  #:use-module (gnu packages gnome)        ; libsoup, gnome-keyring, libsecret
   #:use-module (gnu packages golang)       ; go
   #:use-module (gnu packages gtk)          ; gtk+, cairo, gdk-pixbuf, at-spi2-core
   #:use-module (gnu packages image)        ; libjpeg-turbo, libpng
@@ -230,7 +230,40 @@ release.")
                      (bin (string-append out "/bin"))
                      (exe (string-append out "/lib/cindy/Cindy")))
                 (mkdir-p bin)
-                (symlink exe (string-append bin "/cindy"))))))))
+                (symlink exe (string-append bin "/cindy")))))
+          ;; Electron 的 safeStorage（Linux 凭据存储）依赖 dlopen
+          ;; libsecret-1.so.0 + 会话里的 org.freedesktop.secrets 服务；
+          ;; 两者缺一登录/凭据功能整体报错 CREDENTIAL_STORE_UNAVAILABLE。
+          ;; libsecret input 解决 dlopen；这里在 exec 前补服务并固定后端：
+          ;; gnome-keyring 只在没有任何 secrets 提供者（kwallet/keepassxc
+          ;; 等同样提供该 API）时才启动；已加密锁定的 keyring 需要解锁
+          ;; 弹窗，同步拉起 gcr-prompter（dbus 名
+          ;; org.gnome.keyring.SystemPrompter）。flag 置用户可覆写的最前位。
+          (add-after 'prefer-wayland-hint 'ensure-secret-service
+            (lambda* (#:key inputs #:allow-other-keys)
+              (let ((wrapper (string-append #$output "/bin/cindy"))
+                    (gdbus (search-input-file inputs "bin/gdbus"))
+                    (keyring (search-input-file
+                              inputs "bin/gnome-keyring-daemon"))
+                    (prompter (search-input-file
+                               inputs "libexec/gcr-prompter")))
+                (substitute* wrapper
+                  (("^exec -a ")
+                   (string-append
+                    "_secrets_owned=$(\"" gdbus "\" call --session "
+                    "--dest org.freedesktop.DBus "
+                    "--object-path /org/freedesktop/DBus "
+                    "--method org.freedesktop.DBus.NameHasOwner "
+                    "org.freedesktop.secrets 2>/dev/null)\n"
+                    "case \"$_secrets_owned\" in\n"
+                    "  *true*) ;;\n"
+                    "  *) \"" keyring "\" --start --components=secrets"
+                    " >/dev/null 2>&1 || true\n"
+                    "     \"" prompter "\" >/dev/null 2>&1 & ;;\n"
+                    "esac\n"
+                    "unset _secrets_owned\n"
+                    "set -- --password-store=gnome-libsecret \"$@\"\n"
+                    "exec -a ")))))))))
     (native-inputs (list binutils tar xz zstd))
     (inputs `(("alsa-lib" ,alsa-lib)
               ("at-spi2-core" ,at-spi2-core)
@@ -242,8 +275,11 @@ release.")
               ("expat" ,expat)
               ("fontconfig-minimal" ,fontconfig)
               ("gcc:lib" ,gcc "lib")
+              ("gcr-3" ,gcr-3)
               ("glibc" ,glibc)
               ("glib" ,glib)
+              ("glib:bin" ,glib "bin")
+              ("gnome-keyring" ,gnome-keyring)
               ("gtk+" ,gtk+)
               ("json-c" ,json-c)
               ("libx11" ,libx11)
@@ -254,6 +290,7 @@ release.")
               ("libxfixes" ,libxfixes)
               ("libjpeg-turbo" ,libjpeg-turbo)
               ("libpng" ,libpng)
+              ("libsecret" ,libsecret)
               ("libxkbcommon" ,libxkbcommon)
               ("libxrandr" ,libxrandr)
               ("mesa" ,mesa)
