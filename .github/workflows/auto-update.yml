@@ -274,6 +274,10 @@ jobs:
             echo "has_changes=true" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Unit test ELF dependency checker
+        shell: bash
+        run: python3 scripts/check-updates/tests/test_elf_deps.py
+
       - name: Build test updated packages
         # 手动模式（test_packages 非空）下也执行：此时更新步骤全部跳过，
         # 工作区干净，仅按参数构建指定包，不会产生提交。

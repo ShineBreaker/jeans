@@ -51,6 +51,8 @@ blue upgrade   # = guix shell --manifest=scripts/check-updates/manifest.scm \
 
 `scripts/check-updates/tests/test_updated_packages.py` 合并 `report.json`（`status == "updated"`）与 `refresh-updates.json`，对并集逐个 `guix build`。闭源与预编译包同样过这道闸门，不按包名后缀跳过。构建失败时不提交更新，CI 会开 issue 记录失败包。
 
+`guix build` 成功后还有第二道：ELF NEEDED 解析检查。预编译包的依赖清单随上游构建漂移——magpie-bin 0.1.1167 上游新增了 `libfontconfig.so.1` 直接依赖，hash 正确、构建通过，但启动即被加载器拒绝。闸门对产物里每个带 `PT_INTERP` 的 ELF 跑 `ld.so --list`：patchelf 过的二进制用自身 interpreter + RUNPATH 解析；ld-linux wrapper 包从脚本提取 store ld.so 与 `--library-path` 目录；`LD_LIBRARY_PATH` 型 env wrapper（electron/Tauri）的导出目录并入候选。直接 NEEDED 缺失（stderr `error while loading shared libraries`）与传递缺失（stdout `=> not found`）均判构建失败；无可用 ld.so 的自定位/nix-ld 包记 `skipped` 放行并在报告中留痕。此检查只覆盖静态 NEEDED——dlopen/FFI 依赖仍需真实运行验证，见 pack-guix 的 runtime verification。
+
 ## Hard guards
 
 - 动版本号前先 `git pull`：CI 与本地会同时改同一个包定义。

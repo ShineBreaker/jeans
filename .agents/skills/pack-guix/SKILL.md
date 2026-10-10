@@ -157,6 +157,7 @@ synopsis,gnu-description <package-name>
 - GUI：在真实图形会话中启动；至少检查 wrapper bash -n、ELF interpreter/RPATH、desktop Exec 和资源路径。
 - Electron：分别记录 Wayland/X11 会话、WAYLAND_DISPLAY、缩放变量和 wrapper 实际参数；用 ELECTRON_OZONE_PLATFORM_HINT=x11 做对照实验。
 - GTK/Tauri：检查 XDG_DATA_DIRS、GI_TYPELIB_PATH、GUIX_GDK_PIXBUF_MODULE_FILES 和 tray/native addon；不要只以“进程启动未立即退出”判定成功。
+- 预编译包升级：构建成功之外，必须对产物 ELF 做加载器级 NEEDED 检查——`ld.so --list`（wrapper 包带上脚本声明的 `--library-path` 与 `LD_LIBRARY_PATH` 目录）或等价 `find $out | xargs ldd | grep "not found"`。直接缺失报 stderr `error while loading shared libraries`，传递缺失是 stdout 的 `=> not found` 行，两边都要看。NEEDED 随上游构建漂移（magpie-bin 0.1.1167 新增 `libfontconfig.so.1`），每次升级都要重查；自动更新构建闸门已对更新包强制执行此项。
 
 如果无法访问图形会话，完成 CLI/静态验证即可，但要明确写出“GUI 未复现”，不要宣称已经证明用户报告的根因。
 

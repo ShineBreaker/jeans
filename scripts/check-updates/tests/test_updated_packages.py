@@ -8,16 +8,21 @@ Build all updated Guix packages after an auto-update run.
 Runs in the same CI job as the updater, before commit/push.
 If any build fails, exits non-zero to block the commit and
 creates a deduplicated GitHub issue for notification.
+
+构建成功后还会对产物做 ldd 级 NEEDED 检查：上游重构可能给 ELF
+新增 NEEDED（magpie-bin 0.1.1167 新增 libfontconfig 实证），
+构建期不报错、运行时直接拒启。
 """
 
 import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional, Tuple
 
 import requests
 
@@ -93,8 +98,13 @@ def summarize_output(stdout: str, stderr: str, limit_lines: int = 80, limit_char
     return text
 
 
+REPO_ROOT = Path(__file__).resolve().parents[3]
+
+
 def build_package(package_name: str) -> Dict[str, Any]:
-    cmd = ["guix", "build", "-L", "modules"]
+    # -L 锚到 __file__ 而非 CWD：从其他目录运行时相对 -L 会静默落空，
+    # 退化到已装频道快照，测到错误的包版本。
+    cmd = ["guix", "build", "-L", str(REPO_ROOT / "modules")]
     extra_load_path = os.environ.get("GUIX_EXTRA_LOAD_PATH", "")
     for path in extra_load_path.split(":") if extra_load_path else []:
         if path:
@@ -102,13 +112,153 @@ def build_package(package_name: str) -> Dict[str, Any]:
     cmd.append(package_name)
     result = subprocess.run(cmd, capture_output=True, text=True)
     output = summarize_output(result.stdout, result.stderr)
+    store_outputs = [
+        line.strip() for line in result.stdout.splitlines()
+        if line.strip().startswith("/gnu/store/")
+    ]
     return {
         "name": package_name,
         "returncode": result.returncode,
         "success": result.returncode == 0,
         "summary": output.splitlines()[-1] if output and output != "(no output)" else output,
         "output": output,
+        "outputs": store_outputs,
     }
+
+
+# ---- ELF NEEDED 检查（ld.so --list）----
+#
+# 预编译包的依赖清单随上游构建漂移：版本升级后 NEEDED 可能增删，
+# 而构建期只验证 hash 与解包，不验证库解析。本检查对每个带
+# PT_INTERP 的 ELF 执行 `ld.so --list`：
+# - patchelf 过的二进制：用自身 interpreter（store 路径），依赖其
+#   自带 RUNPATH 解析；
+# - 未 patch 的二进制（ld-linux wrapper）：用 wrapper 脚本 exec 行里
+#   的 store ld.so，并带上脚本声明的 --library-path 目录；
+# - env wrapper（LD_LIBRARY_PATH 导出）：提取其中的 store 目录一起
+#   作为 --library-path 候选。
+# 直接 NEEDED 缺失报 stderr "error while loading shared libraries"；
+# 传递依赖缺失报 stdout "=> not found" 行——两者命中即判失败。
+# interp 既非有效 store 路径、产物里又没有 wrapper ld.so 的（如靠
+# 系统 nix-ld 的自定位包）记为 skipped，不阻塞但留痕于报告。
+
+LD_SO_RE = re.compile(r"(/gnu/store/[a-z0-9]{32}[^\s'\"]*ld-linux[^\s'\"]*)")
+LIB_DIRS_RE = re.compile(r"--library-path[=\s]+['\"]?([^'\"\s]+)")
+STORE_DIR_RE = re.compile(r"/gnu/store/[a-z0-9]{32}[^\"'\s$:}]*")
+
+
+def _is_elf(path: Path) -> bool:
+    try:
+        with open(path, "rb") as f:
+            return f.read(4) == b"\x7fELF"
+    except OSError:
+        return False
+
+
+def _elf_interp(path: Path) -> Optional[str]:
+    """返回 64-bit LE ELF 的 PT_INTERP 字符串；非 ELF/32 位/无 interp 返回 None。"""
+    try:
+        with open(path, "rb") as f:
+            hdr = f.read(64)
+            if (len(hdr) < 64 or hdr[:4] != b"\x7fELF"
+                    or hdr[4] != 2 or hdr[5] != 1):
+                return None
+            phoff = int.from_bytes(hdr[0x20:0x28], "little")
+            phentsize = int.from_bytes(hdr[0x36:0x38], "little")
+            phnum = int.from_bytes(hdr[0x38:0x3A], "little")
+            f.seek(phoff)
+            phdrs = f.read(phentsize * phnum)
+            for i in range(phnum):
+                off = i * phentsize
+                if int.from_bytes(phdrs[off:off + 4], "little") != 3:  # PT_INTERP
+                    continue
+                p_offset = int.from_bytes(phdrs[off + 8:off + 16], "little")
+                p_filesz = int.from_bytes(phdrs[off + 0x20:off + 0x28], "little")
+                f.seek(p_offset)
+                return f.read(p_filesz).rstrip(b"\0").decode("utf-8", "replace")
+    except (OSError, IndexError):
+        return None
+    return None
+
+
+def _scan_wrapper_scripts(output: Path) -> Tuple[List[str], List[str]]:
+    """扫描产物里的 shebang 脚本，返回 (ld.so 路径列表, 库目录并集)。
+
+    库目录两个来源：ld.so 的 --library-path 参数（ld-linux wrapper），
+    以及 wrap-program 生成的 LD_LIBRARY_PATH 导出（electron/Tauri 等
+    patchelf + env wrapper）。并集做候选路径，与运行时解析语义一致。
+    """
+    ldsos: List[str] = []
+    lib_dirs: List[str] = []
+    for path in output.rglob("*"):
+        if not path.is_file() or path.is_symlink():
+            continue
+        try:
+            with open(path, "rb") as f:
+                if f.read(2) != b"#!":
+                    continue
+                text = f.read(65536).decode("utf-8", "replace")
+        except OSError:
+            continue
+        m = LD_SO_RE.search(text)
+        if m:
+            ldsos.append(m.group(1))
+        for m in LIB_DIRS_RE.finditer(text):
+            lib_dirs.extend(d for d in m.group(1).split(":") if d)
+        for line in text.splitlines():
+            if "LD_LIBRARY_PATH" in line:
+                lib_dirs.extend(STORE_DIR_RE.findall(line))
+    return list(dict.fromkeys(ldsos)), list(dict.fromkeys(lib_dirs))
+
+
+def check_elf_dependencies(output_paths: List[str]) -> Dict[str, Any]:
+    """对每个带 PT_INTERP 的 ELF 跑 `ld.so --list`，not found 即失败。"""
+    missing: List[str] = []
+    skipped: List[str] = []
+    checked = 0
+    for out in output_paths:
+        root = Path(out)
+        if not root.is_dir():
+            continue
+        ldsos, lib_dirs = _scan_wrapper_scripts(root)
+        for elf in sorted(root.rglob("*")):
+            if not elf.is_file() or elf.is_symlink() or not _is_elf(elf):
+                continue
+            interp = _elf_interp(elf)
+            if interp is None:
+                continue
+            if interp.startswith("/gnu/store/") and Path(interp).exists():
+                ldso = interp
+            elif ldsos:
+                ldso = ldsos[0]
+            else:
+                skipped.append(str(elf))
+                continue
+            cmd = [ldso, "--list"]
+            if lib_dirs:
+                cmd += ["--library-path", ":".join(lib_dirs)]
+            cmd.append(str(elf))
+            try:
+                res = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+            except (subprocess.SubprocessError, OSError) as e:
+                skipped.append(f"{elf}（ld.so --list 无法执行: {e}）")
+                continue
+            # 直接 NEEDED 缺失 → stderr 致命错误；深层传递依赖缺失 → stdout
+            # 的 "=> not found" 行。两类都收。
+            not_found = sorted(set(
+                re.findall(r"(\S+) => not found", res.stdout)
+                + re.findall(
+                    r"error while loading shared libraries: (\S+):",
+                    res.stderr)))
+            if not_found:
+                missing.append(f"{elf}: {', '.join(not_found)}")
+            elif res.returncode != 0:
+                tail = (res.stderr or res.stdout).strip().splitlines()
+                skipped.append(f"{elf}（ld.so --list 退出 {res.returncode}: "
+                               f"{tail[-1][:120] if tail else '无输出'}）")
+            else:
+                checked += 1
+    return {"checked": checked, "skipped": skipped, "missing": missing}
 
 
 def issue_exists(issues_url: str, title: str, headers: Dict[str, str]) -> bool:
@@ -238,8 +388,26 @@ def main() -> int:
         print(f"\n📦 构建测试: {name}")
         result = build_package(name)
         enriched = {**pkg, **result}
-        build_report["packages"].append(enriched)
         if result["success"]:
+            dep_report = check_elf_dependencies(result["outputs"])
+            enriched["elf_deps"] = dep_report
+            if dep_report["missing"]:
+                enriched["success"] = False
+                enriched["summary"] = f"NEEDED 解析失败: {dep_report['missing'][0]}"
+                enriched["output"] = (
+                    enriched["output"] + "\n\n=== ld.so --list NEEDED 检查 ===\n"
+                    + "\n".join(dep_report["missing"])
+                )
+            else:
+                if dep_report["checked"]:
+                    note = f"   ✓ NEEDED 检查通过（{dep_report['checked']} 个 ELF）"
+                else:
+                    note = "   ⚠ NEEDED 检查未执行（产物无带 interpreter 的 ELF）"
+                if dep_report["skipped"]:
+                    note += f"；跳过 {len(dep_report['skipped'])} 个（无可用 ld.so）"
+                print(note)
+        build_report["packages"].append(enriched)
+        if enriched["success"]:
             print(f"   ✓ 构建成功: {name}")
         else:
             print(f"   ❌ 构建失败: {name}")
