@@ -120,7 +120,7 @@
 (define-public emacs-ghostel
   (package
     (name "emacs-ghostel")
-    (version "0.56.0")
+    (version "0.57.0")
     (source
      (origin
        (method git-fetch)
@@ -129,7 +129,7 @@
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "1v6g18jl30kxidyadwcxx4kw8lx8p15fv66vqd6khw8012bfg5rn"))
+        (base32 "0zi763b72algb8w41rx8ppqkmvfjlmazbap74df5v7zryiwa1xxw"))
        (patches %ghostel-patches)))
       (build-system emacs-build-system)
       (arguments
@@ -990,8 +990,8 @@ and top offset are customizable as fractions of the parent frame size.")
 ;;; file (no Makefile, no ERT/buttercup tree), so #:tests? is #f.
 
 (define-public emacs-magit-fast
-  (let ((commit "d4210fa3d18044b9b6b7264a9e92bb3c2820a289")
-        (revision "1"))
+  (let ((commit "cbb4de66d9d1469bdfee39ee5bb3aa38a9946437")
+        (revision "2"))
     (package
       (name "emacs-magit-fast")
       (version (git-version "1.0.0" revision commit))
@@ -1003,7 +1003,7 @@ and top offset are customizable as fractions of the parent frame size.")
                (commit commit)))
          (file-name (git-file-name name version))
          (sha256
-          (base32 "0cqgvjr5gq73phk9hws97idqp6jrdq9hga7hgaihligsn10yx09i"))))
+          (base32 "0miii5s2mqsck5wbla13qjr6grlg13nprc42cr93hyq0izdjz6xy"))))
       (build-system emacs-build-system)
       (arguments
        (list #:tests? #f))

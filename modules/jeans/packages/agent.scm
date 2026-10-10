@@ -178,7 +178,7 @@ release.")
 (define-public cindy-bin
   (package
     (name "cindy-bin")
-    (version "0.1.97")
+    (version "0.1.101")
     (source
      (origin
        (method url-fetch)
@@ -186,7 +186,7 @@ release.")
              "https://github.com/makecindy/cindy/releases/download/"
              "v" version "/cindy-" version "-linux-x64-cn.deb"))
        (sha256
-        (base32 "0fkz76h0p9ib6gh4p52d2bwm21r50zra3qk6wqjn646v4nxfjnw0"))))
+        (base32 "1sy7wqcz7xd6cv4yhbiah0qx3b5w4fxmi658krpbmn784vm02fdb"))))
     (build-system jeans-electron-build-system)
     (arguments
      (list
@@ -269,7 +269,7 @@ control, and a companion system.")
 (define-public crush-bin
   (package
     (name "crush-bin")
-    (version "0.98.0")
+    (version "0.98.1")
     (source
      (origin
        (method url-fetch)
@@ -277,7 +277,7 @@ control, and a companion system.")
              "https://github.com/charmbracelet/crush/releases/download/"
              "v" version "/crush_" version "_amd64.deb"))
        (sha256
-        (base32 "07vswn1nqsijqr5ah80f4n8hilw147wysicl3nh3678zg83nq4q7"))))
+        (base32 "0rp290mb2kmbv0xlijcjcxw8qfz5bnc1spr10n6bb6m4ipbxq639"))))
     (build-system jeans-binary-build-system)
     (arguments
      (list
@@ -749,7 +749,7 @@ coding experience with context awareness.")
 (define-public paseo-bin
   (package
     (name "paseo-bin")
-    (version "0.11.1")
+    (version "0.11.2")
     (source
      (origin
        (method url-fetch)
@@ -757,7 +757,7 @@ coding experience with context awareness.")
              "https://github.com/getpaseo/paseo/releases/download/"
              "v" version "/Paseo-" version "-amd64.deb"))
        (sha256
-        (base32 "10ig4ixngsf4njpkyfn4p68dknv3hkpc2kv51x3qnnmr4vc0rraq"))))
+        (base32 "1a4ix78rzd2yjd609vm3zira8gnwnr635nfd10hg34nc0ws5gd09"))))
     (build-system jeans-electron-build-system)
     (arguments
      (list
@@ -1436,7 +1436,7 @@ release and needs the @code{nix-ld} system service to run.")
 (define-public cua-driver-bin
   (package
     (name "cua-driver-bin")
-    (version "0.34.0")
+    (version "0.34.1")
     (source
      (origin
        (method url-fetch)
@@ -1445,7 +1445,7 @@ release and needs the @code{nix-ld} system service to run.")
              "cua-driver-rs-v" version
              "/cua-driver-rs-" version "-linux-x86_64-binary.tar.gz"))
        (sha256
-        (base32 "19vhrm0sfxq7navyzrcixlx82baw2vrg68gjbkylv7c2zxpck6k2"))))
+        (base32 "1vmgiza691gamj88pc671j774x89dgqp9h4lqlfm197frfyy47x4"))))
     (build-system jeans-binary-build-system)
     (arguments
      (list
@@ -1543,7 +1543,7 @@ so the bundled self-updater should not be used.")
 (define-public magpie-bin
   (package
     (name "magpie-bin")
-    (version "0.1.1137")
+    (version "0.1.1157")
     (source
      (origin
        (method url-fetch)
@@ -1551,7 +1551,7 @@ so the bundled self-updater should not be used.")
              "https://github.com/yetone/magpie-releases/releases/download/"
              "v" version "/magpie-linux-amd64"))
        (sha256
-        (base32 "06p4my2h87jdv9gr1n78wsay0g1ypflyxy142zb9x33w98p2bnah"))))
+        (base32 "1sg55s8lx7s4mj69bdfgc9md2d9jnwszy69xx77rk4q2b1ln911n"))))
     (build-system jeans-binary-build-system)
     (arguments
      (list

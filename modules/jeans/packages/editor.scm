@@ -550,8 +550,8 @@ the editor under the plain @code{zed} command name.")
 ;;; are compiled in via include_str!, and the inherited install phases
 ;;; (binary + runtime + desktop entry, HELIX_RUNTIME wrapper) work unchanged.
 (define-public helix-steel
-  (let ((commit "ee451df4ff6b0f6416a128f26affc2052b0669c6")
-        (revision "5"))
+  (let ((commit "c16fac096a9dd162d46f53bf2411f36251d755f3")
+        (revision "6"))
     (package
       (inherit helix)
       (name "helix-steel")
@@ -564,7 +564,7 @@ the editor under the plain @code{zed} command name.")
                (commit commit)))
          (file-name (git-file-name name version))
          (sha256
-          (base32 "1pz4vzs9g4wh1w5z2qqpjvxv3gn5xdn12qrh11n33g0lral0bx54"))))
+          (base32 "12zwp8r4mdq0wl3zyhb02v9d4q2hs6x79m3ifzbgybsdcjdvmh0l"))))
       (arguments
        (substitute-keyword-arguments (package-arguments helix)
          ((#:phases phases)
