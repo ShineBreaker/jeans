@@ -1588,10 +1588,12 @@ so the bundled self-updater should not be used.")
 ;;; the Guix ld-linux wrapper with --argv0 and --library-path (the
 ;;; github-copilot pattern).
 ;;;
-;;; NEEDED at 0.1.1084 (re-check with `patchelf --print-needed` on
+;;; NEEDED at 0.1.1167 (re-check with `patchelf --print-needed` on
 ;;; upgrades; Go rebuilds can add or drop entries): libgtk-3, libgdk-3,
-;;; libgdk_pixbuf-2.0, libgio-2.0, libgobject-2.0, libglib-2.0, libX11,
-;;; libwebkit2gtk-4.1, libsoup-3.0, libjavascriptcoregtk-4.1, libc.
+;;; libgdk_pixbuf-2.0, libgio-2.0, libgobject-2.0, libglib-2.0,
+;;; libfontconfig (new in 0.1.1167 — must sit in --library-path),
+;;; libX11, libwebkit2gtk-4.1, libsoup-3.0, libjavascriptcoregtk-4.1,
+;;; libc.
 ;;;
 ;;; The Wails self-updater (wails:updater:* IPC) is runtime-only —
 ;;; there is no package-type file to remove — and upgrades are owned by
@@ -1631,9 +1633,9 @@ so the bundled self-updater should not be used.")
                             (map (lambda (name)
                                    (string-append
                                     (assoc-ref inputs name) "/lib"))
-                                 '("gdk-pixbuf" "glib" "glibc" "gtk+"
-                                   "libx11" "libsoup"
-                                   "webkitgtk-for-gtk3"))
+                                 '("fontconfig-minimal" "gdk-pixbuf"
+                                   "glib" "glibc" "gtk+" "libx11"
+                                   "libsoup" "webkitgtk-for-gtk3"))
                             ":"))
                      (fontconf (assoc-ref inputs "fontconfig-minimal"))
                      (gtk-share (string-append (assoc-ref inputs "gtk+")
