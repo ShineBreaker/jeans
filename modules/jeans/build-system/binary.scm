@@ -50,9 +50,10 @@
   '(gnu-unpack tar zip deb deb-xz deb-zst bsdtar appimage-7z file none))
 
 (define %jeans-binary-build-system-modules
-  ;; Build-side 模块：(jeans build binary) 打头；ice-9/srfi 系由
-  ;; guix 模块的传递闭包自动带入容器（显式列出会触发 Guix 的
-  ;; "importing modules from the host" 警告），此处只列 guix 模块。
+  ;; Build-side 模块：(jeans build binary) 打头。ice-9/srfi/rnrs 由
+  ;; guile-for-build 自带，不经 imported-modules 拷贝；显式列入（此处或
+  ;; 包的 #:imported-modules）会触发 Guix 的 "importing modules from
+  ;; the host" 警告。包的 #:modules（use-modules 列表）不受此限。
   `((jeans build binary)
     ,@%default-gnu-imported-modules))
 
