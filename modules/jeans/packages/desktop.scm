@@ -724,8 +724,8 @@ renderer relies on the upstream Chromium binary distribution.")
 ;; tools/ sub-trees evolve with the shell repository, so pinning them
 ;; separately makes no sense.  Auto-update only maintains the nosdshell
 ;; version/hash; the helpers follow the shared origin object.
-(define %nosdshell-version "1.1.1")
-(define %nosdshell-commit "8061cbeb32bbdfc033edb0b377cd2adda71afabb")
+(define %nosdshell-version "1.1.6")
+(define %nosdshell-commit "dc166f1aa84b15ba1e92710413c63dec4588aae6")
 
 (define %nosdshell-source
   (origin
@@ -735,7 +735,7 @@ renderer relies on the upstream Chromium binary distribution.")
           (commit %nosdshell-commit)))
     (file-name (git-file-name "nosdshell" %nosdshell-version))
     (sha256
-     (base32 "191vs74hpv8dw135db4rwkc2isir5chjrhzzcjrl4p97f2k3c5rg"))))
+     (base32 "02fyp3i7gwl4x19j6lga6vfwwh2spvnc7sm9f1rgxvac3q0r1ldf"))))
 
 ;; Our quickshell fork (ShineBreaker/quickshell-nosd): upstream master at
 ;; the version 0.3.2 commit plus the two pipewire use-after-free fixes the
