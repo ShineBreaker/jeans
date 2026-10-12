@@ -1643,7 +1643,7 @@ so the bundled self-updater should not be used.")
 ;;; the Guix ld-linux wrapper with --argv0 and --library-path (the
 ;;; github-copilot pattern).
 ;;;
-;;; NEEDED at 0.1.1167 (re-check with `patchelf --print-needed` on
+;;; NEEDED at 0.1.1203 (re-check with `patchelf --print-needed` on
 ;;; upgrades; Go rebuilds can add or drop entries): libgtk-3, libgdk-3,
 ;;; libgdk_pixbuf-2.0, libgio-2.0, libgobject-2.0, libglib-2.0,
 ;;; libfontconfig (new in 0.1.1167 — must sit in --library-path),
@@ -1654,10 +1654,23 @@ so the bundled self-updater should not be used.")
 ;;; there is no package-type file to remove — and upgrades are owned by
 ;;; the channel.  Plugins and sign-in state live under the user's XDG
 ;;; data dirs, which the wrapper leaves untouched (prefix semantics).
+;;;
+;;; Desktop integration mirrors upstream's install.sh: a menu entry
+;;; claiming the x-scheme-handler/magpie MIME type (magpie://import
+;;; links) plus a 256x256 icon.  The release ships neither, so the
+;;; entry is generated and the icon is fetched from the very URL the
+;;; installer downloads it from.
+(define magpie-icon
+  (origin
+    (method url-fetch)
+    (uri "https://usemagpie.ai/img/icon-256.png")
+    (sha256
+     (base32 "0167a1hh5mv99m35vqwzns3fs05a6308hhidqk7qynp0jrjpqhsp"))))
+
 (define-public magpie-bin
   (package
     (name "magpie-bin")
-    (version "0.1.1167")
+    (version "0.1.1203")
     (source
      (origin
        (method url-fetch)
@@ -1665,7 +1678,7 @@ so the bundled self-updater should not be used.")
              "https://github.com/yetone/magpie-releases/releases/download/"
              "v" version "/magpie-linux-amd64"))
        (sha256
-        (base32 "1f3srwhc5v2ygilxl26gk4vj8bal25skbg88ha4ijfg7kxs4p9yg"))))
+        (base32 "14547l10lgw19swjbajfp1nk7m6d05avbbm55c17n927hqwkfbxb"))))
     (build-system jeans-binary-build-system)
     (arguments
      (list
@@ -1705,13 +1718,53 @@ so the bundled self-updater should not be used.")
 export FONTCONFIG_FILE=~a/etc/fonts/fonts.conf
 # Prefix (not =) so the system XDG_DATA_DIRS is kept behind the bundle.
 export XDG_DATA_DIRS=~a:~a${XDG_DATA_DIRS:+:$XDG_DATA_DIRS}
+# magpie writes a user-level magpie.desktop on every start, with no way
+# to turn that off, and its Exec is os.Executable() -- which under this
+# launcher resolves to ld.so.  Seed a read-only copy first: magpie's own
+# write then fails and the menu keeps this wrapper's entry.  The bare
+# command name keeps the entry valid across package upgrades.
+d=\"${XDG_DATA_HOME:-$HOME/.local/share}/applications\"
+f=\"$d/magpie.desktop\"
+if [ ! -e \"$f\" ]; then
+  mkdir -p \"$d\" 2>/dev/null
+  cat > \"$f\" 2>/dev/null <<EOF
+[Desktop Entry]
+Type=Application
+Name=magpie
+Comment=Every agent's model. One place.
+Exec=magpie %u
+Icon=magpie
+Categories=Development;Utility;
+MimeType=x-scheme-handler/magpie;
+Terminal=false
+EOF
+  chmod 444 \"$f\" 2>/dev/null
+fi
 exec ~a --argv0 ~a --library-path ~a ~a \"$@\""
                             (assoc-ref inputs "bash-minimal")
                             fontconf
                             gtk-share
                             webkit-share
                             ld.so real libs real)))
-                (chmod (string-append bin "/magpie") #o555)))))))
+                (chmod (string-append bin "/magpie") #o555))))
+          (add-after 'install 'install-desktop-entry
+            (lambda _
+              (let ((apps (string-append #$output "/share/applications"))
+                    (icons (string-append #$output
+                                          "/share/icons/hicolor/256x256/apps")))
+                (mkdir-p apps)
+                (mkdir-p icons)
+                (copy-file #$magpie-icon (string-append icons "/magpie.png"))
+                (make-desktop-entry-file
+                 (string-append apps "/magpie.desktop")
+                 #:name "magpie"
+                 #:comment "Every agent's model. One place."
+                 #:exec (string-append #$output "/bin/magpie %u")
+                 #:icon "magpie"
+                 #:categories '("Development" "Utility")
+                 #:mime-type "x-scheme-handler/magpie"
+                 #:terminal #f
+                 #:startup-notify #f)))))))
     (inputs `(("bash-minimal" ,bash-minimal)
               ("fontconfig-minimal" ,fontconfig)
               ("gdk-pixbuf" ,gdk-pixbuf)

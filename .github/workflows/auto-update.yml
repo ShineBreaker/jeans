@@ -212,7 +212,7 @@ jobs:
           # agenote-el-v* 系列。
           guix refresh -L "$GITHUB_WORKSPACE/modules" -L /tmp/nonguix -u \
             crush-bin opencode-desktop-bin herdr-bin omo-bin \
-            codewhale-bin reasonix-bin github-copilot \
+            magpie-bin codewhale-bin reasonix-bin github-copilot \
             eask-bin neomacs-bin rayburst-bin cc-switch-bin \
             font-maple-font-nf-cn font-nerd-symbols font-nerd-font-iosevka \
             lr2oraja-endlessdream-bin osu-lazer-bin inso-bin \
