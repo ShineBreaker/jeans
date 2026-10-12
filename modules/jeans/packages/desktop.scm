@@ -724,8 +724,8 @@ renderer relies on the upstream Chromium binary distribution.")
 ;; tools/ sub-trees evolve with the shell repository, so pinning them
 ;; separately makes no sense.  Auto-update only maintains the nosdshell
 ;; version/hash; the helpers follow the shared origin object.
-(define %nosdshell-version "1.1.6")
-(define %nosdshell-commit "dc166f1aa84b15ba1e92710413c63dec4588aae6")
+(define %nosdshell-version "1.1.8")
+(define %nosdshell-commit "fb7684c90af0b670117665f841e0fc7428d57d0f")
 
 (define %nosdshell-source
   (origin
@@ -735,7 +735,7 @@ renderer relies on the upstream Chromium binary distribution.")
           (commit %nosdshell-commit)))
     (file-name (git-file-name "nosdshell" %nosdshell-version))
     (sha256
-     (base32 "02fyp3i7gwl4x19j6lga6vfwwh2spvnc7sm9f1rgxvac3q0r1ldf"))))
+     (base32 "1jq9gp15xr1fvyxwsdwm1milw9v4ia2gb9p6mi4s7d2hf6mp4v7d"))))
 
 ;; Our quickshell fork (ShineBreaker/quickshell-nosd): upstream master at
 ;; the version 0.3.2 commit plus the two pipewire use-after-free fixes the
@@ -862,15 +862,41 @@ template rendering.")
                 (("\\[\"rfkill\", \"unblock\", \"bluetooth\"\\]")
                  (string-append "[\"" (search-input-file inputs "sbin/rfkill")
                                 "\", \"unblock\", \"bluetooth\"]")))))
+          (add-after 'install 'install-completions
+            (lambda* (#:key source #:allow-other-keys)
+              ;; completions/ holds one file per shell; install each under its
+              ;; standard name so profiles pick it up automatically.
+              (let ((share (string-append #$output "/share")))
+                (mkdir-p (string-append share "/bash-completion/completions"))
+                (mkdir-p (string-append share "/zsh/site-functions"))
+                (mkdir-p (string-append share "/fish/vendor_completions.d"))
+                (copy-file (string-append source "/completions/nosdshell.bash")
+                           (string-append share "/bash-completion/completions/nosdshell"))
+                (copy-file (string-append source "/completions/_nosdshell")
+                           (string-append share "/zsh/site-functions/_nosdshell"))
+                (copy-file
+                 (string-append source "/completions/nosdshell.fish")
+                 (string-append share "/fish/vendor_completions.d"
+                                "/nosdshell.fish")))))
           (add-after 'install 'make-wrapper
             (lambda* (#:key inputs #:allow-other-keys)
               (let ((script "nosdshell"))
+                ;; --version/-V prints the shell and quickshell versions without
+                ;; starting the shell (lowercase -v is quickshell's verbose flag
+                ;; and must fall through).  The nosdshell part follows
+                ;; %nosdshell-version; keep the quickshell part in sync with
+                ;; quickshell/nosd above.
                 (with-output-to-file script
                   (lambda ()
                     (format #t "~
 #!~a
+if [ \"$1\" = \"--version\" ] || [ \"$1\" = \"-V\" ]; then
+  echo \"nosdshell v~a (with quickshell v0.3.2 903a70a)\"
+  exit 0
+fi
 exec ~a --config ~a/etc/xdg/quickshell/nosdshell \"$@\"~%"
                             (search-input-file inputs "bin/sh")
+                            #$%nosdshell-version
                             (search-input-file inputs "bin/quickshell")
                             #$output)))
                 (wrap-script script
