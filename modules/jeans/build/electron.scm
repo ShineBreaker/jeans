@@ -29,10 +29,11 @@
 ;;;   #:app-dir             资源目录相对路径，如 "lib/opencode-desktop"
 ;;;                        （wrap 组装 LD_LIBRARY_PATH 用）。
 ;;;
-;;; wrap-electron 是 wrap 默认三件套（opencode-desktop-bin 实证）：
+;;; wrap-electron 是 wrap 默认三件套 + 证书注入（opencode-desktop-bin 实证）：
 ;;;   LD_LIBRARY_PATH prefix (lib/<app> mesa nss/nss)
 ;;;   + FONTCONFIG_FILE = fontconfig-minimal
-;;;   + XDG_DATA_DIRS prefix (out/share)。
+;;;   + XDG_DATA_DIRS prefix (out/share)
+;;;   + SSL_CERT_DIR = nss-certs（内置终端子进程的 TLS 信任根，见函数注释）。
 ;;; 基座的 wrap phase 无 #:wrap-plan 时按约定 no-op，有自定义 plan 时两者
 ;;; 都会跑（wrap-program 可重入，只是前缀会有重复条目）；要完全自定义 wrap
 ;;; 请用 #:phases 逃生舱接管，不要指望本层静默让路。
@@ -140,7 +141,7 @@ non-empty string when #:wayland? is 'hint-env"
 (define* (wrap-electron-program
           #:key inputs outputs (program #f) (app-dir #f)
           #:allow-other-keys)
-  "Electron wrap 默认三件套，缺参时报有意义错误。"
+  "Electron wrap 默认三件套 + 证书环境注入，缺参时报有意义错误。"
   (unless (and (string? program) (not (string-null? program)))
     (error "wrap-electron-program: #:program must be a non-empty string"
            program))
@@ -154,10 +155,14 @@ e.g. \"lib/opencode-desktop\""
     (error "wrap-electron-program: 缺少 input \"nss\"（wrap 三件套所需）" inputs))
   (unless (assoc-ref inputs "fontconfig-minimal")
     (error "wrap-electron-program: 缺少 input \"fontconfig-minimal\"（wrap 三件套所需）" inputs))
+  (unless (assoc-ref inputs "nss-certs")
+    (error "wrap-electron-program: 缺少 input \"nss-certs\"（wrap 证书注入所需）" inputs))
   (let* ((out (assoc-ref outputs "out"))
          (lib (string-append out "/" app-dir))
          (mesa-lib (string-append (assoc-ref inputs "mesa") "/lib"))
-         (nss-lib (string-append (assoc-ref inputs "nss") "/lib/nss")))
+         (nss-lib (string-append (assoc-ref inputs "nss") "/lib/nss"))
+         (ca-dir (string-append (assoc-ref inputs "nss-certs")
+                                "/etc/ssl/certs")))
     (wrap-program (string-append out "/bin/" program)
       `("LD_LIBRARY_PATH" prefix
         (,lib ,mesa-lib ,nss-lib))
@@ -165,7 +170,19 @@ e.g. \"lib/opencode-desktop\""
         (,(string-append (assoc-ref inputs "fontconfig-minimal")
                          "/etc/fonts/fonts.conf")))
       `("XDG_DATA_DIRS" prefix
-        (,(string-append out "/share")))))
+        (,(string-append out "/share"))))
+    ;; 内置终端 spawn 的 curl/git/python/node 等子进程在 Guix 下没有编译期
+    ;; 默认 CA 路径，缺 SSL_CERT_DIR 即 "证书不可信/无法连接"（zcode 内置
+    ;; 终端实证：curl 000、git certificate signer not trusted、python
+    ;; unable to get local issuer）。${VAR:-默认} 形式保留用户或桌面会话
+    ;; 已设的值（如自签 MITM CA）。只设目录型变量：nss-certs 不产出合并
+    ;; bundle，文件型变量指向不存在的文件比不设更糟。
+    (substitute* (string-append out "/bin/" program)
+      (("^exec -a ")
+       (string-append
+        "export SSL_CERT_DIR=\"${SSL_CERT_DIR:-" ca-dir "}\"\n"
+        "exec -a ")))
+    )
   #t)
 
 (define %standard-phases

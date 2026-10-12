@@ -39,7 +39,9 @@
 ;;;   inputs（元素为 "name" 或 ("name" "/subdir")，沿用 nonguix 形状）。
 ;;;   逐文件先用 patchelf --print-interpreter 探测 dynamic，静态全跳过；
 ;;;   .so/.node 跳过 interpreter 只设 RPATH（设之前再用 --print-rpath 确认
-;;;   有 .dynamic 段，静态 sidecar 不会炸）。
+;;;   有 .dynamic 段，静态 sidecar 不会炸）。executable 分支在
+;;;   --set-interpreter 后自动体检 LOAD 重叠（见 repair-dynamic-load-permission：
+;;;   store 长路径 page-shift 会把 .dynamic 压进只读段，ld 启动即段错误）。
 ;;; - #:preserve-rpath?（默认 #f）：#t 时新 RPATH =
 ;;;   $ORIGIN:旧RPATH:计算值（prepend 保 $ORIGIN 且保留旧值）。
 ;;; - #:patchelf-exclude：输出内相对路径前缀列表（文件或目录均可），
@@ -68,6 +70,8 @@
   #:use-module (ice-9 ftw)
   #:use-module (ice-9 popen)
   #:use-module (ice-9 rdelim)
+  #:use-module (ice-9 binary-ports)
+  #:use-module (rnrs bytevectors)
   #:use-module (srfi srfi-1)
   #:export (%standard-phases
             binary-build
@@ -302,6 +306,85 @@ lib/<SHORT>/，跳过 gnu-build 每阶段落盘的环境快照 environment-varia
       (close-pipe port)
       (if (eof-object? line) "" line))))
 
+;; ELF64 program header 常量（ptype/pflags，取自 elf.h）。
+(define PT_LOAD 1)
+(define PT_DYNAMIC 2)
+(define PF_W 2)
+
+(define (read-file-bytevector file)
+  "整文件读成字节向量（#:binary 保证不做任何字符转码）。"
+  (call-with-input-file file
+    (lambda (port)
+      (get-bytevector-all port))
+    #:binary #t))
+
+(define (write-file-bytevector file bv)
+  "字节向量整文件写回（读时已 make-file-writable）。"
+  (call-with-output-file file
+    (lambda (port)
+      (put-bytevector port bv))
+    #:binary #t))
+
+(define (elf64-dynamic-vaddr bv)
+  "ELF64 字节向量 BV 中 PT_DYNAMIC 的 p_vaddr；非 ELFCLASS64、phdr 表越界或无
+PT_DYNAMIC 段时返回 #f。"
+  (and (>= (bytevector-length bv) 64)
+       (= (bytevector-u8-ref bv 0) #x7f)
+       (= (bytevector-u8-ref bv 1) (char->integer #\E))
+       (= (bytevector-u8-ref bv 2) (char->integer #\L))
+       (= (bytevector-u8-ref bv 3) (char->integer #\F))
+       (= (bytevector-u8-ref bv 4) 2)              ; EI_CLASS = ELFCLASS64
+       (let* ((phoff (bytevector-u64-native-ref bv 32))
+              (phentsize (bytevector-u16-native-ref bv 54))
+              (phnum (bytevector-u16-native-ref bv 56)))
+         (and (<= (+ phoff (* phnum phentsize)) (bytevector-length bv))
+              (let loop ((i 0))
+                (if (= i phnum)
+                    #f
+                    (let ((off (+ phoff (* i phentsize))))
+                      (if (= PT_DYNAMIC (bytevector-u32-native-ref bv off))
+                          (bytevector-u64-native-ref bv (+ off 16))
+                          (loop (1+ i))))))))))
+
+(define (repair-dynamic-load-permission file)
+  "给覆盖 .dynamic 的只读 PT_LOAD 补 PF_W 位；修补过返回 #t，无需修返回 #f。
+
+patchelf --set-interpreter 换上 /gnu/store 长路径时会 page-shift 整个映像并
+新建一个 RW PT_LOAD（装 interpreter/phdr/notes/.dynamic），与原只读 PT_LOAD
+地址重叠；ld.so 按 phdr 顺序映射，后映射的只读段把 .dynamic 页覆盖成不可写，
+glibc 的 ld 启动时写 DT_DEBUG 即 SIGSEGV（zcode 内嵌 ugrep 实证：段错误 139、
+strace 无任何 openat）。正常二进制 .dynamic 本就在 RW 段，此处 no-op。"
+  (let* ((bv (read-file-bytevector file))
+         (dyn (elf64-dynamic-vaddr bv)))
+    (if (not dyn)
+        #f
+        (let* ((phoff (bytevector-u64-native-ref bv 32))
+               (phentsize (bytevector-u16-native-ref bv 54))
+               (phnum (bytevector-u16-native-ref bv 56))
+               (fixed?
+                (let loop ((i 0) (fixed? #f))
+                  (if (= i phnum)
+                      fixed?
+                      (let ((off (+ phoff (* i phentsize))))
+                        (if (not (= PT_LOAD (bytevector-u32-native-ref bv off)))
+                            (loop (1+ i) fixed?)
+                            (let* ((flags (bytevector-u32-native-ref bv (+ off 4)))
+                                   (vaddr (bytevector-u64-native-ref bv (+ off 16)))
+                                   (memsz (bytevector-u64-native-ref bv (+ off 40))))
+                              (if (and (<= vaddr dyn)
+                                       (< dyn (+ vaddr memsz))
+                                       (zero? (logand flags PF_W)))
+                                  (begin
+                                    (bytevector-u32-native-set!
+                                     bv (+ off 4) (logior flags PF_W))
+                                    (loop (1+ i) #t))
+                                  (loop (1+ i) fixed?)))))))))
+          (if (not fixed?)
+              #f
+              (begin
+                (write-file-bytevector file bv)
+                #t))))))
+
 (define (patch-one patchelf-bin interpreter rpath preserve-rpath? file)
   "给单个 FILE 打 interpreter/RPATH：先探测 dynamic，静态全跳过。"
   (format #t "patching ~a ...~%" file)
@@ -330,9 +413,13 @@ lib/<SHORT>/，跳过 gnu-build 每阶段落盘的环境快照 environment-varia
                       (filter (lambda (s) (> (string-length s) 0))
                               (list "$ORIGIN" (current-rpath patchelf-bin file) rpath))
                       ":")
-                     rpath)
+                   rpath)
                  file)
-         (display " done\n"))
+         ;; set-interpreter 的 page-shift 可能把 .dynamic 压进只读 LOAD（见
+         ;; repair-dynamic-load-permission 注释），跑完 patchelf 立即体检。
+         (if (repair-dynamic-load-permission file)
+             (format #t "  repaired .dynamic load permission~%")
+             (display " done\n")))
         (else
          (format #t "  跳过（静态链接或非 ELF）~%"))))
 

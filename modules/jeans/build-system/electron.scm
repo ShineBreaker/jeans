@@ -85,15 +85,16 @@ a string or #f"
     (error "jeans-electron-build-system: #:wayland? must be 'inject-flags, ~
 'hint-env or #f"
            wayland?))
-  ;; wrap 三件套读这三个 label；默认 phases 才跑 trio，自定义 phases 不查。
+  ;; wrap 三件套 + 证书注入读这四个 label；默认 phases 才跑，自定义 phases 不查。
   (unless custom-phases?
     (for-each (lambda (label)
                 (unless (assoc-ref inputs label)
                   (error (string-append "jeans-electron-build-system: missing ~
-input \"" label "\" (required by the default electron wrap trio); add ~
-(\"mesa\" ,mesa) (\"nss\" ,nss) (\"fontconfig-minimal\" ,fontconfig) to inputs")
+input \"" label "\" (required by the default electron wrap); add ~
+(\"mesa\" ,mesa) (\"nss\" ,nss) (\"fontconfig-minimal\" ,fontconfig) ~
+(\"nss-certs\" ,nss-certs) to inputs")
                          inputs)))
-              '("mesa" "nss" "fontconfig-minimal"))))
+              '("mesa" "nss" "fontconfig-minimal" "nss-certs"))))
 
 (define* (lower name
                 #:key source inputs native-inputs outputs system target

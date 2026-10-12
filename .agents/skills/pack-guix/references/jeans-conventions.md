@@ -243,6 +243,14 @@ guile 能 `use-modules` 加载不代表语法正确（可能命中 `.go` cache�
 - **wrap-program 会把真实二进制改名为 `.<name>-real`**：neomacs 在该命名下死循环。解法：真实 ELF 以本名安装到 `libexec/<pkg>/`，`bin/` 下手写 thin shell wrapper 启动它；exe 同目录数据（`neomacs.pdump`）和上游按 exe 路径探测的 `../share/<name>` 随之回正，仍不够时用上游提供的环境变量（如 `NEOMACS_RUNTIME_ROOT`）显式指路。完整分析见 `emacs-xyz.scm` 的 `neomacs-bin` 包前注释。
 - **反例（能容忍 `.real` 命名）**：Tauri 的 resource/sidecar 解析以真实 exe 路径为基准，`wrap-program` 不影响（rayburst-bin，见下方 Tauri 小节）。动手前先读上游定位自身资源的代码，不要按包类型猜。
 
+### patchelf page-shift 把 .dynamic 压成只读段（非 PIE 二进制启动即段错误）
+
+deb/AppImage 里常带上游自编译的**非 PIE**辅助二进制（基址 0x400000 的 EXEC），其 PT_INTERP 空间按 `/lib64/ld-linux-x86-64.so.2`（27B）留。patchelf `--set-interpreter` 换 `/gnu/store` 长路径（~65B）放不下时触发 page-shift：映像下移、新建 RW PT_LOAD 装 interpreter/phdr/notes/.dynamic，**与原只读 PT_LOAD 地址重叠**；ld.so 按 phdr 顺序映射，后映射的 R 段把 .dynamic 页覆盖成不可写，glibc 2.41 的 ld 启动写 DT_DEBUG 即 SIGSEGV。
+
+症状与判定（zcode 3.15.1 内嵌 ugrep/bfs/ripgrep 实证）：`--version` 即段错误 139；strace 里 execve 后只有两个 mmap、**无任何 openat** 就崩，si_addr 落在 .dynamic 内、`SEGV_ACCERR`（权限错误而非未映射）；`readelf -lW` 可见基址被下移（0x3fe000 而非 0x400000）且两个 LOAD 地址区间重叠。对比原始 deb 二进制（单 R LOAD 含 .dynamic）在标准 glibc 下正常——单段只读 ld 自己能处理，重叠覆盖才致命。patchelf 0.18.0（guix 1.5.0 所带）仍复现，非版本问题。
+
+修复已进基座（`build/binary.scm` 的 `patch-one`）：executable 分支 `--set-interpreter` 后调 `repair-dynamic-load-permission`，解析 ELF64 phdr 给覆盖 PT_DYNAMIC 的只读 PT_LOAD 补 PF_W 位。正常二进制（.dynamic 本就在 RW 段）no-op；library 分支不设 interpreter 不触发；ELF32/畸形文件安全跳过。
+
 ### dlopen / CFFI 写死的动态加载
 
 `readelf -d` 的 NEEDED 列表只是静态真相，两类运行时加载会让"NEEDED 为空 = 无依赖"的判断失效：
@@ -285,6 +293,14 @@ Guix 只有 ffmpeg 8.x/6.x/5.x/4.x，没有 7.x。预编译包链接 7.x sonames
 - `prefer-electron-wayland-hint-phase`：**argv 解析严格的上游**（自己的 parser 对未知 flag 直接退出，Paseo 实证）不能用注入方案，改为 export Electron 原生的 `ELECTRON_OZONE_PLATFORM_HINT=wayland`。注入后启动即报未知 flag 的包换这个。
 
 生效条件（读 case 逻辑）：hint-phase 只在用户未设置 `ELECTRON_OZONE_PLATFORM_HINT` 时 export；wayland-phase 在未设置（默认 auto）或显式设为 wayland 时注入，设为其他值（如 x11）则不注入。两者都不覆盖用户指向其他平台的选择。
+
+### Electron 内置终端的 CA 证书
+
+Guix 的 curl/git/python 编译期**不带默认 CA 路径**，全靠 `SSL_CERT_DIR`/`SSL_CERT_FILE` 环境变量；Electron 应用的 wrapper 若只设三件套（LD_LIBRARY_PATH/FONTCONFIG_FILE/XDG_DATA_DIRS），内置终端从无证书变量的 GUI 会话启动时 curl 返回 000、git 报 `certificate signer not trusted`、python 报 `unable to get local issuer certificate`（zcode 实证：`env -i` 后必现，从登录 shell 继承时表面正常，换启动路径就挂）。
+
+修复已进基座（`build/electron.scm` 的 `wrap-electron-program`）：substitute `^exec -a ` 注入 `export SSL_CERT_DIR="${SSL_CERT_DIR:-<nss-certs>/etc/ssl/certs}"`，`${VAR:-默认}` 语义保留用户/桌面会话已设值（如 mihomo MITM 自签 CA）。electron 包 inputs 需补 `("nss-certs" ,nss-certs)`。
+
+两个事实：① guix 1.5.0 **没有** `ca-certificate-bundle` 变量（`(gnu packages certs)` 只导出 mkcert/certdata2pem/le-certs/desec-certbot-hook），CA 包现名 **nss-certs**，在 `(gnu packages nss)`；② nss-certs 只产 `etc/ssl/certs` 目录（.pem + .0 hash 链接）、**没有合并的 ca-certificates.crt**，所以只注入目录型变量——文件型变量（SSL_CERT_FILE/CURL_CA_BUNDLE/GIT_SSL_CAINFO/NODE_EXTRA_CA_CERTS 等）指向不存在的文件比不设更糟。系统 `/etc/ssl/certs/ca-certificates.crt` 是 guix system etc-service 生成的 store 项，不是包，不能当 input。实测目录型 `SSL_CERT_DIR` 一项即让 curl/git/python/node 全部连通。
 
 ### Electron 主二进制被上游换成 launcher 脚本
 
