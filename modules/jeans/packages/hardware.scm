@@ -131,7 +131,7 @@
               version "/dotnet-runtime-" version "-linux-x64.tar.gz"))
         (sha256
          (base32 "1q46wfbk8y5dcxr1yqf2h9giv2fg2s7jnwfq3mf2yhrkgiyyf102"))))
-    (build-system jeans-binary-build-system)
+    (build-system binary-build-system)
     (arguments
      (list #:unpack-method 'tar
            ;; source 是 url-fetch/tarbomb（下载时已解包的目录）：目录分支只拷贝

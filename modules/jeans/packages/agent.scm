@@ -55,7 +55,7 @@
 ;;; NOTE: 三个 Electron phase helper 已有新家 (jeans build electron)
 ;;; （builder 侧直调 procedure，shell 负载与此处逐行同形，staging 由 gexp
 ;;; 工厂改为 #:key 直读）。此处三处 define 暂时保留，供未迁移包向后兼容；
-;;; 新包请用 jeans-electron-build-system，不再各写各的。
+;;; 新包请用 electron-build-system，不再各写各的。
 
 (define (disable-electron-updater-phase application-directory)
   #~(lambda _
@@ -125,7 +125,7 @@
              "v" version "/codewhale-linux-x64.tar.gz"))
        (sha256
         (base32 "1h0bhz4p2xkzln8fyqg2y7ci9z859d0lbba1a7a8rwk0pjbk668h"))))
-    (build-system jeans-binary-build-system)
+    (build-system binary-build-system)
     (arguments
      (list
       #:unpack-method 'tar
@@ -197,7 +197,7 @@ release.")
              "v" version "/cindy-" version "-linux-x64-cn.deb"))
        (sha256
         (base32 "1804b4hlzar8njnj8cix9cdx2c2jdwll89z33a5kx8ds57yf6k7r"))))
-    (build-system jeans-electron-build-system)
+    (build-system electron-build-system)
     (arguments
      (list
       #:program "cindy"
@@ -320,7 +320,7 @@ control, and a companion system.")
 ;;; the ELF interpreter when dynamic; statically linked binaries are
 ;;; left untouched.  Wrap with PATH so crush can find git and other
 ;;; runtime tools regardless.
-;;; 已迁移到 jeans-binary-build-system（首试点，纯参数迁移）。
+;;; 已迁移到 binary-build-system（首试点，纯参数迁移）。
 
 (define-public crush-bin
   (package
@@ -334,7 +334,7 @@ control, and a companion system.")
              "v" version "/crush_" version "_amd64.deb"))
        (sha256
         (base32 "0rp290mb2kmbv0xlijcjcxw8qfz5bnc1spr10n6bb6m4ipbxq639"))))
-    (build-system jeans-binary-build-system)
+    (build-system binary-build-system)
     (arguments
      (list
       #:unpack-method 'deb
@@ -577,7 +577,7 @@ release; the application itself is proprietary.")
              "v" version "/herdr-linux-x86_64"))
        (sha256
         (base32 "19yvyj3l0gqrisknzx3cy3313nfgl7g5chrlhic4iyn2y5jxra0q"))))
-    (build-system jeans-binary-build-system)
+    (build-system binary-build-system)
     (arguments
      (list
       ;; Fully static raw ELF: 'file unpack restores the exec bit.
@@ -624,7 +624,7 @@ This package provides the prebuilt binary release.")
              "v" version "/minimax-code-" version ".tar.gz"))
        (sha256
         (base32 "00lzvbz39j23srkzxhfh675895c5vjsiwy8ax990f73f5plpldqn"))))
-    (build-system jeans-binary-build-system)
+    (build-system binary-build-system)
     (arguments
      (list
       ;; npm-style tree installs verbatim; nothing dynamic to patch.
@@ -680,7 +680,7 @@ prebuilt distribution and launches it with the store Node.js runtime.")
              "v" version "/opencode-desktop-linux-amd64.deb"))
        (sha256
         (base32 "19jgqygwncncyyikcwgh5vyiqn1z5w1gyalazq2qdh1s3vwbyhr2"))))
-    (build-system jeans-electron-build-system)
+    (build-system electron-build-system)
     (arguments
      (list
       #:program "opencode-desktop"
@@ -812,7 +812,7 @@ coding experience with context awareness.")
              "v" version "/Paseo-" version "-amd64.deb"))
        (sha256
         (base32 "1a4ix78rzd2yjd609vm3zira8gnwnr635nfd10hg34nc0ws5gd09"))))
-    (build-system jeans-electron-build-system)
+    (build-system electron-build-system)
     (arguments
      (list
       #:program "paseo"
@@ -949,7 +949,7 @@ telemetry or forced log-ins.")
              "v" version "/reasonix-linux-amd64.tar.gz"))
        (sha256
         (base32 "1azc0css6azzjg6jbdpnj47bzicir6qgmfb4gzksz8x8l61p5gxv"))))
-    (build-system jeans-binary-build-system)
+    (build-system binary-build-system)
     (arguments
      (list
       ;; Single static Go binary: default unpack layout + plain install.
@@ -997,7 +997,7 @@ and ships as a single static binary with no runtime dependencies.")
              "studio-v" version "/ReasonixStudio-linux-amd64.deb"))
        (sha256
         (base32 "050nvn4b9n76i2klqyw61q91kcb8f4b6wzy3324wgy9q4kb050kd"))))
-    (build-system jeans-electron-build-system)
+    (build-system electron-build-system)
     (arguments
      (list
       #:program "reasonix-studio"
@@ -1312,7 +1312,7 @@ configure.  This package provides the prebuilt desktop release.")
              version "/linux-x64/ZCode-" version "-linux-x64.deb"))
        (sha256
         (base32 "1y6lg6j63h66bcxzf8pkxcg6fziqk3fc96p5mcsnk8vidzjbp1w7"))))
-    (build-system jeans-electron-build-system)
+    (build-system electron-build-system)
     (arguments
      (list
       #:program "zcode"
@@ -1447,7 +1447,7 @@ without friction.")
              "v" version "/zcode-proxy-linux-x64"))
        (sha256
         (base32 "0pw5cxpn90wwq2j1vzm99bcp4civimmbsqfchf4h862cv06h7mkm"))))
-    (build-system jeans-binary-build-system)
+    (build-system binary-build-system)
     (arguments
      (list
       ;; bun --compile self-locating single file: install unpatched and
@@ -1514,7 +1514,7 @@ release and needs the @code{nix-ld} system service to run.")
        (sha256
         (base32
          "1xwy4qna3dj42i30h3rhgn81abmifwkg1hl1waq3bx4w9vn3rwkm"))))
-    (build-system jeans-binary-build-system)
+    (build-system binary-build-system)
     (arguments
      (list
       ;; bun --compile self-locating single file: install unpatched and
@@ -1563,7 +1563,7 @@ run.")
              "/cua-driver-rs-" version "-linux-x86_64-binary.tar.gz"))
        (sha256
         (base32 "1vmgiza691gamj88pc671j774x89dgqp9h4lqlfm197frfyy47x4"))))
-    (build-system jeans-binary-build-system)
+    (build-system binary-build-system)
     (arguments
      (list
       ;; Flat tarball (no top-level dir); FHS ELF set with a thin
@@ -1684,7 +1684,7 @@ so the bundled self-updater should not be used.")
              "v" version "/magpie-linux-amd64"))
        (sha256
         (base32 "14547l10lgw19swjbajfp1nk7m6d05avbbm55c17n927hqwkfbxb"))))
-    (build-system jeans-binary-build-system)
+    (build-system binary-build-system)
     (arguments
      (list
       ;; Single raw ELF, no archive; unpatched — see the comment above.

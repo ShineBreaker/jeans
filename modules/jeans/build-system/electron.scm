@@ -2,7 +2,7 @@
 ;;;
 ;;; SPDX-License-Identifier: GPL-3.0-only
 
-;;; jeans-electron-build-system：Electron 预编译包的薄层 host 侧。
+;;; electron-build-system：Electron 预编译包的薄层 host 侧。
 ;;;
 ;;; 本层不自建 bag，只做三件事，然后经基座 lower 成 bag 后做 bag 手术追加 Electron 参数
 ;;; （bag inherit，不经过基座具名校验；基座对五键 dormant 透传）：
@@ -35,7 +35,7 @@
   #:use-module (guix build-system)
   #:use-module ((jeans build-system binary) #:prefix binary:)
   #:use-module (srfi srfi-1)
-  #:export (jeans-electron-build-system
+  #:export (electron-build-system
             lower
             %electron-build-modules))
 
@@ -61,7 +61,7 @@
 
 (define (check-non-empty-string value name example)
   (unless (and (string? value) (not (string-null? value)))
-    (error (string-append "jeans-electron-build-system: " name " must be a ~
+    (error (string-append "electron-build-system: " name " must be a ~
 non-empty string, e.g. " example)
            value)))
 
@@ -71,25 +71,25 @@ non-empty string, e.g. " example)
   (check-non-empty-string program "#:program" "\"opencode-desktop\"")
   (check-non-empty-string app-dir "#:app-dir" "\"lib/opencode-desktop\"")
   (unless (boolean? disable-updater?)
-    (error "jeans-electron-build-system: #:disable-updater? must be a boolean"
+    (error "electron-build-system: #:disable-updater? must be a boolean"
            disable-updater?))
   (if disable-updater?
       (check-non-empty-string application-directory "#:application-directory"
                               "\"opencode-desktop\"")
       (unless (or (not application-directory)
                   (string? application-directory))
-        (error "jeans-electron-build-system: #:application-directory must be ~
+        (error "electron-build-system: #:application-directory must be ~
 a string or #f"
                application-directory)))
   (unless (or (not wayland?) (memq wayland? '(inject-flags hint-env)))
-    (error "jeans-electron-build-system: #:wayland? must be 'inject-flags, ~
+    (error "electron-build-system: #:wayland? must be 'inject-flags, ~
 'hint-env or #f"
            wayland?))
   ;; wrap 三件套 + 证书注入读这四个 label；默认 phases 才跑，自定义 phases 不查。
   (unless custom-phases?
     (for-each (lambda (label)
                 (unless (assoc-ref inputs label)
-                  (error (string-append "jeans-electron-build-system: missing ~
+                  (error (string-append "electron-build-system: missing ~
 input \"" label "\" (required by the default electron wrap); add ~
 (\"mesa\" ,mesa) (\"nss\" ,nss) (\"fontconfig-minimal\" ,fontconfig) ~
 (\"nss-certs\" ,nss-certs) to inputs")
@@ -150,10 +150,10 @@ input \"" label "\" (required by the default electron wrap); add ~
                                     (delete-duplicates
                                      (append %electron-build-modules
                                              (or user-imported '())
-                                             binary:%jeans-binary-build-system-modules)
+                                             binary:%binary-build-system-modules)
                                      equal?))))))))
 
-(define jeans-electron-build-system
+(define electron-build-system
   (build-system
     (name 'jeans-electron)
     (description "Electron prebuilt binary build system, thin layer over jeans-binary")

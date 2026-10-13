@@ -2,7 +2,7 @@
 ;;;
 ;;; SPDX-License-Identifier: GPL-3.0-only
 
-;;; jeans-binary-build-system（host-side，基座；electron 层在其上扩展）。
+;;; binary-build-system（host-side，基座；electron 层在其上扩展）。
 ;;;
 ;;; copy.scm 的 lower→bag 形态：校验参数后 lower 成 bag，builder 经 gexp 调用
 ;;; build-side (jeans build binary) 的 binary-build，并在 builder 内把该模块前置进
@@ -40,16 +40,16 @@
   #:use-module (guix build-system gnu)
   #:use-module (guix packages)
   #:use-module (srfi srfi-1)
-  #:export (%jeans-binary-build-system-modules
+  #:export (%binary-build-system-modules
             lower
-            jeans-binary-build
-            jeans-binary-build-system))
+            binary-build
+            binary-build-system))
 
 (define %unpack-methods
   ;; 与 (jeans build binary) 的 unpack 对齐；两处各一份，改时一起改。
   '(gnu-unpack tar zip deb deb-xz deb-zst bsdtar appimage-7z file none))
 
-(define %jeans-binary-build-system-modules
+(define %binary-build-system-modules
   ;; Build-side 模块：(jeans build binary) 打头。ice-9/srfi/rnrs 由
   ;; guile-for-build 自带，不经 imported-modules 拷贝；显式列入（此处或
   ;; 包的 #:imported-modules）会触发 Guix 的 "importing modules from
@@ -78,7 +78,7 @@
                 #:rest arguments)
   "校验参数后返回 NAME 的 bag（不支持交叉编译）。Electron 专属键经 rest 透传，不校验。"
   (unless (memq unpack-method %unpack-methods)
-    (error "jeans-binary-build-system: 未知的 #:unpack-method" unpack-method))
+    (error "binary-build-system: 未知的 #:unpack-method" unpack-method))
   (define private-keywords
     '(#:target #:inputs #:native-inputs))
 
@@ -98,10 +98,10 @@
                              ,@native-inputs)
                            native-inputs))
          (outputs outputs)
-         (build jeans-binary-build)
+         (build binary-build)
          (arguments (strip-keyword-arguments private-keywords arguments)))))
 
-(define* (jeans-binary-build name inputs
+(define* (binary-build name inputs
                              #:key
                              guile source
                              (outputs '("out"))
@@ -128,13 +128,13 @@
                                          %standard-phases))
                              (system (%current-system))
                              (substitutable? #t)
-                             (imported-modules %jeans-binary-build-system-modules)
+                             (imported-modules %binary-build-system-modules)
                              (modules '((guix build utils)))
                              #:allow-other-keys
                              #:rest rest)
   "用 INSTALL-PLAN 等参数构建预编译二进制包（见模块注释）。Electron 专属键透传给 phases。"
   (unless (memq unpack-method %unpack-methods)
-    (error "jeans-binary-build-system: 未知的 #:unpack-method" unpack-method))
+    (error "binary-build-system: 未知的 #:unpack-method" unpack-method))
   (define builder
     (with-imported-modules imported-modules
       #~(begin
@@ -196,7 +196,7 @@
                       #:graft? #f
                       #:guile-for-build guile)))
 
-(define jeans-binary-build-system
+(define binary-build-system
   (build-system
     (name 'jeans-binary)
     (description "The standard jeans prebuilt-binary build system")

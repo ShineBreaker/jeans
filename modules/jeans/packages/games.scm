@@ -286,7 +286,7 @@ fonts, IR jars, and other assets at runtime.  The game requires OpenGL
                          "/osu.AppImage"))
         (sha256
           (base32 "0bns13jzhfbn80hypqbcpmvw2a0m9g0y4h6axsdk7a3kagk0hh98"))))
-    (build-system jeans-binary-build-system)
+    (build-system binary-build-system)
     (arguments
      (list
       #:unpack-method 'appimage-7z

@@ -111,7 +111,7 @@ and Xorg.")
 ;; external program it may spawn (grok) is located via an absolute path in
 ;; config.toml, so no PATH wrapper is needed.  Patch the interpreter and
 ;; append a RUNPATH covering glibc and libgcc_s, then install both binaries.
-;; 已迁移到 jeans-binary-build-system（纯参数迁移，等价 RPATH）。
+;; 已迁移到 binary-build-system（纯参数迁移，等价 RPATH）。
 (define-public ai-usagebar-bin
   (package
     (name "ai-usagebar-bin")
@@ -124,7 +124,7 @@ and Xorg.")
              "v" version "/ai-usagebar-linux-x86_64.tar.gz"))
        (sha256
         (base32 "13v7diqg69v67rixnd185sfd61ffmnn824qkc99dc5vvmy2680pb"))))
-    (build-system jeans-binary-build-system)
+    (build-system binary-build-system)
     (arguments
      (list
       #:unpack-method 'tar
@@ -168,7 +168,7 @@ release.")
 ;; upstream scans only <exec>/../share/waywallen and $XDG_DATA_HOME/waywallen,
 ;; never XDG_DATA_DIRS, so every XDG_DATA_DIRS entry containing a
 ;; waywallen/plugins/ tree is passed as a --plugin root.
-;; 已迁移到 jeans-binary-build-system：解包/install/patchelf 走参数（目录条目），
+;; 已迁移到 binary-build-system：解包/install/patchelf 走参数（目录条目），
 ;; 手写 Qt wrapper 与 desktop 入口保留自定义 phase。
 (define-public waywallen-bin
   (package
@@ -183,7 +183,7 @@ release.")
              "/waywallen-" version "-x86_64.AppImage"))
        (sha256
         (base32 "1ic7kkxn2cd7d56n5g9rb2q59xrp270b64c7i5a56q26323rcliz"))))
-    (build-system jeans-binary-build-system)
+    (build-system binary-build-system)
     (arguments
      (list
       #:unpack-method 'appimage-7z
@@ -374,7 +374,7 @@ desktop through a Wayland layer shell and a QtQuick interface.")
 ;; Workshop source.  Upstream ships a single prebuilt zstd-zipped plugin tree
 ;; per architecture; this package installs it verbatim under the directory
 ;; Waywallen's plugin scanner searches for system plugins.
-;; 已迁移到 jeans-binary-build-system：install-plan 逐项落盘 + 目录 patchelf-plan
+;; 已迁移到 binary-build-system：install-plan 逐项落盘 + 目录 patchelf-plan
 ;;（#:preserve-rpath? #t 保 $ORIGIN 首项）+ renderer chmod 小 phase。
 (define-public open-wallpaper-engine-bin
   (package
@@ -390,7 +390,7 @@ desktop through a Wayland layer shell and a QtQuick interface.")
              "-linux-x86_64.zip"))
        (sha256
         (base32 "12bmmqjf7s3xrpph4034r8h769fwiyy4d5lm1qsmczz7mvrkmi9f"))))
-    (build-system jeans-binary-build-system)
+    (build-system binary-build-system)
     (arguments
      (list
       ;; zstd 压缩的 zip（PK 6.3），系统 unzip 读不了，走 bsdtar。

@@ -189,7 +189,7 @@
                           "LC_ALL" "LC_MESSAGES" "LANG"))))
 
 ;;; jdtls: Eclipse JDT Language Server 预编译发行包（Java，无 ELF）。
-;;; 已迁移到 jeans-binary-build-system：chmod/symlink 小 phase；无 ELF 故
+;;; 已迁移到 binary-build-system：chmod/symlink 小 phase；无 ELF 故
 ;;; #:patchelf? #f。unpack 必须自定义：milestones tarball 无单顶层目录
 ;;; （bin/、plugins/ 等直接在顶层），gnu unpack「进入第一个子目录」的行为
 ;;; 会误入 bin/，与 install-plan 的顶层相对路径错位。
@@ -208,7 +208,7 @@
              "-202609031315.tar.gz"))
        (sha256
         (base32 "0r2cjfwgz6rhj8h380vw9vmn79sgsfh1jfa5l8dnadhqsrrpx3ik"))))
-    (build-system jeans-binary-build-system)
+    (build-system binary-build-system)
     (arguments
      (list
       #:install-plan
@@ -256,7 +256,7 @@ editor that supports the protocol to provide Java language features.")
 ;;;
 ;;; The upstream release ships a single raw ELF executable, dynamically linked
 ;;; against libstdc++/libgcc_s only (OpenSSL is statically linked in since 2.8.2).
-;;; 已迁移到 jeans-binary-build-system：#:unpack-method 'file 直装 bin/（无
+;;; 已迁移到 binary-build-system：#:unpack-method 'file 直装 bin/（无
 ;;; 同目录 .so，RPATH 绝对路径即可，不必经 lib/ 中转）；file-name 取静态名，
 ;;; 使 'file 解包名与 install-plan 在版本更新时保持稳定。
 
@@ -273,7 +273,7 @@ editor that supports the protocol to provide Java language features.")
        (file-name "aria2-next")
        (sha256
         (base32 "0302x5zpyzcclvcq46w1pndlfp9apjna8mypbr136fnnnk85782i"))))
-    (build-system jeans-binary-build-system)
+    (build-system binary-build-system)
     (arguments
      (list
       #:unpack-method 'file
@@ -854,7 +854,7 @@ configurable knowledge-base root (@env{KB_ROOT}, default
 ;;; bundle with zero runtime dependencies, executed directly by node.
 ;;; Installed in the standard lib/node_modules layout; bin/prettier.cjs
 ;;; ships non-executable (npm convention) so we chmod before wrapping.
-;;; 已迁移到 jeans-binary-build-system：install-plan 装整树 + wrap-plan 声明
+;;; 已迁移到 binary-build-system：install-plan 装整树 + wrap-plan 声明
 ;;; PATH；无 ELF 故 #:patchelf? #f。
 ;;; guix refresh has no npm updater, so version bumps go through the
 ;;; Python updater's "prettier-bin" special handler (npm registry
@@ -872,7 +872,7 @@ configurable knowledge-base root (@env{KB_ROOT}, default
               ".tgz"))
         (sha256
           (base32 "1ds6jab5bphy4v0shzqam6m93azp4a3vfbs3fbwxz4qpb52j1iwx"))))
-    (build-system jeans-binary-build-system)
+    (build-system binary-build-system)
     (arguments
      (list
       #:unpack-method 'gnu-unpack
@@ -931,7 +931,7 @@ JSON, YAML, Markdown and GraphQL.")
 ;; sunshine-service-type picks them up; modules-load.d and the systemd user
 ;; unit ship in the payload for reference, Guix uses kernel-module-loader
 ;; and the home shepherd service instead.
-;; 已迁移到 jeans-binary-build-system：解包/install/patchelf 走参数，thin wrapper、
+;; 已迁移到 binary-build-system：解包/install/patchelf 走参数，thin wrapper、
 ;; udev 与 desktop 保留自定义 phase。
 (define-public sunshine-bin
   (package
@@ -945,7 +945,7 @@ JSON, YAML, Markdown and GraphQL.")
              version "/Sunshine_" version "_x86_64.AppImage"))
        (sha256
         (base32 "0ik841a9rhq43zp3v71adbcs9jd8q2sk3wag27d8rkrvhmx2k03g"))))
-    (build-system jeans-binary-build-system)
+    (build-system binary-build-system)
     (arguments
      (list
       #:unpack-method 'appimage-7z

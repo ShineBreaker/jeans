@@ -378,7 +378,7 @@ It requires lsp-mode, company, and several utility libraries to function.")
              version "/ellsp_linux-x64.tar.gz"))
        (sha256
         (base32 "15ra839lvab22dm135swygn2v4l1ib4li52p0f7mh6y9yc5nbhaj"))))
-    (build-system jeans-binary-build-system)
+    (build-system binary-build-system)
     (arguments
      (list
       #:unpack-method 'gnu-unpack
@@ -443,7 +443,7 @@ the prebuilt proxy binary.")
              version "/eask_" version "_linux-x64.tar.gz"))
        (sha256
         (base32 "0nkdmiii8biyyfjzz9pg7w2l4jwb2dkkh7inaxa807af0in38rk3"))))
-    (build-system jeans-binary-build-system)
+    (build-system binary-build-system)
     (arguments
      (list
       #:unpack-method 'gnu-unpack
@@ -602,7 +602,7 @@ of Emacs Lisp projects.  This package provides the prebuilt binary release.")
        ((#:configure-flags flags)
         #~(cons* "--with-termlib=tinfo" "--with-versioned-syms" #$flags))))))
 
-;;; NOTE: neomacs-bin 永不迁移到 jeans-binary-build-system：自定位二进制
+;;; NOTE: neomacs-bin 永不迁移到 binary-build-system：自定位二进制
 ;;; （按 current_exe/argv[0] 探测资源与运行模式，wrap 改名即破坏），且
 ;;; archlib 版本化布局 + local-file 输入需手写 phases，通用参数覆盖不了。
 (define-public neomacs-bin

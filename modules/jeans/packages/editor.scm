@@ -68,7 +68,7 @@
              "nightly-latest/Lem-x86_64.AppImage"))
        (sha256
         (base32 "1k37fr76w0sknss90nj8hgr3c7b4nbnrk03dlbdlfdnc9iib6rqs"))))
-    (build-system jeans-binary-build-system)
+    (build-system binary-build-system)
     (arguments
      (list
       #:unpack-method 'appimage-7z
@@ -375,7 +375,7 @@ the webview (GTK/WebKitGTK) frontend with an ncurses fallback.")
              "v" version "/fresh-editor_" version "-1_amd64.deb"))
        (sha256
         (base32 "04144p7i77k90lfkakw3zv1i1yiix32nik9h5flx5pfaq8ca5hw7"))))
-    (build-system jeans-binary-build-system)
+    (build-system binary-build-system)
     (arguments
      (list
       ;; data.tar 是 xz 压缩，'deb 只认 data.tar.gz，此处必须用 'deb-xz。
@@ -442,7 +442,7 @@ binary release.")
              "v" version "/zedg-zh-cn-linux-x86_64-v" version ".tar.gz"))
        (sha256
         (base32 "1amr1zyn4a45ggpfg7g54wiq4x998vm84wysiw4l21p6av2samjk"))))
-    (build-system jeans-binary-build-system)
+    (build-system binary-build-system)
     (outputs '("out" "shim"))
     (arguments
      (list
