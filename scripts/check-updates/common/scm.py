@@ -64,26 +64,23 @@ def is_version_ref(commit_expr: str) -> bool:
     return False
 
 
-def _extract_define_block(content: str, var: str) -> Optional[Tuple[int, int, str]]:
-    """提取顶层 (define <var> ...) 完整块，括号配平（跳过字符串与注释）。
+def _balanced_expr_range(content: str, start: int) -> Optional[Tuple[int, int]]:
+    """从 start（表达式首字符 '('）起做括号配平，跳过字符串与注释。
 
-    返回 (start, end, text)，找不到或括号不平衡返回 None。
+    返回 (start, end)，end 为配对右括号的后一位；括号不平衡返回 None。
     """
-    m = re.search(r"\(define\s+" + re.escape(var) + r"(?=[\s)])", content)
-    if not m:
-        return None
-    pos = m.start()
+    pos = start
     depth = 0
-    end = len(content)
-    while pos < end:
+    n = len(content)
+    while pos < n:
         ch = content[pos]
         if ch == ";":
             nl = content.find("\n", pos)
-            pos = end if nl == -1 else nl + 1
+            pos = n if nl == -1 else nl + 1
             continue
         if ch == '"':
             pos += 1
-            while pos < end:
+            while pos < n:
                 if content[pos] == "\\":
                     pos += 2
                     continue
@@ -97,9 +94,59 @@ def _extract_define_block(content: str, var: str) -> Optional[Tuple[int, int, st
         elif ch == ")":
             depth -= 1
             if depth == 0:
-                return (m.start(), pos + 1, content[m.start():pos + 1])
+                return (start, pos + 1)
         pos += 1
     return None
+
+
+def _extract_define_block(content: str, var: str) -> Optional[Tuple[int, int, str]]:
+    """提取顶层 (define <var> ...) 完整块，括号配平（跳过字符串与注释）。
+
+    返回 (start, end, text)，找不到或括号不平衡返回 None。
+    """
+    m = re.search(r"\(define\s+" + re.escape(var) + r"(?=[\s)])", content)
+    if not m:
+        return None
+    rng = _balanced_expr_range(content, m.start())
+    if rng is None:
+        return None
+    return (rng[0], rng[1], content[rng[0]:rng[1]])
+
+
+def _extract_uri_expr(package_content: str) -> Optional[str]:
+    """提取 (uri <expr>) 中的表达式文本。
+
+    用括号配平而非非贪婪正则：旧写法 `\\(uri\\s+(.+?)\\)\\s*\\(sha256` 在
+    uri 与 sha256 之间夹着 (file-name "...") 时会一并捕获该字段，随后
+    construct_download_url_from_uri 把 file-name 拼进 URL 造成 404
+    （aria2-next-bin，2026-10-13 实证）。
+    """
+    m = re.search(r"\(uri\s", package_content)
+    if not m:
+        return None
+    start = m.end()
+    n = len(package_content)
+    while start < n and package_content[start].isspace():
+        start += 1
+    if start >= n or package_content[start] == ")":
+        return None
+    if package_content[start] == "(":
+        rng = _balanced_expr_range(package_content, start)
+        return package_content[rng[0]:rng[1]] if rng else None
+    if package_content[start] == '"':
+        pos = start + 1
+        while pos < n:
+            if package_content[pos] == "\\":
+                pos += 2
+                continue
+            if package_content[pos] == '"':
+                return package_content[start:pos + 1]
+            pos += 1
+        return None
+    pos = start
+    while pos < n and not package_content[pos].isspace() and package_content[pos] != ")":
+        pos += 1
+    return package_content[start:pos] or None
 
 
 def _resolve_shared_source(
@@ -196,9 +243,8 @@ def parse_package_definitions(content: str, _file_path: Path) -> list[dict[str, 
             if svm:
                 shared_version_var = svm.group(1)
 
-        # 提取完整的 URI 表达式
-        uri_match = re.search(r"\(uri\s+(.+?)\)\s*\(sha256", package_content, re.DOTALL)
-        uri_expr = uri_match.group(1).strip() if uri_match else None
+        # 提取完整的 URI 表达式（括号配平；防止 file-name 等后续字段被卷入）
+        uri_expr = _extract_uri_expr(package_content)
         # 共享变量引用 (source %s)：仅 uri 缺失时记录候选
         shared_source_var = None
         if uri_expr is None:
