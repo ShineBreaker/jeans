@@ -93,11 +93,13 @@
 
 ### (jeans packages games)
 
-| Package                     | Description                                                       |
-| --------------------------- | ----------------------------------------------------------------- |
-| `inso-bin`                  | Performant osu! clone with Lua and GLSL shader support            |
-| `lr2oraja-endlessdream-bin` | Community fork of beatoraja BMS rhythm game with QoL improvements |
-| `osu-lazer-bin`             | rhythm is just a _click_ away!                                    |
+| Package                     | Description                                                        |
+| --------------------------- | ------------------------------------------------------------------ |
+| `deltalazer-bin`            | Unofficial osu!lazer client with variable CS/AR/OD and HP gimmicks |
+| `g0v0-bin`                  | Free and open rhythm game based on the osu!lazer codebase          |
+| `inso-bin`                  | Performant osu! clone with Lua and GLSL shader support             |
+| `lr2oraja-endlessdream-bin` | Community fork of beatoraja BMS rhythm game with QoL improvements  |
+| `osu-lazer-bin`             | rhythm is just a _click_ away!                                     |
 
 ### (jeans packages hardware)
 

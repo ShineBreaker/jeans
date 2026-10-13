@@ -273,107 +273,171 @@ fonts, IR jars, and other assets at runtime.  The game requires OpenGL
 3.1+ and Java 17.")
     (license license:gpl3+)))
 
-(define-public osu-lazer-bin
-  (package
-    (name "osu-lazer-bin")
-    (version "2026.1005.0-lazer")
-    (source
-      (origin
+;; osu!lazer 及其 fork 的 AppImage 通用打包模板。上游布局同构：usr/bin 的
+;; .NET apphost + dll + 自带 native 库（含 UpdateNix 更新器、dlopen 探测
+;; Ubuntu 旧 soname 的 .NET/HidSharp），usr/share 的 hicolor 图标与根部
+;; desktop。fork 之间只有仓库/资产/入口名/元数据不同，共同处理：
+;; - fix-so 补 liblttng-ust.so.0 / libudev.so.0（Guix 只提供 .so.1）；
+;; - wrapper 设 OSU_EXTERNAL_UPDATE_PROVIDER 禁用应用内自我更新（store
+;;   只读必然失败）；
+;; - 上游 hicolor 图标与 Icon= 硬编码 osu，重命名为应用名（BINARY 去掉
+;;   尾部 !）：多个 lazer 系包同装一个 profile 时不再互相覆盖图标；
+;; - 安装 opentabletdriver 的 udev 规则（数位板权限）。
+;; upstream-name 取应用名，须与 release 资产文件名的版本前缀一致，否则
+;; guix refresh 报 no updater。
+(define* (osu-lazer-appimage-package name version hash
+                                     #:key repo tag-prefix asset
+                                     binary desktop
+                                     home-page synopsis description
+                                     (license license:expat))
+  (let ((app (string-trim-right binary #\!)))
+    (package
+      (name name)
+      (version version)
+      (source
+       (origin
         (method url-fetch)
-        (uri
-          (string-append "https://github.com/ppy/osu/releases/download/"
-                         version
-                         "/osu.AppImage"))
-        (sha256
-          (base32 "0bns13jzhfbn80hypqbcpmvw2a0m9g0y4h6axsdk7a3kagk0hh98"))))
-    (build-system binary-build-system)
-    (arguments
-     (list
-      #:unpack-method 'appimage-7z
-      #:install-plan
-      #~'(("usr/share/" "share/")
-          ("usr/bin/" "lib/osu/")
-          ("osu!.desktop" "share/applications/"))
-      ;; 资源根是 lib/osu（ derivation 名去版本得 osu-lazer-bin，对不上），
-      ;; 必须显式指定，否则 RPATH 缺第一项。
-      #:app-dir "osu"
-      ;; RPATH 自动取 lib-dir + 全部 inputs 的 /lib，与原手写值一致。
-      #:patchelf-plan
-      #~'(("lib/osu"))
-      #:modules '((guix build utils)
-                  (ice-9 format))
-      #:phases
-      #~(modify-phases %standard-phases
-          ;; 7z 解包由基座承担；仅删掉不需安装的更新器。
-          (add-after 'unpack 'remove-unused-files
-            (lambda _
-              (map delete-file '("usr/bin/UpdateNix"))))
-          (add-after 'patchelf 'wrap-program
-            (lambda _
-              (let* ((bin (string-append #$output "/lib/osu/osu!"))
-                     (wrapper (string-append #$output "/bin/osu!")))
-                (mkdir-p (dirname wrapper))
-                (symlink bin wrapper)
-                (wrap-program wrapper
-                  `("OSU_EXTERNAL_UPDATE_PROVIDER" = ("1"))
-                  `("LD_LIBRARY_PATH" prefix
-                    (,(string-append #$output "/lib/osu")))))))
-          (add-after 'wrap-program 'fix-so
-            (lambda _
-              (symlink #$(file-append lttng-ust
-                                      "/lib/liblttng-ust.so")
-                       (string-append
-                        #$output "/lib/osu/liblttng-ust.so.0"))
-              (symlink #$(file-append eudev "/lib/libudev.so.1")
-                       (string-append #$output "/lib/osu/libudev.so.0"))))
-          (add-after 'wrap-program 'make-files-executable
-            (lambda _
-              (let* ((lib-osu (string-append #$output "/lib/osu")))
-                (map (lambda (file)
-                       (chmod file #o555))
-                     (cons* (string-append lib-osu "/osu!")
-                            (append (find-files lib-osu ".*\\.dll")
-                                    (find-files lib-osu ".*\\.so.*")))))))
-          (add-after 'install 'install-udev-rules
-            (lambda _
-              (let* ((relative-rules.d "/lib/udev/rules.d")
-                     (rules-package
-                      #$(this-package-native-input
-                        "opentabletdriver-udev-rules"))
-                     (otd-rules (string-append rules-package
-                                              relative-rules.d
-                                              "/70-opentabletdriver.rules"))
-                     (rules.d (string-append #$output relative-rules.d)))
-                (install-file otd-rules rules.d)))))))
-    (native-inputs (list p7zip opentabletdriver-udev-rules))
-    (inputs
-      (list bash-minimal
-            alsa-lib
-            dbus
-            elfutils
-            eudev
-            gcc-toolchain
-            glib
-            glibc
-            icu4c
-            libdrm
-            libxcb
-            libxext
-            libxkbcommon
-            lttng-ust
-            mesa
-            openssl
-            vulkan-loader
-            wayland
-            zlib))
-    (properties `((upstream-name . "osu")))
-    (home-page "https://osu.ppy.sh/")
-    (synopsis "rhythm is just a *click* away!")
-    (description "A free-to-win rhythm game.  This is the future and final
+        (uri (string-append repo "/releases/download/"
+                            tag-prefix version "/" asset))
+        (sha256 (base32 hash))))
+      (build-system binary-build-system)
+      (supported-systems '("x86_64-linux"))
+      (arguments
+       (list
+        #:unpack-method 'appimage-7z
+        #:install-plan
+        ;; 计划值须以 #~(list ...) 在构建期求值：宿主侧裸列表经 gexp
+        ;; 序列化会变成 builder 里的待求值代码（"Wrong type to apply"）。
+        #~(list (list "usr/share/" "share/")
+                (list "usr/bin/" #$(string-append "lib/" app "/"))
+                (list #$desktop "share/applications/"))
+        ;; 资源根是 lib/<app>（derivation 名去版本得 <name>，对不上），
+        ;; 必须显式指定，否则 RPATH 缺第一项。
+        #:app-dir app
+        ;; RPATH 自动取 lib-dir + 全部 inputs 的 /lib。
+        #:patchelf-plan
+        #~(list #$(string-append "lib/" app))
+        ;; Exec 显式指到 bin/<binary>；Icon 改写为应用名（配合重命名）。
+        ;; DESKTOP 条目是输出内路径，EXEC/ICON 分别为输出内路径与图标名。
+        #:desktop-files
+        #~(list (list (string-append "share/applications/" #$desktop)
+                      #$(string-append "bin/" binary)
+                      #$app))
+        #:modules '((guix build utils))
+        #:phases
+        #~(modify-phases %standard-phases
+            (add-after 'unpack 'rebrand-icon
+              (lambda _
+                (for-each
+                 (lambda (png)
+                   (rename-file png
+                                (string-append (dirname png) "/"
+                                               #$app ".png")))
+                 (find-files "usr/share/icons" "^osu\\.png$"))))
+            ;; 7z 解包由基座承担；删掉不需安装的更新器。
+            (add-after 'unpack 'remove-unused-files
+              (lambda _
+                (when (file-exists? "usr/bin/UpdateNix")
+                  (delete-file "usr/bin/UpdateNix"))))
+            (add-after 'patchelf 'wrap-program
+              (lambda _
+                (let* ((bin (string-append #$output "/lib/" #$app "/"
+                                           #$binary))
+                       (wrapper (string-append #$output "/bin/" #$binary)))
+                  (mkdir-p (dirname wrapper))
+                  (symlink bin wrapper)
+                  (wrap-program wrapper
+                    `("OSU_EXTERNAL_UPDATE_PROVIDER" = ("1"))
+                    `("LD_LIBRARY_PATH" prefix
+                      (,(string-append #$output "/lib/" #$app)))))))
+            (add-after 'wrap-program 'fix-so
+              (lambda _
+                (symlink #$(file-append lttng-ust
+                                        "/lib/liblttng-ust.so")
+                         (string-append #$output "/lib/" #$app
+                                        "/liblttng-ust.so.0"))
+                (symlink #$(file-append eudev "/lib/libudev.so.1")
+                         (string-append #$output "/lib/" #$app
+                                        "/libudev.so.0"))))
+            (add-after 'wrap-program 'make-files-executable
+              (lambda _
+                (let ((lib-dir (string-append #$output "/lib/" #$app)))
+                  (map (lambda (file) (chmod file #o555))
+                       (cons* (string-append lib-dir "/" #$binary)
+                              (append (find-files lib-dir ".*\\.dll")
+                                      (find-files lib-dir ".*\\.so.*")))))))
+            (add-after 'install 'install-udev-rules
+              (lambda _
+                (let* ((relative-rules.d "/lib/udev/rules.d")
+                       (rules-package
+                        #$(this-package-native-input
+                           "opentabletdriver-udev-rules"))
+                       (otd-rules (string-append rules-package
+                                                 relative-rules.d
+                                                 "/70-opentabletdriver.rules"))
+                       (rules.d (string-append #$output relative-rules.d)))
+                  (install-file otd-rules rules.d)))))))
+      (native-inputs (list p7zip opentabletdriver-udev-rules))
+      (inputs
+       `(("bash-minimal" ,bash-minimal)
+         ("alsa-lib" ,alsa-lib)
+         ("dbus" ,dbus)
+         ("elfutils" ,elfutils)
+         ("eudev" ,eudev)
+         ("gcc:lib" ,gcc "lib")
+         ("glib" ,glib)
+         ("glibc" ,glibc)
+         ("icu4c" ,icu4c)
+         ("libdrm" ,libdrm)
+         ("libxcb" ,libxcb)
+         ("libxext" ,libxext)
+         ("libxkbcommon" ,libxkbcommon)
+         ("lttng-ust" ,lttng-ust)
+         ("mesa" ,mesa)
+         ("openssl" ,openssl)
+         ("vulkan-loader" ,vulkan-loader)
+         ("wayland" ,wayland)
+         ("zlib" ,zlib)))
+      (properties `((upstream-name . ,app)))
+      (home-page home-page)
+      (synopsis synopsis)
+      (description description)
+      (license license))))
+
+;; osu!lazer 本体。release tag 无 v 前缀，资产名 osu.AppImage。
+(define-public osu-lazer-bin
+  (osu-lazer-appimage-package
+   "osu-lazer-bin" "2026.1005.0-lazer"
+   "0bns13jzhfbn80hypqbcpmvw2a0m9g0y4h6axsdk7a3kagk0hh98"
+   #:repo "https://github.com/ppy/osu"
+   #:tag-prefix ""
+   #:asset "osu.AppImage"
+   #:binary "osu!"
+   #:desktop "osu!.desktop"
+   #:home-page "https://osu.ppy.sh/"
+   #:synopsis "rhythm is just a *click* away!"
+   #:description "A free-to-win rhythm game.  This is the future and final
 iteration of the osu! game client, which marks the beginning of an open era.
 It is currently known by and released under the codename lazer, as in sharper
-than cutting-edge.")
-    (license license:expat)))
+than cutting-edge."))
+
+;; g0v0! —— osu!lazer 社区 fork（GooGuTeam）。
+(define-public g0v0-bin
+  (osu-lazer-appimage-package
+   "g0v0-bin" "2026.1012.0-g0v0"
+   "1i4c49bpyabqvfqdlg4r7aph19qxlri7i2wqfgcna79y8i777hr3"
+   #:repo "https://github.com/GooGuTeam/g0v0"
+   #:tag-prefix "v"
+   #:asset "g0v0.AppImage"
+   #:binary "g0v0!"
+   #:desktop "g0v0.desktop"
+   #:home-page "https://lazer.g0v0.top/"
+   #:synopsis "Free and open rhythm game based on the osu!lazer codebase"
+   #:description "A free and open rhythm game built as a community fork of
+osu!lazer, the open-source iteration of the osu! game client.  It plays
+osu! beatmaps with the lazer gameplay ruleset.
+
+This package distributes the upstream AppImage build."))
 
 ;; inso ships no LICENSE file in its source repository, so by default
 ;; copyright it is nonfree.  Distributed only as a prebuilt Linux archive.
@@ -557,3 +621,25 @@ skin, shaders and fonts; drop osu! beatmaps into @file{songs/} there to play
 them.")
     (license (license:nonfree "https://github.com/isakvik/inso"))
     (supported-systems '("x86_64-linux"))))
+
+;; deltalazer —— osu!lazer 社区 fork（可变 CS/AR/OD、HP gimmick）。应用内
+;; 更新换成了 Velopack，但 deltalazer.dll 保留 OSU_EXTERNAL_UPDATE_PROVIDER
+;; 开关（wrapper 已设）。用户数据在 ~/.local/share/deltalazer。
+(define-public deltalazer-bin
+  (osu-lazer-appimage-package
+   "deltalazer-bin" "3.0"
+   "1ivnmv06n61lhrshm6ajx7i1nkvzy3fmqbva396y7rybicz7q9y2"
+   #:repo "https://github.com/deltalazer/delta"
+   #:tag-prefix "v"
+   #:asset "deltalazer-linux-x64.AppImage"
+   #:binary "deltalazer"
+   #:desktop "deltalazer.desktop"
+   #:home-page "https://github.com/deltalazer/delta"
+   #:synopsis "Unofficial osu!lazer client with variable CS/AR/OD and HP gimmicks"
+   #:description "deltalazer is an unofficial fork of osu!lazer, the
+open-source rhythm game, adding gameplay gimmicks such as variable
+circle size (CS), approach rate (AR), overall difficulty (OD) and HP
+drain.  It reads the same beatmap and skin formats as osu!
+
+Its per-user data (beatmaps, skins, realm database) lives in
+@file{~/.local/share/deltalazer}."))

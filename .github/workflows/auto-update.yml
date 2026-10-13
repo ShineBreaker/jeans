@@ -215,7 +215,7 @@ jobs:
             magpie-bin codewhale-bin reasonix-bin github-copilot \
             eask-bin neomacs-bin rayburst-bin cc-switch-bin \
             font-maple-font-nf-cn font-nerd-symbols font-nerd-font-iosevka \
-            lr2oraja-endlessdream-bin osu-lazer-bin inso-bin \
+            lr2oraja-endlessdream-bin osu-lazer-bin inso-bin g0v0-bin deltalazer-bin \
             emacs-ghostel emacs-msgu \
             colloid-gtk-theme vimix-gtk-themes vimix-kvantum-themes \
             nix-ld opentabletdriver-udev-rules waypaper nosdshell \

@@ -218,11 +218,13 @@ guile 能 `use-modules` 加载不代表语法正确（可能命中 `.go` cache�
 
 **install-plan 陷阱**：AppImage 根部的 `.desktop` 和图标文件几乎都是指向 `usr/share/...` 的**相对符号链接**，按链接路径安装会得到悬空链接（waywallen-bin 实证）。需要这些文件时引用 `usr/` 内的真实文件，而非根部链接。
 
+**计算值的 plan 参数必须 `#~(list ...)`，不能传宿主侧裸列表**：`#:install-plan` / `#:patchelf-plan` / `#:desktop-files` 等由构建期消费的列表，字面量写 `#~'(...)`（gexp 引用保数据态）；含宿主侧拼接的字符串时写 `#~(list (list "a" #$computed) ...)`。直接传宿主侧 quasiquote 列表（`` `(("a" ,(str ...))) ``）经 gexp 序列化后，内层列表在 builder 脚本里成为**待求值代码**——`("usr/share/" "share/")` 被当函数调用，构建报 `Wrong type to apply: "usr/share/"`（lazer 模板首版实证，2026-10-14）。另注意 `#:desktop-files` 的 DESKTOP/EXEC 是**输出内**相对路径（`share/applications/x.desktop`、`bin/x`），不是解包树路径。
+
 解压后对所有 ELF 二进制和 `.so` 执行 `patchelf`（遍历全部，不只主入口）。
 
 参照包：
 
-- `modules/jeans/packages/games.scm` 的 `osu-lazer-bin` —— 最简参照，7z 解包 + patchelf + wrap-program，该模式已被自动更新 CI 构建验证多次。
+- `modules/jeans/packages/games.scm` 的 `osu-lazer-appimage-package` —— osu!lazer 系 fork 的通用打包模板（`osu-lazer-bin` / `g0v0-bin` / `deltalazer-bin` 共用），7z 解包 + patchelf + wrap-program + 图标重命名防 profile 串台，已被自动更新 CI 构建验证多次。
 - `modules/jeans/packages/desktop.scm` 的 `waywallen-bin` —— 复杂参照，Qt6 bundle 保留 AppRun 布局、QT_PLUGIN_PATH 补插件、插件发现桥接。
 
 ### tar.gz / .deb 等归档包
