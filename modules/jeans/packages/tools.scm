@@ -196,7 +196,7 @@
 (define-public jdtls-bin
   (package
     (name "jdtls-bin")
-    (version "1.61.0")
+    (version "1.62.0")
     (source
      (origin
        (method curl-url-fetch)
@@ -205,9 +205,9 @@
              version
              "/jdt-language-server-"
              version
-             "-202609031315.tar.gz"))
+             "-202610131109.tar.gz"))
        (sha256
-        (base32 "0r2cjfwgz6rhj8h380vw9vmn79sgsfh1jfa5l8dnadhqsrrpx3ik"))))
+        (base32 "0hlky0fcpng6px4kv4w8xvfkrc5vl99yh1gh5cn3qqqhhkyxm1zm"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -491,7 +491,7 @@ companion extension.  This package provides the prebuilt binary release.")
 (define-public cc-switch-bin
   (package
     (name "cc-switch-bin")
-    (version "4.0.8")
+    (version "4.0.11")
     (source
      (origin
        (method url-fetch)
@@ -499,7 +499,7 @@ companion extension.  This package provides the prebuilt binary release.")
              "https://github.com/farion1231/cc-switch/releases/download/"
              "v" version "/CC-Switch-v" version "-Linux-x86_64.deb"))
        (sha256
-        (base32 "1d9xpgi7dxfwbny9pq4vrbyvhzrs411hmgzjlirikg5qmcq9ic14"))))
+        (base32 "08yfzisacb2mps8qqb3nwhjmrn91fyz63y74mmp7fpkp5vh2h02b"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -802,7 +802,7 @@ It requires a writable @file{/var/lib/apm} directory at runtime; run the
 (define-public agenote
   (package
     (name "agenote")
-    (version "0.2.0.4")
+    (version "0.2.1")
     (source
      (origin
        (method git-fetch)
@@ -811,7 +811,7 @@ It requires a writable @file{/var/lib/apm} directory at runtime; run the
              (commit (string-append "agenote-v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "10cakcja6w1qb0x6pgif9602xlyz5khgw6pzzg0ypyvf54cs4jwy"))))
+        (base32 "0r23zdgqk4wqa7dfczp71xkrzfjyccbf3ja4f1abk67dw2xqqs5s"))))
     (build-system pyproject-build-system)
     (arguments
      (list

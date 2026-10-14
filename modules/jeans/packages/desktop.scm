@@ -115,7 +115,7 @@ and Xorg.")
 (define-public ai-usagebar-bin
   (package
     (name "ai-usagebar-bin")
-    (version "1.34.0")
+    (version "1.36.0")
     (source
      (origin
        (method url-fetch)
@@ -123,7 +123,7 @@ and Xorg.")
              "https://github.com/akitaonrails/ai-usagebar/releases/download/"
              "v" version "/ai-usagebar-linux-x86_64.tar.gz"))
        (sha256
-        (base32 "13v7diqg69v67rixnd185sfd61ffmnn824qkc99dc5vvmy2680pb"))))
+        (base32 "08w76fzc07s8f6zbp8lldc9j1pbl2dmhhzaawnikvz0sipy69406"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -724,8 +724,8 @@ renderer relies on the upstream Chromium binary distribution.")
 ;; tools/ sub-trees evolve with the shell repository, so pinning them
 ;; separately makes no sense.  Auto-update only maintains the nosdshell
 ;; version/hash; the helpers follow the shared origin object.
-(define %nosdshell-version "1.1.8")
-(define %nosdshell-commit "fb7684c90af0b670117665f841e0fc7428d57d0f")
+(define %nosdshell-version "1.2.0")
+(define %nosdshell-commit "b8c2ddf857c3b42bfc6c4d0f982755795b1c1ed8")
 
 (define %nosdshell-source
   (origin
@@ -735,7 +735,7 @@ renderer relies on the upstream Chromium binary distribution.")
           (commit %nosdshell-commit)))
     (file-name (git-file-name "nosdshell" %nosdshell-version))
     (sha256
-     (base32 "1jq9gp15xr1fvyxwsdwm1milw9v4ia2gb9p6mi4s7d2hf6mp4v7d"))))
+     (base32 "166wf9kmrv8p05203zb92kfh2s6r68cal77ij6mh4h2cxamywvn8"))))
 
 ;; Our quickshell fork (ShineBreaker/quickshell-nosd): upstream master at
 ;; the version 0.3.2 commit plus the two pipewire use-after-free fixes the

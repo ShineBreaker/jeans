@@ -188,7 +188,7 @@ release.")
 (define-public cindy-cn-bin
   (package
     (name "cindy-cn-bin")
-    (version "0.1.103")
+    (version "0.1.104")
     (source
      (origin
        (method url-fetch)
@@ -196,7 +196,7 @@ release.")
              "https://github.com/makecindy/cindy/releases/download/"
              "v" version "/cindy-" version "-linux-x64-cn.deb"))
        (sha256
-        (base32 "1804b4hlzar8njnj8cix9cdx2c2jdwll89z33a5kx8ds57yf6k7r"))))
+        (base32 "1va3fv7cl8f8hshqbcrgmh2bivf42ab496h1j9grp1nzrjdqg22b"))))
     (build-system electron-build-system)
     (arguments
      (list
@@ -395,7 +395,7 @@ This package provides the prebuilt binary release.")
 (define-public github-copilot
   (package
     (name "github-copilot")
-    (version "1.1.28")
+    (version "1.1.29")
     (source
      (origin
        (method url-fetch)
@@ -403,7 +403,7 @@ This package provides the prebuilt binary release.")
              "https://github.com/github/app/releases/download/"
              "v" version "/GitHub-Copilot-linux-x64.deb"))
        (sha256
-        (base32 "0c2fva3f85p0y7w2slnmw5l6rp7wxm8dajy6yz3vkd8z605x35q1"))))
+        (base32 "0w53sf6h0bzhsis3awwkbb20sqj3vf242bsq3b7i1n4qw4axmar2"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -568,7 +568,7 @@ release; the application itself is proprietary.")
 (define-public herdr-bin
   (package
     (name "herdr-bin")
-    (version "0.9.3")
+    (version "0.9.4")
     (source
      (origin
        (method url-fetch)
@@ -576,7 +576,7 @@ release; the application itself is proprietary.")
              "https://github.com/ogulcancelik/herdr/releases/download/"
              "v" version "/herdr-linux-x86_64"))
        (sha256
-        (base32 "19yvyj3l0gqrisknzx3cy3313nfgl7g5chrlhic4iyn2y5jxra0q"))))
+        (base32 "08svcwvyklkaj564z5y79dvyh94dyi3kndsz8nh0xvdhxzxh8cs9"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -671,7 +671,7 @@ prebuilt distribution and launches it with the store Node.js runtime.")
 (define-public opencode-desktop-bin
   (package
     (name "opencode-desktop-bin")
-    (version "1.18.35")
+    (version "1.19.0")
     (source
      (origin
        (method url-fetch)
@@ -679,7 +679,7 @@ prebuilt distribution and launches it with the store Node.js runtime.")
              "https://github.com/anomalyco/opencode/releases/download/"
              "v" version "/opencode-desktop-linux-amd64.deb"))
        (sha256
-        (base32 "19jgqygwncncyyikcwgh5vyiqn1z5w1gyalazq2qdh1s3vwbyhr2"))))
+        (base32 "0idw3i5d49j15qd15ihfvd8vp8nccdxi2546wk3gnplr1d10cgcx"))))
     (build-system electron-build-system)
     (arguments
      (list
@@ -940,7 +940,7 @@ telemetry or forced log-ins.")
 (define-public reasonix-bin
   (package
     (name "reasonix-bin")
-    (version "2.34.0")
+    (version "2.39.0")
     (source
      (origin
        (method url-fetch)
@@ -948,7 +948,7 @@ telemetry or forced log-ins.")
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
              "v" version "/reasonix-linux-amd64.tar.gz"))
        (sha256
-        (base32 "1azc0css6azzjg6jbdpnj47bzicir6qgmfb4gzksz8x8l61p5gxv"))))
+        (base32 "1z0p13g1yhw9cjnwrn017s6agw5awyy3bhq9s3z0n8id65g5xrqa"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -988,7 +988,7 @@ and ships as a single static binary with no runtime dependencies.")
 (define-public reasonix-studio-bin
   (package
     (name "reasonix-studio-bin")
-    (version "2.34.0")
+    (version "2.39.0")
     (source
      (origin
        (method url-fetch)
@@ -996,7 +996,7 @@ and ships as a single static binary with no runtime dependencies.")
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
              "studio-v" version "/ReasonixStudio-linux-amd64.deb"))
        (sha256
-        (base32 "050nvn4b9n76i2klqyw61q91kcb8f4b6wzy3324wgy9q4kb050kd"))))
+        (base32 "0c73qgjfp9prfhfnjq5p48wvy67dp2k1w06gq71lifa11kbngvpx"))))
     (build-system electron-build-system)
     (arguments
      (list
@@ -1303,7 +1303,7 @@ configure.  This package provides the prebuilt desktop release.")
 (define-public zcode
   (package
     (name "zcode")
-    (version "3.15.1")
+    (version "3.15.3")
     (source
      (origin
        (method url-fetch)
@@ -1311,7 +1311,7 @@ configure.  This package provides the prebuilt desktop release.")
              "https://cdn-zcode.z.ai/zcode/electron/releases/"
              version "/linux-x64/ZCode-" version "-linux-x64.deb"))
        (sha256
-        (base32 "1y6lg6j63h66bcxzf8pkxcg6fziqk3fc96p5mcsnk8vidzjbp1w7"))))
+        (base32 "05b0srb6zscbh238sa073kw9dscf3s82198ckq99jf2bnv2nrcxw"))))
     (build-system electron-build-system)
     (arguments
      (list
@@ -1438,7 +1438,7 @@ without friction.")
 (define-public zcode-proxy-bin
   (package
     (name "zcode-proxy-bin")
-    (version "4.7.6")
+    (version "4.8.1")
     (source
      (origin
        (method url-fetch)
@@ -1446,7 +1446,7 @@ without friction.")
              "https://github.com/TriDefender/zcode-api/releases/download/"
              "v" version "/zcode-proxy-linux-x64"))
        (sha256
-        (base32 "0pw5cxpn90wwq2j1vzm99bcp4civimmbsqfchf4h862cv06h7mkm"))))
+        (base32 "0xzlhhl21yh7bjph499li7xiiggaqj4gqanibiws7k1zgd05p9x8"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -1504,7 +1504,7 @@ release and needs the @code{nix-ld} system service to run.")
 (define-public omo-bin
   (package
     (name "omo-bin")
-    (version "5.1.29")
+    (version "5.1.33")
     (source
      (origin
        (method url-fetch)
@@ -1513,7 +1513,7 @@ release and needs the @code{nix-ld} system service to run.")
              "v" version "/omo-linux-x64"))
        (sha256
         (base32
-         "1xwy4qna3dj42i30h3rhgn81abmifwkg1hl1waq3bx4w9vn3rwkm"))))
+         "0812rridq8mn7sgvxnnqxvfn3wlrnd6hqn8vsxrmkfjckn8zqdw9"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -1553,7 +1553,7 @@ run.")
 (define-public cua-driver-bin
   (package
     (name "cua-driver-bin")
-    (version "0.34.1")
+    (version "0.35.2")
     (source
      (origin
        (method url-fetch)
@@ -1562,7 +1562,7 @@ run.")
              "cua-driver-rs-v" version
              "/cua-driver-rs-" version "-linux-x86_64-binary.tar.gz"))
        (sha256
-        (base32 "1vmgiza691gamj88pc671j774x89dgqp9h4lqlfm197frfyy47x4"))))
+        (base32 "1kzwsqadx46zpzpa0c669314fjig2hx8fby6fn4sz0z0x1db6irs"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -1675,7 +1675,7 @@ so the bundled self-updater should not be used.")
 (define-public magpie-bin
   (package
     (name "magpie-bin")
-    (version "0.1.1203")
+    (version "0.1.1230")
     (source
      (origin
        (method url-fetch)
@@ -1683,7 +1683,7 @@ so the bundled self-updater should not be used.")
              "https://github.com/yetone/magpie-releases/releases/download/"
              "v" version "/magpie-linux-amd64"))
        (sha256
-        (base32 "14547l10lgw19swjbajfp1nk7m6d05avbbm55c17n927hqwkfbxb"))))
+        (base32 "1p66hvy7v034d4dkzskxgzs9w1mvlip8y6yf9g9ah79s9whhnpwl"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -1708,7 +1708,8 @@ so the bundled self-updater should not be used.")
                                     (assoc-ref inputs name) "/lib"))
                                  '("fontconfig-minimal" "gdk-pixbuf"
                                    "glib" "glibc" "gtk+" "libx11"
-                                   "libsoup" "webkitgtk-for-gtk3"))
+                                   "libsoup" "wayland"
+                                   "webkitgtk-for-gtk3"))
                             ":"))
                      (fontconf (assoc-ref inputs "fontconfig-minimal"))
                      (gtk-share (string-append (assoc-ref inputs "gtk+")
@@ -1778,6 +1779,7 @@ exec ~a --argv0 ~a --library-path ~a ~a \"$@\""
               ("gtk+" ,gtk+)
               ("libx11" ,libx11)
               ("libsoup" ,libsoup)
+              ("wayland" ,wayland)
               ("webkitgtk-for-gtk3" ,webkitgtk-for-gtk3)))
     (properties `((upstream-name . "magpie")))
     (home-page "https://usemagpie.ai")

@@ -207,8 +207,8 @@ the webview (GTK/WebKitGTK) frontend with an ncurses fallback.")
 ;;; e.g. tree-sitter-json and point LD_LIBRARY_PATH at its lib/ to
 ;;; enable syntax highlighting for that language.
 (define-public lem-next
-  (let ((commit "877c683846aa7f22e3ca5f64170ee0d60b26f844")
-        (revision "9"))
+  (let ((commit "ca0e9cb658919feb297d862092070fd2c1cdb03f")
+        (revision "10"))
     (package
       (inherit lem)
       (name "lem-next")
@@ -221,7 +221,7 @@ the webview (GTK/WebKitGTK) frontend with an ncurses fallback.")
                (commit commit)))
          (file-name (git-file-name name version))
          (sha256
-          (base32 "1dhgag9zfanshngsjhwvkh3rqmg9147sbsx7iwjr02xnilhlnk97"))
+          (base32 "1lnfs8b08zkc6mbchfgddkl4dhjgcym068m45148vkcrxlh0bg0z"))
          (patches
           (map canonicalize-path
                (search-patches
@@ -366,7 +366,7 @@ the webview (GTK/WebKitGTK) frontend with an ncurses fallback.")
 (define-public fresh-editor-bin
   (package
     (name "fresh-editor-bin")
-    (version "0.5.2")
+    (version "0.5.3")
     (source
      (origin
        (method url-fetch)
@@ -374,7 +374,7 @@ the webview (GTK/WebKitGTK) frontend with an ncurses fallback.")
              "https://github.com/sinelaw/fresh/releases/download/"
              "v" version "/fresh-editor_" version "-1_amd64.deb"))
        (sha256
-        (base32 "04144p7i77k90lfkakw3zv1i1yiix32nik9h5flx5pfaq8ca5hw7"))))
+        (base32 "1zpd6jnfwf0szznvm51zgdby4rawch20384xjr5nsz9gc2y5chv0"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -433,7 +433,7 @@ binary release.")
 (define-public zedg-bin
   (package
     (name "zedg-bin")
-    (version "1.23.2")
+    (version "1.23.3")
     (source
      (origin
        (method url-fetch)
@@ -441,7 +441,7 @@ binary release.")
              "https://github.com/x6nux/zed-globalization/releases/download/"
              "v" version "/zedg-zh-cn-linux-x86_64-v" version ".tar.gz"))
        (sha256
-        (base32 "1amr1zyn4a45ggpfg7g54wiq4x998vm84wysiw4l21p6av2samjk"))))
+        (base32 "1g0nih0ga0vpswq7nfwah4m9x3167bzfq1sjzj9mqqilyyn425s9"))))
     (build-system binary-build-system)
     (outputs '("out" "shim"))
     (arguments
