@@ -20,6 +20,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -30,6 +31,7 @@ import requests
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from common.paths import BUILD_REPORT_FILE, REFRESH_UPDATES_FILE, REPORT_FILE
+from common.retry import is_retryable_command_failure
 
 
 def load_report(path: Path) -> Dict[str, Any]:
@@ -101,7 +103,7 @@ def summarize_output(stdout: str, stderr: str, limit_lines: int = 80, limit_char
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
-def build_package(package_name: str) -> Dict[str, Any]:
+def _guix_build_cmd(package_names: List[str]) -> List[str]:
     # -L 锚到 __file__ 而非 CWD：从其他目录运行时相对 -L 会静默落空，
     # 退化到已装频道快照，测到错误的包版本。
     cmd = ["guix", "build", "-L", str(REPO_ROOT / "modules")]
@@ -109,21 +111,60 @@ def build_package(package_name: str) -> Dict[str, Any]:
     for path in extra_load_path.split(":") if extra_load_path else []:
         if path:
             cmd.extend(["-L", path])
-    cmd.append(package_name)
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    cmd.extend(package_names)
+    return cmd
+
+
+def _run_build(package_names: List[str]) -> Dict[str, Any]:
+    result = subprocess.run(
+        _guix_build_cmd(package_names), capture_output=True, text=True
+    )
     output = summarize_output(result.stdout, result.stderr)
     store_outputs = [
         line.strip() for line in result.stdout.splitlines()
         if line.strip().startswith("/gnu/store/")
     ]
     return {
-        "name": package_name,
         "returncode": result.returncode,
         "success": result.returncode == 0,
         "summary": output.splitlines()[-1] if output and output != "(no output)" else output,
         "output": output,
         "outputs": store_outputs,
     }
+
+
+def build_package(package_name: str) -> Dict[str, Any]:
+    """单包构建；网络类瞬时失败（DNS/断连/超时）间隔重试一次。
+
+    guix 内部 curl 的 --retry 3 只覆盖下载过程中的抖动，runner 级
+    DNS 故障会持续数十秒（jdtls-bin 2026-10-14 实证：Could not
+    resolve host 连续 4 次），间隔重试让下一轮解析大概率已恢复。
+    """
+    result = _run_build([package_name])
+    if not result["success"] and is_retryable_command_failure(result["output"]):
+        print("   ⏳ 网络类失败，30 秒后重试一次...")
+        time.sleep(30)
+        result = _run_build([package_name])
+    return {"name": package_name, **result}
+
+
+def build_packages_batch(package_names: List[str]) -> Dict[str, Dict[str, Any]]:
+    """批量并行构建全部包，失败时逐包定位（含网络重试）。
+
+    一次 guix build 传全部包名，daemon 并行调度 derivation 构建——
+    替代逐包串行（2026-10-14 run 实证：19 包串行约 12 分钟，瓶颈是
+    排队等 substitute 下载而非构建本身）。整体失败时再逐包跑：已成功
+    的包 store 命中瞬时返回，只有真失败的包花时间。
+    """
+    if not package_names:
+        return {}
+    batch = _run_build(package_names)
+    if batch["success"]:
+        # 批量 stdout 无法区分输出归属，逐包瞬时调用取各自 outputs
+        # （store 已命中，每次调用亚秒级）。
+        return {name: {"name": name, **_run_build([name])} for name in package_names}
+    print("⚠️  批量构建存在失败，逐包定位中...")
+    return {name: build_package(name) for name in package_names}
 
 
 # ---- ELF NEEDED 检查（ld.so --list）----
@@ -383,10 +424,18 @@ def main() -> int:
     print(f"🔨 将测试 {len(packages)} 个更新过的包")
     failures: List[Dict[str, Any]] = []
 
+    # 批量并行构建（一次 guix build 全部包名）；失败包在内部逐包定位
+    # 与网络重试。构建结果与包定义信息合并后逐包做 NEEDED 检查。
+    build_results = build_packages_batch([pkg["name"] for pkg in packages])
+
     for pkg in packages:
         name = pkg["name"]
         print(f"\n📦 构建测试: {name}")
-        result = build_package(name)
+        result = build_results.get(name, {
+            "name": name, "returncode": -1, "success": False,
+            "summary": "未被批量构建覆盖（内部错误）",
+            "output": "(no output)", "outputs": [],
+        })
         enriched = {**pkg, **result}
         if result["success"]:
             dep_report = check_elf_dependencies(result["outputs"])

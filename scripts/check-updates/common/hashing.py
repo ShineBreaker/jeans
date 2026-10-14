@@ -119,6 +119,10 @@ def get_base32_from_guix_download(url: str, timeout: int = 120) -> Optional[str]
         raise RetryableError("下载超时")
     except requests.exceptions.ConnectionError:
         raise RetryableError("网络连接错误")
+    except requests.exceptions.ChunkedEncodingError:
+        # 大文件下载中途断连（aria2-next-bin 2026-10-13 实证）：
+        # 非 ConnectionError 子类，不归入可重试会直接判死。
+        raise RetryableError("下载中断（分块编码错误）")
     except requests.exceptions.HTTPError as e:
         if is_retryable_http_error(e):
             raise

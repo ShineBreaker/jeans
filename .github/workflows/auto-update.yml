@@ -21,6 +21,17 @@ permissions:
 env:
   FORGEJO_SERVER_URL: https://codeberg.org
   FORGEJO_REPOSITORY: BrokenShine/jeans
+  # 交给 guix refresh 的包白名单（空格分隔）。refresh 步骤与构建失败后的
+  # Recover 步骤（剔除失败包重放）共用，必须保持单一来源。
+  REFRESH_PACKAGES: >-
+    crush-bin opencode-desktop-bin herdr-bin omo-bin
+    magpie-bin codewhale-bin reasonix-bin github-copilot
+    eask-bin neomacs-bin rayburst-bin cc-switch-bin
+    font-maple-font-nf-cn font-nerd-symbols font-nerd-font-iosevka
+    lr2oraja-endlessdream-bin osu-lazer-bin inso-bin g0v0-bin deltalazer-bin
+    emacs-ghostel emacs-msgu
+    colloid-gtk-theme vimix-gtk-themes vimix-kvantum-themes
+    nix-ld opentabletdriver-udev-rules waypaper nosdshell
 
 jobs:
   auto-update:
@@ -210,15 +221,9 @@ jobs:
           # 2026-10-03 实测）。二者交给 Python updater：由其读取包定义的
           # release-tag-prefix property（剥 ^ 锚点）过滤 agenote-v* /
           # agenote-el-v* 系列。
+          # 白名单本体在 job env 的 REFRESH_PACKAGES（与 Recover 步骤共用）。
           guix refresh -L "$GITHUB_WORKSPACE/modules" -L /tmp/nonguix -u \
-            crush-bin opencode-desktop-bin herdr-bin omo-bin \
-            magpie-bin codewhale-bin reasonix-bin github-copilot \
-            eask-bin neomacs-bin rayburst-bin cc-switch-bin \
-            font-maple-font-nf-cn font-nerd-symbols font-nerd-font-iosevka \
-            lr2oraja-endlessdream-bin osu-lazer-bin inso-bin g0v0-bin deltalazer-bin \
-            emacs-ghostel emacs-msgu \
-            colloid-gtk-theme vimix-gtk-themes vimix-kvantum-themes \
-            nix-ld opentabletdriver-udev-rules waypaper nosdshell \
+            $REFRESH_PACKAGES \
             2>&1 | tee /tmp/refresh.log
           # guix refresh 对"无更新"返回 0，对个别包失败不阻塞整体；
           # 不用 set -e，让后续步骤继续。
@@ -281,7 +286,13 @@ jobs:
       - name: Build test updated packages
         # 手动模式（test_packages 非空）下也执行：此时更新步骤全部跳过，
         # 工作区干净，仅按参数构建指定包，不会产生提交。
+        # continue-on-error：单包构建失败不阻断后续步骤——Recover 步骤
+        # 会剔除失败包、重放其余包的更新照常提交（打破 all-or-nothing，
+        # 2026-10-13/14 两次实证：一次瞬时 DNS 故障丢弃全部 19 个更新）。
+        # run 的最终红绿由末尾 "Fail run" 步骤统一裁决。
+        id: buildtest
         if: steps.changes.outputs.has_changes == 'true' || inputs.test_packages != ''
+        continue-on-error: true
         shell: bash
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -319,8 +330,81 @@ jobs:
           path: scripts/check-updates/build-report.json
           if-no-files-found: warn
 
+      - name: Recover successful updates
+        # build-test 有失败时：剔除构建失败的包，重放其余包的更新并照常
+        # 提交——失败包保持 HEAD 版本（详情已在 issue 与 build-report
+        # artifact 里），不再阻塞整批更新。重放确定性成立：refresh -u 与
+        # Python updater 对已是最新版本的包都是 no-op，成功包子集重放
+        # 产出的 version/base32 与首轮一致（guix 哈希固定）。
+        id: recover
+        if: steps.buildtest.outcome == 'failure' && inputs.test_packages == ''
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GUIX_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -f /var/guix/current/etc/profile ]; then
+            . /var/guix/current/etc/profile
+          fi
+          if [ -f "$HOME/.config/guix/current/etc/profile" ]; then
+            . "$HOME/.config/guix/current/etc/profile"
+          fi
+
+          report=scripts/check-updates/build-report.json
+          failed_list=$(python3 -c "
+          import json
+          r = json.load(open('$report'))
+          print(' '.join(p['name'] for p in r['packages'] if not p.get('success')))")
+          ok_list=$(python3 -c "
+          import json
+          r = json.load(open('$report'))
+          print(','.join(p['name'] for p in r['packages'] if p.get('success')))")
+
+          # 回滚范围仅 modules/jeans/packages/：CI 是干净 checkout，该目录
+          # 下全部未提交改动都是本 run 的 updater/refresh 产物，可由下方
+          # 重放确定性重建；state 文件（font-misans 等）不在其列，保留。
+          git checkout -- modules/jeans/packages/
+
+          if [ -z "$ok_list" ]; then
+            echo "全部包构建失败（$failed_list），无可恢复更新"
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "剔除失败包: $failed_list"
+          echo "重放成功包: ${ok_list//,/ }"
+
+          # refresh 管的包走白名单交集；其余全部交给 Python updater 的
+          # --only（refresh 已更新到最新的包，updater 通用检查自然 no-op）。
+          keep=""
+          for p in $REFRESH_PACKAGES; do
+            case ",$ok_list," in *",$p,"*) keep="$keep $p" ;; esac
+          done
+          if [ -n "$keep" ]; then
+            echo "guix refresh 重放:$keep"
+            guix refresh -L "$GITHUB_WORKSPACE/modules" -L /tmp/nonguix -u $keep
+          fi
+
+          rc=0
+          env CI=true GITHUB_TOKEN="$GITHUB_TOKEN" \
+            python3 scripts/check-updates/update_versions.py --only "$ok_list" \
+            || rc=$?
+          # updater 退出码：0=无更新 1=已应用更新，>1 才是错误
+          [ "$rc" -le 1 ] || exit "$rc"
+
+          if git diff --quiet; then
+            echo "⚠️ 重放后无改动，无可提交内容"
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "✅ 已恢复成功包的更新"
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Configure GPG signing
-        if: steps.changes.outputs.has_changes == 'true'
+        # 正常路径（build-test 通过且首轮检出有改动），或 Recover 路径
+        # （build-test 失败但成功包已重放恢复）。手动模式不产生提交。
+        if: inputs.test_packages == '' && ((steps.buildtest.outcome != 'failure' && steps.changes.outputs.has_changes == 'true') || steps.recover.outputs.has_changes == 'true')
         shell: bash
         env:
           WORKFLOW_GPG_PRIVATE_KEY: ${{ secrets.WORKFLOW_GPG_PRIVATE_KEY }}
@@ -381,7 +465,9 @@ jobs:
           git config gpg.program /tmp/gpg-loopback
 
       - name: Commit updates
-        if: steps.changes.outputs.has_changes == 'true'
+        # 正常路径（build-test 通过且首轮检出有改动），或 Recover 路径
+        # （build-test 失败但成功包已重放恢复）。手动模式不产生提交。
+        if: inputs.test_packages == '' && ((steps.buildtest.outcome != 'failure' && steps.changes.outputs.has_changes == 'true') || steps.recover.outputs.has_changes == 'true')
         shell: bash
         env:
           WORKFLOW_GPG_PASSPHRASE: ${{ secrets.WORKFLOW_GPG_PASSPHRASE }}
@@ -398,14 +484,18 @@ jobs:
           git commit -S -m "feat(packages): auto package update $(date -u +%Y-%m-%d)"
 
       - name: Push updates to GitHub
-        if: steps.changes.outputs.has_changes == 'true'
+        # 正常路径（build-test 通过且首轮检出有改动），或 Recover 路径
+        # （build-test 失败但成功包已重放恢复）。手动模式不产生提交。
+        if: inputs.test_packages == '' && ((steps.buildtest.outcome != 'failure' && steps.changes.outputs.has_changes == 'true') || steps.recover.outputs.has_changes == 'true')
         shell: bash
         run: |
           set -euo pipefail
           git push origin "HEAD:${{ github.ref_name }}"
 
       - name: Mirror updated branch to Codeberg
-        if: steps.changes.outputs.has_changes == 'true'
+        # 正常路径（build-test 通过且首轮检出有改动），或 Recover 路径
+        # （build-test 失败但成功包已重放恢复）。手动模式不产生提交。
+        if: inputs.test_packages == '' && ((steps.buildtest.outcome != 'failure' && steps.changes.outputs.has_changes == 'true') || steps.recover.outputs.has_changes == 'true')
         shell: bash
         env:
           FORGEJO_TOKEN: ${{ secrets.FORGEJO_TOKEN }}
@@ -425,6 +515,16 @@ jobs:
           remote_url="https://${FORGEJO_USERNAME}:${FORGEJO_TOKEN}@${FORGEJO_SERVER_URL#https://}/${FORGEJO_REPOSITORY}.git"
           git remote add codeberg "$remote_url"
           git push --force codeberg "HEAD:refs/heads/${{ github.ref_name }}"
+
+      - name: Fail run on unresolved build failures
+        # build-test 的失败被 continue-on-error 放行以提交成功包；此步骤
+        # 在提交/镜像之后统一把 run 标红，确保失败对人工可见（issue 与
+        # build-report artifact 已先行记录详情）。
+        if: always() && steps.buildtest.outcome == 'failure'
+        shell: bash
+        run: |
+          echo "❌ 构建测试仍有失败包（详见 issue 与 build-report artifact）；成功包更新已提交。"
+          exit 1
 
       - name: Snapshot Guix installation for next run
         # 仅在本次未命中快照（每周第一条）时打包；daemon 必须先停，保证

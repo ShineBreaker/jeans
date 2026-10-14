@@ -32,6 +32,11 @@ def is_retryable_command_failure(text: str) -> bool:
         r"connection",
         r"network",
         r"temporar",
+        # DNS 故障：curl(6) "Could not resolve host"、glibc "Temporary
+        # failure in name resolution"——不含上面的 connection/timeout
+        # 词，2026-10-13 aria2-next-bin 实证漏判不重试。
+        r"resolve host",
+        r"name resolution",
         r"http\s*5\d\d",
         r"status\s*5\d\d",
         r"\b5\d\d\b",

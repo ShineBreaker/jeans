@@ -8,10 +8,11 @@ Guix包版本检查和更新工具
 支持通过配置文件自定义检查行为
 """
 
+import argparse
 import json
 import re
 from datetime import datetime
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 from common import discover
 from common.changes import (
@@ -45,6 +46,19 @@ from handlers import SPECIAL_UPDATERS
 
 def main():
     """主函数"""
+    # --only pkg1,pkg2：只处理指定包。供 CI 构建失败后剔除失败包、
+    # 重放成功包子集使用（见 auto-update.yml 的 Recover 步骤）。
+    parser = argparse.ArgumentParser(description="Guix 包版本检查和更新工具")
+    parser.add_argument(
+        "--only",
+        default="",
+        help="逗号分隔的包名列表：只处理这些包（默认全部）",
+    )
+    args = parser.parse_args()
+    only_set: Optional[Set[str]] = (
+        {p.strip() for p in args.only.split(",") if p.strip()} or None
+    )
+
     print("=" * 60)
     print("Guix 包版本检查和更新工具")
     print("=" * 60)
@@ -143,6 +157,12 @@ def main():
 
             print(f"\n  📦 包名: {package_name}")
             print(f"     当前版本: {package['version']}")
+
+            # --only 过滤：不在指定集合内的包不检查、不落盘
+            if only_set and package_name not in only_set:
+                package_report["status"] = "skipped"
+                finalize_package_report()
+                continue
 
             # 检查是否在跳过列表中
             if package_name in skip_packages:
@@ -680,9 +700,12 @@ def main():
 
     # 无法自动更新的包（继承上游 / 有意冻结）：超过 stale_days 天无手动更新
     # 则发提醒 issue。依赖 git diff 判断"是否有手动更新"，因此放在最后。
-    check_stale_packages(scm_files, config)
+    # --only 重放模式下工作区 diff 语义已变（可能刚被 checkout 回 HEAD），
+    # stale 判定不可靠，跳过。
+    if not only_set:
+        check_stale_packages(scm_files, config)
 
-    if failed_packages > 0:
+    if failed_packages > 0 and not only_set:
         failed_list = [p for p in report["packages"] if p["status"] == "failed"]
         today = datetime.now().strftime("%Y-%m-%d")
         issue_title = f"🔄 自动更新报告 — {today} — {failed_packages} 个失败"
