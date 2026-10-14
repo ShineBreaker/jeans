@@ -444,17 +444,21 @@ This package distributes the upstream AppImage build."))
 (define-public inso-bin
   (package
     (name "inso-bin")
-    (version "0.3.7")
+    (version "0.3.8")
     (source
      (origin
-       (method url-fetch)
-       (uri (string-append
-             ;; Upstream switched to a capital-V tag ("V0.3.7"); keep the
-             ;; literal prefix in sync with the actual release tag.
-             "https://github.com/isakvik/inso/releases/download/V" version
-             "/inso-" version "-linux-x64.zip"))
-       (sha256
-        (base32 "156i22b77pk6l09vlgimciws77lmv8nvhxyy1zkzrsc5c4lcykhr"))))
+      (method url-fetch)
+      (uri (string-append
+            ;; Tag prefix MUST stay lowercase "v": the github updater's URL
+            ;; rewrite templates only match /(v)?<version>/ release paths,
+            ;; so a capital-V tag ("V0.3.7", used once upstream in 0.3.7)
+            ;; breaks guix refresh with "no updater".  0.3.8 is back to
+            ;; lowercase; if upstream flips again the build gate will 404
+            ;; and file an issue rather than silently stalling.
+            "https://github.com/isakvik/inso/releases/download/v" version
+            "/inso-" version "-linux-x64.zip"))
+      (sha256
+       (base32 "0111vlq268x0p6xxz3x2n387wyxbwz752fk2rh6z5kyrmai4nk8d"))))
     (build-system copy-build-system)
     (arguments
      (list
@@ -603,9 +607,9 @@ This package distributes the upstream AppImage build."))
     ;; Release assets are named "inso-<version>-linux-x64.zip"; upstream-name
     ;; is the filename prefix before the version.  accept-pre-releases? so
     ;; guix refresh considers pre-release tags (v0.3.5 is marked pre-release).
-    ;; Note: since v0.3.7 upstream tags are capital-V ("V0.3.7"), which the
-    ;; github updater's URL matcher cannot parse; the Python updater handles
-    ;; this via the "V" tag_prefix in check-updates/config.json.
+    ;; Tag prefix is lowercase "v" again since 0.3.8, so the github updater's
+    ;; URL rewrite handles this package; the "v" tag_prefix in
+    ;; check-updates/config.json keeps the Python fallback in sync.
     (properties `((upstream-name . "inso")
                   (accept-pre-releases? . #t)))
     (home-page "https://github.com/isakvik/inso")

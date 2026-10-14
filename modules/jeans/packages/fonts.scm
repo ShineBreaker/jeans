@@ -47,6 +47,10 @@
                (base32
                 "1b3wbgd9gngwv61ybinwxkpmyam2b7fdxxmfzvgiah6g68lm525b"))))
     (build-system font-build-system)
+    ;; Asset name carries no version ("MapleMono-NF-CN-unhinted.zip");
+    ;; upstream-name must equal the asset prefix for the github updater's
+    ;; /download/v<version>/<name>.* rewrite template to match.
+    (properties `((upstream-name . "MapleMono-NF-CN-unhinted")))
     (home-page "https://font.subf.dev/")
     (synopsis "Rounded monospace font with ligatures and Nerd Font icons")
     (description
@@ -106,6 +110,8 @@ debuted in 2023.")
         (sha256
           (base32 "1g3k4hzfjih96cjq0z6aisdpvxncc81mnd5jrkhnavsgaf13djpx"))))
     (build-system font-build-system)
+    ;; Versionless asset name; see font-maple-font-nf-cn for the rationale.
+    (properties `((upstream-name . "NerdFontsSymbolsOnly")))
     (home-page "https://github.com/ryanoasis/nerd-fonts")
     (synopsis "Iconic font collection")
     (description "This package provides Symbols Nerd Font and Symbols Nerd Font
@@ -130,6 +136,8 @@ terminals, editors, and other text interfaces.")
       (sha256
        (base32 "0mzjnn1qwnj6z2k5bivbsmyr8wd6pivpcywp5xv5cmwmqcfym51v"))))
     (build-system font-build-system)
+    ;; Versionless asset name; see font-maple-font-nf-cn for the rationale.
+    (properties `((upstream-name . "Iosevka")))
     (license (list license:expat
                    license:cc-by4.0
                    license:unlicense
