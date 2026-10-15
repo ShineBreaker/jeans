@@ -433,7 +433,7 @@ binary release.")
 (define-public zedg-bin
   (package
     (name "zedg-bin")
-    (version "1.23.3")
+    (version "1.24.2")
     (source
      (origin
        (method url-fetch)
@@ -441,7 +441,7 @@ binary release.")
              "https://github.com/x6nux/zed-globalization/releases/download/"
              "v" version "/zedg-zh-cn-linux-x86_64-v" version ".tar.gz"))
        (sha256
-        (base32 "1g0nih0ga0vpswq7nfwah4m9x3167bzfq1sjzj9mqqilyyn425s9"))))
+        (base32 "0vi558km8mjh40s9d43r4mz2wyi3ph7lgd0di9g2ils9q7y7xqr0"))))
     (build-system binary-build-system)
     (outputs '("out" "shim"))
     (arguments

@@ -188,7 +188,7 @@ release.")
 (define-public cindy-cn-bin
   (package
     (name "cindy-cn-bin")
-    (version "0.1.104")
+    (version "0.1.108")
     (source
      (origin
        (method url-fetch)
@@ -196,7 +196,7 @@ release.")
              "https://github.com/makecindy/cindy/releases/download/"
              "v" version "/cindy-" version "-linux-x64-cn.deb"))
        (sha256
-        (base32 "1va3fv7cl8f8hshqbcrgmh2bivf42ab496h1j9grp1nzrjdqg22b"))))
+        (base32 "058z2ffhclyj4d9p52ybi7pzskfahwdgiqzzjv8gmm07qrpd449h"))))
     (build-system electron-build-system)
     (arguments
      (list
@@ -568,7 +568,7 @@ release; the application itself is proprietary.")
 (define-public herdr-bin
   (package
     (name "herdr-bin")
-    (version "0.9.4")
+    (version "0.9.5")
     (source
      (origin
        (method url-fetch)
@@ -576,7 +576,7 @@ release; the application itself is proprietary.")
              "https://github.com/ogulcancelik/herdr/releases/download/"
              "v" version "/herdr-linux-x86_64"))
        (sha256
-        (base32 "08svcwvyklkaj564z5y79dvyh94dyi3kndsz8nh0xvdhxzxh8cs9"))))
+        (base32 "17cjb6gxh2wna8vv4bil82dz0qflfrpjcckwswc037jaifyfin8l"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -940,7 +940,7 @@ telemetry or forced log-ins.")
 (define-public reasonix-bin
   (package
     (name "reasonix-bin")
-    (version "2.39.0")
+    (version "2.41.0")
     (source
      (origin
        (method url-fetch)
@@ -948,7 +948,7 @@ telemetry or forced log-ins.")
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
              "v" version "/reasonix-linux-amd64.tar.gz"))
        (sha256
-        (base32 "1z0p13g1yhw9cjnwrn017s6agw5awyy3bhq9s3z0n8id65g5xrqa"))))
+        (base32 "1r66666y9bdqfjlgbkxhz7wqy5bm1r1mkvvrbdv0rfh66shhrrli"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -988,7 +988,7 @@ and ships as a single static binary with no runtime dependencies.")
 (define-public reasonix-studio-bin
   (package
     (name "reasonix-studio-bin")
-    (version "2.39.0")
+    (version "2.41.0")
     (source
      (origin
        (method url-fetch)
@@ -996,7 +996,7 @@ and ships as a single static binary with no runtime dependencies.")
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
              "studio-v" version "/ReasonixStudio-linux-amd64.deb"))
        (sha256
-        (base32 "0c73qgjfp9prfhfnjq5p48wvy67dp2k1w06gq71lifa11kbngvpx"))))
+        (base32 "1ym3sq7472y1k7spq09jmal87dqdlnqn49c56qs9vdl5wvv47c2w"))))
     (build-system electron-build-system)
     (arguments
      (list
@@ -1553,7 +1553,7 @@ run.")
 (define-public cua-driver-bin
   (package
     (name "cua-driver-bin")
-    (version "0.35.2")
+    (version "0.35.4")
     (source
      (origin
        (method url-fetch)
@@ -1562,7 +1562,7 @@ run.")
              "cua-driver-rs-v" version
              "/cua-driver-rs-" version "-linux-x86_64-binary.tar.gz"))
        (sha256
-        (base32 "1kzwsqadx46zpzpa0c669314fjig2hx8fby6fn4sz0z0x1db6irs"))))
+        (base32 "1zhld5l1fyj5b29ih45ngy6nfw3k5zbq3i4kzhx2qlm9v60cwy8c"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -1675,7 +1675,7 @@ so the bundled self-updater should not be used.")
 (define-public magpie-bin
   (package
     (name "magpie-bin")
-    (version "0.1.1230")
+    (version "0.1.1250")
     (source
      (origin
        (method url-fetch)
@@ -1683,7 +1683,7 @@ so the bundled self-updater should not be used.")
              "https://github.com/yetone/magpie-releases/releases/download/"
              "v" version "/magpie-linux-amd64"))
        (sha256
-        (base32 "1p66hvy7v034d4dkzskxgzs9w1mvlip8y6yf9g9ah79s9whhnpwl"))))
+        (base32 "0qa9nz0f6nk7lkav9jp1z7pf2gl890cvpbf6wxa44ac98ngg5vq2"))))
     (build-system binary-build-system)
     (arguments
      (list
