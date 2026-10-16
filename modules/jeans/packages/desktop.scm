@@ -724,8 +724,8 @@ renderer relies on the upstream Chromium binary distribution.")
 ;; tools/ sub-trees evolve with the shell repository, so pinning them
 ;; separately makes no sense.  Auto-update only maintains the nosdshell
 ;; version/hash; the helpers follow the shared origin object.
-(define %nosdshell-version "1.2.1")
-(define %nosdshell-commit "6731c2acfcc09acb35f6d2b1dc29da8887c74412")
+(define %nosdshell-version "1.3.0")
+(define %nosdshell-commit "d7fa859c16b93d5d59b4990a51d1742cb6af8c5b")
 
 (define %nosdshell-source
   (origin
@@ -735,7 +735,7 @@ renderer relies on the upstream Chromium binary distribution.")
           (commit %nosdshell-commit)))
     (file-name (git-file-name "nosdshell" %nosdshell-version))
     (sha256
-     (base32 "04jnf59zb9cj1ixz2bk9qbcqqmcqsf3gi76di4vlij06jx1c23pw"))))
+     (base32 "1am86prd57hizqq6y9sarsbsm8wfci6arlglf2b2l0z5hbm6rkd7"))))
 
 ;; Our quickshell fork (ShineBreaker/quickshell-nosd): upstream master at
 ;; the version 0.3.2 commit plus the two pipewire use-after-free fixes the
@@ -804,8 +804,8 @@ menu) can skip a live blur pass and just draw the cached image.")
      "nosd-helpers is the single Rust binary behind nosDshell's helper
 subcommands (vscode-themes, kde-apply-scheme, gtk-refresh, khal-events,
 bluetooth-pair, eds-check, eds-calendars, eds-events, apply, wl-probe,
-vinput).  QML callers require it; the Scripts/python and Scripts/bash
-helpers were removed after the ports reached parity.")
+vinput, portal).  QML callers require it; the Scripts/python and
+Scripts/bash helpers were removed after the ports reached parity.")
     (license license:gpl3+)))
 
 (define-public nosd-theme
