@@ -24,6 +24,7 @@
   #:use-module (gnu packages gtk)
   #:use-module (gnu packages icu4c)
   #:use-module (gnu packages image)
+  #:use-module (gnu packages imagemagick)
   #:use-module (gnu packages instrumentation)
   #:use-module (gnu packages libevent)
   #:use-module (gnu packages libffi)
@@ -282,6 +283,7 @@ fonts, IR jars, and other assets at runtime.  The game requires OpenGL
 ;;   只读必然失败）；
 ;; - 上游 hicolor 图标与 Icon= 硬编码 osu，重命名为应用名（BINARY 去掉
 ;;   尾部 !）：多个 lazer 系包同装一个 profile 时不再互相覆盖图标；
+;;   图标为 .ico 时（g0v0）先转最大帧 png——hicolor 查找不认 .ico；
 ;; - 安装 opentabletdriver 的 udev 规则（数位板权限）。
 ;; upstream-name 取应用名，须与 release 资产文件名的版本前缀一致，否则
 ;; guix refresh 报 no updater。
@@ -326,6 +328,11 @@ fonts, IR jars, and other assets at runtime.  The game requires OpenGL
         #:modules '((guix build utils))
         #:phases
         #~(modify-phases %standard-phases
+            ;; g0v0 类 fork 的图标是 .ico（位图混进 scalable/），hicolor
+            ;; 查找只认 png/svg 后缀；取最大帧转 png（ico 帧按尺寸升序
+            ;; 排列，负索引即末帧）。与 rebrand-icon 同锚 'unpack，后写
+            ;; 先执行：万一哪个 fork 的 .ico 叫 osu.ico，展开出的
+            ;; osu.png 仍会被 rebrand-icon 重命名为应用名。
             (add-after 'unpack 'rebrand-icon
               (lambda _
                 (for-each
@@ -334,6 +341,18 @@ fonts, IR jars, and other assets at runtime.  The game requires OpenGL
                                 (string-append (dirname png) "/"
                                                #$app ".png")))
                  (find-files "usr/share/icons" "^osu\\.png$"))))
+            (add-after 'unpack 'convert-ico-icon
+              (lambda _
+                (for-each
+                 (lambda (ico)
+                   (let ((dir "usr/share/icons/hicolor/256x256/apps"))
+                     (mkdir-p dir)
+                     (invoke "convert"
+                             (string-append ico "[-1]")
+                             (string-append dir "/"
+                                            (basename ico ".ico") ".png"))
+                     (delete-file ico)))
+                 (find-files "usr/share/icons" "\\.ico$"))))
             ;; 7z 解包由基座承担；删掉不需安装的更新器。
             (add-after 'unpack 'remove-unused-files
               (lambda _
@@ -377,7 +396,7 @@ fonts, IR jars, and other assets at runtime.  The game requires OpenGL
                                                  "/70-opentabletdriver.rules"))
                        (rules.d (string-append #$output relative-rules.d)))
                   (install-file otd-rules rules.d)))))))
-      (native-inputs (list p7zip opentabletdriver-udev-rules))
+      (native-inputs (list p7zip imagemagick opentabletdriver-udev-rules))
       (inputs
        `(("bash-minimal" ,bash-minimal)
          ("alsa-lib" ,alsa-lib)
