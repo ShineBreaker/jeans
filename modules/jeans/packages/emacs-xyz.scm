@@ -94,33 +94,32 @@
      (base32 "06pi3f3lhyxfzczhwrc2b4n0jhhzydbz96qlpw12a24is0b3ps2m"))))
 
 (define %ghostel-ghostty-source
-  (let ((commit "0c2a290d3a3e2a599be3a43435d778a5896667ee"))
+  (let ((commit "a2e440396403385680008e456a741a7776091412"))
     (origin
       (method url-fetch)
       (uri (string-append
              "https://github.com/ghostty-org/ghostty"
              "/archive/" commit ".tar.gz"))
       (sha256
-       (base32 "1gsbsszzkayzcw68y0c3xzcxr12by2v3bxca9mhf3slcm84dvsmb"))
+       (base32 "1h99v4agc1451ynf2f1kb3hk4yw2h6lmngig1pg9cqigpdvs86c1"))
       (patches %ghostel-ghostty-patches))))
 
-;; uucode is pinned to commit 2826a37a (not the v0.2.0 tag) because that is
-;; the exact revision ghostty's build.zig.zon vendors for ghostel 0.46.0; its
-;; build.zig was rewritten for the zig 0.16 API, while the v0.2.0 tag still
-;; targets zig 0.15 and fails to compile under zig-0.16.
+;; uucode is pinned to the exact revision ghostty's build.zig.zon vendors
+;; (9d555245 since the ghostty a2e44039 pin used by ghostel 0.58.0).  Its
+;; build.zig targets the zig 0.16 API (minimum_zig_version 0.16.0).
 (define %ghostel-uucode-source
   (origin
     (method url-fetch)
     (uri (string-append
           "https://github.com/jacobsandlund/uucode/archive/"
-          "2826a37a4562284fdacd8fa029d49509cc9bffcd.tar.gz"))
+          "9d55524551411b493cca41ca06363625d90aff1e.tar.gz"))
     (sha256
-     (base32 "17mwjh2ha4yb9cdgxixz3a23kimqwnrvnd9bqllcfyhymdzzqxky"))))
+     (base32 "0cjisajgfffidgh2rdszbhm42v8cbqvki2zkppymsv1crd1kblk8"))))
 
 (define-public emacs-ghostel
   (package
     (name "emacs-ghostel")
-    (version "0.57.0")
+    (version "0.58.0")
     (source
      (origin
        (method git-fetch)
@@ -129,7 +128,7 @@
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "0zi763b72algb8w41rx8ppqkmvfjlmazbap74df5v7zryiwa1xxw"))
+        (base32 "0p6gp5ai9fvdlk0h1ff1z6crp6gibkp1wbpnj6d0cv26i93j7d7r"))
        (patches %ghostel-patches)))
       (build-system emacs-build-system)
       (arguments

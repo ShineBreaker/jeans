@@ -12,7 +12,7 @@ dependencies:
 The package definition populates deps/translate-c, deps/aro, deps/wuffs
 and deps/pixels from Guix origins; these hunks rewrite the URL
 dependencies to those local paths.
-Regenerated against ghostty commit 0c2a290d3a3e2a599be3a43435d778a5896667ee.
+Regenerated against ghostty commit a2e440396403385680008e456a741a7776091412.
 
 Upstream-Status: Inappropriate [Guix-specific build environment]
 
@@ -24,8 +24,8 @@ Upstream-Status: Inappropriate [Guix-specific build environment]
          },
 -        .uucode = .{
 -            // jacobsandlund/uucode
--            .url = "https://deps.files.ghostty.org/uucode-2826a37a4562284fdacd8fa029d49509cc9bffcd.tar.gz",
--            .hash = "uucode-0.2.0-ZZjBPlK5VADj7fdoq7G8LIHzD5o6FSkcBXXrRWr4jnrA",
+-            .url = "https://github.com/jacobsandlund/uucode/archive/9d55524551411b493cca41ca06363625d90aff1e.tar.gz",
+-            .hash = "uucode-0.2.0-ZZjBPuuFVgC8YZ8eld4fOKsZANLIhTFMzULQxhkLi1C7",
 -        },
 +        .uucode = .{ .path = "../uucode" },
          .zig_wayland = .{
