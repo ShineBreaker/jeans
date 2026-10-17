@@ -59,8 +59,8 @@
 (define-public winapps
   ;; 上游不打 tag，追踪 main 分支 HEAD；由 guix refresh 的
   ;; latest-git-commit updater 自动更新 commit 和 revision。
-  (let ((commit "42c7e8318280c6fc3426c7afebfc7f43b895f4c8")
-        (revision "3"))
+  (let ((commit "f5c9ee3951046c28f2aaf3a0b3b16c9a1c0a09e9")
+        (revision "4"))
     (package
       (name "winapps")
       (version (git-version "0" revision commit))
@@ -72,7 +72,7 @@
                (commit commit)))
          (file-name (git-file-name name version))
          (sha256
-          (base32 "04b8fgq9kh2aa0py324ydyyd6p4595z3hgzxidzsypmxxdiha9br"))
+          (base32 "02s7s3nvhqdyrdp37vh7m9dgzxqin5alvfwfw0sqbh42a80wrpgi"))
          (patches
           (map canonicalize-path
                (search-patches
@@ -263,7 +263,7 @@ editor that supports the protocol to provide Java language features.")
 (define-public aria2-next-bin
   (package
     (name "aria2-next-bin")
-    (version "3.0.4")
+    (version "3.0.5")
     (source
      (origin
        (method url-fetch)
@@ -272,7 +272,7 @@ editor that supports the protocol to provide Java language features.")
              "v" version "/aria2-next-" version "-linux-x86_64"))
        (file-name "aria2-next")
        (sha256
-        (base32 "1gh7jynf7fgcrhg8430j8hwlav8gzs73wcq5s2vzc0wz8l8k00rp"))))
+        (base32 "0svvw6ifhbj4rz1syjz7l5a7bjckvyp2pgq5m1bsw7v13w5zsx1r"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -491,7 +491,7 @@ companion extension.  This package provides the prebuilt binary release.")
 (define-public cc-switch-bin
   (package
     (name "cc-switch-bin")
-    (version "4.0.12")
+    (version "4.0.14")
     (source
      (origin
        (method url-fetch)
@@ -499,7 +499,7 @@ companion extension.  This package provides the prebuilt binary release.")
              "https://github.com/farion1231/cc-switch/releases/download/"
              "v" version "/CC-Switch-v" version "-Linux-x86_64.deb"))
        (sha256
-        (base32 "0mmz2j94m8azikqk908lm450lmyyi4qrpawmzbrfzwn78fj2shfb"))))
+        (base32 "0zkzwpzhx58jqi3528nz0aabkhl3g0i10w95x1ic3kpjqi5fbij2"))))
     (build-system gnu-build-system)
     (arguments
      (list
