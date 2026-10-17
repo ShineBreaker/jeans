@@ -932,15 +932,20 @@ telemetry or forced log-ins.")
 
 ;;; Reasonix: DeepSeek-native AI coding agent (Go static binary).
 ;;;
-;;; The upstream tar.gz ships a single statically-linked Go ELF binary:
+;;; The upstream tar.gz ships a statically-linked Go ELF binary plus the
+;;; frontend-next/ web UI assets:
 ;;;   - reasonix       (CGO_ENABLED=0, no interpreter, no NEEDED)
 ;;;
-;;; No patchelf or ld-linux wrapper needed — just extract and install.
+;;; Since 2.43.0 the archive is flat (reasonix file + frontend-next/ dir at
+;;; top level), so the default unpack's single-subdirectory chdir lands in
+;;; frontend-next/ and install cannot find the binary; unpack flat.  No
+;;; patchelf or ld-linux wrapper needed — just extract and install (the web
+;;; assets are not shipped).
 
 (define-public reasonix-bin
   (package
     (name "reasonix-bin")
-    (version "2.41.0")
+    (version "2.43.0")
     (source
      (origin
        (method url-fetch)
@@ -948,14 +953,20 @@ telemetry or forced log-ins.")
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
              "v" version "/reasonix-linux-amd64.tar.gz"))
        (sha256
-        (base32 "1r66666y9bdqfjlgbkxhz7wqy5bm1r1mkvvrbdv0rfh66shhrrli"))))
+        (base32 "1vsb0z0g6829k82qlwvcplhl4hpkp0bskjzyiwkbl6klgxvn78xs"))))
     (build-system binary-build-system)
     (arguments
      (list
-      ;; Single static Go binary: default unpack layout + plain install.
+      ;; Single static Go binary: flat unpack (see module comment) + plain
+      ;; install.
       #:unpack-method 'tar
       #:install-plan
       #~'(("reasonix" "bin/reasonix"))
+      #:phases
+      #~(modify-phases %standard-phases
+          (replace 'unpack
+            (lambda _
+              (invoke "tar" "xvf" #$source))))
       #:patchelf? #f))
     (home-page "https://github.com/esengine/DeepSeek-Reasonix")
     (synopsis "DeepSeek-native AI coding agent for the terminal")
