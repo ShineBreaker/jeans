@@ -1676,6 +1676,15 @@ so the bundled self-updater should not be used.")
 ;;; links) plus a 256x256 icon.  The release ships neither, so the
 ;;; entry is generated and the icon is fetched from the very URL the
 ;;; installer downloads it from.
+;;;
+;;; magpie also keeps a copy of that entry in the user's XDG_DATA_HOME,
+;;; rewritten on every start with os.Executable() as the command --
+;;; which under this launcher is ld.so, so the copy cannot start
+;;; anything.  It nevertheless decides what the menu runs, because
+;;; launchers walk XDG_DATA_HOME before XDG_DATA_DIRS and keep the
+;;; first entry they see for a given desktop file id.  The wrapper
+;;; therefore re-seals that copy read-only whenever it is missing,
+;;; stale or writable; see the comment there.
 (define magpie-icon
   (origin
     (method url-fetch)
@@ -1735,26 +1744,34 @@ so the bundled self-updater should not be used.")
 export FONTCONFIG_FILE=~a/etc/fonts/fonts.conf
 # Prefix (not =) so the system XDG_DATA_DIRS is kept behind the bundle.
 export XDG_DATA_DIRS=~a:~a${XDG_DATA_DIRS:+:$XDG_DATA_DIRS}
-# magpie writes a user-level magpie.desktop on every start, with no way
-# to turn that off, and its Exec is os.Executable() -- which under this
-# launcher resolves to ld.so.  Seed a read-only copy first: magpie's own
-# write then fails and the menu keeps this wrapper's entry.  The bare
-# command name keeps the entry valid across package upgrades.
+# magpie rewrites the user-level magpie.desktop on every start: it opens
+# the file, replaces its Exec= line with os.Executable() -- ld.so under
+# this launcher -- and writes it back.  That copy beats the one this
+# package installs, because launchers walk XDG_DATA_HOME before
+# XDG_DATA_DIRS.  Seal the file read-only (the rewrite's open then
+# fails) and re-seal it whenever it went missing, writable or stale.
+# The bare command name keeps the entry valid across package upgrades.
 d=\"${XDG_DATA_HOME:-$HOME/.local/share}/applications\"
 f=\"$d/magpie.desktop\"
-if [ ! -e \"$f\" ]; then
-  mkdir -p \"$d\" 2>/dev/null
-  cat > \"$f\" 2>/dev/null <<EOF
+want=$(cat <<'SEALED'
+# Sealed by the magpie-bin Guix wrapper: left writable, magpie replaces
+# this file's Exec line with os.Executable() (ld.so) on every start.
 [Desktop Entry]
 Type=Application
 Name=magpie
 Comment=Every agent's model. One place.
 Exec=magpie %u
 Icon=magpie
+StartupWMClass=magpie
 Categories=Development;Utility;
 MimeType=x-scheme-handler/magpie;
 Terminal=false
-EOF
+SEALED
+)
+if [ \"$(cat \"$f\" 2>/dev/null)\" != \"$want\" ] || [ -w \"$f\" ]; then
+  mkdir -p \"$d\" 2>/dev/null
+  chmod u+w \"$f\" 2>/dev/null
+  printf '%s\\n' \"$want\" > \"$f\" 2>/dev/null
   chmod 444 \"$f\" 2>/dev/null
 fi
 exec ~a --argv0 ~a --library-path ~a ~a \"$@\""
@@ -1780,6 +1797,7 @@ exec ~a --argv0 ~a --library-path ~a ~a \"$@\""
                  #:icon "magpie"
                  #:categories '("Development" "Utility")
                  #:mime-type "x-scheme-handler/magpie"
+                 #:startup-w-m-class "magpie"
                  #:terminal #f
                  #:startup-notify #f)))))))
     (inputs `(("bash-minimal" ,bash-minimal)
