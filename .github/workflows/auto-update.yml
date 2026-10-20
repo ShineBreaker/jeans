@@ -26,6 +26,11 @@ env:
   # font-nerd-symbols 不在列：其 origin 是 url-fetch/zipbomb，guix 的
   # github updater 只认 url-fetch（URL 重写模板），恒报 no updater；
   # 它由 Python updater 通用流程兜底（实测正常检查 ryanoasis/nerd-fonts）。
+  # scrcpy 不在列：它和 prebuilt 的 scrcpy-server 一起发版，而 guix
+  # refresh 只替换 package 自身 source 的 hash，无法同时更新 server 的
+  # hash；交给 refresh 会得到 client/server 版本不一致的包定义。三者
+  # （version、source hash、server hash）由人工同步，位置见
+  # modules/jeans/packages/android.scm 里 scrcpy 上方注释。
   REFRESH_PACKAGES: >-
     crush-bin opencode-desktop-bin herdr-bin omo-bin
     magpie-bin codewhale-bin reasonix-bin github-copilot
@@ -35,6 +40,7 @@ env:
     emacs-ghostel emacs-msgu
     colloid-gtk-theme vimix-gtk-themes vimix-kvantum-themes
     nix-ld opentabletdriver-udev-rules waypaper nosdshell
+    waydroid libgbinder libglibutil python-gbinder
 
 jobs:
   auto-update:

@@ -33,6 +33,7 @@
 ;;   - 新增类别文件后，把它的模块加到这里即可。
 (define %package-modules
   '((jeans packages agent)
+    (jeans packages android)
     (jeans packages browser)
     (jeans packages databases)
     (jeans packages desktop)

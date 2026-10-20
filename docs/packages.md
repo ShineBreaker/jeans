@@ -28,6 +28,16 @@
 | `zcode`                | Desktop application for agent-assisted development             |
 | `zcode-proxy-bin`      | Local proxy exposing GLM coding plans as OpenAI/Anthropic APIs |
 
+### (jeans packages android)
+
+| Package          | Description                                            |
+| ---------------- | ------------------------------------------------------ |
+| `libgbinder`     | GLib-style interface to binder                         |
+| `libglibutil`    | GLib utility library                                   |
+| `python-gbinder` | Python bindings for libgbinder                         |
+| `scrcpy`         | Display and control Android devices from the desktop   |
+| `waydroid`       | Container-based approach to boot a full Android system |
+
 ### (jeans packages browser)
 
 | Package            | Description                                           |
