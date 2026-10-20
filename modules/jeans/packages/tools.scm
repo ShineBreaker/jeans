@@ -802,7 +802,7 @@ It requires a writable @file{/var/lib/apm} directory at runtime; run the
 (define-public agenote
   (package
     (name "agenote")
-    (version "0.2.2")
+    (version "0.2.3")
     (source
      (origin
        (method git-fetch)
@@ -811,7 +811,7 @@ It requires a writable @file{/var/lib/apm} directory at runtime; run the
              (commit (string-append "agenote-v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "01jl47wrmpwbmpaqyhfbmynkdhvralifzmms0896ha09ahh14w7g"))))
+        (base32 "14k0v7xsizpvxnf69p9g7x6ji8dp9246qy3nkwy1zjzf8i75p7cd"))))
     (build-system pyproject-build-system)
     (arguments
      (list
