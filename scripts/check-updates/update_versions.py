@@ -360,6 +360,10 @@ def main():
                     if include_pre_release:
                         print(f"     🔍 包含pre-release检查")
                     pkg_tag_prefix = package_tag_prefix(package, tag_prefix_map)
+                    # 只有旧结构（commit 单独存在一个 SHA 变量里）才需要把
+                    # tag 解析成 peel commit；tag 由 version 派生的结构里
+                    # version 就是唯一真相，落盘只改 version 与 base32。
+                    need_peel = bool(package.get("shared_commit_var"))
                     for _fn in (
                         "get_latest_github_release",
                         "get_latest_github_tag",
@@ -373,7 +377,7 @@ def main():
                         package["version"],
                         include_pre_release=include_pre_release,
                         tag_prefix=pkg_tag_prefix,
-                        resolve_peel=True,
+                        resolve_peel=need_peel,
                     )
                     for _fn in (
                         "get_latest_github_release",
@@ -389,13 +393,17 @@ def main():
                     if outcome != "candidate" or cand is None:
                         finish_shared("uptodate", package["version"])
                         continue
-                    if not cand.peel_sha:
+                    if need_peel and not cand.peel_sha:
                         print(f"     ❌ 无法获取 tag peel commit，已标记为失败并跳过更新")
                         has_errors = True
                         finish_shared("failed", cand.version, "无法获取 tag commit")
                         continue
                     change = build_shared_source_change(
-                        scm_file, package, cand.version, cand.peel_sha, cand.base32
+                        scm_file,
+                        package,
+                        cand.version,
+                        cand.peel_sha if need_peel else None,
+                        cand.base32,
                     )
                     if change:
                         pending_updates.append(change)

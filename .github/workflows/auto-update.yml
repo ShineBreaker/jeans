@@ -39,7 +39,7 @@ env:
     lr2oraja-endlessdream-bin osu-lazer-bin inso-bin g0v0-bin deltalazer-bin
     emacs-ghostel emacs-msgu
     colloid-gtk-theme vimix-gtk-themes vimix-kvantum-themes
-    nix-ld opentabletdriver-udev-rules waypaper nosdshell
+    nix-ld opentabletdriver-udev-rules waypaper
     waydroid libgbinder libglibutil python-gbinder
 
 jobs:
@@ -230,6 +230,12 @@ jobs:
           # 2026-10-03 实测）。二者交给 Python updater：由其读取包定义的
           # release-tag-prefix property（剥 ^ 锚点）过滤 agenote-v* /
           # agenote-el-v* 系列。
+          # nosdshell 不交 refresh：version 与 source 都是模块级共享变量，
+          # 包定义里没有可改写的字面 version/hash，refresh 报
+          # "updating from 1.5.0 to 1.6.0" 后文件原样不动（2026-10-20 实测；
+          # 它算出的新 commit 是 tag 名 v<version>，但落不了盘）。和 agenote
+          # 一样交给 Python updater 的 release/tag 流程；包定义的 git-reference
+          # 由 (string-append "v" %nosdshell-version) 派生。
           # 白名单本体在 job env 的 REFRESH_PACKAGES（与 Recover 步骤共用）。
           guix refresh -L "$GITHUB_WORKSPACE/modules" -L /tmp/nonguix -u \
             $REFRESH_PACKAGES \

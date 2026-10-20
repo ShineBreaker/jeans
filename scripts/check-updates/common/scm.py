@@ -149,6 +149,20 @@ def _extract_uri_expr(package_content: str) -> Optional[str]:
     return package_content[start:pos] or None
 
 
+def _commit_is_derived_tag(commit_expr: str, version_var: str) -> bool:
+    """判断 commit 表达式是否由 version 变量派生的 tag。
+
+    形如 (string-append "v" %sample-version)（前缀 + version 变量）或
+    (string-append %sample-version "-suffix")（version 变量 + 后缀）。
+    这类结构里 version 是唯一真相，落盘只改 version 与 base32。
+    """
+    patterns = (
+        r'\(string-append\s+"[^"]*"\s+' + re.escape(version_var) + r"\)",
+        r"\(string-append\s+" + re.escape(version_var) + r'\s+"[^"]*"\)',
+    )
+    return any(re.fullmatch(p, commit_expr) for p in patterns)
+
+
 def _resolve_shared_source(
     content: str, version_var: str, source_var: str
 ) -> Optional[Dict[str, Any]]:
@@ -189,12 +203,15 @@ def _resolve_shared_source(
                 commit_value = cm.group(1)
             elif re.fullmatch(r"[0-9a-f]{40}", commit_expr):
                 commit_value = commit_expr
-            else:
+            elif not _commit_is_derived_tag(commit_expr, version_var):
                 return None
+            # 派生 tag：version 变量已是 tag 的唯一来源，commit 无需落盘，
+            # commit_var/commit_value 保持 None。
         return {
             "version": vm.group(1),
             "git_url": url_m.group(1),
             "base32": base32_m.group(1),
+            "commit_expr": commit_expr,
             "commit_var": commit_var,
             "commit_value": commit_value,
         }
@@ -287,7 +304,7 @@ def parse_package_definitions(content: str, _file_path: Path) -> list[dict[str, 
                 method = "git-fetch"
                 is_git = True
                 git_url = shared_info["git_url"]
-                commit_expr = shared_info["commit_var"] or shared_info["commit_value"]
+                commit_expr = shared_info.get("commit_expr")
                 shared_commit_var = shared_info["commit_var"]
                 shared_commit_value = shared_info["commit_value"]
 

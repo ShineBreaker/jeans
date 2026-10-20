@@ -83,14 +83,16 @@ def build_shared_source_change(
     file_path: Path,
     package: dict[str, Any],
     new_version: str,
-    new_commit: str,
+    new_commit: Optional[str],
     new_base32: str,
 ) -> Optional[Dict[str, Any]]:
     """为共享变量结构（nosdshell 类）构建更新描述。
 
-    只改模块级三个 define：%xxx-version、%xxx-commit、%xxx-source 块内 base32。
-    file-name 里的版本引用与 git-reference 里的 commit 引用都是变量，
-    求值时自动跟随，无需改写。
+    改模块级 define：%xxx-version、%xxx-source 块内 base32；commit 单独存
+    在 SHA 变量的旧结构还要改 %xxx-commit（new_commit 非 None 时）。tag 由
+    version 派生的结构（(string-append "v" %xxx-version)）只需改前两者。
+    file-name 里的版本引用与 git-reference 里的 commit 引用都是变量或变量
+    派生表达式，求值时自动跟随，无需改写。
     """
     try:
         return {

@@ -724,18 +724,24 @@ renderer relies on the upstream Chromium binary distribution.")
 ;; tools/ sub-trees evolve with the shell repository, so pinning them
 ;; separately makes no sense.  Auto-update only maintains the nosdshell
 ;; version/hash; the helpers follow the shared origin object.
-(define %nosdshell-version "1.5.0")
-(define %nosdshell-commit "82c322badcfa05291e04270c4e9044ad5637d3fe")
+;;
+;; The source is pinned to the release tag (vX.Y.Z), not to a raw commit:
+;; %nosdshell-version is the only version value, and the git-reference
+;; commit is derived from it, so the updater only bumps the version and
+;; the hash.  Guix refresh does not manage this package (see the CI
+;; workflow): the shared-variable layout leaves it no literal version or
+;; hash inside the package form to rewrite.
+(define %nosdshell-version "1.6.0")
 
 (define %nosdshell-source
   (origin
     (method git-fetch)
     (uri (git-reference
           (url "https://github.com/ShineBreaker/nosDshell")
-          (commit %nosdshell-commit)))
+          (commit (string-append "v" %nosdshell-version))))
     (file-name (git-file-name "nosdshell" %nosdshell-version))
     (sha256
-     (base32 "10m8hvbmiwmxsxrh37bqw05l82z5cgjsv4rskl1xl7yj1afxgms2"))))
+     (base32 "145fkpjz9r2cpqpxxl997yypl558acw3w2lrl7q0k57is6yck30x"))))
 
 ;; Our quickshell fork (ShineBreaker/quickshell-nosd): upstream master at
 ;; the version 0.3.2 commit plus the two pipewire use-after-free fixes the

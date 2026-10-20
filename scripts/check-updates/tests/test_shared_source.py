@@ -67,6 +67,84 @@ SHARED_SCM = """\
          "1111111111111111111111111111111111111111111111111111"))))))
 """
 
+TAG_SHARED_SCM = """\
+(define-module (jeans packages sample-tag))
+
+(define %sample-tag-version "1.0.0")
+
+(define %sample-tag-source
+  (origin
+    (method git-fetch)
+    (uri (git-reference
+          (url "https://github.com/example/sample-tag")
+          (commit (string-append "v" %sample-tag-version))))
+    (file-name (git-file-name "sample-tag" %sample-tag-version))
+    (sha256
+     (base32
+      "6666666666666666666666666666666666666666666666666666"))))
+
+(define-public sample-tag-a
+  (package
+    (name "sample-tag-a")
+    (version %sample-tag-version)
+    (source %sample-tag-source)))
+"""
+
+
+def check_tag_derived_source() -> None:
+    """commit 由 version 派生的 tag 结构（(string-append "v" %v)）：
+    version 是唯一真相，落盘只改 version 与 base32；不要求也不写 commit
+    变量。引用别的变量的同类表达式仍视为无法解析（不误抓）。"""
+    fake_path = Path("/tmp/sample-tag.scm")
+    packages = {
+        p["name"]: p
+        for p in parse_package_definitions(TAG_SHARED_SCM, fake_path)
+    }
+    p = packages["sample-tag-a"]
+    assert p["is_shared_source"] is True, p
+    assert p["version"] == "1.0.0", p["version"]
+    assert p["commit_expr"] == '(string-append "v" %sample-tag-version)', p["commit_expr"]
+    assert p["shared_commit_var"] is None, p
+    assert p["shared_commit_value"] is None, p
+    assert p["git_url"] == "https://github.com/example/sample-tag", p["git_url"]
+    assert p["base32"] == "6" * 52, p["base32"]
+
+    with tempfile.NamedTemporaryFile(
+        "w", suffix=".scm", delete=False, encoding="utf-8"
+    ) as f:
+        f.write(TAG_SHARED_SCM)
+        tmp = Path(f.name)
+    try:
+        pkgs = {
+            p["name"]: p
+            for p in parse_package_definitions(
+                tmp.read_text(encoding="utf-8"), tmp
+            )
+        }
+        change = build_shared_source_change(
+            tmp, pkgs["sample-tag-a"], "1.1.0", None, "5" * 52
+        )
+        assert change is not None
+        assert change["shared_commit_var"] is None, change
+        assert apply_pending_updates([change]) is True
+        out = tmp.read_text(encoding="utf-8")
+        assert '(define %sample-tag-version "1.1.0")' in out, out
+        assert f'(base32 "{"5" * 52}")' in out, out
+        # commit 的 tag 派生表达式原样保留，且不应凭空写出 commit 变量
+        assert '(commit (string-append "v" %sample-tag-version))' in out, out
+        assert "%sample-tag-commit" not in out, out
+    finally:
+        tmp.unlink()
+
+    # 负例：commit 表达式引用非 version 变量，结构化无法解析 → 回落 skipped
+    bad = TAG_SHARED_SCM.replace(
+        '(string-append "v" %sample-tag-version)',
+        '(string-append "v" %other-version)',
+    )
+    bad_pkg = parse_package_definitions(bad, fake_path)[0]
+    assert bad_pkg["is_shared_source"] is False, bad_pkg
+    assert bad_pkg["version"] is None, bad_pkg["version"]
+
 
 def check_tag_peel() -> None:
     """get_tag_commit_sha：annotated tag 取 ^{} peel 行、lightweight 取 tag 行、
@@ -244,6 +322,7 @@ def main() -> None:
     finally:
         tmp.unlink()
 
+    check_tag_derived_source()
     check_tag_peel()
     check_apply_atomicity()
 
