@@ -452,6 +452,16 @@ def main():
                         continue
                     package_report["new_version"] = cand.version
 
+                    # 剥离前缀后的版本若仍含 '/'（如 upstream/1.1.1），说明命中的
+                    # 是另一条发行线而非本包的版本——写进去会让 guix 报
+                    # invalid character '/' in name（issue #57）。
+                    if "/" in cand.version:
+                        print(f"     ⚠️  候选 tag {cand.tag} 不是版本号，跳过")
+                        package_report["status"] = "skipped"
+                        package_report["error"] = f"候选 tag 不是版本号: {cand.tag}"
+                        finalize_package_report()
+                        continue
+
                     change = update_package_in_file(
                         scm_file, package, cand.version, cand.base32
                     )
