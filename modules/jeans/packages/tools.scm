@@ -48,6 +48,7 @@
   #:use-module (gnu packages pulseaudio)  ; pipewire
   #:use-module (gnu packages video)       ; x265
   #:use-module (gnu packages xdisorg)     ; libdrm
+  #:use-module (gnu packages vulkan)      ; vulkan-loader
   #:use-module (gnu packages xorg)        ; libx11, libxcb, libice, libsm
   #:use-module (gnu packages curl)        ; curl
   #:use-module (gnu packages nss)         ; nss-certs
@@ -1043,3 +1044,104 @@ available.  Configuration happens through a local web UI; clients pair with
 a PIN.  This package provides the prebuilt AppImage release.")
     (license license:gpl3)
     (supported-systems '("x86_64-linux"))))
+
+;;; disktree is a Rust + GPUI (Zed's GPU UI framework) treemap for finding
+;;; and removing what fills a disk.  Upstream builds from source only: there
+;;; is no source package here because its workspace pins rust-version 1.97
+;;; (rust-toolchain.toml and CI agree) while Guix ships rust 1.93, and the
+;;; dependency chain (gpui-pre 0.3.6 uses std::hint::cold_path, gpui-base
+;;; uses AtomicUsize::try_update) needs 1.95-stabilised std APIs.  Bumping
+;;; Guix's chain to 1.97 is a four-step bootstrap, out of scope for a
+;;; package.  The release tarball is therefore packaged as -bin.
+;;;
+;;; ELF linkage: the entry point NEEDs libxcb, libxkbcommon,
+;;; libxkbcommon-x11, libgcc_s, libm and libc.  GPUI's Wayland backend and
+;;; wgpu's Vulkan backend dlopen their libraries by bare soname
+;;; (libwayland-client.so.0, libwayland-egl.so.1, libEGL.so.1,
+;;; libvulkan.so.1), so those packages go on RPATH rather than being
+;;; translated into NEEDED entries.  A working Vulkan device (or mesa's
+;;; lavapipe software ICD) is a runtime concern of the host.
+;;;
+;;; The binary resolves its UI font through fontdb 0.23, which parses the
+;;; fontconfig configuration and only falls back to /usr/share/fonts when
+;;; that fails.  Guix has no /etc/fonts/fonts.conf -- the configuration ships
+;;; in the fontconfig package and reaches applications through
+;;; FONTCONFIG_FILE -- so without the wrapper below the font database comes
+;;; up empty and the app panics with "failed to resolve font".  The wrapper
+;;; keeps a caller-provided FONTCONFIG_FILE and only supplies the default.
+(define-public disktree-bin
+  (package
+    (name "disktree-bin")
+    (version "0.11.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://github.com/tobi/disktree/releases/download/v"
+             version "/disktree-" version "-x86_64-linux.tar.gz"))
+       (sha256
+        (base32 "1ch5ripq5xzhrm624bgd7b0i97qdq2zssbnmj294z2rw52iayxby"))))
+    (build-system binary-build-system)
+    (arguments
+     (list
+      #:unpack-method 'tar
+      #:install-plan
+      #~'(("disktree" "libexec/disktree/disktree")
+          ("disktree.svg"
+           "share/icons/hicolor/scalable/apps/disktree.svg")
+          ;; The release ships the .desktop template, not a rendered entry.
+          ;; The desktop-files phase only rewrites Exec= inside [Desktop Entry],
+          ;; so the @BINDIR@ in the [Desktop Action disk] group is substituted
+          ;; by the phase below (patch-dot-desktop-files warns otherwise).
+          ("disktree.desktop.in" "share/applications/disktree.desktop")
+          ("README.md" "share/doc/disktree-bin/README.md"))
+      #:patchelf-plan
+      #~'(("libexec/disktree/disktree"))
+      #:desktop-files
+      #~'(("share/applications/disktree.desktop"))
+      #:modules '((guix build utils))
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'patchelf 'wrap-fontconfig
+            (lambda _
+              (let* ((out #$output)
+                     (bin (string-append out "/bin/disktree"))
+                     (real (string-append out "/libexec/disktree/disktree")))
+                (mkdir-p (dirname bin))
+                (call-with-output-file bin
+                  (lambda (port)
+                    (format port "#!~a/bin/bash~%" #$bash-minimal)
+                    (format port
+                            (string-append
+                             "export FONTCONFIG_FILE="
+                             "\"${FONTCONFIG_FILE:-~a/etc/fonts/fonts.conf}\"~%")
+                            #$(this-package-input "fontconfig-minimal"))
+                    (format port "exec ~a \"$@\"~%" real)))
+                (chmod bin #o755))))
+          (add-after 'install 'substitute-desktop-template
+            (lambda _
+              (substitute* (string-append #$output
+                                          "/share/applications/disktree.desktop")
+                (("@BINDIR@") (string-append #$output "/bin"))
+                (("@VERSION@") #$version)))))))
+    (inputs
+     `(("bash-minimal" ,bash-minimal)
+       ("glibc" ,glibc)
+       ("gcc:lib" ,gcc "lib")
+       ("fontconfig-minimal" ,fontconfig)
+       ("libxcb" ,libxcb)
+       ("libxkbcommon" ,libxkbcommon)
+       ("wayland" ,wayland)
+       ("mesa" ,mesa)
+       ("vulkan-loader" ,vulkan-loader)))
+    (home-page "https://github.com/tobi/disktree")
+    (synopsis "Treemap for finding and removing what fills your disk")
+    (description
+     "disktree renders the contents of a volume as a treemap sized by bytes,
+so the directories that actually occupy space are visible at a glance.  Entries
+can be marked for removal and deleted in one pass, from the largest downward,
+instead of walking the tree a directory at a time.  It is written in Rust with
+GPUI and follows the visual language of Omarchy.  This package provides the
+prebuilt release binary.")
+    (properties `((upstream-name . "disktree")))
+    (license license:expat)))

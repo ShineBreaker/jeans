@@ -32,7 +32,7 @@ env:
   # （version、source hash、server hash）由人工同步，位置见
   # modules/jeans/packages/android.scm 里 scrcpy 上方注释。
   REFRESH_PACKAGES: >-
-    crush-bin opencode-desktop-bin herdr-bin omo-bin
+    crush-bin opencode-desktop-bin herdr-bin omo-bin disktree-bin
     magpie-bin codewhale-bin reasonix-bin github-copilot
     eask-bin neomacs-bin rayburst-bin cc-switch-bin
     font-maple-font-nf-cn font-nerd-font-iosevka
