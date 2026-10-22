@@ -222,6 +222,10 @@ to talk to the Android binder from the host side.")
     (arguments
      (list #:make-flags
            #~(list "USE_SYSTEMD=0"
+                   ;; The host firewall is nftables-based; the net script's
+                   ;; legacy iptables rules would not be seen by it, so let
+                   ;; waydroid manage its own nftables tables instead.
+                   "USE_NFTABLES=1"
                    (string-append "PREFIX=" #$output)
                    (string-append "SYSCONFDIR=" #$output "/etc"))
            #:phases
@@ -265,10 +269,21 @@ to talk to the Android binder from the host side.")
                           (search-paths
                            (list (string-append #$iptables "/bin")
                                  (string-append #$iptables "/sbin")
+                                 ;; 'ip' and friends live in iproute2's /sbin,
+                                 ;; not /bin; the net script calls 'ip' by
+                                 ;; bare name and fails with "command not
+                                 ;; found" when only /bin is on PATH.
                                  (string-append #$iproute "/bin")
-                                 (string-append #$dnsmasq "/bin")
+                                 (string-append #$iproute "/sbin")
+                                 ;; dnsmasq only has /sbin (no /bin) here.
                                  (string-append #$dnsmasq "/sbin")
+                                 ;; 'nft' lives in nftables' /sbin; the net
+                                 ;; script uses it to manage its own tables.
+                                 (string-append #$nftables "/sbin")
+                                 ;; 'getent' (for the dnsmasq user lookup) is
+                                 ;; in glibc; coreutils provides kill/cat/rm.
                                  (string-append #$glibc "/bin")
+                                 (string-append #$coreutils "/bin")
                                  (string-append #$lxc "/bin")
                                  (string-append #$wl-clipboard "/bin")))
                           (python-path
@@ -292,10 +307,15 @@ to talk to the Android binder from the host side.")
     ;; store path of the built package.
     (inputs (list bash-minimal))
     (propagated-inputs
-     (list gawk
+     (list coreutils
+           dnsmasq
+           gawk
            gtk
+           iproute
+           iptables
            kmod
            lxc
+           nftables
            python
            python-dbus
            python-gbinder
