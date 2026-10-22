@@ -96,6 +96,12 @@ def main():
     failed_packages = 0
     uptodate_packages = 0
     has_updates = False
+    # 脚本级错误（读 .scm 失败、写盘失败）：说明脚本自身跑不动了，退出码 2
+    # 中止流水线。单个包的检查失败不算脚本级错误——它只影响该包，失败详情
+    # 进 issue，成功包的更新照常写盘、构建、提交。
+    # 2026-10-22 实证：两者混用时退出码恒为 2，auto-update.yml 的 `exit 2`
+    # 让 Detect changes / Build test / Commit 全被跳过，单个包失败会挡住
+    # 整批更新（issue #59）。
     has_errors = False
     pending_updates: List[Dict[str, Any]] = []
     # 共享变量组去重：同文件同 source 变量只检查一次，后续同组包复用结论
@@ -177,19 +183,29 @@ def main():
             if package_name in SPECIAL_UPDATERS:
                 print(f"     🔧 使用特殊源处理器: {package_name}")
                 try:
-                    change = SPECIAL_UPDATERS[package_name](package, config, scm_file)
+                    # 处理器抛 RetryableError 表示「值得再试」（上游临时故障、
+                    # 网络抖动）。不重试等于把瞬时故障当成永久失败——
+                    # 2026-10-22 实测：Eclipse 临时关站时目录页返回 200 +
+                    # "Temporary shutdown" 页面，jdtls-bin 一次就被判失败。
+                    # with_retry 按函数名记账，handler 各不相同，不会互相覆盖；
+                    # 但 LAST_RETRIES 是全局字典，跨包会累加，故先清零。
+                    handler = SPECIAL_UPDATERS[package_name]
+                    LAST_RETRIES[handler.__name__] = 0
+                    change = with_retry(
+                        handler, package, config, scm_file,
+                        max_retries=2, base_delay=5,
+                    )
+                    add_retries(handler.__name__)
                 except RetryableError as e:
                     print(f"     ❌ 特殊源检查失败（可重试错误）: {e}")
                     package_report["status"] = "failed"
                     package_report["error"] = f"特殊源检查失败: {e}"
-                    has_errors = True
                     finalize_package_report()
                     continue
                 except Exception as e:
                     print(f"     ❌ 特殊源检查失败: {e}")
                     package_report["status"] = "failed"
                     package_report["error"] = f"特殊源检查失败: {e}"
-                    has_errors = True
                     finalize_package_report()
                     continue
 
@@ -263,7 +279,6 @@ def main():
                         print(f"     ⚠️  无法获取最新 commit: {e}")
                         package_report["status"] = "failed"
                         package_report["error"] = f"无法获取最新 commit: {e}"
-                        has_errors = True
                         finalize_package_report()
                         continue
 
@@ -292,7 +307,6 @@ def main():
                                 print(f"     ✓ 计算得到 base32: {new_base32}")
                             else:
                                 print(f"     ❌ 无法计算 git-fetch base32，已标记为失败并跳过更新")
-                                has_errors = True
                                 package_report["status"] = "failed"
                                 package_report["error"] = "无法计算 hash"
                                 finalize_package_report()
@@ -310,7 +324,6 @@ def main():
                                 continue
                             else:
                                 print(f"     ❌ 更新失败")
-                                has_errors = True
                                 package_report["status"] = "failed"
                                 package_report["error"] = "更新文件失败"
                         else:
@@ -320,7 +333,6 @@ def main():
                         print(f"     ⚠️  无法获取最新 commit")
                         package_report["status"] = "failed"
                         package_report["error"] = "无法获取最新 commit"
-                        has_errors = True
 
                     finalize_package_report()
                     continue
@@ -387,7 +399,6 @@ def main():
                     ):
                         add_retries(_fn)
                     if outcome == "failed":
-                        has_errors = True
                         finish_shared("failed", package["version"], err)
                         continue
                     if outcome != "candidate" or cand is None:
@@ -395,7 +406,6 @@ def main():
                         continue
                     if need_peel and not cand.peel_sha:
                         print(f"     ❌ 无法获取 tag peel commit，已标记为失败并跳过更新")
-                        has_errors = True
                         finish_shared("failed", cand.version, "无法获取 tag commit")
                         continue
                     change = build_shared_source_change(
@@ -412,7 +422,6 @@ def main():
                         finish_shared("updated", cand.version)
                     else:
                         print(f"     ❌ 更新失败")
-                        has_errors = True
                         finish_shared("failed", cand.version, "更新文件失败")
                     continue
 
@@ -440,7 +449,6 @@ def main():
                     ):
                         add_retries(_fn)
                     if outcome == "failed":
-                        has_errors = True
                         package_report["status"] = "failed"
                         package_report["error"] = err
                         finalize_package_report()
@@ -474,7 +482,6 @@ def main():
                         continue
                     else:
                         print(f"     ❌ 更新失败")
-                        has_errors = True
                         package_report["status"] = "failed"
                         package_report["error"] = "更新文件失败"
                     finalize_package_report()
@@ -498,7 +505,6 @@ def main():
                         print(f"     ⚠️  无法获取最新 commit: {e}")
                         package_report["status"] = "failed"
                         package_report["error"] = f"无法获取最新 commit: {e}"
-                        has_errors = True
                         finalize_package_report()
                         continue
 
@@ -531,7 +537,6 @@ def main():
                                 print(f"     ✓ 计算得到 base32: {new_base32}")
                             else:
                                 print(f"     ❌ 无法计算 git-fetch base32，已标记为失败并跳过更新")
-                                has_errors = True
                                 package_report["status"] = "failed"
                                 package_report["error"] = "无法计算 hash"
                                 finalize_package_report()
@@ -550,7 +555,6 @@ def main():
                                 continue
                             else:
                                 print(f"     ❌ 更新失败")
-                                has_errors = True
                                 package_report["status"] = "failed"
                                 package_report["error"] = "更新文件失败"
                         else:
@@ -560,7 +564,6 @@ def main():
                         print(f"     ⚠️  无法获取最新 commit")
                         package_report["status"] = "failed"
                         package_report["error"] = "无法获取最新 commit"
-                        has_errors = True
 
                     finalize_package_report()
 
@@ -606,7 +609,6 @@ def main():
                         latest_release = None
                         package_report["status"] = "failed"
                         package_report["error"] = f"无法获取最新release信息: {e}"
-                        has_errors = True
                         finalize_package_report()
                         continue
 
@@ -653,7 +655,6 @@ def main():
                                 print(f"     ✓ 计算得到 base32: {new_base32}")
                             else:
                                 print(f"     ❌ 无法计算 url-fetch base32，已标记为失败并跳过更新")
-                                has_errors = True
                                 package_report["status"] = "failed"
                                 package_report["error"] = "无法计算 hash"
                                 finalize_package_report()
@@ -672,7 +673,6 @@ def main():
                                 continue
                             else:
                                 print(f"     ❌ 更新失败")
-                                has_errors = True
                                 package_report["status"] = "failed"
                                 package_report["error"] = "更新文件失败"
                         else:
@@ -682,7 +682,6 @@ def main():
                         print(f"     ⚠️  无法获取最新release信息")
                         package_report["status"] = "failed"
                         package_report["error"] = "无法获取最新release信息"
-                        has_errors = True
                 else:
                     print(f"     ⚠️  不是GitHub仓库，跳过检查")
                     package_report["status"] = "skipped"
@@ -707,6 +706,10 @@ def main():
     report["failed"] = failed_packages
     report["skipped"] = skipped_packages
     report["uptodate"] = uptodate_packages
+    # 两类失败分开记账：脚本级错误让退出码为 2（流水线中止），包级失败
+    # 只进 issue，不挡成功包的提交。
+    report["script_errors"] = bool(has_errors)
+    report["package_failures"] = failed_packages > 0
 
     try:
         REPORT_FILE.write_text(
@@ -731,6 +734,9 @@ def main():
         print()
         create_ci_issue(issue_title, issue_body, config)
 
+    # 退出码：0=无更新无错误，1=有更新，2=脚本级错误。
+    # 包级失败不影响退出码——失败详情已写进 issue，成功包的更新也已落盘，
+    # 流水线要继续跑构建测试并提交（2026-10-22 issue #59 的修复）。
     if has_errors:
         return 2
     if has_updates:

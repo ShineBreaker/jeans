@@ -115,9 +115,14 @@ Guix channel authentication 不认 “GitHub Verified” 这个概念，它只�
 
 `update_versions.py` 的退出码如下：
 
-- `0`：没有更新且没有错误
+- `0`：没有更新且没有脚本级错误
 - `1`：有更新
-- `2`：有错误
+- `2`：脚本级错误（读 `.scm` 失败、写盘失败等——脚本自身跑不动了）
+
+单个包的检查失败**不算**脚本级错误，不改变退出码：失败详情写进 issue，
+成功包的更新照常写盘、构建、提交。（2026-10-22 之前两类失败共用一个标志，
+退出码恒为 2，`auto-update.yml` 的 `exit 2` 让 Detect changes / Build test /
+Commit 全被跳过，一包失败就挡住整批更新。）
 
 `auto-update.yml` 已经兼容这个约定，不会把“有更新”误判成失败。
 
