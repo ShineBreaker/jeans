@@ -16,10 +16,12 @@ from common.versions import compare_versions
 
 
 def update_jdtls_bin(package: dict[str, Any], _config: dict[str, Any], scm_file: Path) -> Optional[Dict[str, Any]]:
-    """jdtls-bin：GitHub tags 发现版本 + Eclipse 目录页提取归档时间戳。
+    """jdtls-bin：GitHub tags 发现版本 + milestones/<v>/latest.txt 时间戳。
 
     URL 模板是 milestones/<version>/jdt-language-server-<version>-<时间戳>.tar.gz，
-    时间戳是字面量，不在 version 里。发现新版本后从目录页抓取时间戳，
+    时间戳是字面量，不在 version 里。发现新版本后从该版本的 latest.txt
+    抓取归档文件名（download.eclipse.org 目录索引页已换成基金会通用壳页，
+    无文件列表可解析；官方发现端点是每版本目录下的 latest.txt 纯文本），
     并返回 extra_replacements 让 apply_pending_updates 一并替换字面量。
     """
     tag = get_latest_github_tag("eclipse-jdtls/eclipse.jdt.ls", tag_prefix="v")
@@ -33,7 +35,7 @@ def update_jdtls_bin(package: dict[str, Any], _config: dict[str, Any], scm_file:
     try:
         response = get(
             ensure_public_http_url(
-                f"https://download.eclipse.org/jdtls/milestones/{latest}/"
+                f"https://download.eclipse.org/jdtls/milestones/{latest}/latest.txt"
             ),
             timeout=30,
         )
@@ -49,7 +51,7 @@ def update_jdtls_bin(package: dict[str, Any], _config: dict[str, Any], scm_file:
         rf"jdt-language-server-{re.escape(latest)}-(\d{{12}})\.tar\.gz", response.text
     )
     if not m:
-        raise RetryableError(f"目录页未找到 {latest} 的归档文件名")
+        raise RetryableError(f"latest.txt 未找到 {latest} 的归档文件名")
     ts = m.group(1)
     url = (f"https://download.eclipse.org/jdtls/milestones/{latest}/"
            f"jdt-language-server-{latest}-{ts}.tar.gz")

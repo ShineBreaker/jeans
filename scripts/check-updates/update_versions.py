@@ -179,7 +179,8 @@ def main():
 
             # --- 特殊源包：版本信号不在 GitHub 上，走专属处理器 ---
             # zcode（z.ai CDN 官网 JS）、amber-pm（gitee）、jdtls-bin
-            # （Eclipse 目录页 + 日期戳）、font-misans（zip 无版本号，ETag 信号）。
+            # （GitHub tags + milestones/<v>/latest.txt 日期戳）、
+            # font-misans（zip 无版本号，ETag 信号）。
             if package_name in SPECIAL_UPDATERS:
                 print(f"     🔧 使用特殊源处理器: {package_name}")
                 try:
