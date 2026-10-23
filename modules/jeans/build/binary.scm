@@ -35,8 +35,10 @@
 ;;;   自定位二进制用；后者另需 #:wrap? #f）。
 ;;; - #:patchelf-plan：((PATH [SPEC ...]) ...)，PATH 为输出内相对路径
 ;;;   （文件或目录，目录递归取 ELF；裸字符串视为无 SPEC 条目）。SPEC 省略时
-;;;   RPATH 自动取自带 lib-dir + 所有 inputs 的 /lib；显式给出时只取所列
-;;;   inputs（元素为 "name" 或 ("name" "/subdir")，沿用 nonguix 形状）。
+;;;   RPATH 自动取自带 lib-dir + 所有 inputs 的 /lib；显式给出时在
+;;;   auto-lib-dirs 之前追加所列 inputs（元素为 "name" 或
+;;;   ("name" "/subdir")，沿用 nonguix 形状；用于 inputs 顶层无 /lib 的
+;;;   嵌套库目录，如 waywallen-bin 的 lib/waywallen/lib）。
 ;;;   逐文件先用 patchelf --print-interpreter 探测 dynamic，静态全跳过；
 ;;;   .so/.node 跳过 interpreter 只设 RPATH（设之前再用 --print-rpath 确认
 ;;;   有 .dynamic 段，静态 sidecar 不会炸）。executable 分支在
@@ -498,6 +500,11 @@ strace 无任何 openat）。正常二进制 .dynamic 本就在 RW 段，此处 
         (for-each
          (match-lambda
            ((file . specs)
+            ;; SPEC 只增不减：显式 SPEC 解析后仍拼接 auto-lib-dirs（全
+            ;; inputs 的 /lib）。若 SPEC 替换 auto-lib-dirs，给一个嵌套
+            ;; lib 目录的 SPEC 会静默丢掉其余 inputs 的顶层 /lib
+            ;;（open-wallpaper-engine-bin 0.3.1 实证：bridge SPEC 顶掉
+            ;; 了 lz4/ffmpeg-7 全家）。
             (let ((rpath (string-join
                           (delete-duplicates
                            (append (if (and lib-dir
@@ -505,11 +512,10 @@ strace 无任何 openat）。正常二进制 .dynamic 本就在 RW 段，此处 
                                          (file-is-directory? lib-dir))
                                        (list lib-dir)
                                        '())
-                                   (if (null? specs)
-                                       auto-lib-dirs
-                                       (map (lambda (spec)
-                                              (resolve-rpath-input inputs spec))
-                                            specs)))
+                                   (map (lambda (spec)
+                                          (resolve-rpath-input inputs spec))
+                                        specs)
+                                   auto-lib-dirs)
                            string=?)
                           ":")))
               (patch-one patchelf-bin interpreter rpath preserve-rpath? file))))

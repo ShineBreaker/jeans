@@ -379,7 +379,7 @@ desktop through a Wayland layer shell and a QtQuick interface.")
 (define-public open-wallpaper-engine-bin
   (package
     (name "open-wallpaper-engine-bin")
-    (version "0.3.0")
+    (version "0.3.1")
     (source
      (origin
        (method url-fetch)
@@ -389,7 +389,7 @@ desktop through a Wayland layer shell and a QtQuick interface.")
              "/org.waywallen.open-wallpaper-engine-" version
              "-linux-x86_64.zip"))
        (sha256
-        (base32 "12bmmqjf7s3xrpph4034r8h769fwiyy4d5lm1qsmczz7mvrkmi9f"))))
+        (base32 "1n6zc4p8xianxn5vqryacqyg8vwmb90w5xsida51b19cijd7qvdx"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -411,7 +411,12 @@ desktop through a Wayland layer shell and a QtQuick interface.")
       ;; 使 bundled CEF 库互相找到（旧逻辑 $ORIGIN 写死首项）。
       #:preserve-rpath? #t
       #:patchelf-plan
-      #~'(("share/waywallen/plugins/org.waywallen.open-wallpaper-engine"))
+      ;; SPEC 显式指向 waywallen-bin 的嵌套 lib 目录：0.3.1 起 renderer
+      ;; NEEDED 宿主 daemon 提供的 libwaywallen-bridge.so，该库在
+      ;; waywallen-bin 的 lib/waywallen/lib/ 下（非顶层 /lib，
+      ;; auto-lib-dirs 收集不到）。
+      #~'(("share/waywallen/plugins/org.waywallen.open-wallpaper-engine"
+           ("waywallen-bin" "/lib/waywallen/lib")))
       #:modules '((jeans build binary)
                   (guix build utils))
       #:phases
@@ -432,9 +437,12 @@ desktop through a Wayland layer shell and a QtQuick interface.")
     ;; host.  ffmpeg-7 supplies the libav*/libsw* sonames the wescene-renderer
     ;; is linked against (Guix has no ffmpeg 7.x).  libva covers the VA-API
     ;; sonames and pulseaudio libpulse.so.0 (scene audio); without the latter
-    ;; the renderer dies with exit 127 before IPC connect.
+    ;; the renderer dies with exit 127 before IPC connect.  waywallen-bin
+    ;; supplies libwaywallen-bridge.so (0.3.1+: the renderers link the host
+    ;; daemon's bridge ABI; the plugin zip no longer bundles it).
     (inputs
      `(("glibc" ,glibc)
+       ("waywallen-bin" ,waywallen-bin)
        ("gcc:lib" ,gcc "lib")
        ("mesa" ,mesa)
        ("vulkan-loader" ,vulkan-loader)
