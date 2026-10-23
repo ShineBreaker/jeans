@@ -745,7 +745,7 @@ from the official Ubuntu .deb archives.")
 (define-public mysql-workbench-community-bin
   (package
     (name "mysql-workbench-community-bin")
-    (version "26.7.0")
+    (version "26.10.0")
     (source
      (origin
        (method url-fetch)
@@ -753,8 +753,7 @@ from the official Ubuntu .deb archives.")
              "https://cdn.mysql.com/Downloads/MySQLGUITools/mysql-workbench-"
              version "-linux-glibc2.28-x86_64.zip"))
        (sha256
-        (base32
-         "0jik1nb07zvmiq38mxh1pwfw3pihzw8zvvzw97kwxyjwn8wx8jwl"))))
+        (base32 "0a7rfhzvws05brq1pgzic0brk6n7qbl7d6vd09bc0fha6k2440ia"))))
     (build-system gnu-build-system)
     (arguments
      (list

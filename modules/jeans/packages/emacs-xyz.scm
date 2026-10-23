@@ -119,7 +119,7 @@
 (define-public emacs-ghostel
   (package
     (name "emacs-ghostel")
-    (version "0.58.0")
+    (version "0.59.0")
     (source
      (origin
        (method git-fetch)
@@ -128,7 +128,7 @@
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "0p6gp5ai9fvdlk0h1ff1z6crp6gibkp1wbpnj6d0cv26i93j7d7r"))
+        (base32 "1rfs5jd2xgpilh9xv9mpjpqn7b71iixkgbnpmqi3nwzb8dz0rqnm"))
        (patches %ghostel-patches)))
       (build-system emacs-build-system)
       (arguments
@@ -901,7 +901,7 @@ frontend and the CLI.")
 (define-public emacs-dsh
   (package
     (name "emacs-dsh")
-    (version "0.5.0")
+    (version "0.6.1")
     (source
      (origin
        (method git-fetch)
@@ -910,7 +910,7 @@ frontend and the CLI.")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "17k5xqlvz22b3cc2d5gxyxvqr0bi9s2djd31gp3y5hzj7zvqwaw0"))))
+        (base32 "18133c46cc5bch2088al70yf1vvs5f4vdix4i162y6k6knjr2zfq"))))
     (build-system emacs-build-system)
     (arguments
      (list

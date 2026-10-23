@@ -366,7 +366,7 @@ the webview (GTK/WebKitGTK) frontend with an ncurses fallback.")
 (define-public fresh-editor-bin
   (package
     (name "fresh-editor-bin")
-    (version "0.5.3")
+    (version "0.5.4")
     (source
      (origin
        (method url-fetch)
@@ -374,7 +374,7 @@ the webview (GTK/WebKitGTK) frontend with an ncurses fallback.")
              "https://github.com/sinelaw/fresh/releases/download/"
              "v" version "/fresh-editor_" version "-1_amd64.deb"))
        (sha256
-        (base32 "1zpd6jnfwf0szznvm51zgdby4rawch20384xjr5nsz9gc2y5chv0"))))
+        (base32 "195ppdp055mq94xwhrbf8w49z27f38z2hlpfb0h25ngzj54ld8k1"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -433,7 +433,7 @@ binary release.")
 (define-public zedg-bin
   (package
     (name "zedg-bin")
-    (version "1.24.2")
+    (version "1.25.2")
     (source
      (origin
        (method url-fetch)
@@ -441,7 +441,7 @@ binary release.")
              "https://github.com/x6nux/zed-globalization/releases/download/"
              "v" version "/zedg-zh-cn-linux-x86_64-v" version ".tar.gz"))
        (sha256
-        (base32 "0vi558km8mjh40s9d43r4mz2wyi3ph7lgd0di9g2ils9q7y7xqr0"))))
+        (base32 "1jaxf7552kfk9p9zs2mqgas2m7njnr8hc227n9paj6bwnln5wila"))))
     (build-system binary-build-system)
     (outputs '("out" "shim"))
     (arguments
@@ -550,8 +550,8 @@ the editor under the plain @code{zed} command name.")
 ;;; are compiled in via include_str!, and the inherited install phases
 ;;; (binary + runtime + desktop entry, HELIX_RUNTIME wrapper) work unchanged.
 (define-public helix-steel
-  (let ((commit "c16fac096a9dd162d46f53bf2411f36251d755f3")
-        (revision "6"))
+  (let ((commit "424add100eac9ca258d969b985a8ac370469ec05")
+        (revision "7"))
     (package
       (inherit helix)
       (name "helix-steel")
@@ -564,7 +564,7 @@ the editor under the plain @code{zed} command name.")
                (commit commit)))
          (file-name (git-file-name name version))
          (sha256
-          (base32 "12zwp8r4mdq0wl3zyhb02v9d4q2hs6x79m3ifzbgybsdcjdvmh0l"))))
+          (base32 "0cc2yvv13gscaskrxzc6ycvmdwxpvi58nfcggvz198vigcgd2660"))))
       (arguments
        (substitute-keyword-arguments (package-arguments helix)
          ((#:phases phases)

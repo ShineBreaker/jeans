@@ -264,7 +264,7 @@ editor that supports the protocol to provide Java language features.")
 (define-public aria2-next-bin
   (package
     (name "aria2-next-bin")
-    (version "3.0.5")
+    (version "3.0.8")
     (source
      (origin
        (method url-fetch)
@@ -273,7 +273,7 @@ editor that supports the protocol to provide Java language features.")
              "v" version "/aria2-next-" version "-linux-x86_64"))
        (file-name "aria2-next")
        (sha256
-        (base32 "0svvw6ifhbj4rz1syjz7l5a7bjckvyp2pgq5m1bsw7v13w5zsx1r"))))
+        (base32 "1bi70p2dc8kcb2a9fahsd8jvhqrhwhdv392m07x0xzc6d1fcr066"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -338,7 +338,7 @@ prebuilt binary release.")
 (define-public rayburst-bin
   (package
     (name "rayburst-bin")
-    (version "4.0.1")
+    (version "4.1.0")
     (source
      (origin
        (method url-fetch)
@@ -346,7 +346,7 @@ prebuilt binary release.")
              "https://github.com/AnInsomniacy/rayburst/releases/download/"
              "v" version "/Rayburst_" version "_amd64.deb"))
        (sha256
-        (base32 "125xjnj61f04b34vxgbk3jgwlkqcz70yg3ynkgjl31b1ffnfbxn5"))))
+        (base32 "00ayj6w80590rwcimcsa9f5kl9xrxkx611b91cd6wsmkkh104y46"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -492,7 +492,7 @@ companion extension.  This package provides the prebuilt binary release.")
 (define-public cc-switch-bin
   (package
     (name "cc-switch-bin")
-    (version "4.0.14")
+    (version "4.0.18")
     (source
      (origin
        (method url-fetch)
@@ -500,7 +500,7 @@ companion extension.  This package provides the prebuilt binary release.")
              "https://github.com/farion1231/cc-switch/releases/download/"
              "v" version "/CC-Switch-v" version "-Linux-x86_64.deb"))
        (sha256
-        (base32 "0zkzwpzhx58jqi3528nz0aabkhl3g0i10w95x1ic3kpjqi5fbij2"))))
+        (base32 "0s27pyvqqsfhq9vnia9r4ij59szyx3yk1drsrp61ia06l7h4bwvy"))))
     (build-system gnu-build-system)
     (arguments
      (list
