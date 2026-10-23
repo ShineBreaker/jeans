@@ -13,10 +13,11 @@
 ;;
 ;; Deviation from the Rosenthal original: this module deliberately does
 ;; not ship home-graphical-session-service-type.  The nosdshell service
-;; requires the 'graphical-session and 'dbus provisions, which that
-;; service (already instantiated in configs alongside Rosenthal's
-;; channel) provides; shipping a second copy here would create duplicate
-;; graphical-session provisions in configs that load both channels.
+;; requires the 'wayland-display provision, which upstream Guix's
+;; home-wayland-service-type (gnu home services desktop) provides;
+;; Rosenthal's home-graphical-session-service-type (wayland? #t)
+;; provisions it as well, so configs loading either channel satisfy
+;; the link without duplicate provisions.
 
 (define-module (jeans home services desktop)
   ;; Utilities
@@ -55,7 +56,7 @@
     (list (shepherd-service
            (documentation "Start nosDshell.")
            (provision '(nosdshell))
-           (requirement '(dbus graphical-session))
+           (requirement '(dbus wayland-display))
            (modules '((shepherd support))) ;for '%user-log-dir'
            (auto-start? auto-start?)
            (start
@@ -84,7 +85,7 @@
     (default-value (home-nosdshell-configuration))
     (description
      "Run nosDshell, a quickshell-based Wayland desktop shell, as a user
-Shepherd service.  Requires the @code{graphical-session} and @code{dbus}
-Shepherd provisions; with Rosenthal's
-@code{home-graphical-session-service-type} configured for Wayland, the
-shell starts once @code{wayland-display} is up.")))
+Shepherd service.  Requires the @code{dbus} and @code{wayland-display}
+Shepherd provisions; with upstream Guix's @code{home-wayland-service-type}
+or Rosenthal's @code{home-graphical-session-service-type} (Wayland)
+configured, the shell starts once @code{wayland-display} is up.")))
