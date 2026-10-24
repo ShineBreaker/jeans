@@ -50,18 +50,23 @@
   #:use-module (gnu packages dns)
   #:use-module (gnu packages freedesktop)
   #:use-module (gnu packages gawk)
+  #:use-module (gnu packages gettext)
   #:use-module (gnu packages glib)
+  #:use-module (gnu packages gnome)   ;desktop-file-utils
   #:use-module (gnu packages gtk)
   #:use-module (gnu packages libusb)
   #:use-module (gnu packages linux)
+  #:use-module (gnu packages pciutils)
   #:use-module (gnu packages pkg-config)
   #:use-module (gnu packages python)
   #:use-module (gnu packages python-build)
+  #:use-module (gnu packages python-web)
   #:use-module (gnu packages python-xyz)
   #:use-module (gnu packages sdl)
   #:use-module (gnu packages video)
   #:use-module (gnu packages virtualization)
-  #:use-module (gnu packages xdisorg))
+  #:use-module (gnu packages xdisorg)
+  #:use-module (jeans packages python-xyz))
 
 ;;; GLib helper library shared by libgbinder and the Sailfish stack.  No
 ;;; configure script upstream, hence the deleted 'configure phase.
@@ -433,3 +438,137 @@ The @command{adb} program is invoked internally and is referenced from the
 store, so it needs no separate installation.  Set the @env{ADB} environment
 variable to override it.")
     (license license:asl2.0)))
+
+;;; Packing notes (kept out of the description on purpose):
+;;;
+;;; - 打包的是用户 fork（ShineBreaker/waydroid-helper，开发主线，git 版本），
+;;;   上游原仓库 waydroid-helper/waydroid-helper 自 2026-09 起停滞；fork 的
+;;;   main 领先上游并新增了 Guix 打配脚本（waydroid-helper.scm）、CI 等内容，
+;;;   本定义即以该脚本为蓝本改造。
+;;; - waydroid 本体不是依赖：GUI 通过 PATH 调用 waydroid / waydroid-cli 等
+;;;   命令，wrapper 的 PATH 用 prefix 语义保留会话 PATH，用户 profile 里的
+;;;   waydroid 包照常可见。
+;;; - Guix 无 systemd / dbus-1 的 pc 文件：传空 -Dsystemd-* / -Ddbus-* 关闭
+;;;   服务文件安装（meson 侧对应 required:false 分支）。
+;;; - 上游脚本的 bin-labels 查 "bash" 而 inputs 给的是 bash-minimal（label
+;;;   不一致导致 bash 不进 wrapper PATH）；此处直接用 gexp 引用展开路径，
+;;;   不再经过 assoc-ref 查表。
+;;; - waydroid-cli 经 pkexec 以极简环境运行，只补 PATH；GUI 主程序补全套
+;;;   GI_TYPELIB_PATH / PYTHONPATH / GSETTINGS_SCHEMA_DIR / XDG_DATA_DIRS。
+;;; - gobject-introspection 留在 inputs（lint 会提示应为 native-input，此处
+;;;   为已知误报）：GUI 运行时经 GI_TYPELIB_PATH 加载其 out 里的
+;;;   GLib/GObject 等 typelib， propagated 路径同官方 gjs 包。
+(define-public waydroid-helper
+  (let ((commit "14d1abf9d14a4b77338119562a5ce58fe7a5f587")
+        (revision "0"))
+    (package
+      (name "waydroid-helper")
+      (version (git-version "0.2.9" revision commit))
+      (source
+       (origin
+        (method git-fetch)
+        (uri (git-reference
+              (url "https://github.com/ShineBreaker/waydroid-helper")
+              (commit commit)))
+        (file-name (git-file-name name version))
+        (sha256
+         (base32 "0swfrk7f5bp77cgsfnyc1l6balcg5f2j8yjcad7p35sm241ygmpq"))))
+      (build-system meson-build-system)
+      (arguments
+       (list
+        #:configure-flags #~(list "-Dsystemd-system-unit-dir="
+                                  "-Dsystemd-user-unit-dir="
+                                  "-Ddbus-service-dir="
+                                  "-Ddbus-policy-dir=")
+        ;; pytest 用例要 import Gtk typelib 且 meson test 会重置环境变量，
+        ;; 构建容器无图形栈；单测在源码树用 guix shell + pytest 单独验证。
+        #:tests? #f
+        #:phases
+        #~(let ((py-site
+                 (string-append "/lib/python"
+                                #$(version-major+minor (package-version python))
+                                "/site-packages")))
+            (modify-phases %standard-phases
+              (add-after 'install 'wrap-program-paths
+                (lambda* (#:key inputs outputs #:allow-other-keys)
+                  (let* ((out (assoc-ref outputs "out"))
+                         (python-path
+                          (map (lambda (pkg)
+                                 (string-append pkg py-site))
+                               (list #$python-pygobject
+                                     #$python-pycairo
+                                     #$python-pywayland
+                                     #$python-dbus
+                                     #$python-aiofiles
+                                     #$python-httpx
+                                     #$python-pyyaml)))
+                         (gi-path
+                          (map (lambda (pkg)
+                                 (string-append pkg "/lib/girepository-1.0"))
+                               (list #$gtk #$libadwaita #$vte #$graphene
+                                     #$gdk-pixbuf #$gobject-introspection
+                                     #$pango #$harfbuzz #$cairo #$glib)))
+                         (path-dirs
+                          (append
+                           (list (string-append out "/bin")
+                                 (string-append #$bash-minimal "/bin")
+                                 (string-append #$coreutils-minimal "/bin")
+                                 (string-append #$grep "/bin")
+                                 (string-append #$sed "/bin")
+                                 (string-append #$tar "/bin")
+                                 (string-append #$pciutils "/bin")
+                                 (string-append #$fakeroot "/bin")))))
+                    (wrap-program (string-append out "/bin/waydroid-helper")
+                      `("PATH" ":" prefix ,path-dirs)
+                      `("GI_TYPELIB_PATH" ":" prefix ,gi-path)
+                      `("PYTHONPATH" ":" prefix ,python-path)
+                      `("GSETTINGS_SCHEMA_DIR" ":" prefix
+                        (,(string-append out "/share/glib-2.0/schemas")))
+                      `("XDG_DATA_DIRS" ":" prefix
+                        (,(string-append out "/share"))))
+                    ;; 特权 CLI：pkexec 环境下路径极简，只补 PATH。
+                    (wrap-program (string-append out "/bin/waydroid-cli")
+                      `("PATH" ":" prefix ,path-dirs)))))))))
+      (native-inputs
+       `(("gettext-minimal" ,gettext-minimal)
+         ("python-wrapper" ,python-wrapper)
+         ("desktop-file-utils" ,desktop-file-utils)
+         ("glib:bin" ,glib "bin")           ; glib-compile-schemas
+         ("gtk:bin" ,gtk "bin")))            ; gtk4-update-icon-cache
+      (inputs
+       `(("bash-minimal" ,bash-minimal)
+         ("coreutils-minimal" ,coreutils-minimal)
+         ("grep" ,grep)
+         ("sed" ,sed)
+         ("tar" ,tar)
+         ("pciutils" ,pciutils)
+         ("fakeroot" ,fakeroot)
+         ("gtk" ,gtk)                        ; typelib 在 out output
+         ("libadwaita" ,libadwaita)
+         ("vte" ,vte)
+         ("graphene" ,graphene)
+         ("gdk-pixbuf" ,gdk-pixbuf)
+         ("gobject-introspection" ,gobject-introspection)
+         ("glib" ,glib)
+         ("pango" ,pango)
+         ("harfbuzz" ,harfbuzz)
+         ("cairo" ,cairo)
+         ("python" ,python)
+         ("python-pygobject" ,python-pygobject)
+         ("python-pycairo" ,python-pycairo)
+         ("python-pywayland" ,python-pywayland)
+         ("python-dbus" ,python-dbus)
+         ("python-aiofiles" ,python-aiofiles)
+         ("python-httpx" ,python-httpx)
+         ("python-pyyaml" ,python-pyyaml)))
+      (home-page "https://github.com/ShineBreaker/waydroid-helper")
+      (synopsis "Configure Waydroid, manage key mappings and install extensions")
+      (description
+       "Waydroid Helper is a GTK4/libadwaita GUI application for
+configuring Waydroid, managing key mappings and installing extensions.  It
+ships a main GUI process, a separate key-mapper overlay process, and a
+privileged helper CLI (@command{waydroid-cli}) invoked through pkexec.")
+      ;; 上游有 tag 线（v0.2.9 等），但用户要求打包 fork 开发主线的 git 版本；
+      ;; commit 追踪由 Python updater 的 let-git-version 适配逻辑负责。
+      (properties `((with-latest-git-commit . #t)))
+      (license license:gpl3))))

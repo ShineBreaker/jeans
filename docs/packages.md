@@ -30,13 +30,14 @@
 
 ### (jeans packages android)
 
-| Package          | Description                                            |
-| ---------------- | ------------------------------------------------------ |
-| `libgbinder`     | GLib-style interface to binder                         |
-| `libglibutil`    | GLib utility library                                   |
-| `python-gbinder` | Python bindings for libgbinder                         |
-| `scrcpy`         | Display and control Android devices from the desktop   |
-| `waydroid`       | Container-based approach to boot a full Android system |
+| Package           | Description                                                    |
+| ----------------- | -------------------------------------------------------------- |
+| `libgbinder`      | GLib-style interface to binder                                 |
+| `libglibutil`     | GLib utility library                                           |
+| `python-gbinder`  | Python bindings for libgbinder                                 |
+| `scrcpy`          | Display and control Android devices from the desktop           |
+| `waydroid`        | Container-based approach to boot a full Android system         |
+| `waydroid-helper` | Configure Waydroid, manage key mappings and install extensions |
 
 ### (jeans packages browser)
 
@@ -137,9 +138,10 @@
 
 ### (jeans packages python-xyz)
 
-| Package        | Description                       |
-| -------------- | --------------------------------- |
-| `python-jieba` | Chinese text segmentation library |
+| Package            | Description                              |
+| ------------------ | ---------------------------------------- |
+| `python-jieba`     | Chinese text segmentation library        |
+| `python-pywayland` | Python bindings for the Wayland protocol |
 
 ### (jeans packages theme)
 

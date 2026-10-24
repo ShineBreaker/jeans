@@ -5,7 +5,14 @@
 (define-module (jeans packages python-xyz)
   #:use-module ((guix licenses) #:prefix license:)
   #:use-module (gnu packages python-build)
+  #:use-module (gnu packages python-xyz)
+  #:use-module (gnu packages freedesktop)
+  #:use-module (gnu packages gtk)
+  #:use-module (gnu packages libffi)
+  #:use-module (gnu packages pkg-config)
+  #:use-module (guix build-system pyproject)
   #:use-module (guix build-system python)
+  #:use-module (guix download)
   #:use-module (guix git-download)
   #:use-module (guix packages))
 
@@ -34,4 +41,32 @@ three segmentation modes: an accurate mode for text analysis, a full mode
 that scans all possible words, and a search-engine mode that further splits
 long words to improve recall.  Jieba also supports traditional Chinese
 segmentation and custom dictionaries.")
+    (license license:expat)))
+
+;; cffi 在运行时 dlopen libwayland-client，故 wayland 进 inputs 而非
+;; native-inputs；scanner 在构建期用 pkg-config 定位 wayland-protocols 的
+;; 协议 XML 生成核心协议绑定。
+(define-public python-pywayland
+  (package
+    (name "python-pywayland")
+    (version "0.4.19")
+    (source
+     (origin
+      (method url-fetch)
+      (uri (pypi-uri "pywayland" version))
+      (sha256
+       (base32
+        "17jlk1c8bylzvq2mhs4cqar50hdkx1gsb1fg7hrl0dfzn3spi14x"))))
+    (build-system pyproject-build-system)
+    ;; 测试套件需要真实 Wayland 会话（起 wayland-server socket）。
+    (arguments (list #:tests? #f))
+    (propagated-inputs (list python-cffi))
+    (inputs (list wayland))
+    (native-inputs (list pkg-config wayland-protocols python-setuptools))
+    (home-page "https://github.com/flacjacket/pywayland")
+    (synopsis "Python bindings for the Wayland protocol")
+    (description
+     "Pywayland provides Python bindings for the Wayland protocol, built
+with cffi.  Core protocol bindings are generated at build time from the
+protocol XML shipped in the source distribution.")
     (license license:expat)))
