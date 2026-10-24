@@ -35,6 +35,7 @@
   #:use-module (gnu packages glib)     ; glib
   #:use-module (gnu packages freedesktop) ; libappindicator
   #:use-module (gnu packages gcc)         ; gcc:lib
+  #:use-module (gnu packages backup)      ; libarchive (bsdtar 解 zip)
   #:use-module (gnu packages rust)        ; rust
   #:use-module (gnu packages tls)          ; openssl
   #:use-module (gnu packages compression) ; xz
@@ -906,6 +907,104 @@ supporting many languages including JavaScript, TypeScript, CSS, HTML,
 JSON, YAML, Markdown and GraphQL.")
     (home-page "https://prettier.io")
     (license license:expat)))
+
+
+;; Bun 官方 glibc 预编译 ELF 的 NEEDED 全部由 glibc 自满足（NEEDED 里的
+;; ld-linux-x86-64.so.2 会被 loader 特殊跳过），patchelf 换 interpreter 即可，
+;; patchelf 阶段顺带 repair page-shift 后 .dynamic 所在只读 LOAD 的权限——
+;; 缺这步 bun 启动即 SIGSEGV（ld.so 写 DT_DEBUG）。
+;; 两条不可行的替代路线：ld.so wrapper 会被 bun x 反咬——bun 自动安装时
+;; re-exec 自身，复制的 ld.so 调用形态丢失中间的二进制参数
+;; （execve(ld.so, ["add", ...]) → 127 "cannot open shared object file"）；
+;; musl 资产则动态依赖 /lib/ld-musl-x86_64.so.1 与 musl libc，Guix 无解。
+(define-public bun-bin
+  (package
+    (name "bun-bin")
+    (version "1.4.4")
+    (source
+      (origin
+        (method url-fetch)
+        (uri (string-append
+              "https://github.com/oven-sh/bun/releases/download/bun-v"
+              version "/bun-linux-x64.zip"))
+        (sha256
+          (base32 "0p1rrgy55nry189wdnrlfl3xib8pag2iavcs1yg1b00b5gxwp35z"))))
+    (build-system binary-build-system)
+    (arguments
+     (list
+      ;; bsdtar 解 zip（构建环境无 unzip；引入 (gnu packages zip) 会与
+      ;; 本模块其余 import 传递冲突，guix build 全模块扫描即失败）。
+      ;; bsdtar 分支不做顶层 chdir，SRC 带 bun-linux-x64/ 前缀。
+      #:unpack-method 'bsdtar
+      #:install-plan #~'(("bun-linux-x64/bun" "bin/"))
+      #:patchelf-plan #~'(("bin/bun"))
+      #:wrap? #f
+      #:phases
+      #~(modify-phases %standard-phases
+          ;; bun 按 argv[0] 分发模式：basename 为 bunx 时等价 bun x
+          ;; （symlink 实测生效；官方安装脚本同款做法）。
+          (add-after 'install 'symlink-bunx
+            (lambda _
+              (symlink "bun" (string-append #$output "/bin/bunx")))))))
+    (native-inputs (list libarchive))
+    (inputs `(("glibc" ,glibc)))
+    (supported-systems '("x86_64-linux"))
+    (home-page "https://bun.sh")
+    (synopsis "All-in-one JavaScript runtime, package manager and bundler")
+    (description "Bun is an all-in-one JavaScript runtime, package manager,
+bundler and test runner built on JavaScriptCore.  It runs Node.js projects
+faster with native support for TypeScript and JSX, and replaces node, npm,
+yarn and jest with a single binary.  This package provides the official
+prebuilt binary.")
+    (license license:expat)
+    (properties `((upstream-name . "bun")
+                  (release-tag-prefix . "^bun-v")))))
+
+
+;; pnpm 官方预编译是 Node.js Single Executable Application：二进制按相对
+;; 路径加载 ./dist/pnpm.mjs，所以真身与 dist/ 同住 lib/pnpm/，bin/ 只放
+;; symlink。tarball 顶层有 pnpm 与 dist 两个条目，而 gnu unpack 无条件
+;; chdir 进第一个子目录（dist），需要退回上层再 install。
+(define-public pnpm-bin
+  (package
+    (name "pnpm-bin")
+    (version "12.15.0")
+    (source
+      (origin
+        (method url-fetch)
+        (uri (string-append
+              "https://github.com/pnpm/pnpm/releases/download/v"
+              version "/pnpm-linux-x64.tar.gz"))
+        (sha256
+          (base32 "1605gprk0ms11pynxpjrmknpqbp538iqwnb92rn1f4dxj80fvdam"))))
+    (build-system binary-build-system)
+    (arguments
+     (list
+      #:unpack-method 'gnu-unpack
+      #:install-plan #~'(("pnpm" "lib/pnpm/pnpm")
+                         ("dist" "lib/pnpm/dist"))
+      #:patchelf-plan #~'(("lib/pnpm/pnpm"))
+      #:wrap? #f
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'unpack 'chdir-up
+            (lambda _ (chdir "..")))
+          (add-after 'install 'symlink-bin
+            (lambda _
+              (mkdir-p (string-append #$output "/bin"))
+              (symlink (string-append #$output "/lib/pnpm/pnpm")
+                       (string-append #$output "/bin/pnpm")))))))
+    (inputs `(("glibc" ,glibc)
+              ("gcc:lib" ,gcc "lib")))
+    (supported-systems '("x86_64-linux"))
+    (home-page "https://pnpm.io")
+    (synopsis "Fast, disk space efficient package manager for Node.js")
+    (description "pnpm is a fast, disk space efficient package manager for
+Node.js.  It keeps all package files in a single content-addressable store and
+hard links them into projects, saving disk space and speeding up installation.
+This package provides the official prebuilt binary.")
+    (license license:expat)
+    (properties `((upstream-name . "pnpm")))))
 
 
 ;; Sunshine (GPL-3.0-only, LizardByte/Sunshine) is a self-hosted game stream

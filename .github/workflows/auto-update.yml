@@ -31,6 +31,10 @@ env:
   # hash；交给 refresh 会得到 client/server 版本不一致的包定义。三者
   # （version、source hash、server hash）由人工同步，位置见
   # modules/jeans/packages/android.scm 里 scrcpy 上方注释。
+  # bun-bin 不在列：guix github updater 的 URL 形状匹配不认
+  # download/bun-v<version>/ 资产路径（兜底正则只允许一个可选 v），恒报
+  # no updater；由 Python updater 兜底（读包定义 release-tag-prefix
+  # property 剥 ^ 锚点过滤 bun-v* 系列，2026-10-24 实测正常）。
   REFRESH_PACKAGES: >-
     crush-bin opencode-desktop-bin herdr-bin omo-bin disktree-bin
     magpie-bin codewhale-bin reasonix-bin github-copilot
@@ -41,6 +45,7 @@ env:
     colloid-gtk-theme vimix-gtk-themes vimix-kvantum-themes
     nix-ld opentabletdriver-udev-rules waypaper
     waydroid libgbinder libglibutil python-gbinder
+    pnpm-bin
 
 jobs:
   auto-update:
