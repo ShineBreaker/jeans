@@ -739,7 +739,7 @@ renderer relies on the upstream Chromium binary distribution.")
 ;; the hash.  Guix refresh does not manage this package (see the CI
 ;; workflow): the shared-variable layout leaves it no literal version or
 ;; hash inside the package form to rewrite.
-(define %nosdshell-version "1.6.1")
+(define %nosdshell-version "1.6.2")
 
 (define %nosdshell-source
   (origin
@@ -749,7 +749,7 @@ renderer relies on the upstream Chromium binary distribution.")
           (commit (string-append "v" %nosdshell-version))))
     (file-name (git-file-name "nosdshell" %nosdshell-version))
     (sha256
-     (base32 "11vr3g09s7c186cm9ygrc8cnf9ym17zghyram8p44xjxkxfl49i8"))))
+     (base32 "0j6ihx7jpb31jiv69rgks3ajfna7yrq47cznp64i89jvkpgw8sgv"))))
 
 ;; Our quickshell fork (ShineBreaker/quickshell-nosd): upstream master at
 ;; the version 0.3.2 commit plus the two pipewire use-after-free fixes the
