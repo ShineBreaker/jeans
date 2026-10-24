@@ -459,8 +459,8 @@ variable to override it.")
 ;;;   为已知误报）：GUI 运行时经 GI_TYPELIB_PATH 加载其 out 里的
 ;;;   GLib/GObject 等 typelib， propagated 路径同官方 gjs 包。
 (define-public waydroid-helper
-  (let ((commit "14d1abf9d14a4b77338119562a5ce58fe7a5f587")
-        (revision "0"))
+  (let ((commit "a3868dddff7e0674e732c04797c96c46061a7ccd")
+        (revision "1"))
     (package
       (name "waydroid-helper")
       (version (git-version "0.2.9" revision commit))
@@ -472,7 +472,7 @@ variable to override it.")
               (commit commit)))
         (file-name (git-file-name name version))
         (sha256
-         (base32 "0swfrk7f5bp77cgsfnyc1l6balcg5f2j8yjcad7p35sm241ygmpq"))))
+         (base32 "0ghd2xv4rapzp8xaxz7nz4vni85sfsxrscmln5zqd2cgvgdjsvrq"))))
       (build-system meson-build-system)
       (arguments
        (list

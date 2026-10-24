@@ -901,7 +901,7 @@ frontend and the CLI.")
 (define-public emacs-dsh
   (package
     (name "emacs-dsh")
-    (version "0.6.1")
+    (version "0.7.0")
     (source
      (origin
        (method git-fetch)
@@ -910,7 +910,7 @@ frontend and the CLI.")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "18133c46cc5bch2088al70yf1vvs5f4vdix4i162y6k6knjr2zfq"))))
+        (base32 "0jjkp0364ns0z72v44vbpbrxpyj1qjsbgncw581r5px9rxc1faxp"))))
     (build-system emacs-build-system)
     (arguments
      (list
