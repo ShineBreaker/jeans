@@ -116,7 +116,7 @@
 (define-public codewhale-bin
   (package
     (name "codewhale-bin")
-    (version "0.10.1")
+    (version "0.10.2")
     (source
      (origin
        (method url-fetch)
@@ -124,7 +124,7 @@
              "https://github.com/Hmbown/CodeWhale/releases/download/"
              "v" version "/codewhale-linux-x64.tar.gz"))
        (sha256
-        (base32 "1h0bhz4p2xkzln8fyqg2y7ci9z859d0lbba1a7a8rwk0pjbk668h"))))
+        (base32 "1nbh1x8h501r26j7rmvjg7lw6lsmglgc025q5f99qm25v1qn8rpd"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -395,7 +395,7 @@ This package provides the prebuilt binary release.")
 (define-public github-copilot
   (package
     (name "github-copilot")
-    (version "1.1.32")
+    (version "1.1.33")
     (source
      (origin
        (method url-fetch)
@@ -403,7 +403,7 @@ This package provides the prebuilt binary release.")
              "https://github.com/github/app/releases/download/"
              "v" version "/GitHub-Copilot-linux-x64.deb"))
        (sha256
-        (base32 "05alzwdqjxsb0yhn5yal7praxph5bzmixn5r57h897yxz0cf1rvc"))))
+        (base32 "1r05b30x7rdd2gr7rdpl8kjxwf35glzsx65xy2zqbqhlp9p1rman"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -803,7 +803,7 @@ coding experience with context awareness.")
 (define-public paseo-bin
   (package
     (name "paseo-bin")
-    (version "0.13.0")
+    (version "0.13.2")
     (source
      (origin
        (method url-fetch)
@@ -811,7 +811,7 @@ coding experience with context awareness.")
              "https://github.com/getpaseo/paseo/releases/download/"
              "v" version "/Paseo-" version "-amd64.deb"))
        (sha256
-        (base32 "15vg0nblwzh78isv2bil9sm9xnsywbsmnbfgqdpwc8z042is322g"))))
+        (base32 "0hhjhicnk3k7g97bshpxmjai1m6nq7s7qxa2q7y1x13y0b1m6wjp"))))
     (build-system electron-build-system)
     (arguments
      (list
@@ -945,7 +945,7 @@ telemetry or forced log-ins.")
 (define-public reasonix-bin
   (package
     (name "reasonix-bin")
-    (version "2.50.0")
+    (version "2.53.1")
     (source
      (origin
        (method url-fetch)
@@ -953,7 +953,7 @@ telemetry or forced log-ins.")
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
              "v" version "/reasonix-linux-amd64.tar.gz"))
        (sha256
-        (base32 "083jgrfxmi24ifkk95y0p1zs1gki8v5j9gkvbvzjczwayzi86l1q"))))
+        (base32 "10wmr21698ing9a5sag2dw3w3x61ipgm056b41vb0a2x9ygkkxhz"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -999,7 +999,7 @@ and ships as a single static binary with no runtime dependencies.")
 (define-public reasonix-studio-bin
   (package
     (name "reasonix-studio-bin")
-    (version "2.50.0")
+    (version "2.53.1")
     (source
      (origin
        (method url-fetch)
@@ -1007,7 +1007,7 @@ and ships as a single static binary with no runtime dependencies.")
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
              "studio-v" version "/ReasonixStudio-linux-amd64.deb"))
        (sha256
-        (base32 "1py9pyb6djqvrpa3av44x3d285prch021ldnbi6i9zgqr18dgkj8"))))
+        (base32 "0vmm4f85cvagcqqjld4sbj5n13wj60ylwkiv4kabnkd5w26fhc4n"))))
     (build-system electron-build-system)
     (arguments
      (list
@@ -1449,7 +1449,7 @@ without friction.")
 (define-public zcode-proxy-bin
   (package
     (name "zcode-proxy-bin")
-    (version "4.8.5")
+    (version "4.8.6")
     (source
      (origin
        (method url-fetch)
@@ -1457,7 +1457,7 @@ without friction.")
              "https://github.com/TriDefender/zcode-api/releases/download/"
              "v" version "/zcode-proxy-linux-x64"))
        (sha256
-        (base32 "1392q3kmk6wlgiqz8is3d30sk3124hb46ywcryf7br6di2rshy34"))))
+        (base32 "0f02lhq1bzgzn491kdk64hfr866s76k7cblqazh992v6dg3lwq08"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -1515,7 +1515,7 @@ release and needs the @code{nix-ld} system service to run.")
 (define-public omo-bin
   (package
     (name "omo-bin")
-    (version "5.1.44")
+    (version "5.1.48")
     (source
      (origin
        (method url-fetch)
@@ -1524,7 +1524,7 @@ release and needs the @code{nix-ld} system service to run.")
              "v" version "/omo-linux-x64"))
        (sha256
         (base32
-         "03argacrj9yikdrb8phlphq0zibiliqqpj0yggbplih7kh19r8ml"))))
+         "04v9dcw3ls1s0yp0m4k0amf17dknhq412cqcypcssf91pg0a28vz"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -1695,7 +1695,7 @@ so the bundled self-updater should not be used.")
 (define-public magpie-bin
   (package
     (name "magpie-bin")
-    (version "0.1.1367")
+    (version "0.1.1709")
     (source
      (origin
        (method url-fetch)
@@ -1703,7 +1703,7 @@ so the bundled self-updater should not be used.")
              "https://github.com/yetone/magpie-releases/releases/download/"
              "v" version "/magpie-linux-amd64"))
        (sha256
-        (base32 "1zmp630004w4xrahi3q3jiizkglywvrwdss6w69iljq7ik50cabb"))))
+        (base32 "19grdsx080f1sgb7rm5wi1p98pawm7909l96mmg3lbisyb7n2c4p"))))
     (build-system binary-build-system)
     (arguments
      (list

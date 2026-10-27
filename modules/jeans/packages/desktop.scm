@@ -115,7 +115,7 @@ and Xorg.")
 (define-public ai-usagebar-bin
   (package
     (name "ai-usagebar-bin")
-    (version "1.43.0")
+    (version "1.44.0")
     (source
      (origin
        (method url-fetch)
@@ -123,7 +123,7 @@ and Xorg.")
              "https://github.com/akitaonrails/ai-usagebar/releases/download/"
              "v" version "/ai-usagebar-linux-x86_64.tar.gz"))
        (sha256
-        (base32 "0c5mib1cxxgq1xa9sz08gdyx6iaaqdcwn33q26kyz6n3m10a9sfj"))))
+        (base32 "0sk4izrpn6m2d3xahv3km4vwkanwwb9w2nq6nn9y90h9cx7cwjqz"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -739,7 +739,7 @@ renderer relies on the upstream Chromium binary distribution.")
 ;; the hash.  Guix refresh does not manage this package (see the CI
 ;; workflow): the shared-variable layout leaves it no literal version or
 ;; hash inside the package form to rewrite.
-(define %nosdshell-version "1.6.2")
+(define %nosdshell-version "1.6.3")
 
 (define %nosdshell-source
   (origin
@@ -749,7 +749,7 @@ renderer relies on the upstream Chromium binary distribution.")
           (commit (string-append "v" %nosdshell-version))))
     (file-name (git-file-name "nosdshell" %nosdshell-version))
     (sha256
-     (base32 "0j6ihx7jpb31jiv69rgks3ajfna7yrq47cznp64i89jvkpgw8sgv"))))
+     (base32 "0sx7nnw55kq2ckqv199lrv2bdgh1y43dg2d3ajj4k40psf03klmi"))))
 
 ;; Our quickshell fork (ShineBreaker/quickshell-nosd): upstream master at
 ;; the version 0.3.2 commit plus the two pipewire use-after-free fixes the
