@@ -500,8 +500,10 @@ of Emacs Lisp projects.  This package provides the prebuilt binary release.")
 ;;;
 ;;;   out/bin/{neomacs,neomacsclient}        (patchelf'd real ELFs)
 ;;;   out/libexec/neomacs/<ver>/<triple>/    (PATH_EXEC, see below)
-;;;     {neomacs-temacs,bootstrap-neomacs,mock-display}
+;;;     {neomacs-temacs,bootstrap-neomacs}
 ;;;     neomacs.pdump                        (dump image, copied as data)
+;;;     (0.0.19 also shipped a third role binary, mock-display; the
+;;;      0.0.20 deb dropped it, so the install list tracks upstream.)
 ;;;   out/share/neomacs/{lisp,etc,leim}      (runtime root)
 ;;;   out/share/applications/neomacs.desktop (shipped by upstream)
 ;;;   out/share/icons/hicolor/scalable/apps/neomacs.svg
@@ -607,7 +609,7 @@ of Emacs Lisp projects.  This package provides the prebuilt binary release.")
 (define-public neomacs-bin
   (package
     (name "neomacs-bin")
-    (version "0.0.19")
+    (version "0.0.20")
     (source
      (origin
        (method url-fetch)
@@ -615,7 +617,7 @@ of Emacs Lisp projects.  This package provides the prebuilt binary release.")
              "https://github.com/eval-exec/neomacs/releases/download/"
              "v" version "/neomacs_" version "_amd64.deb"))
        (sha256
-        (base32 "0x9d12dqfj9l3dw6cacic5zp9zjmsk67lb3bzdbqc6rdbvczgkys"))))
+        (base32 "1ldl4zayr9bq34s9fc453zf4brhv13l8z4c0wrgkgcscrrvig2za"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -708,7 +710,7 @@ of Emacs Lisp projects.  This package provides the prebuilt binary release.")
                 (for-each
                  (lambda (f)
                    (install-file (string-append deb-archlib "/" f) archlib))
-                 '("neomacs-temacs" "bootstrap-neomacs" "mock-display"))
+                 '("neomacs-temacs" "bootstrap-neomacs"))
                 ;; neomacs.pdump is NOT executable; copy as data.
                 (copy-file (string-append deb-archlib "/neomacs.pdump")
                            (string-append archlib "/neomacs.pdump"))
@@ -748,8 +750,7 @@ of Emacs Lisp projects.  This package provides the prebuilt binary release.")
                   (map (lambda (f) (string-append bin "/" f))
                        '("neomacs" "neomacsclient"))
                   (map (lambda (f) (string-append archlib "/" f))
-                       '("neomacs-temacs" "bootstrap-neomacs"
-                         "mock-display"))))))))))
+                       '("neomacs-temacs" "bootstrap-neomacs"))))))))))
     (native-inputs
      `(("libarchive" ,libarchive)
        ("patchelf" ,patchelf)
