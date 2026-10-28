@@ -1244,3 +1244,56 @@ GPUI and follows the visual language of Omarchy.  This package provides the
 prebuilt release binary.")
     (properties `((upstream-name . "disktree")))
     (license license:expat)))
+
+;;; 自 panther 频道迁入：官方 release tarball + 三壳补全。
+(define-public gh
+  (package
+    (name "gh")
+    (version "2.103.2")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append "https://github.com/cli/cli/releases/download/v"
+                           version "/gh_" version "_linux_"
+                           (match (or (%current-system) (%current-target-system))
+                             ("x86_64-linux" "amd64")
+                             ("aarch64-linux" "arm64")) ".tar.gz"))
+       (sha256
+        (base32
+         (match (or (%current-system) (%current-target-system))
+           ("x86_64-linux" "1j2rkjsqj440f17wcga396i0pxy8ldkdxzgzgqin3p2x253zgk32")
+           ("aarch64-linux" "0hx4c7px3d660waz124d2ilcgfkqv5fv4scxzsiq3cfq1fjrjgjc"))))))
+    (build-system copy-build-system)
+    (arguments
+     '(#:install-plan
+       '(("bin/gh" "bin/")
+         ("share/man" "share/"))
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'install 'generate-completions
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (bash-comp (string-append out "/etc/bash_completion.d"))
+                    (zsh-comp (string-append out "/share/zsh/site-functions"))
+                    (fish-comp (string-append out "/share/fish/vendor_completions.d"))
+                    (gh (string-append out "/bin/gh")))
+               (mkdir-p bash-comp)
+               (mkdir-p zsh-comp)
+               (mkdir-p fish-comp)
+               ;; Generate shell completions
+               (with-output-to-file (string-append bash-comp "/gh")
+                 (lambda () (invoke gh "completion" "-s" "bash")))
+               (with-output-to-file (string-append zsh-comp "/_gh")
+                 (lambda () (invoke gh "completion" "-s" "zsh")))
+               (with-output-to-file (string-append fish-comp "/gh.fish")
+                 (lambda () (invoke gh "completion" "-s" "fish")))
+               #t))))))
+    (properties `((upstream-name . "gh")))
+    (supported-systems '("x86_64-linux" "aarch64-linux"))
+    (home-page "https://cli.github.com")
+    (synopsis "GitHub command-line tool")
+    (description
+     "gh is GitHub on the command line.  It brings pull requests, issues, and
+other GitHub concepts to the terminal next to where you are already working
+with git and your code.")
+    (license license:expat)))
