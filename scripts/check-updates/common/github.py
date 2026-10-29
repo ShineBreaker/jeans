@@ -61,21 +61,31 @@ def get_latest_github_release(
         headers["Authorization"] = f"token {GITHUB_TOKEN}"
 
     try:
-        # tag_prefix 模式：用列表 API 找匹配前缀的最新（非预）发布
+        # tag_prefix 模式：用列表 API 找匹配前缀的最新（非预）发布。
+        # 必须分页扫全列表：固定窗口会被同仓库其他系列的 release 挤爆——
+        # trycua/cua 2026-10-29 实证，稳定版 cua-driver-rs-v0.38.0 已排在
+        # release 列表第 32 位，per_page=30 够不到，误报
+        # "无法获取最新release信息"（issue #63）。
         if tag_prefix:
-            response = http.github_api_get(
-                repo, "releases?per_page=30", headers
-            )
-            if 500 <= response.status_code <= 599:
-                raise RetryableError(f"GitHub API 服务器错误: {response.status_code}")
-            response.raise_for_status()
-            for rel in response.json():
-                tag_name = rel.get("tag_name") or ""
-                if not tag_name.startswith(tag_prefix):
-                    continue
-                if rel.get("prerelease", False) and not include_pre_release:
-                    continue
-                return tag_name
+            page = 1
+            while page <= 10:
+                response = http.github_api_get(
+                    repo, f"releases?per_page=100&page={page}", headers
+                )
+                if 500 <= response.status_code <= 599:
+                    raise RetryableError(f"GitHub API 服务器错误: {response.status_code}")
+                response.raise_for_status()
+                releases = response.json()
+                for rel in releases:
+                    tag_name = rel.get("tag_name") or ""
+                    if not tag_name.startswith(tag_prefix):
+                        continue
+                    if rel.get("prerelease", False) and not include_pre_release:
+                        continue
+                    return tag_name
+                if len(releases) < 100:
+                    break
+                page += 1
             return None
 
         # 首先尝试获取最新的稳定版release。
