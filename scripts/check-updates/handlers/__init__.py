@@ -6,6 +6,7 @@ from typing import Any, Callable, Dict, Optional
 
 from handlers.amber_pm import update_amber_pm
 from handlers.font_misans import update_font_misans
+from handlers.gh import update_gh
 from handlers.jdtls_bin import update_jdtls_bin
 from handlers.lem_next_bin import update_lem_next_bin
 from handlers.mysql_workbench_bin import update_mysql_workbench_bin
@@ -16,6 +17,7 @@ from handlers.zcode import update_zcode
 SPECIAL_UPDATERS: Dict[str, Callable[[Dict[str, Any], Dict[str, Any], Path], Optional[Dict[str, Any]]]] = {
     "zcode": update_zcode,
     "amber-pm": update_amber_pm,
+    "gh": update_gh,
     "jdtls-bin": update_jdtls_bin,
     "font-misans": update_font_misans,
     "lem-next-bin": update_lem_next_bin,
