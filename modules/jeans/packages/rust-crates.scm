@@ -4261,6 +4261,27 @@
   (crate-source "wayland-scanner" "0.31.11"
                 "1h0al3271l2w124sxlh77s1kmjg0z24ns2mk1vbnfars3d3313ik"))
 
+(define rust-cc-1.10.0
+  (crate-source "cc" "1.10.0"
+                "185yfn6np0m5x7hz1q7qf595sqzbbs2vc9dshxhssh1ydvx5bq46"))
+
+(define rust-embedded-io-0.7.1
+  (crate-source "embedded-io" "0.7.1"
+                "1ivwy30m48mkw6si51wwj7zv6ad1h55p9np1cxz5rdvn8xqsmccy"))
+
+(define rust-find-msvc-tools-0.1.15
+  (crate-source "find-msvc-tools" "0.1.15"
+                "0j5sh4lb7g8xh6kd67s0vz037ah5hlp9f2rbgbg9f41rqmf92rhw"))
+
+(define rust-goblin-0.10.7
+  (crate-source "goblin" "0.10.7"
+                "1j542pyn5whjaxlqb6lb3b0sxi67fr5573n1rracm33ilwb2cn0p"))
+
+(define rust-heapless-0.9.3
+  (crate-source "heapless" "0.9.3"
+                "192s7fnk1mqacc16qr74bc86lqkfqwa5gp6q9s5va5cl7zc4pfi5"))
+
+
 (define ssss-separator 'end-of-crates)
 
 ;;;
@@ -4538,18 +4559,18 @@
 
                      (nix-ld =>
                               (list rust-byteorder-1.5.0
-                                    rust-cc-1.2.39
-                                    rust-embedded-io-0.6.1
-                                    rust-find-msvc-tools-0.1.2
-                                    rust-goblin-0.10.1
-                                    rust-hash32-0.3.1
-                                    rust-heapless-0.9.1
-                                    rust-linux-raw-sys-0.11.0
-                                    rust-log-0.4.28
-                                    rust-plain-0.2.3
-                                    rust-scroll-0.13.0
-                                    rust-shlex-1.3.0
-                                    rust-stable-deref-trait-1.2.0))
+                               rust-cc-1.10.0
+                               rust-embedded-io-0.7.1
+                               rust-find-msvc-tools-0.1.15
+                               rust-goblin-0.10.7
+                               rust-hash32-0.3.1
+                               rust-heapless-0.9.3
+                               rust-linux-raw-sys-0.12.1
+                               rust-log-0.4.34
+                               rust-plain-0.2.3
+                               rust-scroll-0.13.0
+                               rust-shlex-2.0.1
+                               rust-stable-deref-trait-1.2.0))
 
                      (helix-steel =>
                               (list rust-abi-stable-0.11.3

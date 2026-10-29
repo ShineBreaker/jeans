@@ -18,7 +18,7 @@
 (define-public nix-ld
   (package
     (name "nix-ld")
-    (version "2.0.6")
+    (version "2.0.7")
     (source
      (origin
        (method git-fetch)
@@ -27,7 +27,7 @@
              (commit (string-append version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "1d00pdxnrkpxfjd1dfrmc5i7yz30ijx1nkzh75n4799v5mdh9mr3"))))
+        (base32 "18xikqchzhvmkwjyzv16cqvyy8pf97l91dxj3k10p21xiaa1fznm"))))
     (build-system cargo-build-system)
     (arguments
      (list
