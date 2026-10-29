@@ -968,7 +968,7 @@ prebuilt binary.")
 (define-public pnpm-bin
   (package
     (name "pnpm-bin")
-    (version "12.15.0")
+    (version "12.16.1")
     (source
       (origin
         (method url-fetch)
@@ -976,7 +976,7 @@ prebuilt binary.")
               "https://github.com/pnpm/pnpm/releases/download/v"
               version "/pnpm-linux-x64.tar.gz"))
         (sha256
-          (base32 "1605gprk0ms11pynxpjrmknpqbp538iqwnb92rn1f4dxj80fvdam"))))
+          (base32 "09d80ayicpdy4kza2w6k601ahc8hwlbink6qsmxnykx1fh8zhpsn"))))
     (build-system binary-build-system)
     (arguments
      (list

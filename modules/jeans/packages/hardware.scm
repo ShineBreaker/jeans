@@ -32,7 +32,7 @@
 (define-public opentabletdriver-udev-rules
   (package
     (name "opentabletdriver-udev-rules")
-    (version "0.6.7")
+    (version "0.6.8.1")
     (source
       (origin
         (method git-fetch)
@@ -41,7 +41,7 @@
               (commit (string-append "v" version))))
         (file-name (git-file-name name version))
         (sha256
-          (base32 "0q3wc7zv7fadc0w7iihzysc0g4xwalv6mfmk0qwpzxnq73advgcc"))))
+          (base32 "01xsnms8525a2k5n27z9z9dq2yxpbq4gx75wnp9iv77lhbz5dl5m"))))
     (build-system gnu-build-system)
     (arguments
       (list #:modules '((guix build utils)
