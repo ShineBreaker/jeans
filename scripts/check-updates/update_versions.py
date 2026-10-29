@@ -295,6 +295,8 @@ def main():
                                     get_base32_for_git,
                                     git_url,
                                     new_sha,
+                                    recursive=package.get(
+                                        "git_recursive", False),
                                     max_retries=2,
                                     base_delay=5,
                                 )
@@ -525,6 +527,8 @@ def main():
                                     get_base32_for_git,
                                     git_url,
                                     new_sha,
+                                    recursive=package.get(
+                                        "git_recursive", False),
                                     max_retries=2,
                                     base_delay=5,
                                 )

@@ -518,8 +518,8 @@ same Guix profile is enough for Waywallen to discover the plugin.")
 ;; upstream commit (upstream tags are release-branch only and behind main);
 ;; commit tracking is handled by the Python updater.
 (define-public linux-wallpaperengine
-  (let ((commit "b016d7d1fdcf4e5fd2f9c9fa420a8aaa07fee02d")
-        (revision "0"))
+  (let ((commit "38a5d60cf549fcead9a8880a4831b852ab95b92d")
+        (revision "1"))
     (package
       (name "linux-wallpaperengine")
       (version (git-version "0.0.1" revision commit))
@@ -532,7 +532,7 @@ same Guix profile is enough for Waywallen to discover the plugin.")
                (recursive? #t)))        ; glslang, quickjs, nlohmann/json, ...
          (file-name (git-file-name name version))
          (sha256
-          (base32 "0lmnbdy7p3gm55imi7ldgs860jsb59k0pzbl9ngygi883w84bdam"))))
+          (base32 "108kg0d40wmx48p1i4aix34ibdkngrpxbsc4p1hxbrn42068my3z"))))
       (build-system cmake-build-system)
       (arguments
        (list

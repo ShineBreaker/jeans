@@ -334,6 +334,12 @@ def parse_package_definitions(content: str, _file_path: Path) -> list[dict[str, 
             r'\(git-branch\s+\.\s+"([A-Za-z0-9._/-]+)"\)', package_content
         )
         git_branch = git_branch_match.group(1) if git_branch_match else None
+        # git-recursive：origin 的 git-reference 是否带 (recursive? #t)。
+        # 决定 get_base32_for_git 是否物化子模块（linux-wallpaperengine
+        # 是仓库里唯一 recursive 的 git-fetch 包）。
+        git_recursive = bool(
+            re.search(r'\(recursive\?\s+#t\)', package_content)
+        )
         # git-version 的 base（用于重建 version 字符串）
         git_version_base = None
         if is_let_git_version:
@@ -359,6 +365,7 @@ def parse_package_definitions(content: str, _file_path: Path) -> list[dict[str, 
                 "git_version_base": git_version_base,
                 "release_tag_prefix": release_tag_prefix,
                 "git_branch": git_branch,
+                "git_recursive": git_recursive,
                 # 共享变量结构（nosdshell 类）：常规包全为 False/None
                 "is_shared_source": is_shared_source,
                 "shared_version_var": shared_version_var,

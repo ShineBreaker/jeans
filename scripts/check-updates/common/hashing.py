@@ -135,8 +135,13 @@ def get_base32_from_guix_download(url: str, timeout: int = 120) -> Optional[str]
         return None
 
 
-def get_base32_for_git(url: str, ref: str) -> Optional[str]:
-    """通过 git clone + NAR 序列化计算 git-fetch 包的 base32 值（纯 Python，不依赖 guix 命令）"""
+def get_base32_for_git(url: str, ref: str, recursive: bool = False) -> Optional[str]:
+    """通过 git clone + NAR 序列化计算 git-fetch 包的 base32 值（纯 Python，不依赖 guix 命令）
+
+    recursive=True 时按 guix git-fetch 的 (recursive? #t) 语义物化子模块，
+    并删除所有 .git 条目（含子模块 gitfile）——两步都与 guix 构建器
+    （guix/build/git.scm）逐条对齐，否则 NAR hash 与 guix 实产不符。
+    """
     tmpdir = tempfile.mkdtemp(prefix="guix-git-hash-")
     try:
         print(f"     🔽 正在克隆源码并计算 base32...")
@@ -177,8 +182,46 @@ def get_base32_for_git(url: str, ref: str) -> Optional[str]:
             print(f"     ⚠️  git clone 失败: {clone_err}")
             return None
 
-        # 统一删除 .git 目录，确保 NAR hash 不含 VCS 元数据
-        shutil.rmtree(os.path.join(tmpdir, ".git"), ignore_errors=True)
+        # 与 guix git-fetch（guix/build/git.scm）逐条对齐：
+        # 1) (recursive? #t) 的 origin 检出后跑 submodule update --init
+        #    --recursive。漏了这步算出的 NAR hash 是不含子模块内容的树——
+        #    linux-wallpaperengine 2026-10-29 实证（issue #64）：updater
+        #    算出 0za2af3s...，guix 实产 108kg0d4...，bump 全被挡下。
+        #    update=none 的子模块（quickjs 的 test262）git 与 guix 同样
+        #    跳过，行为一致。
+        if recursive:
+            submodule_result = subprocess.run(
+                ["git", "submodule", "update", "--init", "--recursive"],
+                cwd=tmpdir,
+                capture_output=True,
+                text=True,
+                timeout=600,
+            )
+            if submodule_result.returncode != 0:
+                submodule_err = submodule_result.stderr.strip()
+                if is_retryable_command_failure(submodule_err):
+                    raise RetryableError(f"git submodule update 失败: {submodule_err}")
+                print(f"     ⚠️  git submodule update 失败: {submodule_err}")
+                return None
+
+        # 2) 删除所有 .git 条目：顶层目录之外还有子模块里的 .git gitfile
+        #    （guix 用 find-files "^\\.git$" 全删）。只删顶层时 gitfile
+        #    留在 NAR 里——同一 commit 复刻实测：得 15ji3vp2...，仍与
+        #    guix 的 108kg0d4... 差一批文件。无子模块的仓库等价于原行为。
+        for root, dirs, files in os.walk(tmpdir):
+            kept = []
+            for name in dirs:
+                if name == ".git":
+                    shutil.rmtree(os.path.join(root, name), ignore_errors=True)
+                else:
+                    kept.append(name)
+            dirs[:] = kept
+            for name in files:
+                if name == ".git":
+                    try:
+                        os.remove(os.path.join(root, name))
+                    except OSError:
+                        pass
 
         # 纯 Python NAR 序列化 + SHA256 + base32
         base32 = compute_nar_base32(tmpdir)
