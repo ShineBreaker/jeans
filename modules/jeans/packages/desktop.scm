@@ -379,7 +379,7 @@ desktop through a Wayland layer shell and a QtQuick interface.")
 (define-public open-wallpaper-engine-bin
   (package
     (name "open-wallpaper-engine-bin")
-    (version "0.3.1")
+    (version "0.3.2")
     (source
      (origin
        (method url-fetch)
@@ -389,7 +389,7 @@ desktop through a Wayland layer shell and a QtQuick interface.")
              "/org.waywallen.open-wallpaper-engine-" version
              "-linux-x86_64.zip"))
        (sha256
-        (base32 "1n6zc4p8xianxn5vqryacqyg8vwmb90w5xsida51b19cijd7qvdx"))))
+        (base32 "1l3a2bpj51h03dkw5bb906jsc3p4xaawmyi5bh9j0x45czy9fb18"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -416,7 +416,11 @@ desktop through a Wayland layer shell and a QtQuick interface.")
       ;; waywallen-bin 的 lib/waywallen/lib/ 下（非顶层 /lib，
       ;; auto-lib-dirs 收集不到）。
       #~'(("share/waywallen/plugins/org.waywallen.open-wallpaper-engine"
-           ("waywallen-bin" "/lib/waywallen/lib")))
+           ("waywallen-bin" "/lib/waywallen/lib")
+           ;; Guix 的 nss 把库装在 lib/nss/ 子目录而非顶层 /lib，
+           ;; 0.3.2 起 bundled libcef.so 新增传递依赖 libnss3.so，
+           ;; auto-lib-dirs 收不到，必须显式补。
+           ("nss" "/lib/nss")))
       #:modules '((jeans build binary)
                   (guix build utils))
       #:phases
