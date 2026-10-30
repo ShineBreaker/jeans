@@ -76,7 +76,7 @@
 | `helix-steel` | Post-modern modal text editor with an embedded Steel Scheme runtime |
 | `lem-next` | Integrated IDE/editor for Common Lisp |
 | `lem-next-bin` | Integrated IDE/editor for Common Lisp (nightly prebuild) |
-| `zedg-bin` | High-performance multiplayer code editor |
+| `zed-bin` | High-performance multiplayer code editor |
 
 ### (jeans packages emacs-xyz)
 

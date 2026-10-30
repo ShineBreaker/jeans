@@ -412,11 +412,11 @@ binary release.")
     (license license:gpl2)
     (supported-systems '("x86_64-linux"))))
 
-;;; zedg-bin packages the upstream Zed editor's prebuilt Linux release
+;;; zed-bin packages the upstream Zed editor's prebuilt Linux release
 ;;; (zed-industries/zed): Zed's GPL-3.0-or-later binaries exactly as
-;;; upstream ships them, installed under the zedg command name this
-;;; package has always provided.  Only the x86_64-linux tarball is
-;;; packaged; upstream also publishes -pre tags which are not tracked.
+;;; upstream ships them, under upstream's own names.  Only the
+;;; x86_64-linux tarball is packaged; upstream also publishes -pre tags
+;;; which are not tracked.
 ;;;
 ;;; Layout: bin/zed is Zed's combined CLI+GUI launcher (NEEDED is only
 ;;; glibc/gcc; it execs the editor below); libexec/zed-editor is the
@@ -425,7 +425,7 @@ binary release.")
 ;;; built-in bundle detection, which searches ../libexec/zed-editor
 ;;; (plus ../lib/zed/zed-editor and ./zed) relative to /proc/self/exe —
 ;;; so the two must keep upstream's bin/ + libexec/ sibling shape:
-;;; lib/zedg-bin/bin/zedg next to lib/zedg-bin/libexec/zed-editor.
+;;; lib/zed/bin/zed next to lib/zed/libexec/zed-editor.
 ;;; The tarball also bundles a private lib/ (libxcb, libxkbcommon-x11,
 ;;; libX11-xcb, ...) for generic Linux; it is deliberately NOT
 ;;; installed — every NEEDED soname resolves from Guix system libraries
@@ -433,9 +433,6 @@ binary release.")
 ;;; output), so the bundled copies would only shadow them.
 ;;; ZED_UPDATE_EXPLANATION points the built-in auto-updater at Guix
 ;;; instead.
-;;;
-;;; The "shim" output exposes the same wrapped binary as the plain
-;;; "zed" command for tooling that hardcodes upstream's name.
 ;;;
 ;;; Source history: this package originally tracked
 ;;; x6nux/zed-globalization (an AI-translated zh-CN repack of the same
@@ -449,9 +446,9 @@ binary release.")
 ;;; source but keeps the bundled lib/ and prefers it through the
 ;;; wrapper's LD_LIBRARY_PATH; this package resolves everything from
 ;;; system libraries instead.
-(define-public zedg-bin
+(define-public zed-bin
   (package
-    (name "zedg-bin")
+    (name "zed-bin")
     (version "1.26.2")
     (source
      (origin
@@ -462,24 +459,23 @@ binary release.")
        (sha256
         (base32 "1ljn72h396r5g6n007a6yc2r5bdp3b45ck3grjld0nzj34h9fysd"))))
     (build-system binary-build-system)
-    (outputs '("out" "shim"))
     (arguments
      (list
       ;; tarball 顶层是 zed.app/，strip 后得 bin/{zed,libexec,share}；
       ;; 基座 unpack 由下方自定义 phase 接管，此处 'none 仅满足显式声明要求。
       #:unpack-method 'none
       #:install-plan
-      #~'(("bin/zed" "lib/zedg-bin/bin/zedg")
-          ("libexec/zed-editor" "lib/zedg-bin/libexec/zed-editor"))
-      ;; RPATH 自动取 lib-dir（lib/zedg-bin）+ 全部 inputs 的 /lib。
+      #~'(("bin/zed" "lib/zed/bin/zed")
+          ("libexec/zed-editor" "lib/zed/libexec/zed-editor"))
+      ;; RPATH 自动取 lib-dir（lib/zed）+ 全部 inputs 的 /lib。
       ;; CLI 的 NEEDED 只有 glibc/gcc；GUI 的直接 NEEDED（libxcb、
       ;; libxkbcommon[-x11]、glib 全家、libasound、libX11-xcb）都在
       ;; inputs 里，传递依赖经各系统库自己的 RUNPATH 解析。
       #:patchelf-plan
-      #~'(("lib/zedg-bin/bin/zedg")
-          ("lib/zedg-bin/libexec/zed-editor"))
+      #~'(("lib/zed/bin/zed")
+          ("lib/zed/libexec/zed-editor"))
       #:wrap-plan
-      #~'(("lib/zedg-bin/bin/zedg"
+      #~'(("lib/zed/bin/zed"
            ("ZED_UPDATE_EXPLANATION" =
             ("Updates are handled by the Guix package manager."))
            ("XKB_CONFIG_ROOT" ":" prefix
@@ -494,19 +490,14 @@ binary release.")
           (add-after 'install 'install-links
             (lambda _
               (let* ((out #$output)
-                     (shim #$output:shim)
-                     (libdir (string-append out "/lib/zedg-bin")))
-                ;; bin/zedg → the renamed CLI; the shim exposes the same
-                ;; binary as "zed".  bin/ and libexec/ stay siblings
-                ;; under lib/zedg-bin/ so the CLI's built-in bundle
-                ;; detection (../libexec/zed-editor relative to
-                ;; /proc/self/exe) keeps resolving.
+                     (libdir (string-append out "/lib/zed")))
+                ;; bin/ and libexec/ stay siblings under lib/zed/ so
+                ;; the CLI's built-in bundle detection
+                ;; (../libexec/zed-editor relative to /proc/self/exe)
+                ;; keeps resolving.
                 (mkdir-p (string-append out "/bin"))
-                (symlink (string-append libdir "/bin/zedg")
-                         (string-append out "/bin/zedg"))
-                (mkdir-p (string-append shim "/bin"))
-                (symlink (string-append libdir "/bin/zedg")
-                         (string-append shim "/bin/zed")))))
+                (symlink (string-append libdir "/bin/zed")
+                         (string-append out "/bin/zed")))))
           (add-after 'install 'install-desktop-and-icons
             (lambda _
               (let ((share (string-append #$output "/share")))
@@ -515,8 +506,8 @@ binary release.")
                            (string-append share "/applications/dev.zed.Zed.desktop"))
                 (substitute* (string-append share "/applications/dev.zed.Zed.desktop")
                   ;; 主入口与 [Desktop Action NewWorkspace] 的 Exec 都换成
-                  ;; 绝对路径；TryExec=zed 删掉（shim 未装时别隐藏入口）。
-                  (("Exec=zed ") (string-append "Exec=" #$output "/bin/zedg "))
+                  ;; 绝对路径；TryExec=zed 删掉（未装进 profile 时别隐藏入口）。
+                  (("Exec=zed ") (string-append "Exec=" #$output "/bin/zed "))
                   (("TryExec=zed\n") "")
                   ;; Icon=zed 保持原名：icons 即按 zed.png 装在 hicolor 下。
                   )
@@ -548,9 +539,7 @@ binary release.")
     (description "Zed is a high-performance, multiplayer code editor from
 the creators of Atom and Tree-sitter.  It features a fast GPU-accelerated
 UI, built-in collaboration tools, and AI-powered code assistance.  This
-package provides the prebuilt binary release; install the @code{shim}
-output as well to expose the editor under the plain @code{zed} command
-name.")
+package provides the prebuilt binary release.")
     (properties `((upstream-name . "zed")))
     (license license:gpl3+)
     (supported-systems '("x86_64-linux"))))
