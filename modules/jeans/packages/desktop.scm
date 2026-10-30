@@ -743,7 +743,7 @@ renderer relies on the upstream Chromium binary distribution.")
 ;; the hash.  Guix refresh does not manage this package (see the CI
 ;; workflow): the shared-variable layout leaves it no literal version or
 ;; hash inside the package form to rewrite.
-(define %nosdshell-version "1.6.4")
+(define %nosdshell-version "1.7.0")
 
 (define %nosdshell-source
   (origin
@@ -753,7 +753,7 @@ renderer relies on the upstream Chromium binary distribution.")
           (commit (string-append "v" %nosdshell-version))))
     (file-name (git-file-name "nosdshell" %nosdshell-version))
     (sha256
-     (base32 "1zf7dg0ar5wsbdaqk0giiyqjhcf6vs20m1rjvaaza88sbhg3qf0y"))))
+     (base32 "1xwzjd1sg5gpqa6g58126lmyryprncdwzvilw537zhysrdsh6yyv"))))
 
 ;; Our quickshell fork (ShineBreaker/quickshell-nosd): upstream master at
 ;; the version 0.3.2 commit plus the two pipewire use-after-free fixes the
@@ -765,8 +765,15 @@ renderer relies on the upstream Chromium binary distribution.")
 ;;
 ;; Upstream's adjacent destructor-order fixes (36517a2, 91dcb41, 13fe9b0)
 ;; do not remove the dangling-pointer windows, so both fixes are still
-;; needed.  The fork carries no tags; bump it by hand after rebasing onto
-;; a new quickshell release.
+;; needed.
+;;
+;; 5ff26dc adds one more fix on top: PR_SET_PDEATHSIG for managed child
+;; processes.  The shell spawns long-lived helpers (wl-paste clipboard
+;; watchers, niri event-stream, nmcli monitor, udevadm monitor) that must
+;; not outlive it; without the parent-death signal a crash or SIGTERM
+;; reparented them to init and they kept running as orphans.  The fork
+;; carries no tags; bump it by hand after rebasing onto a new quickshell
+;; release.
 (define quickshell/nosd
   (package
     (inherit quickshell)
@@ -777,11 +784,11 @@ renderer relies on the upstream Chromium binary distribution.")
        (method git-fetch)
        (uri (git-reference
              (url "https://github.com/ShineBreaker/quickshell-nosd")
-             (commit "903a70a9cc7a98834e79db25a8c708acfcffd248")))
+             (commit "5ff26dce11ba3a2ce4b9855c269964d6367f718c")))
        (file-name (git-file-name name version))
        (sha256
         (base32
-         "0b2gb4cb9w8x71r7ik0s9sl5jm1smgs3chfd9halcr8pd549820w"))))))
+         "1k7sk1qfw7gw4j8dj5adrm1s06qr1ipx4q6fxllka4dfvk8dfm51"))))))
 
 (define-public nosd-blur
   (package
@@ -812,9 +819,40 @@ menu) can skip a live blur pass and just draw the cached image.")
     (build-system cargo-build-system)
     (arguments
      (list #:install-source? #f
-           #:phases #~(modify-phases %standard-phases
-                        (add-after 'unpack 'chdir
-                          (lambda _ (chdir "tools/nosd-helpers"))))))
+           #:phases
+           #~(modify-phases %standard-phases
+               (add-after 'unpack 'chdir
+                 (lambda _ (chdir "tools/nosd-helpers")))
+               ;; `portal run` is a darkman-compatible portal Settings
+               ;; backend; shipping the activatable name plus the portal
+               ;; descriptor makes `Settings=nosdshell` work out of the box
+               ;; for any consumer that installs this package.
+               (add-after 'install 'install-portal-files
+                 (lambda _
+                   (let ((services (in-vicinity
+                                    #$output "share/dbus-1/services"))
+                         (portals (in-vicinity
+                                   #$output
+                                   "share/xdg-desktop-portal/portals"))
+                         (dbus-name
+                          "org.freedesktop.impl.portal.desktop.nosdshell"))
+                     (mkdir-p services)
+                     (call-with-output-file
+                         (in-vicinity services
+                                      (string-append dbus-name ".service"))
+                       (lambda (p)
+                         (format p "[D-BUS Service]~%\
+Name=org.freedesktop.impl.portal.desktop.nosdshell~%\
+Exec=~a/bin/nosd-helpers portal run~%"
+                                 #$output)))
+                     (mkdir-p portals)
+                     (call-with-output-file
+                         (in-vicinity portals "nosdshell.portal")
+                       (lambda (p)
+                         (format p "[portal]~%\
+DBusName=org.freedesktop.impl.portal.desktop.nosdshell~%\
+Interfaces=org.freedesktop.impl.portal.Settings~%\
+UseIn=niri;sway;Hyprland;labwc;scroll;mangowc;~%")))))))))
     (inputs (cargo-inputs 'nosd-helpers #:module '(jeans packages rust-crates)))
     (home-page "https://github.com/ShineBreaker/nosDshell")
     (synopsis "Small helper tools for nosDshell")
@@ -823,7 +861,9 @@ menu) can skip a live blur pass and just draw the cached image.")
 subcommands (vscode-themes, kde-apply-scheme, gtk-refresh, khal-events,
 bluetooth-pair, eds-check, eds-calendars, eds-events, apply, wl-probe,
 vinput, portal).  QML callers require it; the Scripts/python and
-Scripts/bash helpers were removed after the ports reached parity.")
+Scripts/bash helpers were removed after the ports reached parity.  The
+portal subcommand additionally ships a darkman-compatible
+xdg-desktop-portal Settings backend.")
     (license license:gpl3+)))
 
 (define-public nosd-theme
@@ -898,7 +938,11 @@ template rendering.")
                                 "/nosdshell.fish")))))
           (add-after 'install 'make-wrapper
             (lambda* (#:key inputs #:allow-other-keys)
-              (let ((script "nosdshell"))
+              ;; Write the wrapper straight into the output: the checkout
+              ;; root holds a nosdshell/ directory (channel module path),
+              ;; so a same-named scratch file here no longer works.
+              (let ((script (in-vicinity #$output "bin/nosdshell")))
+                (mkdir-p (dirname script))
                 ;; --version/-V prints the shell and quickshell versions without
                 ;; starting the shell (lowercase -v is quickshell's verbose flag
                 ;; and must fall through).  The nosdshell part follows
@@ -909,7 +953,7 @@ template rendering.")
                     (format #t "~
 #!~a
 if [ \"$1\" = \"--version\" ] || [ \"$1\" = \"-V\" ]; then
-  echo \"nosdshell v~a (with quickshell v0.3.2 903a70a)\"
+  echo \"nosdshell v~a (with quickshell v0.3.2 5ff26dc)\"
   exit 0
 fi
 exec ~a --config ~a/etc/xdg/quickshell/nosdshell \"$@\"~%"
@@ -950,8 +994,7 @@ exec ~a --config ~a/etc/xdg/quickshell/nosdshell \"$@\"~%"
                             "bin/wl-paste"
                             "bin/wlsunset"
                             "bin/wtype"))))
-                (chmod script #o555)
-                (install-file script (in-vicinity #$output "bin")))))
+                (chmod script #o555))))
           (add-after 'make-wrapper 'qt-wrap
             (lambda args
               (apply wrap-all-qt-programs
