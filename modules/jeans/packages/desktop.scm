@@ -115,7 +115,7 @@ and Xorg.")
 (define-public ai-usagebar-bin
   (package
     (name "ai-usagebar-bin")
-    (version "1.45.0")
+    (version "1.47.0")
     (source
      (origin
        (method url-fetch)
@@ -123,7 +123,7 @@ and Xorg.")
              "https://github.com/akitaonrails/ai-usagebar/releases/download/"
              "v" version "/ai-usagebar-linux-x86_64.tar.gz"))
        (sha256
-        (base32 "00gbib5yz25gp1k1pc8dpa27455ajsnyp5hp6zad7d2kmsc1l9la"))))
+        (base32 "017p5nlj7mc5v53i6v1wx7jdpb27fpg1n0135v1rin21i15idc6k"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -518,8 +518,8 @@ same Guix profile is enough for Waywallen to discover the plugin.")
 ;; upstream commit (upstream tags are release-branch only and behind main);
 ;; commit tracking is handled by the Python updater.
 (define-public linux-wallpaperengine
-  (let ((commit "38a5d60cf549fcead9a8880a4831b852ab95b92d")
-        (revision "1"))
+  (let ((commit "a0ddce586e9ff12e9d31ca6b103f6036cc1b68fe")
+        (revision "2"))
     (package
       (name "linux-wallpaperengine")
       (version (git-version "0.0.1" revision commit))
@@ -532,7 +532,7 @@ same Guix profile is enough for Waywallen to discover the plugin.")
                (recursive? #t)))        ; glslang, quickjs, nlohmann/json, ...
          (file-name (git-file-name name version))
          (sha256
-          (base32 "108kg0d40wmx48p1i4aix34ibdkngrpxbsc4p1hxbrn42068my3z"))))
+          (base32 "0l9nr8si0ry5968p7la7ffkkjj9062am45fb4hs12v160cagcwsr"))))
       (build-system cmake-build-system)
       (arguments
        (list

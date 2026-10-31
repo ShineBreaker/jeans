@@ -61,8 +61,8 @@
 (define-public winapps
   ;; 上游不打 tag，追踪 main 分支 HEAD；由 guix refresh 的
   ;; latest-git-commit updater 自动更新 commit 和 revision。
-  (let ((commit "f5c9ee3951046c28f2aaf3a0b3b16c9a1c0a09e9")
-        (revision "4"))
+  (let ((commit "0b950dc4b823a759015c549a46c35aaaf31c77c0")
+        (revision "5"))
     (package
       (name "winapps")
       (version (git-version "0" revision commit))
@@ -74,7 +74,7 @@
                (commit commit)))
          (file-name (git-file-name name version))
          (sha256
-          (base32 "02s7s3nvhqdyrdp37vh7m9dgzxqin5alvfwfw0sqbh42a80wrpgi"))
+          (base32 "1i7zjga7vshvwys6jdx7a4ybpcjnqakw8rd1h3w2llq3v1i2z49w"))
          (patches
           (map canonicalize-path
                (search-patches
@@ -493,7 +493,7 @@ companion extension.  This package provides the prebuilt binary release.")
 (define-public cc-switch-bin
   (package
     (name "cc-switch-bin")
-    (version "4.0.21")
+    (version "4.0.22")
     (source
      (origin
        (method url-fetch)
@@ -501,7 +501,7 @@ companion extension.  This package provides the prebuilt binary release.")
              "https://github.com/farion1231/cc-switch/releases/download/"
              "v" version "/CC-Switch-v" version "-Linux-x86_64.deb"))
        (sha256
-        (base32 "0q9y9q8qzprakqp2f01g528r5gslfb577i70147841505nl6qbza"))))
+        (base32 "1idkvjx5sphz78hw9znr68rmanx4kaas4jvyhqh13ylbykh46skf"))))
     (build-system gnu-build-system)
     (arguments
      (list

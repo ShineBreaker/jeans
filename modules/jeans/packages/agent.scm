@@ -188,7 +188,7 @@ release.")
 (define-public cindy-cn-bin
   (package
     (name "cindy-cn-bin")
-    (version "0.1.119")
+    (version "0.1.121")
     (source
      (origin
        (method url-fetch)
@@ -196,7 +196,7 @@ release.")
              "https://github.com/makecindy/cindy/releases/download/"
              "v" version "/cindy-" version "-linux-x64-cn.deb"))
        (sha256
-        (base32 "17s7s0r6rvsv80ybdp1va6wcmng52lnqpr3aq02a6lznawgc25j6"))))
+        (base32 "051b5n680z2bpmip6alq6lvm0kazwm47l266qmh79j414fy5a7ll"))))
     (build-system electron-build-system)
     (arguments
      (list
@@ -325,7 +325,7 @@ control, and a companion system.")
 (define-public crush-bin
   (package
     (name "crush-bin")
-    (version "0.98.2")
+    (version "0.99.0")
     (source
      (origin
        (method url-fetch)
@@ -333,7 +333,7 @@ control, and a companion system.")
              "https://github.com/charmbracelet/crush/releases/download/"
              "v" version "/crush_" version "_amd64.deb"))
        (sha256
-        (base32 "1j059x4gdnm908mad4bc7vrr6n5iadzs6ypappap7nw72jya65dx"))))
+        (base32 "0q7j82n8x30203m53lvibg4xd481kgzs6ffzvixhgxrfb4imand9"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -395,7 +395,7 @@ This package provides the prebuilt binary release.")
 (define-public github-copilot
   (package
     (name "github-copilot")
-    (version "1.1.33")
+    (version "1.1.34")
     (source
      (origin
        (method url-fetch)
@@ -403,7 +403,7 @@ This package provides the prebuilt binary release.")
              "https://github.com/github/app/releases/download/"
              "v" version "/GitHub-Copilot-linux-x64.deb"))
        (sha256
-        (base32 "1r05b30x7rdd2gr7rdpl8kjxwf35glzsx65xy2zqbqhlp9p1rman"))))
+        (base32 "0kmfz6zc2w95pf7kn27x5b0fsqr69f1d4sazjfvwkik0r0r3qp8i"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -615,7 +615,7 @@ This package provides the prebuilt binary release.")
 (define-public minimax-code-bin
   (package
     (name "minimax-code-bin")
-    (version "0.6.5")
+    (version "0.7.2")
     (source
      (origin
        (method url-fetch)
@@ -623,7 +623,7 @@ This package provides the prebuilt binary release.")
              "https://github.com/MiniMax-AI/minimax-code/releases/download/"
              "v" version "/minimax-code-" version ".tar.gz"))
        (sha256
-        (base32 "00lzvbz39j23srkzxhfh675895c5vjsiwy8ax990f73f5plpldqn"))))
+        (base32 "1r7lf7gabj74bnzqnncas3j2h56y6n4792rgnsx6qa25d5lmn1da"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -945,7 +945,7 @@ telemetry or forced log-ins.")
 (define-public reasonix-bin
   (package
     (name "reasonix-bin")
-    (version "2.54.0")
+    (version "2.56.0")
     (source
      (origin
        (method url-fetch)
@@ -953,7 +953,7 @@ telemetry or forced log-ins.")
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
              "v" version "/reasonix-linux-amd64.tar.gz"))
        (sha256
-        (base32 "0g8c4a0934zycl6iyg23wg5k3prmsmk87f6qzagdc19cpzxk9f2j"))))
+        (base32 "0jidgs71xkz7sxzcdkscbxjyg0y93ip7b6pwc6rf8c6rgh6fgd1p"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -999,7 +999,7 @@ and ships as a single static binary with no runtime dependencies.")
 (define-public reasonix-studio-bin
   (package
     (name "reasonix-studio-bin")
-    (version "2.55.0")
+    (version "2.56.0")
     (source
      (origin
        (method url-fetch)
@@ -1007,7 +1007,7 @@ and ships as a single static binary with no runtime dependencies.")
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
              "studio-v" version "/ReasonixStudio-linux-amd64.deb"))
        (sha256
-        (base32 "0khnba2f51qp585pnr7qf2fhmak226mqq2jk4k7hlbpxzic73gq4"))))
+        (base32 "1iqz2wx5b2hmc0xb6b1v3gsgkrkqx85cj2xy0049x98wi4s51i91"))))
     (build-system electron-build-system)
     (arguments
      (list
@@ -1137,7 +1137,7 @@ for multiple LLM providers.")
 (define-public thinkrail-bin
   (package
     (name "thinkrail-bin")
-    (version "0.2.0")
+    (version "0.3.0")
     (source
      (origin
        (method url-fetch)
@@ -1145,7 +1145,7 @@ for multiple LLM providers.")
              "https://github.com/JetBrains/thinkrail/releases/download/"
              "v" version "/stable-linux-x64-ThinkRail-" version ".tar.zst"))
        (sha256
-        (base32 "03cfy8zq9liimm2qppy53nlvgx9jf9sgzgiif59bw2iwlbyqv6s0"))))
+        (base32 "1fiaks17jsxd0mdp1n7qyl9mf3c6hwkfl8gai0khv6p4vlxaj25d"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -1314,7 +1314,7 @@ configure.  This package provides the prebuilt desktop release.")
 (define-public zcode
   (package
     (name "zcode")
-    (version "3.16.3")
+    (version "3.17.1")
     (source
      (origin
        (method url-fetch)
@@ -1322,7 +1322,7 @@ configure.  This package provides the prebuilt desktop release.")
              "https://cdn-zcode.z.ai/zcode/electron/releases/"
              version "/linux-x64/ZCode-" version "-linux-x64.deb"))
        (sha256
-        (base32 "1dmqibw0xw5mv3pyzid5swi945gy8b7rbhm6r2ld0zwpjnqk508j"))))
+        (base32 "1wg50s1ln8lcpr37h353pckdal5h8jix20n837baxnz96wgvx0kr"))))
     (build-system electron-build-system)
     (arguments
      (list
@@ -1695,7 +1695,7 @@ so the bundled self-updater should not be used.")
 (define-public magpie-bin
   (package
     (name "magpie-bin")
-    (version "0.1.2026")
+    (version "0.1.2356")
     (source
      (origin
        (method url-fetch)
@@ -1703,7 +1703,7 @@ so the bundled self-updater should not be used.")
              "https://github.com/yetone/magpie-releases/releases/download/"
              "v" version "/magpie-linux-amd64"))
        (sha256
-        (base32 "06dd3cssaq0qdnny6rb2s5vd4kx5lpzn1nhjr1spdvw3dkqxa3c7"))))
+        (base32 "0qwpdf6b0xvwa2r2z8sklqqbhfy96f1p95815igb0sh4zcnqq3x1"))))
     (build-system binary-build-system)
     (arguments
      (list

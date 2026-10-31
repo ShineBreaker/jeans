@@ -208,8 +208,8 @@ the webview (GTK/WebKitGTK) frontend with an ncurses fallback.")
 ;;; e.g. tree-sitter-json and point LD_LIBRARY_PATH at its lib/ to
 ;;; enable syntax highlighting for that language.
 (define-public lem-next
-  (let ((commit "9b4345140bd5bc6cf1a112b77a479679c0350b2c")
-        (revision "12"))
+  (let ((commit "c65f228566607e9c7345902779e3cf3e0c0b3dc2")
+        (revision "13"))
     (package
       (inherit lem)
       (name "lem-next")
@@ -222,7 +222,7 @@ the webview (GTK/WebKitGTK) frontend with an ncurses fallback.")
                (commit commit)))
          (file-name (git-file-name name version))
          (sha256
-          (base32 "1fpwz5f0rsvd8zkank8fr3wqwafd2ijrs374ffihz84rqsavmhkf"))
+          (base32 "1mxprasm32rl2ihnsgh5q61pfb6dpshsxm9i23ffz2mivzs699gn"))
          (patches
           (map canonicalize-path
                (search-patches
