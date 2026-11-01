@@ -1449,7 +1449,7 @@ without friction.")
 (define-public zcode-proxy-bin
   (package
     (name "zcode-proxy-bin")
-    (version "4.8.7")
+    (version "4.8.8")
     (source
      (origin
        (method url-fetch)
@@ -1457,7 +1457,7 @@ without friction.")
              "https://github.com/TriDefender/zcode-api/releases/download/"
              "v" version "/zcode-proxy-linux-x64"))
        (sha256
-        (base32 "0s0sp0n2yfl1i6q8wlw2yksksxlapfxn71gn9aax7qilrlxkl027"))))
+        (base32 "0m956qrrf2x0xwdk8j7dmdgnx3vcdirsv5vmg71pp5fpllk2fs3l"))))
     (build-system binary-build-system)
     (arguments
      (list

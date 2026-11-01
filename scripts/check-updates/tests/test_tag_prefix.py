@@ -23,18 +23,29 @@ from common.versions import (
 ROOT = Path(__file__).resolve().parents[3]
 
 
-def check_release_pagination() -> None:
-    """tag_prefix 搜索必须分页扫全列表，固定窗口会被其他系列 release 挤爆。
+class _Resp:
+    """stub 掉的 GitHub API 响应（只实现本文件用到的接口）。"""
 
-    trycua/cua 2026-10-29 实证（issue #63）：稳定版 cua-driver-rs-v0.38.0
-    已排在 release 列表第 32 位，per_page=30 够不到，updater 误报
-    "无法获取最新release信息"。
+    def __init__(self, data) -> None:
+        self._data = data
+        self.status_code = 200
+
+    def json(self):
+        return self._data
+
+    def raise_for_status(self) -> None:
+        pass
+
+
+def _import_github():
+    """导入 common.github；缺 requests 时装最小 stub。
+
+    本文件所有检查都替换 http.github_api_get，不发起真实请求。
     """
     try:
         import requests  # noqa: F401
     except ImportError:
-        # 无 requests 的环境（本地沙箱）装最小 stub，让 common.http 可导入；
-        # 本检查只走 stub 掉的 http.github_api_get，不发起真实请求。
+        # 无 requests 的环境（本地沙箱）装最小 stub，让 common.http 可导入。
         fake = types.ModuleType("requests")
         fake.Response = type("Response", (), {})
         fake.get = lambda *args, **kwargs: None
@@ -49,16 +60,17 @@ def check_release_pagination() -> None:
 
     import common.github as github
 
-    class _Resp:
-        def __init__(self, data: list) -> None:
-            self._data = data
-            self.status_code = 200
+    return github
 
-        def json(self) -> list:
-            return self._data
 
-        def raise_for_status(self) -> None:
-            pass
+def check_release_pagination() -> None:
+    """tag_prefix 搜索必须分页扫全列表，固定窗口会被其他系列 release 挤爆。
+
+    trycua/cua 2026-10-29 实证（issue #63）：稳定版 cua-driver-rs-v0.38.0
+    已排在 release 列表第 32 位，per_page=30 够不到，updater 误报
+    "无法获取最新release信息"。
+    """
+    github = _import_github()
 
     releases = (
         [
@@ -115,6 +127,50 @@ def check_release_pagination() -> None:
     print("release pagination regression checks passed")
 
 
+def check_tag_exclude() -> None:
+    """tag_exclude 必须跳过并行发布线的 tag，并改走列表扫描。
+
+    TriDefender/zcode-api 2026-10-31 实证（issue #65）：上游先发桌面线
+    v4.8.8，随后补发只带 app-debug.apk 的 v4.8.8.android，后者拿到
+    Latest 指针；桌面资产只存在于 v4.8.8 下，updater 构造出
+    /download/v4.8.8.android/zcode-proxy-linux-x64 后 404，误报
+    「无法计算 hash」。
+    """
+    github = _import_github()
+
+    releases = [
+        {"tag_name": "v4.8.8.android", "prerelease": False},
+        {"tag_name": "v4.8.8", "prerelease": False},
+        {"tag_name": "v4.8.7", "prerelease": False},
+    ]
+    github.http.github_api_get = lambda repo, path, headers: _Resp(releases)
+    assert (
+        github.get_latest_github_release(
+            "TriDefender/zcode-api", False, None, r"\.android$"
+        )
+        == "v4.8.8"
+    )
+
+    # 反向验证：不带 tag_exclude 时走 /releases/latest，拿到的是 Android
+    # 线本身——即真实失败模式，证明上面的断言针对该模式而非恒真。
+    def latest_only(repo, path, headers):
+        assert path == "releases/latest", path
+        return _Resp({"tag_name": "v4.8.8.android"})
+
+    github.http.github_api_get = latest_only
+    assert github.get_latest_github_release("TriDefender/zcode-api") == "v4.8.8.android"
+
+    # 配置里的正则本身也要对上：JSON 双反斜杠写错会让过滤静默失效。
+    config = json.loads(
+        (ROOT / "scripts/check-updates/config.json").read_text(encoding="utf-8")
+    )
+    pattern = config["tag_exclude"]["zcode-proxy-bin"]
+    assert re.search(pattern, "v4.8.8.android"), pattern
+    assert not re.search(pattern, "v4.8.8"), pattern
+
+    print("release tag exclude regression checks passed")
+
+
 def main() -> None:
     package_file = ROOT / "modules/jeans/packages/agent.scm"
     config_file = ROOT / "scripts/check-updates/config.json"
@@ -144,6 +200,7 @@ def main() -> None:
         assert f"/{tag}/" in download_url, (name, download_url)
 
     check_release_pagination()
+    check_tag_exclude()
 
     print("release tag prefix regression checks passed")
 

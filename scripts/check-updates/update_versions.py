@@ -70,6 +70,7 @@ def main():
     skip_packages = set(config.get("skip_packages", []))
     skip_files = set(config.get("skip_files", []))
     tag_prefix_map = config.get("tag_prefix", {})
+    tag_exclude_map = config.get("tag_exclude", {})
 
     print(f"📋 配置:")
     print(f"   检查pre-release的包: {', '.join(check_pre_release_packages) or '无'}")
@@ -256,6 +257,7 @@ def main():
                 if include_pre_release:
                     print(f"     🔍 包含pre-release检查")
                 pkg_tag_prefix = package_tag_prefix(package, tag_prefix_map)
+                pkg_tag_exclude = tag_exclude_map.get(package_name)
 
                 # --- let-绑定 git-version 结构：上游无 tag，追踪 main 分支最新 commit ---
                 # 这些包的 version 是 (git-version base revision commit) 表达式，
@@ -375,6 +377,7 @@ def main():
                     if include_pre_release:
                         print(f"     🔍 包含pre-release检查")
                     pkg_tag_prefix = package_tag_prefix(package, tag_prefix_map)
+                    pkg_tag_exclude = tag_exclude_map.get(package_name)
                     # 只有旧结构（commit 单独存在一个 SHA 变量里）才需要把
                     # tag 解析成 peel commit；tag 由 version 派生的结构里
                     # version 就是唯一真相，落盘只改 version 与 base32。
@@ -392,6 +395,7 @@ def main():
                         package["version"],
                         include_pre_release=include_pre_release,
                         tag_prefix=pkg_tag_prefix,
+                        tag_exclude=pkg_tag_exclude,
                         resolve_peel=need_peel,
                     )
                     for _fn in (
@@ -443,6 +447,7 @@ def main():
                         package["version"],
                         include_pre_release=include_pre_release,
                         tag_prefix=pkg_tag_prefix,
+                        tag_exclude=pkg_tag_exclude,
                         resolve_peel=False,
                     )
                     for _fn in (
@@ -598,6 +603,7 @@ def main():
                     if include_pre_release:
                         print(f"     🔍 包含pre-release检查")
                     pkg_tag_prefix = package_tag_prefix(package, tag_prefix_map)
+                    pkg_tag_exclude = tag_exclude_map.get(package_name)
 
                     # 获取最新release
                     try:
@@ -606,6 +612,7 @@ def main():
                             github_repo,
                             include_pre_release,
                             pkg_tag_prefix,
+                            pkg_tag_exclude,
                             max_retries=2,
                             base_delay=5,
                         )

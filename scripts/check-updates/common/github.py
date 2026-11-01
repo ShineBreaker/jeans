@@ -41,7 +41,10 @@ GITHUB_TOKEN = get_github_token()
 
 
 def get_latest_github_release(
-    repo: str, include_pre_release: bool = False, tag_prefix: Optional[str] = None
+    repo: str,
+    include_pre_release: bool = False,
+    tag_prefix: Optional[str] = None,
+    tag_exclude: Optional[str] = None,
 ) -> Optional[str]:
     """获取GitHub仓库的最新release版本
 
@@ -50,6 +53,11 @@ def get_latest_github_release(
         include_pre_release: 是否包含pre-release版本
         tag_prefix: 可选的 tag 前缀。当同一 repo 有多个 release 系列
             （如 v* 和 desktop-v*）时，只返回以此前缀开头的最新 tag。
+        tag_exclude: 可选的 tag 排除正则。用于同一 repo 并行发布、
+            但与本包无关的发布线抢到 Latest 指针的情况（如 zcode-api
+            的 v4.8.8.android 只带 Android APK，没有桌面资产）。命中
+            正则的 tag 被跳过，因此该模式必须走列表扫描而非
+            /releases/latest。
 
     Returns:
         最新版本的tag名称，如果获取失败则返回None
@@ -61,12 +69,12 @@ def get_latest_github_release(
         headers["Authorization"] = f"token {GITHUB_TOKEN}"
 
     try:
-        # tag_prefix 模式：用列表 API 找匹配前缀的最新（非预）发布。
+        # tag_prefix / tag_exclude 模式：用列表 API 找匹配的最新（非预）发布。
         # 必须分页扫全列表：固定窗口会被同仓库其他系列的 release 挤爆——
         # trycua/cua 2026-10-29 实证，稳定版 cua-driver-rs-v0.38.0 已排在
         # release 列表第 32 位，per_page=30 够不到，误报
         # "无法获取最新release信息"（issue #63）。
-        if tag_prefix:
+        if tag_prefix or tag_exclude:
             page = 1
             while page <= 10:
                 response = http.github_api_get(
@@ -78,7 +86,9 @@ def get_latest_github_release(
                 releases = response.json()
                 for rel in releases:
                     tag_name = rel.get("tag_name") or ""
-                    if not tag_name.startswith(tag_prefix):
+                    if tag_prefix and not tag_name.startswith(tag_prefix):
+                        continue
+                    if tag_exclude and re.search(tag_exclude, tag_name):
                         continue
                     if rel.get("prerelease", False) and not include_pre_release:
                         continue
@@ -131,7 +141,11 @@ def get_latest_github_release(
         raise RetryableError(f"网络错误: {e}")
 
 
-def get_latest_github_tag(repo: str, tag_prefix: Optional[str] = None) -> Optional[str]:
+def get_latest_github_tag(
+    repo: str,
+    tag_prefix: Optional[str] = None,
+    tag_exclude: Optional[str] = None,
+) -> Optional[str]:
     """获取GitHub仓库的最新tag（当没有release时的备用方案）"""
     if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repo):
         return None
@@ -148,6 +162,8 @@ def get_latest_github_tag(repo: str, tag_prefix: Optional[str] = None) -> Option
         for tag in tags:
             name = tag.get("name") or ""
             if tag_prefix and not name.startswith(tag_prefix):
+                continue
+            if tag_exclude and re.search(tag_exclude, name):
                 continue
             return name
         return None

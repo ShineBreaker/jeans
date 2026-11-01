@@ -32,6 +32,7 @@ def discover_release_update(
     repo: str, git_url: str, current_version: str,
     *, include_pre_release: bool = False,
     tag_prefix: Optional[str] = None,
+    tag_exclude: Optional[str] = None,
     resolve_peel: bool = False,
 ) -> tuple[str, Optional[ReleaseCandidate], str]:
     try:
@@ -40,6 +41,7 @@ def discover_release_update(
             repo,
             include_pre_release,
             tag_prefix,
+            tag_exclude,
             max_retries=2,
             base_delay=5,
         )
@@ -53,6 +55,7 @@ def discover_release_update(
                 get_latest_github_tag,
                 repo,
                 tag_prefix,
+                tag_exclude,
                 max_retries=2,
                 base_delay=5,
             )
