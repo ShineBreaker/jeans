@@ -41,7 +41,7 @@ env:
     eask-bin neomacs-bin rayburst-bin cc-switch-bin
     font-maple-font-nf-cn font-nerd-font-iosevka
     lr2oraja-endlessdream-bin osu-lazer-bin inso-bin g0v0-bin deltalazer-bin
-    emacs-ghostel emacs-msgu
+    emacs-msgu
     colloid-gtk-theme vimix-gtk-themes vimix-kvantum-themes
     nix-ld opentabletdriver-udev-rules waypaper
     waydroid libgbinder libglibutil python-gbinder
@@ -253,6 +253,12 @@ jobs:
           # 它算出的新 commit 是 tag 名 v<version>，但落不了盘）。和 agenote
           # 一样交给 Python updater 的 release/tag 流程；包定义的 git-reference
           # 由 (string-append "v" %nosdshell-version) 派生。
+          # emacs-ghostel 不交 refresh：0.60.0 的 build.zig 用 comptime 硬
+          # 检查要求恰好 zig 0.17.0，并已改用 std.Io.Threaded /
+          # std.lang.Optimize 等 0.17 API；Guix 最高只有 zig-0.16.0（zig
+          # 官方最新稳定 0.15.2，0.16 已是开发快照），刷新到 0.60.0 必然
+          # 构建失败（issue #66）。0.59.0 保持不动，等 Guix 打包 zig-0.17
+          # 后再把本条目和 config.json skip_packages 里的冻结一起解除。
           # 白名单本体在 job env 的 REFRESH_PACKAGES（与 Recover 步骤共用）。
           guix refresh -L "$GITHUB_WORKSPACE/modules" -L /tmp/nonguix -u \
             $REFRESH_PACKAGES \

@@ -295,6 +295,8 @@ deps/ghostty/src/build/zig.zig:13:9: error: Your Zig version v0.16.0 does not me
 
 3. ⚠️ **降级 zig 到 0.15**：ghostel 0.46.0 的 `build.zig` 有 `comptime` 检查，强制要求 zig-0.16，无法降级。
 
+**2026-10-31 新一轮（zig 0.17，issue #66）**：ghostel 0.60.0 把 `required_zig` 提到 `0.17.0`，并已改用 `std.Io.Threaded` / `std.lang.Optimize` 等 0.17 API——不只是 comptime 检查，0.16 下连编译都不可能。Guix 最高只有 `zig-0.16.0`（zig 官方最新稳定是 0.15.2，0.16 已是开发快照），所以 **0.60.0 在当前 Guix 上无解**。处置：0.59.0 保持不动，`emacs-ghostel` 同时从 CI 的 `REFRESH_PACKAGES` 和 `config.json` 的 `skip_packages` 移除/冻结（只改一处会被另一层重新拉起来），解除条件 = Guix 打包 zig-0.17 **且** 重新核对 `build.zig.zon` 里 vendored ghostty 的 pin 与 uucode pin。0.59.0 在 zig-0.16 下实测可构建（`guix build -L modules emacs-ghostel` 退出 0）。
+
 **Cron 行为**：遇到此类连锁依赖失败，**立即 revert**，不要尝试在 cron 里修复。将失败原因写入报告，留给用户决定是否手动介入。
 
 ### 1.8.1 `blue upgrade` 慢 / 卡死的根因 + 旁路（2026-07-18 实测）
@@ -309,12 +311,19 @@ deps/ghostty/src/build/zig.zig:13:9: error: Your Zig version v0.16.0 does not me
 
 也就是说每次 `blue upgrade` 都重新跑一次 `guix shell --manifest=scripts/check-updates/manifest.scm`，manifest 内容是 `python-wrapper` + `python-requests`。**这步会触达 guix substitute 服务器拉 cached 闭包**（实测 5 min 还卡在 substitute 阶段），多数情况下 cron 跑还没下完就已经 timeout。
 
-**旁路**：本机 PATH 里通常已经有 `python3 + requests 2.32.5`（来自 Guix home profile），**直接调脚本就够**：
+**旁路**：绕开 `guix shell`，直接用 PATH 上的 `python3` 调脚本（**不要再假设它自带 `requests`**——2026-11-01 实测 `~/.guix-home/profile/bin/python3` 3.12.12 已无 requests；`guix shell` 在 DSH workspace-write 会话里会因 profile symlink 只读而失败）。用 `guix build` 取 store 路径再拼 `PYTHONPATH`：
 
 ```bash
 cd ~/Projects/Config/jeans
-python3 -u scripts/check-updates/update_versions.py 2>&1 | tee /tmp/upgrade.log
+# requests 及其运行时依赖的 store 路径
+PY=$(guix build python-requests python-urllib3 python-certifi \
+       python-idna python-charset-normalizer 2>/dev/null \
+     | sed 's|$|/lib/python3.12/site-packages|' | paste -sd:)
+PYTHONPATH="$PY" GITHUB_TOKEN="$(gh auth token)" \
+  python3 -u scripts/check-updates/update_versions.py 2>&1 | tee /tmp/upgrade.log
 ```
+
+`--only <包名>` 只跑单个包（CI 的 Recover 步骤用它重放），排查单包失败时用它，别为验证一个包跑全量 89 个包。
 
 实测对比：
 
