@@ -31,8 +31,8 @@
   (entry
    (commit "35d1811c26daf2c132880fe304149b1363064a79")
    (title (zh "频道 introduction 前移到 35d1811"))
-   (body (zh "为避免 guix 在验证 GitHub 生成的 merge commit 时崩溃，"
-      "本频道的 introduction commit 由 1e30ccb 前移到 35d1811，"
-      "签名者指纹不变。如果你此前已经添加过本频道，请把 channels.scm 里的 "
-      "introduction 同步改成 35d1811c26daf2c132880fe304149b1363064a79，"
-      "否则 guix pull 会在认证阶段报 bytevector-u16-ref 类型错误。"))))
+   (body (zh "为避免 guix 在验证 GitHub 生成的 merge commit 时崩溃，本频道的
+      introduction commit 由 1e30ccb 前移到 35d1811，签名者指纹不变。如果你
+      此前已经添加过本频道，请把 channels.scm 里的 introduction 同步改成
+      35d1811c26daf2c132880fe304149b1363064a79，否则 guix pull 会在认证阶段
+      报 bytevector-u16-ref 类型错误。"))))
