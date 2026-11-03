@@ -26,3 +26,17 @@
 ## 提交
 
 `<type>(<scope>): <简短描述>`（Conventional Commits），scope 取值与 BREAKING CHANGE 细则见 `~/.config/git/gitmessage`。自动更新 CI 自己发 `feat(packages): auto package update YYYY-MM-DD`，`git log` 里见到这条是 CI 的改动，不是你写的。
+
+## 签名与认证
+
+走完整 Guix channel 认证：`.guix-authorizations` 授权主 key 与 `jeans-workflow-bot`，公钥在 `keyring` 分支；`guix pull` 和 `.git/hooks/pre-push` 都跑 `guix git authenticate`。
+
+- introduction commit 钉在 `35d1811c26daf2c132880fe304149b1363064a79`，本仓库 `.git/config` 与 `Guix-configs/source/channel.scm` 必须一起改。**不要**退回 `1e30ccb`：其后的 `9115919`、`7791bbe` 是 GitHub 生成的 merge commit（`%G?=E`，签名只带 issuer key-id），guix 缺 key 时抛 `bytevector-u16-ref: Wrong type argument ... (expecting bytevector): 13071995811931693460`。
+- GitHub 仓库只开 **Rebase merging**。squash 或 merge commit 会让 GitHub 重签，重新制造 `E` 提交。
+- 新 clone 首次启用（写入 `.git/config` 并安装 pre-push 钩子）：
+
+  ```bash
+  guix git authenticate 35d1811c26daf2c132880fe304149b1363064a79 62711D5E9CCDEC6907CADBF88637132222571907 --keyring=keyring
+  ```
+
+- 提交身份：`git config user.email` 必须是签名 key 的某个 uid email，否则 GitHub 判 `bad_email`（Unverified）。当前 key 同时有 `102544159+ShineBreaker@users.noreply.github.com` 和 `xchai404@gmail.com` 两个 uid。
