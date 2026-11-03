@@ -445,9 +445,12 @@ variable to override it.")
 ;;;   上游原仓库 waydroid-helper/waydroid-helper 自 2026-09 起停滞；fork 的
 ;;;   main 领先上游并新增了 Guix 打配脚本（waydroid-helper.scm）、CI 等内容，
 ;;;   本定义即以该脚本为蓝本改造。
-;;; - waydroid 本体不是依赖：GUI 通过 PATH 调用 waydroid / waydroid-cli 等
-;;;   命令，wrapper 的 PATH 用 prefix 语义保留会话 PATH，用户 profile 里的
-;;;   waydroid 包照常可见。
+;;; - waydroid 本体是 input，但只作为 PATH 的 suffix 兜底：会话里装的
+;;;   waydroid 优先，pkexec 清空 PATH 后仍能找到可执行文件（否则
+;;;   waydroid-cli 里裸调用的 waydroid 全部 command not found）。
+;;; - Python 依赖必须展开传播闭包：GUI 的 PYTHONPATH 只列直接 inputs，
+;;;   而 httpx 这类库的运行时依赖（httpcore 等）放在 propagated-inputs，
+;;;   不展开就会 ModuleNotFoundError。
 ;;; - Guix 无 systemd / dbus-1 的 pc 文件：传空 -Dsystemd-* / -Ddbus-* 关闭
 ;;;   服务文件安装（meson 侧对应 required:false 分支）。
 ;;; - 上游脚本的 bin-labels 查 "bash" 而 inputs 给的是 bash-minimal（label
@@ -458,9 +461,41 @@ variable to override it.")
 ;;; - gobject-introspection 留在 inputs（lint 会提示应为 native-input，此处
 ;;;   为已知误报）：GUI 运行时经 GI_TYPELIB_PATH 加载其 out 里的
 ;;;   GLib/GObject 等 typelib， propagated 路径同官方 gjs 包。
+
+(define (python-input-package input)
+  "Return the package of INPUT, a (LABEL PACKAGE) input entry."
+  (if (package? input) input (car (cdr input))))
+
+(define (python-transitive-inputs packages)
+  "Return PACKAGES together with all their transitive propagated inputs.
+
+A package that hands its scripts a hand-built PYTHONPATH has to walk the
+propagation closure itself: Guix only puts propagated inputs on the search
+path when a package is installed into a profile, so a plain input such as
+python-httpx would otherwise leave python-httpcore unreachable at run time."
+  (let loop ((pending (reverse packages)) (seen '()))
+    (cond ((null? pending) (reverse seen))
+          (else
+           (let ((pkg (car pending))
+                 (rest (cdr pending)))
+             (if (memq pkg seen)
+                 (loop rest seen)
+                 (loop (append rest
+                               (map python-input-package
+                                    (package-propagated-inputs pkg)))
+                       (cons pkg seen))))))))
+
 (define-public waydroid-helper
-  (let ((commit "a3868dddff7e0674e732c04797c96c46061a7ccd")
-        (revision "1"))
+  (let* ((commit "03ba56c59c781a09659ad46826bc425da1e4027f")
+         (revision "2")
+         (py-site (string-append "/lib/python"
+                                 (version-major+minor (package-version python))
+                                 "/site-packages"))
+         (python-packages
+          (python-transitive-inputs
+           (list python-pygobject python-pycairo python-pywayland
+                 python-dbus python-aiofiles python-httpx
+                 python-pyyaml))))
     (package
       (name "waydroid-helper")
       (version (git-version "0.2.9" revision commit))
@@ -472,7 +507,7 @@ variable to override it.")
               (commit commit)))
         (file-name (git-file-name name version))
         (sha256
-         (base32 "0ghd2xv4rapzp8xaxz7nz4vni85sfsxrscmln5zqd2cgvgdjsvrq"))))
+         (base32 "15awjh5j54xzfbmddcx6np1jlw0pkcihcgwsdi6nxi1hmfpv4xnz"))))
       (build-system meson-build-system)
       (arguments
        (list
@@ -484,51 +519,50 @@ variable to override it.")
         ;; 构建容器无图形栈；单测在源码树用 guix shell + pytest 单独验证。
         #:tests? #f
         #:phases
-        #~(let ((py-site
-                 (string-append "/lib/python"
-                                #$(version-major+minor (package-version python))
-                                "/site-packages")))
-            (modify-phases %standard-phases
-              (add-after 'install 'wrap-program-paths
-                (lambda* (#:key inputs outputs #:allow-other-keys)
-                  (let* ((out (assoc-ref outputs "out"))
-                         (python-path
-                          (map (lambda (pkg)
-                                 (string-append pkg py-site))
-                               (list #$python-pygobject
-                                     #$python-pycairo
-                                     #$python-pywayland
-                                     #$python-dbus
-                                     #$python-aiofiles
-                                     #$python-httpx
-                                     #$python-pyyaml)))
-                         (gi-path
-                          (map (lambda (pkg)
-                                 (string-append pkg "/lib/girepository-1.0"))
-                               (list #$gtk #$libadwaita #$vte #$graphene
-                                     #$gdk-pixbuf #$gobject-introspection
-                                     #$pango #$harfbuzz #$cairo #$glib)))
-                         (path-dirs
-                          (append
-                           (list (string-append out "/bin")
-                                 (string-append #$bash-minimal "/bin")
-                                 (string-append #$coreutils-minimal "/bin")
-                                 (string-append #$grep "/bin")
-                                 (string-append #$sed "/bin")
-                                 (string-append #$tar "/bin")
-                                 (string-append #$pciutils "/bin")
-                                 (string-append #$fakeroot "/bin")))))
-                    (wrap-program (string-append out "/bin/waydroid-helper")
-                      `("PATH" ":" prefix ,path-dirs)
-                      `("GI_TYPELIB_PATH" ":" prefix ,gi-path)
-                      `("PYTHONPATH" ":" prefix ,python-path)
-                      `("GSETTINGS_SCHEMA_DIR" ":" prefix
-                        (,(string-append out "/share/glib-2.0/schemas")))
-                      `("XDG_DATA_DIRS" ":" prefix
-                        (,(string-append out "/share"))))
-                    ;; 特权 CLI：pkexec 环境下路径极简，只补 PATH。
-                    (wrap-program (string-append out "/bin/waydroid-cli")
-                      `("PATH" ":" prefix ,path-dirs)))))))))
+        #~(modify-phases %standard-phases
+            (add-after 'install 'wrap-program-paths
+              (lambda* (#:key inputs outputs #:allow-other-keys)
+                (let* ((out (assoc-ref outputs "out"))
+                       (py-path
+                        (filter file-exists?
+                                (map (lambda (dir)
+                                       (string-append dir #$py-site))
+                                     (list #$@(map (lambda (package)
+                                                     #~#$package)
+                                                   python-packages)))))
+                       (gi-path
+                        (map (lambda (pkg)
+                               (string-append pkg "/lib/girepository-1.0"))
+                             (list #$gtk #$libadwaita #$vte #$graphene
+                                   #$gdk-pixbuf #$gobject-introspection
+                                   #$pango #$harfbuzz #$cairo #$glib)))
+                       (path-dirs
+                        (append
+                         (list (string-append out "/bin")
+                               (string-append #$bash-minimal "/bin")
+                               (string-append #$coreutils-minimal "/bin")
+                               (string-append #$grep "/bin")
+                               (string-append #$sed "/bin")
+                               (string-append #$tar "/bin")
+                               (string-append #$pciutils "/bin")
+                               (string-append #$fakeroot "/bin"))))
+                       (waydroid-bin (string-append #$waydroid "/bin")))
+                  (wrap-program (string-append out "/bin/waydroid-helper")
+                    `("PATH" ":" prefix ,path-dirs)
+                    ;; pkexec 清空 PATH 后 waydroid-cli 里的裸 waydroid 调用
+                    ;; 会 command not found；suffix 保证会话里的 waydroid
+                    ;; 仍然优先。
+                    `("PATH" ":" suffix (,waydroid-bin))
+                    `("GI_TYPELIB_PATH" ":" prefix ,gi-path)
+                    `("PYTHONPATH" ":" prefix ,py-path)
+                    `("GSETTINGS_SCHEMA_DIR" ":" prefix
+                      (,(string-append out "/share/glib-2.0/schemas")))
+                    `("XDG_DATA_DIRS" ":" prefix
+                      (,(string-append out "/share"))))
+                  ;; 特权 CLI：pkexec 环境下路径极简，只补 PATH。
+                  (wrap-program (string-append out "/bin/waydroid-cli")
+                    `("PATH" ":" prefix ,path-dirs)
+                    `("PATH" ":" suffix (,waydroid-bin)))))))))
       (native-inputs
        `(("gettext-minimal" ,gettext-minimal)
          ("python-wrapper" ,python-wrapper)
@@ -560,7 +594,8 @@ variable to override it.")
          ("python-dbus" ,python-dbus)
          ("python-aiofiles" ,python-aiofiles)
          ("python-httpx" ,python-httpx)
-         ("python-pyyaml" ,python-pyyaml)))
+         ("python-pyyaml" ,python-pyyaml)
+         ("waydroid" ,waydroid)))
       (home-page "https://github.com/ShineBreaker/waydroid-helper")
       (synopsis "Configure Waydroid, manage key mappings and install extensions")
       (description
