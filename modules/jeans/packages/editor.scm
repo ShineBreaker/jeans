@@ -544,6 +544,117 @@ package provides the prebuilt binary release.")
     (license license:gpl3+)
     (supported-systems '("x86_64-linux"))))
 
+;;; wu-bin packages the upstream Wu editor's prebuilt Linux release
+;;; (dstrml/wu, a Zed fork): GPL-3.0-or-later binaries with Apache-2.0
+;;; components exactly as upstream ships them.  Only the x86_64-linux
+;;; tarball is packaged; upstream also publishes an aarch64 tarball.
+;;;
+;;; Layout mirrors zed.app: bin/wu is the combined CLI+GUI launcher
+;;; (NEEDED is only glibc/gcc); libexec/wu-editor is the GUI payload
+;;; (NEEDED: libasound, libxcb, libxkbcommon[-x11]).  The launcher's
+;;; built-in bundle detection searches ../libexec/wu-editor (and
+;;; ../lib/wu/wu-editor) relative to /proc/self/exe, so bin/ and
+;;; libexec/ must stay siblings under lib/wu/: lib/wu/bin/wu next to
+;;; lib/wu/libexec/wu-editor.
+;;; The tarball also bundles a private lib/ (libxcb, libxcb-xkb,
+;;; libxkbcommon[-x11], libXau, ...); it is deliberately NOT installed —
+;;; Guix's libxcb and libxkbcommon provide the same sonames, and
+;;; interpreter + RPATH resolve them (verified with ld.so --list on the
+;;; store output).
+;;; GPUI dlopens libEGL/libwayland/libvulkan at runtime (none of them
+;;; are NEEDED): mesa, wayland and vulkan-loader are inputs so they land
+;;; on the RPATH; wgpu falls back to the GL backend when Vulkan is
+;;; unavailable.  The binary also references libonnxruntime.so.1.28.3,
+;;; which upstream does not ship in the tarball either.
+;;; The wrapper sets ZED_UPDATE_EXPLANATION (the fork kept zed's
+;;; variable name) so the built-in auto-updater points at Guix.
+;;; licenses.md is upstream's third-party notice (themes, fonts, Rust
+;;; crates); the MIT/Apache-2.0 components it covers require shipping
+;;; it with the binaries, so the standard install-license-files phase
+;;; picks it up into share/doc/.  The in-app licence viewer embeds its
+;;; own copy.
+(define-public wu-bin
+  (package
+    (name "wu-bin")
+    (version "1.1.16")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://github.com/dstrml/wu/releases/download/v"
+             version "/wu-linux-x86_64.tar.gz"))
+       (sha256
+        (base32 "1i8a6i9p6q045dax50sdhy4vkj53gis7n3hi0d4lvk0wwd405r8h"))))
+    (build-system binary-build-system)
+    (arguments
+     (list
+      ;; tarball 顶层是 wu.app/，strip 后得 bin/、libexec/、share/；
+      ;; 基座 unpack 由下方自定义 phase 接管，此处 'none 仅满足显式声明要求。
+      #:unpack-method 'none
+      #:install-plan
+      #~'(("bin/wu" "lib/wu/bin/wu")
+          ("libexec/wu-editor" "lib/wu/libexec/wu-editor"))
+      ;; RPATH 自动取 lib-dir（lib/wu）+ 全部 inputs 的 /lib。
+      #:patchelf-plan
+      #~'(("lib/wu/bin/wu")
+          ("lib/wu/libexec/wu-editor"))
+      #:wrap-plan
+      #~'(("lib/wu/bin/wu"
+           ("ZED_UPDATE_EXPLANATION" =
+            ("Updates are handled by the Guix package manager."))
+           ("XKB_CONFIG_ROOT" ":" prefix
+            (#$(file-append xkeyboard-config "/share/X11/xkb")))))
+      #:modules '((guix build utils) (ice-9 regex))
+      #:phases
+      #~(modify-phases %standard-phases
+          (replace 'unpack
+            (lambda _
+              ;; tarball top level is ./wu.app
+              (invoke "tar" "--strip-components=1" "-xzf" #$source)))
+          (add-after 'install 'install-links
+            (lambda _
+              (let ((libdir (string-append #$output "/lib/wu")))
+                ;; bin/ and libexec/ stay siblings under lib/wu/ so the
+                ;; launcher's bundle detection
+                ;; (../libexec/wu-editor relative to /proc/self/exe)
+                ;; keeps resolving.
+                (mkdir-p (string-append #$output "/bin"))
+                (symlink (string-append libdir "/bin/wu")
+                         (string-append #$output "/bin/wu")))))
+          (add-after 'install 'install-desktop-and-icons
+            (lambda _
+              (let ((share (string-append #$output "/share")))
+                (mkdir-p (string-append share "/applications"))
+                (copy-file "share/applications/me.farshed.Wu.desktop"
+                           (string-append share "/applications/me.farshed.Wu.desktop"))
+                (substitute* (string-append share "/applications/me.farshed.Wu.desktop")
+                  ;; 主入口与 [Desktop Action NewWorkspace] 的 Exec 都换成
+                  ;; 绝对路径；TryExec=wu 删掉（未装进 profile 时别隐藏入口）。
+                  (("Exec=wu ") (string-append "Exec=" #$output "/bin/wu "))
+                  (("TryExec=wu\n") ""))
+                (copy-recursively "share/icons"
+                                  (string-append share "/icons"))))))))
+    (inputs
+     `(("bash-minimal" ,bash-minimal)
+       ("glibc" ,glibc)
+       ("gcc:lib" ,gcc "lib")
+       ("alsa-lib" ,alsa-lib)
+       ("libxcb" ,libxcb)
+       ("libxkbcommon" ,libxkbcommon)
+       ("wayland" ,wayland)
+       ("mesa" ,mesa)
+       ("vulkan-loader" ,vulkan-loader)
+       ("xkeyboard-config" ,xkeyboard-config)))
+    (home-page "https://github.com/dstrml/wu")
+    (synopsis "Fast native code editor with built-in coding agents")
+    (description "Wu is a fast, native code editor written in Rust with
+coding agents built in.  It is a fork of Zed and provides a GPU-accelerated
+UI, built-in support for Claude Code, Codex and OpenCode, and requires no
+account or telemetry.  This package provides the prebuilt binary release.")
+    (properties `((upstream-name . "wu")))
+    (license license:gpl3+)
+    (supported-systems '("x86_64-linux"))))
+
 ;;; helix-steel tracks mattwparas' steel-event-system branch of Helix: an
 ;;; experimental build that embeds the Steel Scheme interpreter as a
 ;;; scripting/event engine.  The branch has no release tags, so the version

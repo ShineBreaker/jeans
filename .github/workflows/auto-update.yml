@@ -36,7 +36,7 @@ env:
   # no updater；由 Python updater 兜底（读包定义 release-tag-prefix
   # property 剥 ^ 锚点过滤 bun-v* 系列，2026-10-24 实测正常）。
   REFRESH_PACKAGES: >-
-    crush-bin opencode-desktop-bin herdr-bin omo-bin disktree-bin
+    crush-bin opencode-desktop-bin herdr-bin omo-bin disktree-bin wu-bin
     magpie-bin codewhale-bin reasonix-bin github-copilot
     eask-bin neomacs-bin rayburst-bin cc-switch-bin
     font-maple-font-nf-cn font-nerd-font-iosevka
