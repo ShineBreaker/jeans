@@ -553,8 +553,9 @@ This package distributes the upstream AppImage build."))
               ;; inso resolves its read-only assets (shaders/, data/,
               ;; skins/_default/) and its writable state (songs/, custom
               ;; skins) relative to its working directory.  Run it from a
-              ;; per-user data directory and seed it with symlinks back to
-              ;; the store assets on first launch.
+              ;; per-user data directory and seed it from the store assets
+              ;; on first launch: symlinks for the read-only trees, a copy
+              ;; for songs/ (see below).
               (let* ((bin (string-append #$output "/bin"))
                      (wrapper (string-append bin "/inso"))
                      (data-root (string-append #$output "/share/inso")))
@@ -581,7 +582,21 @@ This package distributes the upstream AppImage build."))
                     (format port
                             "ln -sn \"$STORE/skins/_default\" ")
                     (format port "\"$DATA_DIR/skins/_default\"~%")
+                    ;; inso's discover_maps only accepts entries whose type is
+                    ;; Directory, so the bundled song folders cannot be
+                    ;; symlinked the way the asset trees above are: readdir
+                    ;; reports the link itself, the scan skips it, and the
+                    ;; client aborts at startup with "no loadable beatmap
+                    ;; found".  Copy them on first launch instead; the
+                    ;; directory stays writable so maps can still be added.
                     (format port "mkdir -p \"$DATA_DIR/songs\"~%")
+                    (format port "if [ -z \"$(ls -A \"$DATA_DIR/songs\")\" ]; then~%")
+                    (format port "  cp -a \"$STORE/songs/.\" ")
+                    (format port "\"$DATA_DIR/songs/\"~%")
+                    ;; -a brings the store's read-only modes along; the copied
+                    ;; maps are the user's play folder, so make them writable.
+                    (format port "  chmod -R u+w \"$DATA_DIR/songs\"~%")
+                    (format port "fi~%")
                     (format port "cd \"$DATA_DIR\"~%")
                     (format port "exec -a inso ~a/lib/inso/inso \"$@\"~%"
                             #$output)))
