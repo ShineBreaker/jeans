@@ -67,11 +67,73 @@ jobs:
             exit 1
           fi
 
+      - name: Configure GPG signing
+        # main 上每个 commit 都要过 `guix git authenticate`，无签名的 commit
+        # 会让所有 clone 的 `guix pull` 直接失败。PR commit 必须在创建时就
+        # 签好，不能指望合并时补（rebase 不会重签，GitHub 网页合并只会换成
+        # web-flow 的签名，同样过不了认证）。
+        if: steps.updater.outputs.changed == 'true'
+        shell: bash
+        env:
+          WORKFLOW_GPG_PRIVATE_KEY: ${{ secrets.WORKFLOW_GPG_PRIVATE_KEY }}
+          WORKFLOW_GPG_PASSPHRASE: ${{ secrets.WORKFLOW_GPG_PASSPHRASE }}
+          WORKFLOW_GPG_FINGERPRINT: ${{ vars.WORKFLOW_GPG_FINGERPRINT }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${WORKFLOW_GPG_PRIVATE_KEY:-}" ]; then
+            echo "GitHub secret WORKFLOW_GPG_PRIVATE_KEY is required" >&2
+            exit 1
+          fi
+          if [ -z "${WORKFLOW_GPG_FINGERPRINT:-}" ]; then
+            echo "GitHub variable WORKFLOW_GPG_FINGERPRINT is required" >&2
+            exit 1
+          fi
+
+          export GNUPGHOME="${RUNNER_TEMP:-/tmp}/jeans-workflow-gnupg"
+          rm -rf "$GNUPGHOME"
+          mkdir -p "$GNUPGHOME"
+          chmod 700 "$GNUPGHOME"
+          printf 'pinentry-mode loopback\n' > "$GNUPGHOME/gpg.conf"
+          printf 'allow-loopback-pinentry\n' > "$GNUPGHOME/gpg-agent.conf"
+          printf 'GNUPGHOME=%s\n' "$GNUPGHOME" >> "$GITHUB_ENV"
+
+          printf '%s\n' "$WORKFLOW_GPG_PRIVATE_KEY" | gpg --batch --import
+
+          key_fpr="$(gpg --batch --with-colons --list-secret-keys | awk -F: '/^fpr:/ {print $10; exit}')"
+          if [ -z "$key_fpr" ]; then
+            echo "Unable to determine imported signing key fingerprint" >&2
+            exit 1
+          fi
+          expected_fpr="$(printf '%s' "$WORKFLOW_GPG_FINGERPRINT" | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]')"
+          actual_fpr="$(printf '%s' "$key_fpr" | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]')"
+          if [ "$actual_fpr" != "$expected_fpr" ]; then
+            echo "Imported GPG key fingerprint does not match WORKFLOW_GPG_FINGERPRINT" >&2
+            echo "expected: $expected_fpr" >&2
+            echo "actual:   $actual_fpr" >&2
+            exit 1
+          fi
+
+          cat > /tmp/gpg-loopback <<'EOF'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          if [ -n "${WORKFLOW_GPG_PASSPHRASE:-}" ]; then
+            exec gpg --batch --pinentry-mode loopback --passphrase "$WORKFLOW_GPG_PASSPHRASE" "$@"
+          fi
+          exec gpg --batch "$@"
+          EOF
+          chmod 700 /tmp/gpg-loopback
+
+          git config user.signingkey "$key_fpr"
+          git config commit.gpgsign true
+          git config gpg.program /tmp/gpg-loopback
+
       - name: Open the PR
         if: steps.updater.outputs.changed == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ inputs.tag }}
+          WORKFLOW_GPG_PASSPHRASE: ${{ secrets.WORKFLOW_GPG_PASSPHRASE }}
         run: |
           set -euo pipefail
           ver="${RELEASE_TAG#v}"
@@ -85,7 +147,7 @@ jobs:
           git config user.name  'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git checkout -b "$branch"
-          git commit -am "chore(desktop): bump nosdshell to ${ver}"
+          git commit -S -am "chore(desktop): bump nosdshell to ${ver}"
           git push -u origin "$branch"
           cat > "$RUNNER_TEMP/pr-body.md" <<EOF
           nosDShell ${RELEASE_TAG} 已发布：https://github.com/ShineBreaker/nosDShell/releases/tag/${RELEASE_TAG}
