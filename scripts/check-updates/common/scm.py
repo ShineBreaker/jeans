@@ -311,9 +311,12 @@ def parse_package_definitions(content: str, _file_path: Path) -> list[dict[str, 
         # 识别 let-绑定的 git-version 结构（无 tag 追踪 commit 模式）。
         # 结构形如：(let ((commit "...") (revision "...")) (package (version (git-version ...)) ...))
         # 此时 version 字段是表达式而非字面量，commit 在 let 绑定里而非 git-reference。
+        # 用 let*（绑定间有依赖）或 commit/revision 之后还有别的绑定都合法，
+        # 所以不收束于绑定列表闭合括号——漏判会让 version 留 None，进而在
+        # format_commit_version 处整条流水线崩溃（2026-11-05 waydroid-helper 实证）。
         let_commit_match = re.search(
-            r'\(let\s+\(\((?:commit|rev)\s+"([0-9a-f]{40})"\)\s*'
-            r'(?:\((?:revision|rev)\s+"(\d+)"\)\s*)?\)',
+            r'\(let\*?\s+\(\((?:commit|rev)\s+"([0-9a-f]{40})"\)\s*'
+            r'(?:\((?:revision|rev)\s+"(\d+)"\))?',
             package_content,
         )
         is_let_git_version = (
