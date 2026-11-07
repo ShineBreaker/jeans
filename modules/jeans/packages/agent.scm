@@ -1114,7 +1114,9 @@ for multiple LLM providers.")
 ;;;  - launcher resolves Resources/ and bin/bun from its own path
 ;;;    (/proc/self/exe) and chdirs into bin/ before spawning bun, so the
 ;;;    upstream bin/ + Resources/ sibling layout is preserved under
-;;;    lib/thinkrail-bin/ (an ld-linux wrapper would break that lookup).
+;;;    lib/thinkrail/ (an ld-linux wrapper would break that lookup).
+;;;    The directory keeps the upstream name: -bin is only the Guix
+;;;    package name, and nothing the app resolves may carry it.
 ;;;    launcher gets the Guix interpreter plus an RPATH; bun only gets the
 ;;;    interpreter, because patchelf --set-rpath rewrites the dynamic
 ;;;    section and breaks the file-offset lookups into Bun's embedded blob
@@ -1164,7 +1166,7 @@ for multiple LLM providers.")
           (replace 'install
             (lambda _
               (let* ((out #$output)
-                     (libdir (string-append out "/lib/thinkrail-bin"))
+                     (libdir (string-append out "/lib/thinkrail"))
                      (bindir (string-append libdir "/bin")))
                 (copy-recursively "ThinkRail" libdir)
                 ;; Upgrades are owned by the channel, not the app, and the
@@ -1183,7 +1185,7 @@ for multiple LLM providers.")
           (add-after 'install 'patch-elf
             (lambda* (#:key inputs #:allow-other-keys)
               (let* ((out #$output)
-                     (libdir (string-append out "/lib/thinkrail-bin"))
+                     (libdir (string-append out "/lib/thinkrail"))
                      (bindir (string-append libdir "/bin"))
                      (ld.so (string-append #$(this-package-input "glibc")
                                            #$(glibc-dynamic-linker)))
@@ -1227,7 +1229,7 @@ for multiple LLM providers.")
                      (apps (string-append out "/share/applications")))
                 (mkdir-p apps)
                 (make-desktop-entry-file
-                 (string-append apps "/thinkrail-bin.desktop")
+                 (string-append apps "/thinkrail.desktop")
                  #:name "ThinkRail"
                  #:comment #$(package-synopsis this-package)
                  #:exec (string-append out "/bin/thinkrail")
@@ -1236,7 +1238,7 @@ for multiple LLM providers.")
                  #:startup-w-m-class "ThinkRail"))))
           (add-after 'install-desktop 'install-icons
             (lambda _
-              (let* ((src (string-append #$output "/lib/thinkrail-bin"
+              (let* ((src (string-append #$output "/lib/thinkrail"
                                          "/Resources/appIcon.png"))
                      (dst (string-append #$output "/share/icons/hicolor"
                                          "/512x512/apps/thinkrail.png")))
@@ -1245,7 +1247,7 @@ for multiple LLM providers.")
           (add-after 'install-icons 'wrap-program
             (lambda* (#:key inputs outputs #:allow-other-keys)
               (let* ((out (assoc-ref outputs "out"))
-                     (libdir (string-append out "/lib/thinkrail-bin"))
+                     (libdir (string-append out "/lib/thinkrail"))
                      (fontconfig (assoc-ref inputs "fontconfig-minimal"))
                      (runtime-dirs
                       (map (lambda (name) (assoc-ref inputs name))
@@ -1710,7 +1712,7 @@ so the bundled self-updater should not be used.")
       ;; Single raw ELF, no archive; unpatched — see the comment above.
       #:unpack-method 'file
       #:install-plan
-      #~'(("magpie-linux-amd64" "libexec/magpie-bin/magpie"))
+      #~'(("magpie-linux-amd64" "libexec/magpie/magpie"))
       #:patchelf? #f
       #:wrap? #f
       #:phases
@@ -1719,7 +1721,7 @@ so the bundled self-updater should not be used.")
             (lambda* (#:key inputs #:allow-other-keys)
               (let* ((out #$output)
                      (bin (string-append out "/bin"))
-                     (real (string-append out "/libexec/magpie-bin/magpie"))
+                     (real (string-append out "/libexec/magpie/magpie"))
                      (ld.so (string-append (assoc-ref inputs "glibc")
                                            #$(glibc-dynamic-linker)))
                      (libs (string-join

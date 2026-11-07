@@ -64,6 +64,8 @@
 (define packages-doc "./docs/packages.md")
 ;; gen-docs 实际调用的辅助 Scheme 脚本
 (define gen-docs-script "./scripts/gen-docs.scm")
+;; 检查包名是否渗入安装路径的静态扫描脚本
+(define check-paths-script "./scripts/check-package-paths.py")
 
 
 ;; ─── 辅助函数 ────────────────────────────────────────────────────────────
@@ -249,6 +251,38 @@ rust-crates.scm 只含 crate-source 定义，不是包，故不在扫描之列�
 
 
 ;; ════════════════════════════════════════════════════════════════════════
+;; 命令 5：check-paths —— 检查包名是否渗入安装路径
+;; ════════════════════════════════════════════════════════════════════════
+;;
+;; `-bin` 后缀是本通道的记号，上游软件不认识它。把包名写进 bin/、lib/、
+;; libexec/ 目录名或 .desktop 文件名，构建期一切正常、运行期静默失效
+;; （资源找不到、配置写到新目录）。这条命令做静态扫描，退出码非 0，
+;; 可直接接入 CI。规则与实证见 pack-guix skill 的 jeans-conventions.md。
+
+(define-command (check-paths-command arguments)
+  ((invoke "check-paths")
+   (category 'jeans)
+   (load-configuration-policy 'no)
+   (synopsis "检查包名是否渗入安装路径")
+   (help "静态扫描 modules/jeans/packages/ 下的包定义，报告把本通道包名
+（如 foo-bin）写进安装路径的情况。
+
+凡上游会读取或显示的标识——bin/、lib/、libexec/、share/ 目录名，
+.desktop 文件名，图标基名——都必须用上游原名。唯一例外是 Guix 自用的
+share/doc/<package-name>/。
+
+违规时退出码为 1。"))
+  (if (not (file-exists? check-paths-script))
+      (begin
+        (log:warning! "找不到辅助脚本 ~a" check-paths-script)
+        (log:hint! "请先创建该脚本（见仓库说明）。")
+        #f)
+      (let ((cmd (string-append "python3 " check-paths-script)))
+        (log:progress "检查包名与安装路径 …")
+        (zero? (run-shell cmd)))))
+
+
+;; ════════════════════════════════════════════════════════════════════════
 ;; 组装蓝图：把上面定义的命令注册进去
 ;; ════════════════════════════════════════════════════════════════════════
 
@@ -258,4 +292,5 @@ rust-crates.scm 只含 crate-source 定义，不是包，故不在扫描之列�
    build-command
    upgrade-command
    import-crate-command
-   gen-docs-command)))
+   gen-docs-command
+   check-paths-command)))

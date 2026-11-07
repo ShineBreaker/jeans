@@ -42,6 +42,8 @@ trap 'rm -rf "$WORK_DIR"' EXIT
 
 记录证据：许可证文件 URL、源码仓库 URL、使用的 release 资产 URL。-bin 是软件许可状态和本次打包来源的结论，不是文件格式的别名。
 
+**包名是本通道的记号，不渗入安装路径**：`-bin`（预编译）与 `-next`（追 master 的版本线）都只是 Guix 包名记号，上游软件不认识它。凡是上游会读取或显示的标识——`bin/` 程序名、`lib/`、`libexec/`、`share/` 目录名、`.desktop` 文件名与 `Icon=`、man / 补全文件名、wrapper 的 `exec -a <argv0>`、程序自己的用户配置目录——一律用上游原名。唯一例外是 Guix 自用的 `share/doc/<package-name>/`。写完用 `blue check-paths` 扫一遍。
+
 完成标准：define-public 名称、name 字段、docs 名称、自动更新 properties 和测试命令全部一致；许可证与上游证据一致；已确认 release 资产文件名前缀（决定 upstream-name 的值）。
 
 ### 2. Acquire and inspect the source
@@ -146,6 +148,8 @@ synopsis,gnu-description <package-name>
 
 网络型 source、home-page、github-url checker 如果被远端 HTTP/镜像故障中断，记录具体错误并单独重试；不能把网络错误写成包已通过全部 lint。
 
+路径命名顺手验证：`blue check-paths` 静态扫描包名是否渗入安装路径；构建后 `find $out -name '*-bin*'` 只应命中 `share/doc/`。
+
 完成标准：实际构建退出码为 0；lint 没有 package finding；所有 warning 都有解释或修复；git diff --check 通过。
 
 ### 6. Runtime verification
@@ -190,6 +194,7 @@ synopsis,gnu-description <package-name>
 - 不对自定位二进制（按 /proc/self/exe 或自身文件名定位资源；bun --compile 产物）用 patchelf 或 wrap-program；改用系统级 nix-ld，或真名住 libexec + 手写 thin wrapper。
 - 不把无仓库实证（file:line 或 commit）的单次经验写成普遍结论；写进本 skill 的条目注明实例来源，探索性结论标注"待实证"。
 - 不把网络故障、GUI 不可用或只完成 dry-run 写成构建/运行时成功。
+- 不把 `-bin` 后缀带进任何上游可读的标识：`bin/` 程序名、`lib/`、`libexec/`、`share/` 目录名、`.desktop` 文件名、`Icon=`、man / 补全文件名、`exec -a` 的 argv[0]。例外仅 `share/doc/<package-name>/`。
 - 不提交缺少 `upstream-name` 的 GitHub release `-bin` 包；否则 guix refresh 会报 "no updater" 且包永远收不到自动更新。交付前必须用 `guix refresh` dry-run 确认 updater 识别。
 
 ## Channel references

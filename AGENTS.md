@@ -20,6 +20,7 @@
 | `blue upgrade` | 跑兜底 updater（Python 一层，不含主力 `guix refresh`） |
 | `blue import-crate <crate名>[@版本]` | 从 crates.io 导入 Rust crate 源码，写入 `rust-crates.scm` |
 | `blue gen-docs` | 由包定义重生成 `docs/packages.md` |
+| `blue check-paths` | 静态检查包名（`-bin` 等记号）是否渗入安装路径 |
 
 包定义新增、改名、改 `synopsis` 或 `description` 后跑一次 `blue gen-docs`，让文档与代码不漂移。
 

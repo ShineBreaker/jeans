@@ -16,6 +16,41 @@ jeans 仓库的特定约定，补充通用 Guix 知识（见 `guix-reference.md`
 
 示例：`opencode-bin`、`orca-ide-bin`、`zen-browser-bin`、`osu-lazer-bin`（开源预编译）；`zcode`、`github-copilot`（闭源）。
 
+### 包名是本通道的记号，不渗入安装路径
+
+包名上的通道记号目前有两种：`-bin` 表示「本通道分发的是预编译产物」，`-next` 表示「追上游 master 的版本线」（`lem-next-bin` 的上游只叫 Lem；`aria2-next-bin` 的 `-next` 却是上游 repo 名，不是我们的记号——判断依据是 `upstream-name`）。记号属于 Guix 包名命名空间，上游软件不知道、也不该知道它。**凡是上游会读取、探测、写回或显示给用户的路径与标识，一律用上游原名**；包名只用于 Guix 侧的标识（`name` 字段、`define-public` 符号、Scheme 变量名），不进入任何上游可读的字符串。
+
+判断标准一句话：**这个字符串会被上游程序读到吗？** 会 → 上游名。只有 Guix/profile 自己读才可能是包名（目前仅 `share/doc/`）。
+
+| 位置 | 正确 | 错误 |
+| --- | --- | --- |
+| 主程序 | `$out/bin/thinkrail` | `$out/bin/thinkrail-bin` |
+| bundle / 私有库根 | `$out/lib/thinkrail`、`$out/libexec/magpie/magpie` | `$out/lib/thinkrail-bin`、`$out/libexec/magpie-bin/magpie` |
+| 应用资源 | `share/neomacs`、`share/inso` | `share/neomacs-bin` |
+| 桌面入口 | `share/applications/thinkrail.desktop`、`dev.zed.Zed.desktop` | `share/applications/thinkrail-bin.desktop` |
+| 图标 | `share/icons/hicolor/<size>/apps/thinkrail.png`、`#:icon "thinkrail"` | `thinkrail-bin.png` |
+| man / 补全 | `share/man/man8/opentabletdriver.8.gz`、`completions/crush`、`site-functions/_crush` | `_crush-bin` |
+| wrapper 的 argv[0] | `exec -a inso` | `exec -a inso-bin` |
+| 版本线记号 | `lem-next-bin` 装 `libexec/lem/`（上游叫 Lem） | `libexec/lem-next/` |
+| 用户数据 / 配置目录 | 程序自己用 `~/.config/<app>`，保持原样 | substitute 成 `~/.config/<app>-bin` |
+
+**唯一例外**：`share/doc/<package-name>/` 是 Guix 自己的文档元数据命名空间（与 `gnu/packages` 的 `share/doc/emacs-29.4` 同构），用包名。它不是给程序读的。
+
+**机制上的坑在 build-system 默认值**，不在手写字符串。`binary-build-system` 的默认 install-plan 是 `lib/<package-name>/`，而 `#:package-name` 由 build-system 自动取 `(package-name this-package)`——漏传 `#:install-plan` 与 `#:app-dir` 的 `-bin` 包会**自动**装进 `lib/foo-bin/`，不需要任何人写错字。所以 `-bin` 包用 `binary-build-system` 时必须显式给 `#:install-plan` 或 `#:app-dir`。`electron-build-system` 强制 `#:app-dir`，同样写上游名（`lib/opencode-desktop`，不是 `lib/opencode-desktop-bin`）。`blue check-paths` 已覆盖这两条。
+
+为什么必须这样：上游定位资源的方式全是「按自己的名字找」——`/proc/self/exe` 同目录、`share/<appname>`、argv[0] basename 分支、`.desktop` 的 desktop-id 与 `StartupWMClass`。目录名一换，构建期完全正常（文件都在），运行期静默失效：资源找不到、配置写进新目录（旧配置丢失）、启动器出现重复项或图标不匹配。这类故障不报错，只表现为「功能有点怪」。另外，包改名（上游改名，或某天去掉 `-bin`）会连带改掉用户数据目录，等于强制用户丢配置。
+
+审查：
+
+```bash
+blue check-paths                              # 静态扫描，违规时退出码 1
+find /gnu/store/<hash>-<pkg> -name '*-bin*'   # 安装后，应只命中 share/doc/
+```
+
+**实证**：thinkrail-bin 曾把 Electrobun bundle 装到 `lib/thinkrail-bin/`、桌面文件写成 `thinkrail-bin.desktop`；magpie-bin 曾装到 `libexec/magpie-bin/magpie`；lem-next-bin 曾装到 `libexec/lem-next/`。三者构建与运行都正常（wrapper 都传绝对路径），但违反本规则，2026-11-07 全仓审计时修正。
+
+`blue check-paths` 的通道记号后缀集合写在 `scripts/check-package-paths.py` 的 `CHANNEL_SUFFIXES`；新增记号（`-nightly` 之类）时要同步，否则检查看不到。
+
 ## 自动更新 properties（决定包能否被 guix refresh 接管）
 
 `guix refresh` 是 CI 自动更新的主力。要让 refresh 正确识别并更新一个包，包定义需要带合适的 `properties` 字段。**新建包时必须根据以下规则设置 properties**，否则包将无法被自动更新，或被误判为"无 updater"。

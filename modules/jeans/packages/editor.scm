@@ -74,10 +74,10 @@
      (list
       #:unpack-method 'appimage-7z
       #:install-plan
-      #~'(("usr/libexec/lem.real" "libexec/lem-next/")
-          ("usr/lib/libwebview.so.0.12.0" "libexec/lem-next/")
-          ("usr/lib/libasyncprocess.so" "libexec/lem-next/")
-          ("usr/lib/terminal.so" "libexec/lem-next/")
+      #~'(("usr/libexec/lem.real" "libexec/lem/")
+          ("usr/lib/libwebview.so.0.12.0" "libexec/lem/")
+          ("usr/lib/libasyncprocess.so" "libexec/lem/")
+          ("usr/lib/terminal.so" "libexec/lem/")
           ("usr/share/icons/hicolor/256x256/apps/lem.png"
            "share/icons/hicolor/256x256/apps/"))
       #:patchelf? #f
@@ -103,15 +103,15 @@
             (lambda _
               (symlink #$(file-append ncurses "/lib/libncursesw.so.6")
                        (string-append #$output
-                                      "/libexec/lem-next/libncursesw.so.6.3"))
+                                      "/libexec/lem/libncursesw.so.6.3"))
               ;; tree-sitter's C ABI is backward compatible across 0.2x.
               (symlink #$(file-append tree-sitter "/lib/libtree-sitter.so.0.25")
                        (string-append #$output
-                                      "/libexec/lem-next/libtree-sitter.so.0.27"))))
+                                      "/libexec/lem/libtree-sitter.so.0.27"))))
           (add-after 'install-desktop-entry 'wrap-lem
             (lambda* (#:key inputs #:allow-other-keys)
               (let* ((out #$output)
-                     (libexec (string-append out "/libexec/lem-next"))
+                     (libexec (string-append out "/libexec/lem"))
                      (ld.so (string-append (assoc-ref inputs "glibc")
                                            #$(glibc-dynamic-linker)))
                      (lib-path
