@@ -562,7 +562,23 @@ python-httpx would otherwise leave python-httpcore unreachable at run time."
                   ;; 特权 CLI：pkexec 环境下路径极简，只补 PATH。
                   (wrap-program (string-append out "/bin/waydroid-cli")
                     `("PATH" ":" prefix ,path-dirs)
-                    `("PATH" ":" suffix (,waydroid-bin)))))))))
+                    `("PATH" ":" suffix (,waydroid-bin))))))
+            ;; wrap-program 把真实脚本改名为 .<name>-real，GLib 拿脚本名当
+            ;; prgname：窗口标题因此显示 “.waydroid-helper-real”，CLI 的
+            ;; usage 也带 .real。两者都是用户可见标识，显式改回上游名。
+            (add-after 'wrap-program-paths 'fix-display-name
+              (lambda _
+                (substitute* (string-append #$output "/bin/.waydroid-helper-real")
+                  (("    from gi.repository import Gio, Adw, Gtk, GLib")
+                   "    from gi.repository import Gio, Adw, Gtk, GLib
+    GLib.set_prgname(\"waydroid-helper\")
+    GLib.set_application_name(\"waydroid-helper\")")
+                  ;; argparse 的 %(prog)s 取 sys.argv[0]，同样是 .real 路径。
+                  (("    parser = ArgumentParser\\(\\)")
+                   "    parser = ArgumentParser()
+    parser.prog = \"waydroid-helper\""))
+                (substitute* (string-append #$output "/bin/.waydroid-cli-real")
+                  (("Usage: \\$0") "Usage: waydroid-cli")))))))
       (native-inputs
        `(("gettext-minimal" ,gettext-minimal)
          ("python-wrapper" ,python-wrapper)
