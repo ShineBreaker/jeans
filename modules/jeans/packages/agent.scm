@@ -1929,3 +1929,120 @@ distributed through Tencent's own update channel; signing in requires a
 Tencent account.")
     (license (license:nonfree "https://www.workbuddy.cn/"))
     (supported-systems '("x86_64-linux"))))
+
+;;; Qoder CN: Alibaba's agent workbench for human and AI software teams
+;;; (closed-source Electron desktop client).
+;;;
+;;; 版本通道（2026-11-07 摸清）：上游不发 GitHub release，Linux .deb 只挂在
+;;; 阿里云 OSS 上。官网和下载页给的是
+;;;   .../qoder-app/releases/latest/Qoder-CN-linux-amd64.deb
+;;; ——那是 OSS 里一次 CopyObject 出来的副本，每次发版被同名对象原地覆盖，
+;;; 对 Guix 不可用（同一 URL 的内容会变，hash 必然漂移）。可固定的是桌面端
+;;; 自更新通道的 electron-builder generic provider 清单，以及按版本归档的
+;;; 资产目录：
+;;;   https://static.qoder.com.cn/qoder-app/releases/latest-linux.yml
+;;;   https://static.qoder.com.cn/qoder-app/releases/<version>/Qoder-CN-linux-amd64.deb
+;;; 历史版本目录一直保留（0.3.0 起各版本实测仍可下载），所以 URI 指向
+;;; releases/<version>/ 后，同一版本号的内容就是稳定的。版本发现交给
+;;; scripts/check-updates/handlers/qoder_cn.py（读清单；同版本按清单 sha256
+;;; 重钉，防上游原地重传）。
+;;;
+;;; 包内是 Electron 43（Chrome 150）的标准 /opt 布局：
+;;;   - qoder-cn        主程序，RPATH=$ORIGIN 用于找同目录的 libffmpeg.so /
+;;;                     libEGL / libGLESv2 / libvulkan / libvk_swiftshader
+;;;   - chrome-sandbox  安装但非 setuid-root：Guix 下靠 user namespace
+;;;                     sandbox（cindy-cn-bin 同一处理）
+;;;   - resources/app.asar.unpacked/node_modules/ 原生模块：keytar 运行期
+;;;                     dlopen libsecret-1.so.0（NEEDED 里看不见）、node-pty、
+;;;                     sharp（自带 libvips-cpp.so，$ORIGIN RPATH 自足）、
+;;;                     @napi-rs/canvas
+;;;   - resources/package-type 是 electron-updater 的替换许可，由
+;;;                     electron-build-system 的 disable-updater phase 删掉
+;;;
+;;; 闭源（.deb 的 License 字段为 unknown，随包只有 Electron/Chromium 的许可
+;;; 文本），按通道惯例不加 -bin 后缀。
+
+(define-public qoder-cn
+  (package
+    (name "qoder-cn")
+    (version "0.5.6")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://static.qoder.com.cn/qoder-app/releases/"
+             version "/Qoder-CN-linux-amd64.deb"))
+       (sha256
+        (base32 "1s8409jdizbl9kpyphz3v54zkc809x00r7q9f9fsw8n7f9im0zbs"))))
+    (build-system electron-build-system)
+    (arguments
+     (list
+      #:program "qoder-cn"
+      #:app-dir "lib/qoder-cn"
+      #:application-directory "qoder-cn"
+      #:unpack-method 'deb-xz
+      ;; 主程序 RPATH=$ORIGIN 用来找同目录 libffmpeg.so 等；sharp 的 .node
+      ;; 也靠 $ORIGIN 相对路径找自带的 libvips。prepend 而不是替换。
+      #:preserve-rpath? #t
+      ;; @img/ 子树（sharp 的 .node 与自带 libvips-cpp.so）自包含，patch
+      ;; 反而有 DT_INIT 失步风险（cindy-cn-bin 实证），整体跳过。
+      #:patchelf-exclude
+      #~'("lib/qoder-cn/resources/app.asar.unpacked/node_modules/@img/")
+      #:install-plan
+      #~'(("opt/Qoder-CN" "lib/qoder-cn")
+          ("usr/share/applications/qoder-cn.desktop"
+           "share/applications/qoder-cn.desktop")
+          ("usr/share/icons/hicolor" "share/icons/hicolor")
+          ("usr/share/doc/qoder-cn" "share/doc/qoder-cn"))
+      #:desktop-files
+      #~'(("share/applications/qoder-cn.desktop"
+           "bin/qoder-cn"
+           "share/icons/hicolor/256x256/apps/qoder-cn.png"))
+      #:modules '((guix build utils))
+      #:phases
+      #~(modify-phases (@ (jeans build electron) %standard-phases)
+          (add-after 'patchelf 'install-bin
+            (lambda _
+              (let* ((out #$output)
+                     (bin (string-append out "/bin")))
+                (mkdir-p bin)
+                (symlink (string-append out "/lib/qoder-cn/qoder-cn")
+                         (string-append bin "/qoder-cn"))))))))
+    (native-inputs (list binutils tar xz))
+    (inputs `(("alsa-lib" ,alsa-lib)
+              ("at-spi2-core" ,at-spi2-core)
+              ("bash-minimal" ,bash-minimal)
+              ("cairo" ,cairo)
+              ("cups" ,cups)
+              ("dbus" ,dbus)
+              ("eudev" ,eudev)
+              ("expat" ,expat)
+              ("fontconfig-minimal" ,fontconfig)
+              ("gcc:lib" ,gcc "lib")
+              ("glibc" ,glibc)
+              ("glib" ,glib)
+              ("gtk+" ,gtk+)
+              ;; keytar 运行期 dlopen libsecret-1.so.0（NEEDED 里看不见）；
+              ;; 登录凭据由系统 secrets 服务提供。
+              ("libsecret" ,libsecret)
+              ("libx11" ,libx11)
+              ("libxcb" ,libxcb)
+              ("libxcomposite" ,libxcomposite)
+              ("libxdamage" ,libxdamage)
+              ("libxext" ,libxext)
+              ("libxfixes" ,libxfixes)
+              ("libxkbcommon" ,libxkbcommon)
+              ("libxrandr" ,libxrandr)
+              ("mesa" ,mesa)
+              ("nss" ,nss)
+              ("nss-certs" ,nss-certs)
+              ("pango" ,pango)))
+    (home-page "https://qoder.com")
+    (synopsis "Agent workbench for human and AI software teams")
+    (description
+     "Qoder is an AI coding workspace in which an agent plans, reads code,
+edits files, runs commands and reports progress while working.  This is the
+China build distributed through Qoder's own update channel; signing in
+requires a Qoder account.")
+    (license (license:nonfree "https://qoder.com"))
+    (supported-systems '("x86_64-linux"))))

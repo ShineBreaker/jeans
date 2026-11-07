@@ -22,6 +22,7 @@
 | `omo-bin`              | AI coding agent CLI with memory system and extensions          |
 | `opencode-desktop-bin` | AI coding agent desktop application                            |
 | `paseo-bin`            | Self-hosted desktop client for orchestrating coding agents     |
+| `qoder-cn`             | Agent workbench for human and AI software teams                |
 | `reasonix-bin`         | DeepSeek-native AI coding agent for the terminal               |
 | `reasonix-studio-bin`  | Desktop GUI for the Reasonix AI coding agent                   |
 | `thinkrail-bin`        | JetBrains' lightweight AI coding IDE with the pi agent         |
