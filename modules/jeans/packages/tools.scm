@@ -265,7 +265,7 @@ editor that supports the protocol to provide Java language features.")
 (define-public aria2-next-bin
   (package
     (name "aria2-next-bin")
-    (version "3.0.9")
+    (version "3.0.10")
     (source
      (origin
        (method url-fetch)
@@ -274,7 +274,7 @@ editor that supports the protocol to provide Java language features.")
              "v" version "/aria2-next-" version "-linux-x86_64"))
        (file-name "aria2-next")
        (sha256
-        (base32 "1ny6ikqgi2ck0125vxfhdqdsd52ncvv8jcd7mxwsmm8m5yazq2ya"))))
+        (base32 "1l7fv3l647ina5szfmz45lp912sfz0s2p7ic4lbjknp641v64y7n"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -493,7 +493,7 @@ companion extension.  This package provides the prebuilt binary release.")
 (define-public cc-switch-bin
   (package
     (name "cc-switch-bin")
-    (version "4.0.22")
+    (version "4.0.26")
     (source
      (origin
        (method url-fetch)
@@ -501,7 +501,7 @@ companion extension.  This package provides the prebuilt binary release.")
              "https://github.com/farion1231/cc-switch/releases/download/"
              "v" version "/CC-Switch-v" version "-Linux-x86_64.deb"))
        (sha256
-        (base32 "1idkvjx5sphz78hw9znr68rmanx4kaas4jvyhqh13ylbykh46skf"))))
+        (base32 "0fmfam5i6m3yhxygn32q8m6n4hilgynnk24jyzsmknqmhgqf2c3d"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -968,7 +968,7 @@ prebuilt binary.")
 (define-public pnpm-bin
   (package
     (name "pnpm-bin")
-    (version "12.16.1")
+    (version "12.18.0")
     (source
       (origin
         (method url-fetch)
@@ -976,7 +976,7 @@ prebuilt binary.")
               "https://github.com/pnpm/pnpm/releases/download/v"
               version "/pnpm-linux-x64.tar.gz"))
         (sha256
-          (base32 "09d80ayicpdy4kza2w6k601ahc8hwlbink6qsmxnykx1fh8zhpsn"))))
+          (base32 "1hhp00lsy2zacfdi90k6nw6blh684gqml2jc2bkv63bc4c70c9ip"))))
     (build-system binary-build-system)
     (arguments
      (list

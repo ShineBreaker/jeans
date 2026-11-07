@@ -208,8 +208,8 @@ the webview (GTK/WebKitGTK) frontend with an ncurses fallback.")
 ;;; e.g. tree-sitter-json and point LD_LIBRARY_PATH at its lib/ to
 ;;; enable syntax highlighting for that language.
 (define-public lem-next
-  (let ((commit "c65f228566607e9c7345902779e3cf3e0c0b3dc2")
-        (revision "13"))
+  (let ((commit "ffab98ff7fa9816f34b3300130046993d89e1b25")
+        (revision "14"))
     (package
       (inherit lem)
       (name "lem-next")
@@ -222,7 +222,7 @@ the webview (GTK/WebKitGTK) frontend with an ncurses fallback.")
                (commit commit)))
          (file-name (git-file-name name version))
          (sha256
-          (base32 "1mxprasm32rl2ihnsgh5q61pfb6dpshsxm9i23ffz2mivzs699gn"))
+          (base32 "1zki6j9b7z85g2j2j5xcgxqmbzc5bjb242018yz2b0sj9zk4f96m"))
          (patches
           (map canonicalize-path
                (search-patches
@@ -368,7 +368,7 @@ the webview (GTK/WebKitGTK) frontend with an ncurses fallback.")
 (define-public fresh-editor-bin
   (package
     (name "fresh-editor-bin")
-    (version "0.5.4")
+    (version "0.5.8")
     (source
      (origin
        (method url-fetch)
@@ -376,7 +376,7 @@ the webview (GTK/WebKitGTK) frontend with an ncurses fallback.")
              "https://github.com/sinelaw/fresh/releases/download/"
              "v" version "/fresh-editor_" version "-1_amd64.deb"))
        (sha256
-        (base32 "195ppdp055mq94xwhrbf8w49z27f38z2hlpfb0h25ngzj54ld8k1"))))
+        (base32 "0a5f29val3vhpxvkgf67mldpgmnx0wa0zcmdy7y6xb3sxzlypgsp"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -449,7 +449,7 @@ binary release.")
 (define-public zed-bin
   (package
     (name "zed-bin")
-    (version "1.26.2")
+    (version "1.27.0")
     (source
      (origin
        (method url-fetch)
@@ -457,7 +457,7 @@ binary release.")
              "https://github.com/zed-industries/zed/releases/download/v"
              version "/zed-linux-x86_64.tar.gz"))
        (sha256
-        (base32 "1ljn72h396r5g6n007a6yc2r5bdp3b45ck3grjld0nzj34h9fysd"))))
+        (base32 "1pa3zh61blaqjnadfwldb4zsq6sng3hjixyv3ab8g3ga97v6p7vi"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -576,7 +576,7 @@ package provides the prebuilt binary release.")
 (define-public wu-bin
   (package
     (name "wu-bin")
-    (version "1.1.16")
+    (version "1.1.19")
     (source
      (origin
        (method url-fetch)
@@ -584,7 +584,7 @@ package provides the prebuilt binary release.")
              "https://github.com/dstrml/wu/releases/download/v"
              version "/wu-linux-x86_64.tar.gz"))
        (sha256
-        (base32 "1i8a6i9p6q045dax50sdhy4vkj53gis7n3hi0d4lvk0wwd405r8h"))))
+        (base32 "174jx347xpmw9fa2p7s20ripmxl51n7zqzq5wgsfd26h3k3f2ady"))))
     (build-system binary-build-system)
     (arguments
      (list

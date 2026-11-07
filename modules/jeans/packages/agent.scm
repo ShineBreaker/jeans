@@ -188,7 +188,7 @@ release.")
 (define-public cindy-cn-bin
   (package
     (name "cindy-cn-bin")
-    (version "0.1.121")
+    (version "0.1.128")
     (source
      (origin
        (method url-fetch)
@@ -196,7 +196,7 @@ release.")
              "https://github.com/makecindy/cindy/releases/download/"
              "v" version "/cindy-" version "-linux-x64-cn.deb"))
        (sha256
-        (base32 "051b5n680z2bpmip6alq6lvm0kazwm47l266qmh79j414fy5a7ll"))))
+        (base32 "1j1d3l14n62ln27gg34xda2q429g8b2s2dp5hx9zl5c378h4lr1f"))))
     (build-system electron-build-system)
     (arguments
      (list
@@ -325,7 +325,7 @@ control, and a companion system.")
 (define-public crush-bin
   (package
     (name "crush-bin")
-    (version "0.99.0")
+    (version "0.100.0")
     (source
      (origin
        (method url-fetch)
@@ -333,7 +333,7 @@ control, and a companion system.")
              "https://github.com/charmbracelet/crush/releases/download/"
              "v" version "/crush_" version "_amd64.deb"))
        (sha256
-        (base32 "0q7j82n8x30203m53lvibg4xd481kgzs6ffzvixhgxrfb4imand9"))))
+        (base32 "1zrh2xxwpw4kq0qrx81w7b0y2b4ivkbmlah5dr71mv4869n6n69i"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -395,7 +395,7 @@ This package provides the prebuilt binary release.")
 (define-public github-copilot
   (package
     (name "github-copilot")
-    (version "1.1.34")
+    (version "1.1.35")
     (source
      (origin
        (method url-fetch)
@@ -403,7 +403,7 @@ This package provides the prebuilt binary release.")
              "https://github.com/github/app/releases/download/"
              "v" version "/GitHub-Copilot-linux-x64.deb"))
        (sha256
-        (base32 "0kmfz6zc2w95pf7kn27x5b0fsqr69f1d4sazjfvwkik0r0r3qp8i"))))
+        (base32 "0ks02fk6brlnyj1dq48xpqynxxf3zyri6mmychn38yvli41nzk62"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -803,7 +803,7 @@ coding experience with context awareness.")
 (define-public paseo-bin
   (package
     (name "paseo-bin")
-    (version "0.14.0")
+    (version "0.15.3")
     (source
      (origin
        (method url-fetch)
@@ -811,7 +811,7 @@ coding experience with context awareness.")
              "https://github.com/getpaseo/paseo/releases/download/"
              "v" version "/Paseo-" version "-amd64.deb"))
        (sha256
-        (base32 "1gxv1z636a6l6w1inbb86kvxk63qczlr0ivvjqps1j5mh55a9z0k"))))
+        (base32 "10s8826487rcmbvmkvy2x9jyb2yz88jjnkcs3836ybgmb3ynbkml"))))
     (build-system electron-build-system)
     (arguments
      (list
@@ -945,7 +945,7 @@ telemetry or forced log-ins.")
 (define-public reasonix-bin
   (package
     (name "reasonix-bin")
-    (version "2.56.0")
+    (version "2.57.0")
     (source
      (origin
        (method url-fetch)
@@ -953,7 +953,7 @@ telemetry or forced log-ins.")
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
              "v" version "/reasonix-linux-amd64.tar.gz"))
        (sha256
-        (base32 "0jidgs71xkz7sxzcdkscbxjyg0y93ip7b6pwc6rf8c6rgh6fgd1p"))))
+        (base32 "13wlzdsxmb38cqm91dz2lcij34as257fiaj9rkdjgbv5ik0bn9y2"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -999,7 +999,7 @@ and ships as a single static binary with no runtime dependencies.")
 (define-public reasonix-studio-bin
   (package
     (name "reasonix-studio-bin")
-    (version "2.56.0")
+    (version "2.57.0")
     (source
      (origin
        (method url-fetch)
@@ -1007,7 +1007,7 @@ and ships as a single static binary with no runtime dependencies.")
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
              "studio-v" version "/ReasonixStudio-linux-amd64.deb"))
        (sha256
-        (base32 "1iqz2wx5b2hmc0xb6b1v3gsgkrkqx85cj2xy0049x98wi4s51i91"))))
+        (base32 "0fm0z6zlx1igfd5x3hahvmx52y9x3ylpidin4bbfgv2p7d310ya0"))))
     (build-system electron-build-system)
     (arguments
      (list
@@ -1139,7 +1139,7 @@ for multiple LLM providers.")
 (define-public thinkrail-bin
   (package
     (name "thinkrail-bin")
-    (version "0.3.0")
+    (version "0.3.2")
     (source
      (origin
        (method url-fetch)
@@ -1147,7 +1147,7 @@ for multiple LLM providers.")
              "https://github.com/JetBrains/thinkrail/releases/download/"
              "v" version "/stable-linux-x64-ThinkRail-" version ".tar.zst"))
        (sha256
-        (base32 "1fiaks17jsxd0mdp1n7qyl9mf3c6hwkfl8gai0khv6p4vlxaj25d"))))
+        (base32 "1yjs2myi2vkdpq1m94fj265y1wp669p6q6xlj90w7sh5q2f158w5"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -1316,7 +1316,7 @@ configure.  This package provides the prebuilt desktop release.")
 (define-public zcode
   (package
     (name "zcode")
-    (version "3.17.1")
+    (version "3.17.2")
     (source
      (origin
        (method url-fetch)
@@ -1324,7 +1324,7 @@ configure.  This package provides the prebuilt desktop release.")
              "https://cdn-zcode.z.ai/zcode/electron/releases/"
              version "/linux-x64/ZCode-" version "-linux-x64.deb"))
        (sha256
-        (base32 "1wg50s1ln8lcpr37h353pckdal5h8jix20n837baxnz96wgvx0kr"))))
+        (base32 "0xgmmzss89ipl2b8zhk7hb336z1k18q08d9iwxbawijwg4m7pv46"))))
     (build-system electron-build-system)
     (arguments
      (list
@@ -1517,7 +1517,7 @@ release and needs the @code{nix-ld} system service to run.")
 (define-public omo-bin
   (package
     (name "omo-bin")
-    (version "5.1.51")
+    (version "5.1.62")
     (source
      (origin
        (method url-fetch)
@@ -1526,7 +1526,7 @@ release and needs the @code{nix-ld} system service to run.")
              "v" version "/omo-linux-x64"))
        (sha256
         (base32
-         "01nmhhqlvpcxq1hf2rgigv9kvyrsq6bsd33phg70h4fi8zm36y7a"))))
+         "0jwld6p9vfjrp72543d0c3g7qdrwjf79hqpq6p65agcdpqz853yq"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -1566,7 +1566,7 @@ run.")
 (define-public cua-driver-bin
   (package
     (name "cua-driver-bin")
-    (version "0.38.0")
+    (version "0.41.2")
     (source
      (origin
        (method url-fetch)
@@ -1575,7 +1575,7 @@ run.")
              "cua-driver-rs-v" version
              "/cua-driver-rs-" version "-linux-x86_64-binary.tar.gz"))
        (sha256
-        (base32 "1pcqlszbyql2wp4qdhi5jr6kw3bgbkkz7fa9grkp7klivl4rgari"))))
+        (base32 "0bc9mhdymda9m5zw3nwsa7mzglq1q6i0ldbnhazh48c2g04vrd5a"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -1697,7 +1697,7 @@ so the bundled self-updater should not be used.")
 (define-public magpie-bin
   (package
     (name "magpie-bin")
-    (version "0.1.2356")
+    (version "0.1.3233")
     (source
      (origin
        (method url-fetch)
@@ -1705,7 +1705,7 @@ so the bundled self-updater should not be used.")
              "https://github.com/yetone/magpie-releases/releases/download/"
              "v" version "/magpie-linux-amd64"))
        (sha256
-        (base32 "0qwpdf6b0xvwa2r2z8sklqqbhfy96f1p95815igb0sh4zcnqq3x1"))))
+        (base32 "1rcniq7j44xg7y9j0y3kchby30s7f8kixnirrjypb7rv0svc3r91"))))
     (build-system binary-build-system)
     (arguments
      (list
