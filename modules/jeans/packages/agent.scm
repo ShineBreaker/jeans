@@ -1824,3 +1824,108 @@ OpenAI-compatible proxy endpoint.  This package provides the prebuilt
 binary release.")
     (license license:expat)
     (supported-systems '("x86_64-linux"))))
+
+;;; WorkBuddy（中国版）：腾讯的 AI 办公智能体桌面端，闭源 Electron 应用。
+;;;
+;;; 版本信号。官网 Linux 一栏只写「到统信 UOS/银河麒麟应用商店下载」，官方
+;;; 桌面更新通道却直接提供 Linux 构建：主信号取与产物同域的清单
+;;;   https://download.codebuddy.cn/workbuddy/saas/version.json
+;;; （linux-x64-deb.stable.version），备用信号取
+;;;   https://copilot.tencent.com/v2/update?platform=workbuddy-linux-x64-deb
+;;; 清单里的版本就是完整文件名主体（<semver>.<build>-<commit>），故 version
+;;; 保留 commit 后缀：上游会用同一数字版本重切构建并换后缀，只留数字版本的
+;;; 包永远等不到重钉。自动更新见 scripts/check-updates/handlers/workbuddy_cn.py。
+;;;
+;;; 源站。download.codebuddy.cn 是 CDN，上游会原地重传同名文件，重传窗口内
+;;; 大陆与海外边缘可能给出不同字节；本包 hash 固定，故固定 COS 桶的全球加速
+;;; 端点（同一对象、各处同字节），与 flatpark 的 resolve-update.sh 同款处理。
+;;; 路径与文件名和 CDN 完全一致，只换主机。
+;;;
+;;; 布局。deb 把整棵 electron-builder 产物放在 /opt/WorkBuddy，里面另有捆绑的
+;;; Node 与 CPython 运行时供智能体调用工具。主二进制 workbuddy 的 DT_RPATH 是
+;;; $ORIGIN，NEEDED 里带同目录的 libffmpeg.so——#:preserve-rpath? 必须为 #t，
+;;; 否则 RPATH 被换成 store 路径后 libffmpeg 解析失败，启动即挂。
+;;;
+;;; 数据目录。应用不读 XDG 变量：账号状态、插件、日志与它自己下载的运行时都
+;;; 在 ~/.workbuddy，任务工作区在 ~/WorkBuddy，凭据回退密钥在
+;;; ~/.workbuddy-key-fallback。
+
+(define-public workbuddy-cn
+  (package
+    (name "workbuddy-cn")
+    (version "5.6.2.40046327-c7b525f3")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://acc-1258344699.cos.accelerate.myqcloud.com/"
+             "workbuddy/saas/linux-x64-deb/"
+             "WorkBuddy-linux-x64-deb-" version ".deb"))
+       (sha256
+        (base32 "08vmi4cp17mfn6cxlyj2jn08ss3xhb3n53rd0vaqyx6dq3c9l50j"))))
+    (build-system electron-build-system)
+    (arguments
+     (list
+      #:program "workbuddy"
+      ;; 安装路径用上游原名：-cn 只是本通道区分区域版本的记号，上游不认识它
+      ;; （scripts/check-package-paths.py 的规则，cindy-cn-bin 同为 lib/cindy）。
+      #:app-dir "lib/workbuddy"
+      #:application-directory "workbuddy"
+      #:unpack-method 'deb-xz
+      ;; 捆绑的 .so/.node 用 $ORIGIN 定位同目录依赖（libffmpeg、pty.node 等），
+      ;; RPATH 被替换即失效。
+      #:preserve-rpath? #t
+      #:install-plan
+      #~'(("opt/WorkBuddy" "lib/workbuddy")
+          ("usr/share/applications/workbuddy.desktop"
+           "share/applications/workbuddy.desktop")
+          ("usr/share/icons/hicolor" "share/icons/hicolor"))
+      #:desktop-files
+      #~'(("share/applications/workbuddy.desktop"
+           "bin/workbuddy"
+           "share/icons/hicolor/512x512/apps/workbuddy.png"))
+      #:modules '((guix build utils))
+      #:phases
+      #~(modify-phases (@ (jeans build electron) %standard-phases)
+          (add-after 'patchelf 'install-bin
+            (lambda _
+              (let ((bin (string-append #$output "/bin")))
+                (mkdir-p bin)
+                (symlink (string-append #$output "/lib/workbuddy/workbuddy")
+                         (string-append bin "/workbuddy"))))))))
+    (inputs `(("alsa-lib" ,alsa-lib)
+              ("at-spi2-core" ,at-spi2-core)
+              ("bash-minimal" ,bash-minimal)
+              ("cups" ,cups)
+              ("dbus" ,dbus)
+              ("eudev" ,eudev)
+              ("expat" ,expat)
+              ("fontconfig-minimal" ,fontconfig)
+              ("gcc:lib" ,gcc "lib")
+              ("glib" ,glib)
+              ("glibc" ,glibc)
+              ("gtk+" ,gtk+)
+              ;; 登录凭据走系统 secrets 服务（Electron safeStorage 运行时
+              ;; dlopen libsecret-1.so.0，NEEDED 看不见）。
+              ("libsecret" ,libsecret)
+              ("libx11" ,libx11)
+              ("libxcb" ,libxcb)
+              ("libxcomposite" ,libxcomposite)
+              ("libxdamage" ,libxdamage)
+              ("libxext" ,libxext)
+              ("libxfixes" ,libxfixes)
+              ("libxkbcommon" ,libxkbcommon)
+              ("libxrandr" ,libxrandr)
+              ("mesa" ,mesa)
+              ("nss" ,nss)
+              ("nss-certs" ,nss-certs)))
+    (home-page "https://www.workbuddy.cn/")
+    (synopsis "AI agent desktop workspace from Tencent")
+    (description
+     "WorkBuddy is an Electron desktop application in which an AI agent plans
+and carries out office work: it reads documents, edits files, drives
+applications and reports progress while running.  This is the China build
+distributed through Tencent's own update channel; signing in requires a
+Tencent account.")
+    (license (license:nonfree "https://www.workbuddy.cn/"))
+    (supported-systems '("x86_64-linux"))))

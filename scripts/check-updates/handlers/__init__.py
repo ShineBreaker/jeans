@@ -11,6 +11,7 @@ from handlers.jdtls_bin import update_jdtls_bin
 from handlers.lem_next_bin import update_lem_next_bin
 from handlers.mysql_workbench_bin import update_mysql_workbench_bin
 from handlers.prettier_bin import update_prettier_bin
+from handlers.workbuddy_cn import update_workbuddy_cn
 from handlers.zcode import update_zcode
 
 
@@ -23,4 +24,5 @@ SPECIAL_UPDATERS: Dict[str, Callable[[Dict[str, Any], Dict[str, Any], Path], Opt
     "lem-next-bin": update_lem_next_bin,
     "mysql-workbench-community-bin": update_mysql_workbench_bin,
     "prettier-bin": update_prettier_bin,
+    "workbuddy-cn": update_workbuddy_cn,
 }

@@ -25,6 +25,7 @@
 | `reasonix-bin`         | DeepSeek-native AI coding agent for the terminal               |
 | `reasonix-studio-bin`  | Desktop GUI for the Reasonix AI coding agent                   |
 | `thinkrail-bin`        | JetBrains' lightweight AI coding IDE with the pi agent         |
+| `workbuddy-cn`         | AI agent desktop workspace from Tencent                        |
 | `zcode`                | Desktop application for agent-assisted development             |
 | `zcode-proxy-bin`      | Local proxy exposing GLM coding plans as OpenAI/Anthropic APIs |
 

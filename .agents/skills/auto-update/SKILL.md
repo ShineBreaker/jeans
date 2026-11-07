@@ -47,6 +47,15 @@ blue upgrade   # = guix shell --manifest=scripts/check-updates/manifest.scm \
 
 `report.json` 是单次运行结果，**不入库**；`font-misans-state.json` 与 `stale-state.json` 是跨轮基线，**随包改动一起入库**——不入库则 CI 每轮都从零开始。
 
+## 清单类上游（CDN 直发，无 release）
+
+中国区客户端常把 Linux 构建放在自家 CDN，产物名带不可推导的后缀（`WorkBuddy-linux-x64-deb-5.6.2.40046327-c7b525f3.deb`）。`guix refresh` 对这类源恒报「未能确定可用版本」，只能由 `SPECIAL_UPDATERS` 接（`workbuddy-cn` 是参照实现）。四条判断：
+
+- **信号源优先同域**：与产物同域的静态清单（如 `.../saas/version.json` 的平台分节）比另一域名的更新接口更可靠——CDN 通才能下载，信号与产物同生共死。接口作备份，只在主信号解析失败时兜底。
+- **版本号取完整文件名主体**：清单里的版本往往就是 `<semver>.<build>-<commit>`。保留 commit 后缀，URI 才能由 `version` 完整重建（无需 `extra_replacements`）；只留数字版本的包，在上游用同一数字版本重切构建时会永远等不到重钉。
+- **同版本也要重钉**：上游会原地重传同名文件，version 不变而字节变了。用清单里的 sha256 与包内 base32 对比，不同就重钉 hash（`update_package_in_file` 对同版本是幂等的）。版本变低一律不钉，防 CDN 边缘回吐旧清单降级。
+- **固定源站对象，不固定 CDN 边缘**：CDN 在重传窗口内可能给不同地区不同字节，固定 sha256 的包在一半地区必然 hash mismatch。改钉存储桶的全球加速端点（同一对象、各处同字节），hash 仍从实际下载现算，并用清单 sha256 交叉校验——对不上说明正在重传，宁可这轮失败也不要钉下只在一地成立的 hash。
+
 ## 闸门
 
 `scripts/check-updates/tests/test_updated_packages.py` 合并 `report.json`（`status == "updated"`）与 `refresh-updates.json`，对并集逐个 `guix build`。闭源与预编译包同样过这道闸门，不按包名后缀跳过。构建失败时不提交更新，CI 会开 issue 记录失败包。
