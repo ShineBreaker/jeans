@@ -270,6 +270,8 @@ guile 能 `use-modules` 加载不代表语法正确（可能命中 `.go` cache�
 
 `gnu-build-system`，`replace 'unpack` 阶段用 `copy-file` 直接复制原始二进制。安装到 `lib/<pkg>/`，然后从 `bin/` 创建 ld-linux wrapper。**裸 ELF 的陷阱**：即使 `readelf -d` 显示 NEEDED 为空，运行时仍可能通过 `dlopen` 加载 native addon（如 oh-my-pi 的 `pi_natives.linux-x64-modern.node`）。这些 addon 可能依赖 `libgcc_s.so.1`，因此 inputs 中需要包含 gcc 的 `lib` 子输出。
 
+**`.node` 与 `.so` 的 RPATH 规则**（2026-11-07 两次修）：`library-file?` 曾把 `.node` 误判成非库（`string-suffix?` 参数写反，恒为 #f），所有 Electron 包的 native addon 从来没拿到 Guix RPATH——qoder-cn 的 keytar 因此 `dlopen` 不到主程序没链的 `libsecret-1.so.0`。修复后 `.node` 与 `.so` 一视同仁走 library 分支；旧 RPATH 经 `kept-rpath-entries` 过滤：**保留 `$ORIGIN` 相对段与 `/gnu/store` 绝对段，丢弃构建机路径（`/home/runner`、`/usr/lib`）与空段并去重**。因此 `#:preserve-rpath? #t` 不再承担「保住 $ORIGIN」的职责，它现在只是额外前置一个裸 `$ORIGIN`；自包含子树仍可用 `#:patchelf-exclude`，但理由只剩 patchelf 变形风险（如 cindy-cn-bin 的 `libvips-cpp.so` 有 DT_INIT 失步），不再是为了保住 `$ORIGIN`。
+
 完整模板见 `references/package-template.scm`。
 
 ### 自定位二进制：patchelf 和 wrapper 都不可用

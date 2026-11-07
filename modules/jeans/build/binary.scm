@@ -272,7 +272,45 @@ lib/<SHORT>/，跳过 gnu-build 每阶段落盘的环境快照 environment-varia
   "是否 .so/.node（只设 RPATH，不碰 interpreter）。"
   (let ((base (basename file)))
     (or (string-contains base ".so")
-        (string-suffix? base ".node"))))
+        ;; string-suffix? 的签名是 (string-suffix? SUFFIX STR)：常量在前。
+        ;; 写成 (string-suffix? base ".node") 会恒为 #f，.node 全部落进
+        ;; “非 library”分支被 --print-interpreter 判成静态后跳过，从不
+        ;; 获得 RPATH（2026-11-07 修，qoder-cn 的 keytar 实证）。
+        (string-suffix? ".node" base))))
+
+(define (split-colon str)
+  "按冒号切分 STR，保留空段（由调用方过滤）。"
+  (let loop ((i 0) (start 0) (acc '()))
+    (cond ((= i (string-length str))
+           (reverse (cons (substring str start i) acc)))
+          ((char=? (string-ref str i) #\:)
+           (loop (1+ i) (1+ i) (cons (substring str start i) acc)))
+          (else (loop (1+ i) start acc)))))
+
+(define (kept-rpath-entries rpath)
+  "从旧 RPATH 里挑出值得保留的段：$ORIGIN 相对路径，以及直接指向 /gnu/store
+的绝对路径。上游构建机路径（/home/runner、/usr/lib、/opt/...）在新安装位置
+必然无效，丢弃；连续冒号产生的空段也丢弃；最后去重。
+
+  $ORIGIN 段必须留下：sharp 之类的模块用 $ORIGIN/../../sharp-libvips-* 找同目录
+打包的 libvips，替换即断（2026-11-07 修）。"
+  (delete-duplicates
+   (filter (lambda (s)
+             (or (string-prefix? "$ORIGIN" s)
+                 (string-prefix? "/gnu/store/" s)))
+           (split-colon rpath))
+   string=?))
+
+(define (compose-rpath preserve-rpath? old rpath)
+  "组装最终 RPATH：preserve-rpath? 时前置裸 $ORIGIN，再拼保留的旧段与计算段，
+整体去重。旧值经 kept-rpath-entries 过滤，不再原样带进构建机路径。"
+  (string-join
+   (delete-duplicates
+    (append (if preserve-rpath? (list "$ORIGIN") '())
+            (kept-rpath-entries old)
+            (list rpath))
+    string=?)
+   ":"))
 
 (define (resolve-rpath-input inputs spec)
   "把 patchelf-plan 的 RPATH 元素（\"name\" 或 (\"name\" \"/subdir\")）解成绝对目录。"
@@ -394,15 +432,15 @@ strace 无任何 openat）。正常二进制 .dynamic 本就在 RW 段，此处 
   ;; daemon 会在构建后把整个输出统一改回只读。
   (make-file-writable file)
   (cond ((library-file? file)
+         ;; .so / .node 一律保留上游 RPATH 里的相对段（见 kept-rpath-entries），
+         ;; 不再区分是否设了 preserve-rpath?：$ORIGIN 指向同目录打包的依赖，
+         ;; 是自包含 bundle 的唯一线索。
          (if (zero? (system* patchelf-bin "--print-rpath" file))
              (begin
                (invoke patchelf-bin "--set-rpath"
-                       (if preserve-rpath?
-                           (string-join
-                            (filter (lambda (s) (> (string-length s) 0))
-                                    (list "$ORIGIN" (current-rpath patchelf-bin file) rpath))
-                            ":")
-                           rpath)
+                       (compose-rpath preserve-rpath?
+                                      (current-rpath patchelf-bin file)
+                                      rpath)
                        file)
                (display " done\n"))
              (format #t "  跳过（无 .dynamic 段）~%")))
@@ -410,12 +448,9 @@ strace 无任何 openat）。正常二进制 .dynamic 本就在 RW 段，此处 
          (when interpreter
            (invoke patchelf-bin "--set-interpreter" interpreter file))
          (invoke patchelf-bin "--set-rpath"
-                 (if preserve-rpath?
-                     (string-join
-                      (filter (lambda (s) (> (string-length s) 0))
-                              (list "$ORIGIN" (current-rpath patchelf-bin file) rpath))
-                      ":")
-                   rpath)
+                 (compose-rpath preserve-rpath?
+                                (current-rpath patchelf-bin file)
+                                rpath)
                  file)
          ;; set-interpreter 的 page-shift 可能把 .dynamic 压进只读 LOAD（见
          ;; repair-dynamic-load-permission 注释），跑完 patchelf 立即体检。
