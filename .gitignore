@@ -12,3 +12,4 @@ scripts/check-updates/report.json
 scripts/check-updates/build-report.json
 .mimosa/
 scripts/check-updates/refresh-updates.json
+.workbuddy
