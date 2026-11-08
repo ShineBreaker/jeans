@@ -154,6 +154,95 @@ release.")
     (supported-systems '("x86_64-linux"))))
 
 
+;; Satty 上游（Satty-org/Satty，MPL-2.0）在 GitHub Releases 发布 x86_64 与
+;; aarch64 预编译 tarball。本通道分发 x86_64 预编译产物、不从源码构建，故加
+;; -bin（对应的源码包 satty 另行定义）。主二进制为动态 PIE ELF，走标准
+;; GTK4 + libadwaita 栈：NEEDED 覆盖 gtk/libadwaita/pango/gdk-pixbuf/
+;; glib(gio、gobject)/fontconfig/gcc:lib/glibc，patchelf 设 interpreter 与
+;; RUNPATH。GTK GUI 运行时需要 gsettings schema 与 hicolor 图标，wrapper 以
+;; prefix 语义补 GSETTINGS_SCHEMA_DIR 与 XDG_DATA_DIRS（保留系统原值）。
+;; tarball 自带的 bin / desktop / 图标 / man / shell completions 一律按上游
+;; 原名安装，-bin 记号只留在 Guix 包名与 share/doc 命名空间。
+;; 版本锁定 0.20.1：上游自 0.21 起改用带 glibc 2.43 的构建环境，其预编译
+;; 二进制的 GLIBC_2.43 verneed 超过 Guix 的 glibc 2.41，运行即报
+;; "version GLIBC_2.43 not found"，patchelf/wrapper 均无法修复；0.20.1 最高
+;; 只需 GLIBC_2.39，可正常运行。故 pin 0.20.1 并排除自动更新（否则 CI 升到
+;; 0.21+ 会再撞墙）；0.20.1 的 tarball 不含 man page。
+;; 资产文件名 satty-x86_64-unknown-linux-gnu.tar.gz 不含版本号，tag 为
+;; v0.20.1，upstream-name 取资产前缀 "satty"。
+(define-public satty-bin
+  (package
+    (name "satty-bin")
+    (version "0.20.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://github.com/Satty-org/Satty/releases/download/"
+             "v" version "/satty-x86_64-unknown-linux-gnu.tar.gz"))
+       (sha256
+        (base32 "14k06i8pkpkmybb4p9j3f234vzmvij70jadjxjq6p436q0xmlnpa"))))
+    (build-system binary-build-system)
+    (arguments
+     (list
+      #:unpack-method 'tar
+      #:install-plan
+      #~'(("satty" "bin/satty")
+          ("satty.desktop" "share/applications/satty.desktop")
+          ("assets/satty.svg"
+           "share/icons/hicolor/scalable/apps/satty.svg")
+          ("completions/satty.bash"
+           "share/bash-completion/completions/satty")
+          ("completions/_satty" "share/zsh/site-functions/_satty")
+          ("completions/satty.fish"
+           "share/fish/vendor_completions.d/satty.fish")
+          ("completions/satty.elv" "share/elvish/lib/satty.elv")
+          ("completions/satty.nu"
+           "share/nushell/vendor/autoload/satty.nu"))
+      #:patchelf-plan
+      #~'(("bin/satty"))
+      #:desktop-files
+      #~'(("share/applications/satty.desktop" "bin/satty" "satty"))
+      ;; 上游 tarball 是散装根且带 assets/、completions/、man/ 等子目录，
+      ;; gnu-unpack 的 first-subdirectory 会误 chdir 进首个小子目录，令
+      ;; install-plan 的相对 SRC 落空；改为原地 tar 解压、不切换目录。
+      #:phases
+      #~(modify-phases %standard-phases
+           (replace 'unpack
+             (lambda* (#:key source #:allow-other-keys)
+               (invoke "tar" "xvf" source))))
+      #:wrap-plan
+      #~(list
+         (list "bin/satty"
+               (list "GSETTINGS_SCHEMA_DIR" ":" 'prefix
+                     (list (string-append #$gtk
+                                          "/share/glib-2.0/schemas")
+                           (string-append #$libadwaita
+                                          "/share/glib-2.0/schemas")))
+               (list "XDG_DATA_DIRS" ":" 'prefix
+                     (list (string-append #$output "/share")))))))
+    (inputs
+     `(("gtk" ,gtk)
+       ("libadwaita" ,libadwaita)
+       ("pango" ,pango)
+       ("gdk-pixbuf" ,gdk-pixbuf)
+       ("glib" ,glib)
+       ("fontconfig-minimal" ,fontconfig)
+       ("gcc:lib" ,gcc "lib")
+       ("glibc" ,glibc)))
+    (properties `((upstream-name . "satty")))
+    (home-page "https://github.com/Satty-org/Satty")
+    (synopsis "Modern screenshot annotation tool")
+    (description
+     "Satty is a modern screenshot annotation tool for Wayland and X11.  It
+reads an image from a file or standard input, lets you annotate it with
+arrows, text, shapes, numbered markers, highlights and blur, then copies the
+result to the clipboard or saves it to a file.  This package provides the
+prebuilt upstream binary release.")
+    (license license:mpl2.0)
+    (supported-systems '("x86_64-linux"))))
+
+
 ;; Waywallen bundles its entire Qt6/ffmpeg/Vulkan-stack in the AppImage
 ;; (usr/lib).  Only a handful of libraries are not bundled and must come from
 ;; Guix: the C runtime (glibc, libgcc_s), the Vulkan ICD loader, libgbm (mesa)
