@@ -10,10 +10,11 @@
 ;;;   internal/ + pkg/），Guix 官方的 distrobox 还停在 1.8.2.4 的 shell 版
 ;;;   （copy-build-system 跑 ./install）。源码结构、build-system、inputs
 ;;;   全不相同，inherit 上游包定义没有意义，只能从零打包。
-;;; - 跟踪 ShineBreaker/distrobox，相对上游 main (a48297c) 领先 5 个
+;;; - 跟踪 ShineBreaker/distrobox，相对上游 main (a48297c) 领先 6 个
 ;;;   commit，都是 Guix 场景定制：enter 时丢弃指向宿主-only store 路径的
 ;;;   环境变量、create 的 --home-src、enter 的 --env-blacklist、export
-;;;   注册 URL scheme handler、host-exec 转发显示环境变量给 GUI 启动器。
+;;;   注册 URL scheme handler、host-exec 转发显示环境变量给 GUI 启动器、
+;;;   helper 脚本绑定源避开内容寻址 store 路径。
 ;;; - go.mod 要求 urfave/cli v3.14.0，Guix 官方 golang-xyz 停在 3.4.1，且
 ;;;   该符号被 gnu/packages 多个模块引用，不能整体升级，故按相同
 ;;;   import-path 另立一个带版本后缀的包。
@@ -71,7 +72,7 @@
       #:tests? #f))))
 
 (define-public distrobox-se
-  (let ((commit "2eb5cff658b3b22258ef9584913d9120f78bd838")
+  (let ((commit "3dc3b9ef7eafa8bb93235223134b94deefb1866d")
         (revision "0"))
     (package
       (name "distrobox-se")
@@ -84,7 +85,7 @@
                (commit commit)))
          (file-name (git-file-name name version))
          (sha256
-          (base32 "0qachdl29k5b91qbjqq8fm3cvhw1h0yhjs89w56zr4sv5gr055fh"))))
+          (base32 "05wqs12chrh0pzfgzpd0fcpzdv0axd79gh5h1jxxmly2knngwiwq"))))
       (build-system go-build-system)
       (arguments
        (list
