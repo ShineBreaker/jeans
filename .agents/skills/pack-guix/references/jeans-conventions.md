@@ -18,7 +18,7 @@ jeans 仓库的特定约定，补充通用 Guix 知识（见 `guix-reference.md`
 
 ### 包名是本通道的记号，不渗入安装路径
 
-包名上的通道记号目前有两种：`-bin` 表示「本通道分发的是预编译产物」，`-next` 表示「追上游 master 的版本线」（`lem-next-bin` 的上游只叫 Lem；`aria2-next-bin` 的 `-next` 却是上游 repo 名，不是我们的记号——判断依据是 `upstream-name`）。记号属于 Guix 包名命名空间，上游软件不知道、也不该知道它。**凡是上游会读取、探测、写回或显示给用户的路径与标识，一律用上游原名**；包名只用于 Guix 侧的标识（`name` 字段、`define-public` 符号、Scheme 变量名），不进入任何上游可读的字符串。
+包名上的通道记号目前有三种：`-bin` 表示「本通道分发的是预编译产物」，`-next` 表示「追上游 master 的版本线」（`lem-next-bin` 的上游只叫 Lem；`aria2-next-bin` 的 `-next` 却是上游 repo 名，不是我们的记号——判断依据是 `upstream-name`），`-se` 表示「跟踪我们自己的 fork 而非上游发布线」（判定见下文专节）。记号属于 Guix 包名命名空间，上游软件不知道、也不该知道它。**凡是上游会读取、探测、写回或显示给用户的路径与标识，一律用上游原名**；包名只用于 Guix 侧的标识（`name` 字段、`define-public` 符号、Scheme 变量名），不进入任何上游可读的字符串。
 
 判断标准一句话：**这个字符串会被上游程序读到吗？** 会 → 上游名。只有 Guix/profile 自己读才可能是包名（目前仅 `share/doc/`）。
 
@@ -50,6 +50,22 @@ find /gnu/store/<hash>-<pkg> -name '*-bin*'   # 安装后，应只命中 share/d
 **实证**：thinkrail-bin 曾把 Electrobun bundle 装到 `lib/thinkrail-bin/`、桌面文件写成 `thinkrail-bin.desktop`；magpie-bin 曾装到 `libexec/magpie-bin/magpie`；lem-next-bin 曾装到 `libexec/lem-next/`。三者构建与运行都正常（wrapper 都传绝对路径），但违反本规则，2026-11-07 全仓审计时修正。
 
 `blue check-paths` 的通道记号后缀集合写在 `scripts/check-package-paths.py` 的 `CHANNEL_SUFFIXES`；新增记号（`-nightly` 之类）时要同步，否则检查看不到。
+
+### `-se`：跟踪我们自己的 fork
+
+源码指向 `ShineBreaker/<repo>`、且该 repo 是**上游软件的 fork**（不是我们原创的项目），包名加 `-se`。它回答一个问题：装进 profile 之后，这个包和上游原版是不是同一条线。
+
+| 情形 | 处置 | 实例 |
+| --- | --- | --- |
+| fork 上游软件，源码指向我们的仓库 | 加 `-se` | `distrobox-se`（上游 89luca89/distrobox）、`waydroid-helper-se`（上游 waydroid-helper/waydroid-helper） |
+| 我们原创的项目 | 不加，用原名 | `nosdshell`、`nosd-blur`、`nosd-helpers`、`nosd-theme`、`agenote` |
+| 原创项目内部的 fork 组件 | 不加，跟随项目命名 | `quickshell-nosd`（隶属 nosdshell 项目） |
+| 追上游 master 或 release tag | 不加，那是版本线的事 | `lem-next`（追 master） |
+| 追第三方分支或别人的 fork | 不加，用描述性名字 | `helix-steel`（mattwparas/helix 的 steel-event-system 分支） |
+
+判定依据是 origin 里 `git-reference` 的 url，不是注释怎么说——注释会过期，url 不会。`-se` 与 `-bin` 正交：`-se` 说明版本线来自哪里，`-bin` 说明分发形态，两者可以同时出现。
+
+`-se` 自身的路径纪律与 `-bin` / `-next` 完全相同：`$out` 下的 `bin/` 程序名、`lib/`、`libexec/`、`share/` 目录、`.desktop` 文件名与 `Icon=`、man / 补全文件名、wrapper 的 `exec -a`、程序自己的配置目录，一律用上游原名；`-se` 只出现在 `name` 字段、`define-public` 符号与 `share/doc/`。
 
 ## 自动更新 properties（决定包能否被 guix refresh 接管）
 

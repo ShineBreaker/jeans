@@ -26,7 +26,7 @@
 
 ## 包名是记号，不渗入路径
 
-`-bin`（预编译）、`-next`（追 master 版本线）等通道记号属于 Guix 包名命名空间。`$out` 下的 `bin/` 程序名、`lib/`、`libexec/`、`share/` 目录名，`.desktop` 文件名与 `Icon=`，man / 补全文件名，wrapper 的 `exec -a` 参数，以及程序会读写的用户配置目录，一律用上游原名。唯一例外是 Guix 自用的 `share/doc/<package-name>/`。
+`-bin`（预编译）、`-next`（追 master 版本线）、`-se`（跟踪我们自己的 fork）等通道记号属于 Guix 包名命名空间。`$out` 下的 `bin/` 程序名、`lib/`、`libexec/`、`share/` 目录名，`.desktop` 文件名与 `Icon=`，man / 补全文件名，wrapper 的 `exec -a` 参数，以及程序会读写的用户配置目录，一律用上游原名。唯一例外是 Guix 自用的 `share/doc/<package-name>/`。
 
 判断标准：这个字符串会被上游程序读到吗？会 → 上游名。清单与实证见 `.agents/skills/pack-guix/references/jeans-conventions.md`「包名是本通道的记号，不渗入安装路径」；`blue check-paths` 做静态检查。
 

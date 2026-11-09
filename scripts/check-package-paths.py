@@ -38,7 +38,10 @@ _LITERAL = re.compile(r'"([^"\\]*(?:\\.[^"\\]*)*)"')
 
 # 通道自己加在包名上的记号后缀（-bin 之外）。新增记号时同步这里，否则
 # 检查抓不到——lem-next-bin 的 -next（追 master 的版本线）就是这样漏掉的。
-CHANNEL_SUFFIXES = ("-next",)
+# 只参与 -bin 包的复合记号判定（base = 包名去掉 -bin）：lem-next-bin 的
+# base  lem-next 带 -next，于是 lem-next 也不得进入上游可读标识。
+# -se（跟踪我们自己的 fork）目前不与 -bin 复合，先登记备用。
+CHANNEL_SUFFIXES = ("-next", "-se")
 
 
 def strip_comment(line):
