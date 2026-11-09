@@ -298,7 +298,7 @@ deb/AppImage 里常带上游自编译的**非 PIE**辅助二进制（基址 0x40
 - **RUNPATH 失效场景（dlopen 由内嵌 runtime 发起）**：glibc 的 dlopen 只查*调用者*自己的 RUNPATH。宿主 ELF 内嵌另一个 runtime 并由它 dlopen 裸 soname 时（.NET single-file bundle：P/Invoke 走 libcoreclr 的 dlopen），打在宿主 ELF 上的 RPATH 完全不可见——库加载静默失败、上层功能无声降级。opentabletdriver-bin `hardware.scm` 包前注释：HidSharp 拿不到 libudev.so.1 时设备枚举恒为空，日志只说 "No tablets were detected"，不报库错误。解法是改走加载器自身的探测路径：.NET NativeLibrary 先试 `<assembly-dir>/<soname>`，把裸 soname symlink 进二进制同目录（libudev.so.1/libevdev.so.2/libnotify.so.4/libX11.so.6/libXrandr.so.2 实例）。soname 清单不要靠撞：grep 上游源码的 `DllImport` 常量一次枚举全（OTD 的 XScreen 走 libX11+libXrandr，而其 Wayland 路径是纯托管客户端零原生依赖，属"库清单取决于运行时分支"的变体）。strace 观察 dlopen 的 openat 搜索序列是判定调用链的最快手段。
 - **写死上游发行版的 soname**：CFFI/FFI 的候选列表按打包者的发行版写死（lem-next 的 CFFI 写死 Ubuntu 的 `libncursesw.so.6.3`，而 Guix 的 ncurses 只提供 `libncursesw.so.6`）。解法：安装阶段在二进制同目录 `symlink` 一个别名指向 Guix 的实际库文件（`editor.scm` 的 `lem-next-bin` 实例），并把该目录放进 RUNPATH。**但 symlink 只解决「找不到库」，不解决符号版本**：ELF 若带 `.gnu.version_r` 需求（neomacs 要求 `libtinfo.so.6` 的 `NCURSES6_TINFO_5.0.19991023` 节点），替身库里却没有对应的 `.gnu.version_d` 定义，符号照样解析成功、加载器却每次启动都打印 `libtinfo.so.6: no version information available (required by ...)`。根治是提供真库：Guix 的 ncurses 没开 `--with-termlib`/`--with-versioned-syms`（Ubuntu 开了），`(inherit ncurses)` 补上这两个 flag（`emacs-xyz.scm` 的 `ncurses-tinfo-versioned`）即得带完整 `NCURSES6_TINFO_*` 节点的 `libtinfo.so.6`。诊断：`readelf -V` 对比二进制的 verneed 名与候选库的 version_d 节点。
 - **升级后 NEEDED 会变，包内注释不是事实来源**：上游构建环境一变，依赖集合就可能增删——neomacs 0.0.16 移除了 GStreamer，0.0.18 又把它重新链进 NEEDED，而包定义与注释仍停在旧状态，症状是加载器直接拒绝启动（`libgstpbutils-1.0.so.0: cannot open shared object file`，`--version` 都过不去）；magpie-bin 0.1.1167 新增 `libfontconfig.so.1` 直接 NEEDED，hash 与构建全绿、装进系统即死。预编译包每次自动更新落地后，对 `bin/`、`libexec/` 下每个 ELF 重跑 `readelf -d | grep NEEDED`，与 inputs/RUNPATH 求差集；包前注释里的依赖清单同样要跟着改，它恰恰是最容易被信任的过期文档。**自动更新闸门已把这道检查自动化**：`test_updated_packages.py` 对更新产物里每个带 PT_INTERP 的 ELF 跑 `ld.so --list`（patchelf ELF 用自身 interp+RUNPATH；ld-linux/env wrapper 提取脚本里的 ld.so、`--library-path`、`LD_LIBRARY_PATH` 目录），直接缺失（stderr 致命错误）或传递缺失（`=> not found`）即判构建失败；无可用 ld.so 的自定位/nix-ld 包记 skipped 放行。注意该检查只看静态 NEEDED，dlopen/FFI 依赖不在其覆盖范围，仍按上条手动验证。
-- **Electron safeStorage 是四层链，不是一条 NEEDED**（cindy-cn-bin 实证）：Linux 凭据存储链 = ①主二进制 dlopen `libsecret-1.so.0`（字符串里有 `Could not load libsecret-1.so.0:`，NEEDED 照不到）→ ②`--password-store=gnome-libsecret` 选定后端（auto-detect 在裸会话选不中，`basic`/`basic_text` 下 `isEncryptionAvailable()` 恒 false，应用层按不可用处理）→ ③会话里要有 `org.freedesktop.secrets` 持有者（gnome-keyring/kwallet/keepassxc 皆可；没有时 wrapper 兜底 `gnome-keyring-daemon --start --components=secrets`，用 gdbus `NameHasOwner` 判定避免抢占）→ ④加密锁定的 keyring 需要解锁弹窗，daemon 向 `org.gnome.keyring.SystemPrompter` 发请求——无 prompter 时 libsecret 的 GTask 静默烂掉（`secret_service_real_prompt_async ... finalized without ever returning`），功能挂起而非报错。Guix 的 gcr 4.x 不带 prompter，`gcr-3` 的 `libexec/gcr-prompter` 后台拉起即认领两个 prompter 名。层①加 `libsecret` input 进 RPATH 即解；②③④在 wrapper exec 前注入（substitute `^exec -a ` 同款锚点）。诊断顺序：app.asar 里 grep 后端 flag/服务名 → 会话 `NameHasOwner` → stderr 找 `Could not load`/GTask。同类深坑：上游 JS 硬编码 `/usr/bin/python3`（remote-desktop 凭证 helper、viewer display）与 `/usr/bin/grim|hyprctl|wl-paste`（wayland 截屏/剪贴板）——strings 扫 `"/usr/bin/` 一遍能提前枚举这类失效面，asar 内字符串长度受限难以原地替换，功能降级时按已知限制记录。
+- **Electron safeStorage 是四层链，不是一条 NEEDED**（cindy-cn-bin 实证）：Linux 凭据存储链 = ①主二进制 dlopen `libsecret-1.so.0`（字符串里有 `Could not load libsecret-1.so.0:`，NEEDED 照不到）→ ②`--password-store=gnome-libsecret` 选定后端（auto-detect 在裸会话选不中，`basic`/`basic_text` 下 `isEncryptionAvailable()` 恒 false，应用层按不可用处理）→ ③会话里要有 `org.freedesktop.secrets` 持有者（gnome-keyring/kwallet/keepassxc 皆可；没有时 wrapper 兜底 `gnome-keyring-daemon --start --components=secrets`，用 gdbus `NameHasOwner` 判定避免抢占；KDE/Plasma 会话整体跳过让 Chromium 原生选 kwallet，用户显式传 `--password-store` 时也不覆盖——详见下文「Electron safeStorage 与 Secret Service 服务」小节）→ ④加密锁定的 keyring 需要解锁弹窗，daemon 向 `org.gnome.keyring.SystemPrompter` 发请求——无 prompter 时 libsecret 的 GTask 静默烂掉（`secret_service_real_prompt_async ... finalized without ever returning`），功能挂起而非报错。Guix 的 gcr 4.x 不带 prompter，`gcr-3` 的 `libexec/gcr-prompter` 后台拉起即认领两个 prompter 名。层①加 `libsecret` input 进 RPATH 即解；②③④在 wrapper exec 前注入（substitute `^exec -a ` 同款锚点）。诊断顺序：app.asar 里 grep 后端 flag/服务名 → 会话 `NameHasOwner` → stderr 找 `Could not load`/GTask。同类深坑：上游 JS 硬编码 `/usr/bin/python3`（remote-desktop 凭证 helper、viewer display）与 `/usr/bin/grim|hyprctl|wl-paste`（wayland 截屏/剪贴板）——strings 扫 `"/usr/bin/` 一遍能提前枚举这类失效面，asar 内字符串长度受限难以原地替换，功能降级时按已知限制记录。
 - 断言"Guix 下无法加载"之前，先读上游的加载源码找探测顺序——多数 FFI 按列表依次尝试，前面失败会落到可满足的后续项。
 
 ### 所有预编译包的通用规则
@@ -347,6 +347,43 @@ Guix 的 curl/git/python 编译期**不带默认 CA 路径**，全靠 `SSL_CERT_
 
 - **patchelf 目标换成新 ELF 名**，并给新脚本打 store shebang（上游脚本带 `#!/bin/sh`）。脚本里的 sandbox 检测依赖宿主的 `readlink`/`unshare`/`stat`/`findmnt`/`grep`，这点和 bundle 的其它脚本一致，不用额外补 PATH。
 - **`wrap-program` 的 `exec -a "${0##*/}"` 会破坏按 `$0` 定位自身的脚本**：脚本用 `readlink -f -- "$0"` 推出 `${launcher}.bin`，而裸 basename 会被 readlink 解析到调用者的 CWD 而非 store。在 `wrap-program`（及 wayland helper）之后 substitute wrapper 换回真实路径，保持在 `exec -a ` 前缀上（helper 的 `^exec -a ` 锚点仍有效）：`(("exec -a \"[^\"]*\" ") (string-append "exec -a \"" #$output "/lib/<pkg>/<launcher>\" "))`——正则用 `[^"]*` 而不是手写 `${0##*/}`，避开 `$`/`{`/`*` 的转义。
+
+### Electron 子进程的 env 过滤 ⇒ RUNPATH 必须自足（nss /lib/nss 布局）
+
+Chromium 的 `utilityProcess.fork` 用**过滤后的 env**（仅 HOME/PATH/LANG 等 9 个变量，**不含 LD_LIBRARY_PATH**）重新 exec `process.execPath`。wrapper 的 LD_LIBRARY_PATH 只覆盖 wrapper 直接启动的主进程；这类子进程重新 exec 同一二进制时只认 **RUNPATH**，缺库即 `libnss3.so cannot open`、退出 127（qoder-cn 0.5.6「Qoder Mobile 远程控制连接失败」实证：远程控制进程是 Node utility，fork 即死，主进程与 UI 毫无异常）。
+
+而 Guix 的 nss 共享库不在顶层 `/lib`：`<nss>/lib` 只有 `nss/` 与 `pkgconfig/`，真库在 `<nss>/lib/nss/`（electron 层 wrapper 的 LD_LIBRARY_PATH 早已特判 `nss/lib/nss`，RUNPATH 侧一直缺失，两处不对称）。
+
+修复在基座（`build/binary.scm` 的 `auto-lib-dirs`）：对 label 为 `nss` 的 input 追加 `/lib/nss` 子目录，全部 binary/electron 包的 RPATH 随之自足。单包临时方案：`#:patchelf-plan #~'(("lib/<pkg>" ("nss" "/lib/nss")))`。
+
+验证必须**不带 wrapper env** 对产物全部 ELF 跑 `ld.so --list`：`env -i <glibc>/lib/ld-linux-x86-64.so.2 --list <elf> | grep "not found"` 须为空（qoder-cn 实测 19 个 ELF，含 resources 下的 .node；注意过滤条件要覆盖无扩展名与 `.so.N`，`*.so`/`*.node` 会漏 `chrome_crashpad_handler`/`libvulkan.so.1`）。带 wrapper 的 LD_LIBRARY_PATH 跑这个检查正好漏过 env 过滤型子进程——清空环境是唯一可信形态。
+
+### Electron safeStorage 与 Secret Service 服务
+
+Electron 的 safeStorage（Linux 凭据存储）两件事缺一不可：dlopen `libsecret-1.so.0`（keytar 原生模块，NEEDED 里看不见）+ **会话里有 org.freedesktop.secrets 服务**。niri 会话下自动探测失败会静默退到 `basic_text` 后端，`isEncryptionAvailable()` 返回 false，应用拒绝持久化凭据——症状是每次启动都要重新登录（qoder-cn 0.5.6 实证；宿主 Secret Service 本身健康，`gdbus call … NameHasOwner org.freedesktop.secrets` 返回 true 也不能说明 app 侧探测成功）。
+
+解法（cindy-cn-bin 0.1.128 + qoder-cn 0.5.6 实证）：基座 phase `ensure-secret-service`（`build/electron.scm`，位于 `prefer-wayland-hint` 之后）substitute wrapper 的 `^exec -a ` 前缀，exec 前按序完成：
+
+1. **输入即开关**：inputs 里能定位到 `bin/gdbus`、`bin/gnome-keyring-daemon`、`libexec/gcr-prompter` 三者才启用（包定义补 `gcr-3`、`gnome-keyring`、`("glib:bin" ,glib "bin")`）。**不要**为此加 build-system 关键字——关键字须逐层穿过 bag arguments 到 builder，而 builder 只显式转发自己 `#:key` 声明的键（`#:allow-other-keys` 只是不报错，不转发），多一个键就多一处注定漏水的 plumbing。
+2. **KDE/Plasma 直接跳过**：`XDG_CURRENT_DESKTOP` 含 `KDE`/`Plasma` 时不动，Chromium 原生 detect 会选 kwallet 直连；注入 `gnome-libsecret` 反而把它换成 libsecret 路径（数据仍进 kwallet，但绕开了用户桌面的原生选择）。
+3. 其余桌面 `gdbus call … NameHasOwner org.freedesktop.secrets` 探测：在位即沿用（kwallet 桥 / keepassxc / gnome-keyring 都算），缺席才 `gnome-keyring-daemon --start --components=secrets` 兜底，起来后再后台拉 `libexec/gcr-prompter`（占 `org.gnome.keyring.SystemPrompter` 名，负责解锁弹窗）。
+4. **仅当**服务确认在位、且用户没自己传 `--password-store=` 时才 `set -- --password-store=gnome-libsecret "$@"`；否则一律留给 Chromium detect。
+
+隔离验证：`dbus-run-session -- env XDG_RUNTIME_DIR=<空目录> HOME=<空目录> bash -c '<gnome-keyring-daemon> --start --components=secrets; sleep 0.3; gdbus call … NameHasOwner …'` 才会让 daemon 真注册（共享真实 `XDG_RUNTIME_DIR` 时它检测到 control socket 就打 `discover_other_daemon: 1` 早退，属预期，不是故障）。行为判定用 `bash -x <wrapper> --version 2>&1 | grep '^+ exec -a'`：KDE 会话无 flag、普通桌面有 owner 时前置 `--password-store=gnome-libsecret`、用户自传 `--password-store={{SECRET_demo}}` 时原样保留不覆盖。
+
+lint 的 `glib:bin 可能应该是本地输入` / `nss-certs 可能不应该是输入` / `gcr-3 标签与包名不匹配` 三条 finding 与 cindy-cn-bin 同源，是通道既有模式。
+
+### Chromium 150 的 generic 字体路径不采用 TTC 匹配（Electron 包字体怪障）
+
+Chromium 150（Electron 43.8.4）对 **generic family**（sans-serif/monospace）的 fontconfig 匹配结果**拒绝采用 TTC 文件**，静默 fallback 到后续 sans 候选：用户 fontconfig 配置 `sans-serif → Sarasa Gothic SC`（位于 Sarasa-Regular.ttc 内，比例字形），界面拉丁字母实际渲染成 Iosevka Nerd Font（等宽），中文正常（fallback 到 Sarasa Mono SC）。同 env 系统 Chromium 156 渲染正常——版本相关的 Skia/fontconfig 交互差异。
+
+实证边界（qoder-cn 0.5.6，CDP `CSS.getPlatformFontsForNode` + 字形宽度测量）：
+
+- generic `sans-serif` → Iosevka NF（等宽，m/i=1.0）；**点名** `"Sarasa Gothic SC"` → Sarasa Gothic SC（比例）✓；fontconfig alias 指向**单 TTF**（DejaVu Sans）→ DejaVu Sans ✓。即 Chromium 读 alias，只是不采用 TTC。
+- fontconfig 层无问题：`fc-match` 正确返回 TTC 内的比例 face；`FONTCONFIG_FILE=fontconfig-minimal` 也**不阻断**用户配置（fontconfig 硬编码追加加载 `~/.config/fontconfig/fonts.conf`，与主配置无关）。
+- remedy 原型验证有效：fontTools 从 TTC 拆出目标 face 为单 TTF + conf `rejectfont *.ttc` + alias 指向拆出文件 → generic sans-serif 正确渲染 Sarasa Gothic SC 比例字形（m/i=3.7）。Iosevka Nerd Font **Propo** 不行——它是比例字形但等宽 advance。
+
+**这不是 jeans 包装缺陷**（wrapper 的 fontconfig 设置正确），修复归属用户 fontconfig 配置层（拆 TTC 单 face，或 alias 改指单 TTF 比例字体）。排查同类「Electron 包拉丁变等宽/怪字体」按此链条走：CDP `getPlatformFontsForNode` 读实际 face → `fc-match` 对照 fontconfig 层 → TTC/单 TTF 判定。
 
 ### Debian .deb 的 ABI 漂移适配（mysql-workbench classic-bin 模式）
 

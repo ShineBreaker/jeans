@@ -23,13 +23,20 @@
 ;;; 含 mesa / nss / fontconfig-minimal（wrap 三件套所需）。
 ;;;
 ;;; 默认 phases 实测顺序：install → disable-electron-updater → patchelf → wrap
-;;; → wrap-electron → prefer-wayland → prefer-wayland-hint → desktop-files。
+;;; → wrap-electron → prefer-wayland → prefer-wayland-hint → ensure-secret-service
+;;; → desktop-files。
 ;;;
 ;;; 与基座的分工：Electron 专属五个关键字（#:disable-updater?
 ;;; #:application-directory #:wayland? #:program #:app-dir）的值随 builder
 ;;; 参数透传，由 builder 侧 phases 经 #:key 消费；基座侧按约定对其 dormant
-;;; （不校验不剥离，无 wrap-plan 时 wrap no-op，无 updater/wayland 符号值消费者）。
-;;; 基座 builder 须经 #:allow-other-keys（或显式声明）容忍这五个关键字。
+;;; （不校验不剥离，无 wrap-plan 时 wrap no-op，无 updater/wayland 符号值
+;;; 消费者）。基座 builder 须经 #:allow-other-keys（或显式声明）容忍这些
+;;; 关键字。
+;;;
+;;; safeStorage 兜底（ensure-secret-service）不走关键字：phase 自己在 inputs
+;;; 里定位 gdbus / gnome-keyring-daemon / gcr-prompter，三者齐备才注入。值随
+;;; builder 参数透传的键在基座 builder 里必须逐个显式转发（见 binary.scm 的
+;;; #:wayland?），多一个键就多一处 plumbing；依赖本身即现成的声明渠道。
 
 (define-module (jeans build-system electron)
   #:use-module (guix build-system)
@@ -116,11 +123,13 @@ input \"" label "\" (required by the default electron wrap); add ~
          (rest (plist-drop '(#:source #:inputs #:native-inputs #:outputs
                               #:system #:target #:unpack-method
                               #:disable-updater? #:application-directory
-                              #:wayland? #:program #:app-dir
+                              #:wayland?
+                              #:program #:app-dir
                               #:phases #:modules #:imported-modules)
                              arguments)))
     (validate-electron-arguments program app-dir application-directory
-                                 disable-updater? wayland? inputs user-phases)
+                                 disable-updater? wayland? inputs
+                                 user-phases)
     (let ((base (apply binary:lower name
                        #:source source
                        #:inputs inputs

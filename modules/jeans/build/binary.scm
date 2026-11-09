@@ -35,7 +35,8 @@
 ;;;   自定位二进制用；后者另需 #:wrap? #f）。
 ;;; - #:patchelf-plan：((PATH [SPEC ...]) ...)，PATH 为输出内相对路径
 ;;;   （文件或目录，目录递归取 ELF；裸字符串视为无 SPEC 条目）。SPEC 省略时
-;;;   RPATH 自动取自带 lib-dir + 所有 inputs 的 /lib；显式给出时在
+;;;   RPATH 自动取自带 lib-dir + 所有 inputs 的 /lib（nss 额外收 /lib/nss，
+;;;   见 patchelf phase 内 auto-lib-dirs 注释）；显式给出时在
 ;;;   auto-lib-dirs 之前追加所列 inputs（元素为 "name" 或
 ;;;   ("name" "/subdir")，沿用 nonguix 形状；用于 inputs 顶层无 /lib 的
 ;;;   嵌套库目录，如 waywallen-bin 的 lib/waywallen/lib）。
@@ -486,11 +487,27 @@ strace 无任何 openat）。正常二进制 .dynamic 本就在 RW 段，此处 
                                  (() #f))))
              (auto-lib-dirs
               (delete-duplicates
-               (filter-map (lambda (entry)
-                             (and (pair? entry)
-                                  (let ((lib (string-append (cdr entry) "/lib")))
-                                    (and (file-exists? lib) lib))))
-                           inputs)
+               (append-map
+                (lambda (entry)
+                  (if (not (pair? entry))
+                      '()
+                      (let ((label (car entry))
+                            (dir (cdr entry)))
+                        (filter-map
+                         (lambda (sub)
+                           (let ((lib (string-append dir sub)))
+                             (and (file-exists? lib) lib)))
+                         ;; nss 的库在 <nss>/lib/nss/ 而非顶层 /lib
+                         ;; （electron 层 wrapper 的 LD_LIBRARY_PATH
+                         ;; 同款特判）。utilityProcess.fork 等子进程
+                         ;; 以过滤后的 env 重新 exec 主二进制，
+                         ;; LD_LIBRARY_PATH 丢失、只认 RUNPATH：缺这一环
+                         ;; 即 libnss3.so cannot open、子进程退出 127
+                         ;; （qoder-cn 远程控制实证）。
+                         (if (string=? label "nss")
+                             '("/lib" "/lib/nss")
+                             '("/lib"))))))
+                inputs)
                string=?))
              (targets
               (if (null? patchelf-plan)

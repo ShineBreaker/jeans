@@ -4,11 +4,15 @@
 
 ;;; Electron 预编译包的 builder 侧阶段：复用基座，只追加 Electron 专属语义。
 ;;;
-;;; 本模块复用 (jeans build binary) 的 %standard-phases，只追加三个 Electron
+;;; 本模块复用 (jeans build binary) 的 %standard-phases，只追加 Electron
 ;;; 专属 phase（顺序沿 opencode-desktop-bin 全链实证）：
 ;;;   install -> disable-electron-updater -> patch-elf -> install-bin
 ;;;     -> desktop -> icons -> wrap -> wrap-electron
-;;;     -> prefer-wayland / prefer-wayland-hint
+;;;     -> prefer-wayland / prefer-wayland-hint -> ensure-secret-service
+;;;
+;;; ensure-secret-service 以 inputs 为开关：包依赖 glib:bin / gnome-keyring /
+;;; gcr-3（能定位到对应文件）才注入，不设 build-system 关键字（详见 phase
+;;; 注释）。
 ;;;
 ;;; 三个 phase 的 shell 负载与 (jeans packages agent) 的同名 helper
 ;;; （disable-electron-updater-phase / prefer-electron-wayland-phase /
@@ -67,6 +71,7 @@
             disable-electron-updater-phase
             prefer-electron-wayland-phase
             prefer-electron-wayland-hint-phase
+            ensure-secret-service-phase
             wrap-electron-program))
 
 (define* (disable-electron-updater-phase
@@ -138,6 +143,82 @@ non-empty string when #:wayland? is 'hint-env"
           "exec -a ")))))
   #t)
 
+;; Electron safeStorage（Linux 凭据存储）依赖 dlopen libsecret-1.so.0 +
+;; 会话里的 org.freedesktop.secrets 服务；niri 等轻量 WM 会话下探测失败
+;; 会退 basic_text 后端、isEncryptionAvailable() 报 false、应用拒绝持久化
+;; 凭据（每次启动都要重新登录）。本 phase 在 exec 前完成三件事，全部
+;; 条件化、不覆盖用户与桌面会话的既有选择：
+;;   1. KDE/Plasma 直接不管：Chromium 原生 detect 会选 kwallet 直连，我们
+;;      注入 --password-store=gnome-libsecret 反而把它换成 libsecret 路径；
+;;   2. 其余桌面用 gdbus 探测 org.freedesktop.secrets owner（kwallet 桥 /
+;;      keepassxc / gnome-keyring 等任何实现都算在位，不偏向 GNOME）；无
+;;      owner 时才用包自带的 gnome-keyring-daemon 补一个 secrets 服务（兜底，
+;;      不是替换），成功后再拉 gcr-prompter 供解锁弹窗；
+;;   3. 仅当服务确认在位、且用户未显式传 --password-store 时，前置
+;;      --password-store=gnome-libsecret（客户端是 libsecret，凭据实际
+;;      落在会话选定的后端）。其余情况保持 Chromium 原生 detect。
+(define* (ensure-secret-service-phase
+          #:key inputs outputs (program #f)
+          #:allow-other-keys)
+  "能定位到 gdbus、gnome-keyring-daemon、gcr-prompter 三者时向 wrapper 注入
+secrets 服务保障，否则 no-op。按 inputs 里实有的文件判定、不看 label：包依赖
+这三个组件即表示需要兜底，无需另设关键字（关键字须逐层穿过 bag arguments 才
+到 build 侧，而 phases 只认 builder 显式转发的键）。"
+  (define (locate file)
+    "在 INPUTS 里定位 FILE，找不到返回 #f（不区分是缺输入还是缺文件）。"
+    (catch #t
+      (lambda () (search-input-file inputs file))
+      (lambda _ #f)))
+  (let ((gdbus (locate "bin/gdbus"))
+        (keyring (locate "bin/gnome-keyring-daemon"))
+        (prompter (locate "libexec/gcr-prompter")))
+    (when (and gdbus keyring prompter)
+      (unless (and (string? program) (not (string-null? program)))
+        (error "ensure-secret-service-phase: #:program must be a non-empty ~
+string when inputs provide gdbus / gnome-keyring-daemon / gcr-prompter"
+               program))
+      (let ((wrapper (string-append (assoc-ref outputs "out")
+                                    "/bin/" program)))
+        (substitute* wrapper
+          (("^exec -a ")
+           (string-append
+            "_had_store=0\n"
+            "for _a in \"$@\"; do\n"
+            "  case \"$_a\" in --password-store=*) _had_store=1 ;; esac\n"
+            "done\n"
+            "_secrets_ok=0\n"
+            "case \"$XDG_CURRENT_DESKTOP\" in\n"
+            "  *KDE*|*Plasma*) ;;\n"
+            "  *)\n"
+            "    _secrets_owned=$(\"" gdbus "\" call --session "
+            "--dest org.freedesktop.DBus "
+            "--object-path /org/freedesktop/DBus "
+            "--method org.freedesktop.DBus.NameHasOwner "
+            "org.freedesktop.secrets 2>/dev/null)\n"
+            "    case \"$_secrets_owned\" in\n"
+            "      *true*) _secrets_ok=1 ;;\n"
+            "      *) \"" keyring "\" --start --components=secrets"
+            " >/dev/null 2>&1 || true\n"
+            "         if \"" gdbus "\" call --session "
+            "--dest org.freedesktop.DBus "
+            "--object-path /org/freedesktop/DBus "
+            "--method org.freedesktop.DBus.NameHasOwner "
+            "org.freedesktop.secrets 2>/dev/null"
+            " | grep -q true; then\n"
+            "           _secrets_ok=1\n"
+            "           \"" prompter "\" >/dev/null 2>&1 &\n"
+            "         fi ;;\n"
+            "    esac\n"
+            "    unset _secrets_owned ;;\n"
+            "esac\n"
+            "if [ \"$_had_store\" != 1 ]"
+            " && [ \"$_secrets_ok\" = 1 ]; then\n"
+            "  set -- --password-store=gnome-libsecret \"$@\"\n"
+            "fi\n"
+            "unset _secrets_ok _had_store _a\n"
+            "exec -a "))))))
+  #t)
+
 (define* (wrap-electron-program
           #:key inputs outputs (program #f) (app-dir #f)
           #:allow-other-keys)
@@ -194,6 +275,8 @@ e.g. \"lib/opencode-desktop\""
     (add-after 'wrap-electron 'prefer-wayland
       prefer-electron-wayland-phase)
     (add-after 'prefer-wayland 'prefer-wayland-hint
-      prefer-electron-wayland-hint-phase)))
+      prefer-electron-wayland-hint-phase)
+    (add-after 'prefer-wayland-hint 'ensure-secret-service
+      ensure-secret-service-phase)))
 
 ;;; electron.scm ends here

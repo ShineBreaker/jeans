@@ -203,6 +203,11 @@ release.")
       #:program "cindy"
       #:app-dir "lib/cindy"
       #:application-directory "cindy"
+      ;; safeStorage 凭据持久化需要会话 secrets 服务：inputs 能定位到 gdbus /
+      ;; gnome-keyring-daemon / gcr-prompter（即含 glib:bin / gnome-keyring /
+      ;; gcr-3 三个输入）便自动启用 build/electron.scm 的
+      ;; ensure-secret-service-phase（探测在位就不动，缺服务才兜底拉
+      ;; gnome-keyring；用户显式 --password-store 永远最优先）。
       #:unpack-method 'deb-zst
       #:install-plan
       #~'(("usr/lib/cindy" "lib/cindy")
@@ -230,40 +235,7 @@ release.")
                      (bin (string-append out "/bin"))
                      (exe (string-append out "/lib/cindy/Cindy")))
                 (mkdir-p bin)
-                (symlink exe (string-append bin "/cindy")))))
-          ;; Electron 的 safeStorage（Linux 凭据存储）依赖 dlopen
-          ;; libsecret-1.so.0 + 会话里的 org.freedesktop.secrets 服务；
-          ;; 两者缺一登录/凭据功能整体报错 CREDENTIAL_STORE_UNAVAILABLE。
-          ;; libsecret input 解决 dlopen；这里在 exec 前补服务并固定后端：
-          ;; gnome-keyring 只在没有任何 secrets 提供者（kwallet/keepassxc
-          ;; 等同样提供该 API）时才启动；已加密锁定的 keyring 需要解锁
-          ;; 弹窗，同步拉起 gcr-prompter（dbus 名
-          ;; org.gnome.keyring.SystemPrompter）。flag 置用户可覆写的最前位。
-          (add-after 'prefer-wayland-hint 'ensure-secret-service
-            (lambda* (#:key inputs #:allow-other-keys)
-              (let ((wrapper (string-append #$output "/bin/cindy"))
-                    (gdbus (search-input-file inputs "bin/gdbus"))
-                    (keyring (search-input-file
-                              inputs "bin/gnome-keyring-daemon"))
-                    (prompter (search-input-file
-                               inputs "libexec/gcr-prompter")))
-                (substitute* wrapper
-                  (("^exec -a ")
-                   (string-append
-                    "_secrets_owned=$(\"" gdbus "\" call --session "
-                    "--dest org.freedesktop.DBus "
-                    "--object-path /org/freedesktop/DBus "
-                    "--method org.freedesktop.DBus.NameHasOwner "
-                    "org.freedesktop.secrets 2>/dev/null)\n"
-                    "case \"$_secrets_owned\" in\n"
-                    "  *true*) ;;\n"
-                    "  *) \"" keyring "\" --start --components=secrets"
-                    " >/dev/null 2>&1 || true\n"
-                    "     \"" prompter "\" >/dev/null 2>&1 & ;;\n"
-                    "esac\n"
-                    "unset _secrets_owned\n"
-                    "set -- --password-store=gnome-libsecret \"$@\"\n"
-                    "exec -a ")))))))))
+                (symlink exe (string-append bin "/cindy"))))))))
     (native-inputs (list binutils tar xz zstd))
     (inputs `(("alsa-lib" ,alsa-lib)
               ("at-spi2-core" ,at-spi2-core)
@@ -1959,6 +1931,18 @@ Tencent account.")
 ;;;   - resources/package-type 是 electron-updater 的替换许可，由
 ;;;                     electron-build-system 的 disable-updater phase 删掉
 ;;;
+;;; 登录链（2026-11-09 实证）：safeStorage/keytar dlopen libsecret-1.so.0 +
+;;; 会话里的 org.freedesktop.secrets 服务，缺服务即退 basic_text 后端、
+;;; isEncryptionAvailable() 报 false、应用拒绝持久化凭据（niri 下每次启动
+;;; 都要重新登录）。wrapper 的 ensure-secret-service phase 在 exec 前补
+;;; 服务并固定 --password-store=gnome-libsecret（cindy-cn-bin 同款）。
+;;;
+;;; 远程控制链（2026-11-09 实证）：utilityProcess.fork 用过滤后的 env
+;;; （仅 HOME/PATH/LANG 等）重新 exec process.execPath，LD_LIBRARY_PATH
+;;; 丢失；Guix 的 nss 库在 <nss>/lib/nss/，wrapper 的 LD_LIBRARY_PATH 特判
+;;; 了它而 RUNPATH 没有 ⇒ 子进程 libnss3.so cannot open、退出 127。
+;;; 基座 auto-lib-dirs 对 nss input 追加 /lib/nss 后自足。
+;;;
 ;;; 闭源（.deb 的 License 字段为 unknown，随包只有 Electron/Chromium 的许可
 ;;; 文本），按通道惯例不加 -bin 后缀。
 
@@ -1980,6 +1964,11 @@ Tencent account.")
       #:program "qoder-cn"
       #:app-dir "lib/qoder-cn"
       #:application-directory "qoder-cn"
+      ;; safeStorage 凭据持久化需要会话 secrets 服务：inputs 能定位到 gdbus /
+      ;; gnome-keyring-daemon / gcr-prompter（即含 glib:bin / gnome-keyring /
+      ;; gcr-3 三个输入）便自动启用 build/electron.scm 的
+      ;; ensure-secret-service-phase（探测在位就不动，缺服务才兜底拉
+      ;; gnome-keyring；用户显式 --password-store 永远最优先）。
       #:unpack-method 'deb-xz
       ;; 主程序 RPATH=$ORIGIN 用来找同目录 libffmpeg.so 等；sharp 的 .node
       ;; 也靠 $ORIGIN 相对路径找自带的 libvips。prepend 而不是替换。
@@ -2007,8 +1996,7 @@ Tencent account.")
                      (bin (string-append out "/bin")))
                 (mkdir-p bin)
                 (symlink (string-append out "/lib/qoder-cn/qoder-cn")
-                         (string-append bin "/qoder-cn"))))))))
-    (native-inputs (list binutils tar xz))
+                         (string-append bin "/qoder-cn"))))))))    (native-inputs (list binutils tar xz))
     (inputs `(("alsa-lib" ,alsa-lib)
               ("at-spi2-core" ,at-spi2-core)
               ("bash-minimal" ,bash-minimal)
@@ -2019,8 +2007,11 @@ Tencent account.")
               ("expat" ,expat)
               ("fontconfig-minimal" ,fontconfig)
               ("gcc:lib" ,gcc "lib")
+              ("gcr-3" ,gcr-3)
               ("glibc" ,glibc)
               ("glib" ,glib)
+              ("glib:bin" ,glib "bin")
+              ("gnome-keyring" ,gnome-keyring)
               ("gtk+" ,gtk+)
               ;; keytar 运行期 dlopen libsecret-1.so.0（NEEDED 里看不见）；
               ;; 登录凭据由系统 secrets 服务提供。
