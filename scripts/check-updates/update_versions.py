@@ -171,12 +171,17 @@ def main():
                 finalize_package_report()
                 continue
 
-            # 检查是否在跳过列表中
-            if package_name in skip_packages:
+            # 检查是否在跳过列表中。skip_packages 是自动化黑名单；
+            # --only 是人工显式点名（如发版人更新 nosdshell pin），必须
+            # 生效。CI 的全量跑不带 --only，Recover 重放的 ok_list 只含
+            # 构建通过包——两条自动化路径都不会撞进这个豁免。
+            if package_name in skip_packages and not only_set:
                 print(f"     ⏭️  在跳过列表中，已跳过")
                 package_report["status"] = "skipped"
                 finalize_package_report()
                 continue
+            if package_name in skip_packages and only_set:
+                print(f"     ⚠️  在跳过列表中，但 --only 显式点名，继续检查")
 
             # --- 特殊源包：版本信号不在 GitHub 上，走专属处理器 ---
             # zcode（z.ai CDN 官网 JS）、amber-pm（gitee）、jdtls-bin
