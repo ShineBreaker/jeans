@@ -44,6 +44,7 @@
     (jeans packages games)
     (jeans packages hardware)
     (jeans packages lisp)
+    (jeans packages lzsync)
     (jeans packages nix-ld)
     (jeans packages python-xyz)
     (jeans packages theme)

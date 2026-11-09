@@ -47,6 +47,7 @@ env:
     nix-ld opentabletdriver-udev-rules waypaper
     waydroid libgbinder libglibutil python-gbinder
     pnpm-bin
+    lzsync
 
 jobs:
   auto-update:

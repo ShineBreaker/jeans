@@ -141,6 +141,12 @@
 | `sbcl-webview` | Common Lisp bindings for the webview library |
 | `webview` | Tiny cross-platform webview library (C shim for Lem) |
 
+### (jeans packages lzsync)
+
+| Package | Description |
+| --- | --- |
+| `lzsync` | Sync beatmaps and settings across several osu! clients |
+
 ### (jeans packages nix-ld)
 
 | Package | Description |
