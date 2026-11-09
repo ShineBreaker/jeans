@@ -13,6 +13,7 @@
                   (jeans packages agent)
                   (jeans packages android)
                   (jeans packages browser)
+                  (jeans packages containers)
                   (jeans packages databases)
                   (jeans packages desktop)
                   (jeans packages editor)

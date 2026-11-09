@@ -39,7 +39,7 @@
 | `python-gbinder` | Python bindings for libgbinder |
 | `scrcpy` | Display and control Android devices from the desktop |
 | `waydroid` | Container-based approach to boot a full Android system |
-| `waydroid-helper` | Configure Waydroid, manage key mappings and install extensions |
+| `waydroid-helper-se` | Configure Waydroid, manage key mappings and install extensions |
 
 ### (jeans packages browser)
 
@@ -47,6 +47,12 @@
 | --- | --- |
 | `librewolf-nongnu` | LibreWolf with Mozilla language pack support restored |
 | `zen-browser-bin` | Privacy-focused web browser with a calm interface |
+
+### (jeans packages containers)
+
+| Package | Description |
+| --- | --- |
+| `distrobox-se` | Create and start containers highly integrated with the hosts |
 
 ### (jeans packages databases)
 

@@ -444,7 +444,9 @@ variable to override it.")
 ;;; - 打包的是用户 fork（ShineBreaker/waydroid-helper，开发主线，git 版本），
 ;;;   上游原仓库 waydroid-helper/waydroid-helper 自 2026-09 起停滞；fork 的
 ;;;   main 领先上游并新增了 Guix 打配脚本（waydroid-helper.scm）、CI 等内容，
-;;;   本定义即以该脚本为蓝本改造。
+;;;   本定义即以该脚本为蓝本改造。包名带 -se 后缀标识「跟踪我们自己的 fork」，
+;;;   与 distrobox-se 同一记号；$out 下的 bin/waydroid-helper、bin/waydroid-cli、
+;;;   GLib prgname、argparse prog 等一律保持上游原名。
 ;;; - waydroid 本体是 input，但只作为 PATH 的 suffix 兜底：会话里装的
 ;;;   waydroid 优先，pkexec 清空 PATH 后仍能找到可执行文件（否则
 ;;;   waydroid-cli 里裸调用的 waydroid 全部 command not found）。
@@ -485,7 +487,7 @@ python-httpx would otherwise leave python-httpcore unreachable at run time."
                                     (package-propagated-inputs pkg)))
                        (cons pkg seen))))))))
 
-(define-public waydroid-helper
+(define-public waydroid-helper-se
   (let* ((commit "03ba56c59c781a09659ad46826bc425da1e4027f")
          (revision "2")
          (py-site (string-append "/lib/python"
@@ -497,7 +499,7 @@ python-httpx would otherwise leave python-httpcore unreachable at run time."
                  python-dbus python-aiofiles python-httpx
                  python-pyyaml))))
     (package
-      (name "waydroid-helper")
+      (name "waydroid-helper-se")
       (version (git-version "0.2.9" revision commit))
       (source
        (origin
