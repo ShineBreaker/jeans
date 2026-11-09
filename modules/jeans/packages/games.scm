@@ -11,6 +11,7 @@
   #:use-module (gnu packages commencement)
   #:use-module (gnu packages compression)
   #:use-module (gnu packages elf)
+  #:use-module (gnu packages fonts)
   #:use-module (gnu packages fontutils)
   #:use-module (gnu packages freedesktop)
   #:use-module (gnu packages gcc)
@@ -659,6 +660,157 @@ skin, shaders and fonts; drop osu! beatmaps into @file{songs/} there to play
 them.")
     (license (license:nonfree "https://github.com/isakvik/inso"))
     (supported-systems '("x86_64-linux"))))
+
+;; neomod —— McOsu 的社区 fork（SDL3 + OpenGL 的 osu! 客户端，GPLv3）。上游只发
+;; 预编译归档，故走 -bin。
+;;
+;; 归档是一棵「可执行文件同目录资源树」：materials/、fonts/ 与 lib/（BASS、
+;; mimalloc、ffmpeg 9 系 .so）全由 Paths.cpp 按 /proc/self/exe 定位（启动时把 cwd
+;; 切到 exe 所在目录），所以整棵树原样落进 lib/neomod/，不能拆去 share/。可写
+;; 数据（cfg、maps、skins、replays、screenshots、exports、db、logs）默认同样落在
+;; exe 同目录；store 只读，wrapper 用上游的 -datadir 指到
+;; ${NEOMOD_DATA_DIR:-${XDG_DATA_HOME:-~/.local/share}/neomod}。该参数排在 "$@"
+;; 之前：LaunchArgs 对同名开关取最后一次出现的值，用户自传的 -datadir 仍能覆盖。
+;;
+;; 依赖面几乎全在 dlopen：主程序 NEEDED 只有 glibc 五项（SDL3 静态链进来），
+;; GL/EGL、Wayland/X11、ALSA、xkbcommon、dbus、udev 都是运行时探测；libbass.so
+;; 另 dlopen libasound.so.2，libbass_fx.so 直接 NEEDED libstdc++。inputs 因此列出
+;; 这批探测目标，RPATH 由 binary-build-system 写进 lib/neomod 下每个 ELF。渲染器
+;; 默认由 wrapper 钉成 -opengl：不给参数时上游优先 SDL_GPU，Vulkan 设备建不起来
+;; 就直接致命退出（无回退到 GL），而 -opengl 是上游 CI 唯一验证过的路径。Vulkan
+;; 仍可用 -sdlgpu 打开，vulkan-loader 因此进了 inputs。归档 bundle 了专有 BASS
+;; 音频库（条款见 assets/misc/licenses.txt），故许可证 GPLv3 与 nonfree 并列。
+;;
+;; 归档不带 Linux 图标：上游 assets/icon.ico 里那帧本身就是内嵌 PNG，原样抽出
+;; 存进本 channel（modules/jeans/icons/neomod.png，按 %load-path 定位）。不引
+;; ImageMagick——binary-build-system 会把每个 input（含 native-input）的 /lib 写进
+;; RPATH，纯构建期工具就此变成运行时依赖（换掉它实测少 67 MiB）。图标不随上游
+;; 升级自动更新，需要时手动重抽。
+;;
+;; 还差 CJK 字形：上游内置 zh/ja/ko 翻译，bundle 的字体却只有拉丁/emoji，系统
+;; locale 是中文时整个界面渲染成 "?"。它的字体发现会无条件把 <assets>/fonts/ 下
+;; 每个字体文件收作 fallback，所以链入 font-wqy-microhei 的 .ttc（5 MiB，拉丁界面
+;; 字形仍由上游字体负责）。想把中文换成别的字形，改这一个 input 即可；Guix 的
+;; font-sarasa-gothic 是 795 MiB，不适合当运行时依赖。
+(define-public neomod-bin
+  (let ((icon (local-file (canonicalize-path
+                           (search-path %load-path "jeans/icons/neomod.png"))
+                          "neomod.png")))
+    (package
+      (name "neomod-bin")
+      (version "44.03")
+      (source
+       (origin
+         (method url-fetch)
+         (uri (string-append
+               "https://github.com/neomodnet/neomod/releases/download/"
+               "v" version "/neomod-linux-x64.tar.gz"))
+         (sha256
+          (base32 "08w9l5vxmc7c7y0wc8jqpgy7gb7102zb8w9z1ginbyi7zi9aw58g"))))
+      (build-system binary-build-system)
+      (arguments
+       (list
+        ;; 默认 install-plan 把解包目录（tar 里的 neomod/ 顶层）逐项装进
+        ;; lib/neomod/，正是上游期望的同目录布局；patchelf 缺省扫整棵
+        ;; lib/neomod，给其中每个 ELF 写 interpreter 与 RPATH。
+        #:app-dir "neomod"
+        #:phases
+        #~(modify-phases %standard-phases
+            (add-after 'install 'install-icon
+              (lambda _
+                (let ((dir (string-append #$output
+                                          "/share/icons/hicolor/256x256/apps")))
+                  (mkdir-p dir)
+                  (copy-file #$icon (string-append dir "/neomod.png")))))
+            (add-after 'install 'install-cjk-fallback-font
+              (lambda* (#:key inputs #:allow-other-keys)
+                ;; 上游带 zh/ja/ko 翻译，却只 bundle 拉丁字形：系统 locale 落
+                ;; 到中文时所有界面文字渲染成 "?"。它的字体发现会无条件收下
+                ;; <assets>/fonts/ 下每个字体文件当 fallback（Font.cpp 扫目录、
+                ;; 不限扩展名），所以这里链一个 CJK 字体进去即可。界面文字用
+                ;; 的还是上游字体，只有缺字形的 CJK 走这个。
+                (symlink (string-append (assoc-ref inputs "font-wqy-microhei")
+                                        "/share/fonts/truetype/wqy-microhei.ttc")
+                         (string-append #$output
+                                        "/lib/neomod/fonts/wqy-microhei.ttc"))))
+            (add-after 'patchelf 'build-wrapper
+              (lambda _
+                ;; 上游的可写数据目录默认挨着可执行文件，store 里写不进去，
+                ;; 用 -datadir 改道；正常启动路径全靠 /proc/self/exe，所以
+                ;; 这里必须 exec 真实 ELF，不能另建一层改名包装。
+                ;; -opengl 显式指定渲染器：不指定时上游优先 SDL_GPU，而
+                ;; Vulkan 设备一旦建不起来就直接致命退出（无回退）。用户
+                ;; 传 -sdlgpu 仍可切换（上游在候选链里先看 -sdlgpu）。
+                (let ((wrapper (string-append #$output "/bin/neomod")))
+                  (mkdir-p (dirname wrapper))
+                  (call-with-output-file wrapper
+                    (lambda (port)
+                      (display
+                       (string-append
+                        "#!" #$(file-append bash-minimal "/bin/bash") "\n"
+                        "share=\"${XDG_DATA_HOME:-$HOME/.local/share}\"\n"
+                        "data=\"${NEOMOD_DATA_DIR:-$share/neomod}\"\n"
+                        "mkdir -p \"$data\"\n"
+                        "exec " #$output "/lib/neomod/neomod"
+                        " -opengl -datadir \"$data\" \"$@\"\n")
+                       port)))
+                  (chmod wrapper #o555))))
+            (add-after 'build-wrapper 'install-desktop-entry
+              (lambda _
+                (let ((apps (string-append #$output "/share/applications")))
+                  (mkdir-p apps)
+                  (call-with-output-file (string-append apps "/neomod.desktop")
+                    (lambda (port)
+                      (display
+                       (string-append
+                        "[Desktop Entry]\n"
+                        "Type=Application\n"
+                        "Name=neomod\n"
+                        "Comment=osu! client with extra features\n"
+                        "Exec=" #$output "/bin/neomod\n"
+                        "Icon=neomod\n"
+                        "Terminal=false\n"
+                        "Categories=Game;ArcadeGame;\n")
+                       port)))))))))
+      (inputs
+       `(("bash-minimal" ,bash-minimal)
+         ("gcc:lib" ,gcc "lib")
+         ("mesa" ,mesa)
+         ("alsa-lib" ,alsa-lib)
+         ("dbus" ,dbus)
+         ("eudev" ,eudev)
+         ("font-wqy-microhei" ,font-wqy-microhei)
+         ("libdecor" ,libdecor)
+         ("libx11" ,libx11)
+         ("libxcursor" ,libxcursor)
+         ("libxext" ,libxext)
+         ("libxfixes" ,libxfixes)
+         ("libxi" ,libxi)
+         ("libxkbcommon" ,libxkbcommon)
+         ("libxrandr" ,libxrandr)
+         ("libxscrnsaver" ,libxscrnsaver)
+         ("libxtst" ,libxtst)
+         ("vulkan-loader" ,vulkan-loader)
+         ("wayland" ,wayland)))
+      (properties `((upstream-name . "neomod")))
+      (home-page "https://neomod.net")
+      (synopsis "Fork of the McOsu osu! client with extra features")
+      (description "@code{neomod} is a community fork of McOsu, the
+open-source osu! client written with SDL3 and OpenGL.  It plays osu!
+standard beatmaps and adds online play over the Bancho protocol
+(leaderboards, score submission, chat, multiplayer rooms), osu!direct
+beatmap downloads and a reworked in-game UI on top of the original engine.
+
+Writable data (config, beatmaps, skins, replays, screenshots, logs) lives in
+@file{~/.local/share/neomod} (or @file{$XDG_DATA_HOME/neomod}, or
+@env{NEOMOD_DATA_DIR}); drop beatmaps or beatmap folders into @file{maps/}
+there to play them.
+
+This package distributes the upstream prebuilt Linux archive, which bundles
+the proprietary BASS audio library.")
+      (license (list license:gpl3
+                     (license:nonfree "https://www.un4seen.com/")))
+      (supported-systems '("x86_64-linux")))))
 
 ;; deltalazer —— osu!lazer 社区 fork（可变 CS/AR/OD、HP gimmick）。应用内
 ;; 更新换成了 Velopack，但 deltalazer.dll 保留 OSU_EXTERNAL_UPDATE_PROVIDER

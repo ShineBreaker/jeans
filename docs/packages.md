@@ -114,6 +114,7 @@
 | `g0v0-bin` | Free and open rhythm game based on the osu!lazer codebase |
 | `inso-bin` | Performant osu! clone with Lua and GLSL shader support |
 | `lr2oraja-endlessdream-bin` | Community fork of beatoraja BMS rhythm game with QoL improvements |
+| `neomod-bin` | Fork of the McOsu osu! client with extra features |
 | `osu-lazer-bin` | rhythm is just a *click* away! |
 
 ### (jeans packages hardware)
