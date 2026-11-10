@@ -72,7 +72,7 @@
       #:tests? #f))))
 
 (define-public distrobox-se
-  (let ((commit "3dc3b9ef7eafa8bb93235223134b94deefb1866d")
+  (let ((commit "4e5b6af6ab0e6120539f87771f6de2d372a846de")
         (revision "0"))
     (package
       (name "distrobox-se")
@@ -85,7 +85,7 @@
                (commit commit)))
          (file-name (git-file-name name version))
          (sha256
-          (base32 "05wqs12chrh0pzfgzpd0fcpzdv0axd79gh5h1jxxmly2knngwiwq"))))
+          (base32 "0l19v2k80asg5aqbldqz9i1m3pcyiihnrgc9zpzdjsa55l3n9g68"))))
       (build-system go-build-system)
       (arguments
        (list
