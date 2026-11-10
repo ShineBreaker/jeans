@@ -68,6 +68,7 @@
 | --- | --- |
 | `ai-usagebar-bin` | Waybar widget for AI coding assistant usage |
 | `linux-wallpaperengine` | Run Wallpaper Engine wallpapers on the Linux desktop |
+| `msime-bin` | Chinese input method with IBus and Fcitx5 engines |
 | `nosd-blur` | Pre-blur wallpapers for nosDshell |
 | `nosd-helpers` | Small helper tools for nosDshell |
 | `nosd-theme` | Material theme processor for nosDshell |

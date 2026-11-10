@@ -16,6 +16,7 @@
   #:use-module (gnu packages compression) ; zlib, lz4
   #:use-module (gnu packages cups)        ; cups
   #:use-module (gnu packages elf)         ; patchelf
+  #:use-module (gnu packages fcitx5)      ; fcitx5
   #:use-module (gnu packages fontutils)   ; fontconfig, freetype
   #:use-module (gnu packages freedesktop) ; wayland, xdg-utils
   #:use-module (gnu packages gcc)         ; gcc:lib
@@ -25,6 +26,7 @@
   #:use-module (gnu packages gtk)         ; gtk+, harfbuzz, cairo, pango, at-spi2-core
   #:use-module (gnu packages guile)       ; guile-3.0
   #:use-module (gnu packages hardware)    ; ddcutil
+  #:use-module (gnu packages ibus)        ; ibus
   #:use-module (gnu packages imagemagick) ; imagemagick
   #:use-module (gnu packages linux)       ; alsa-lib, eudev
   #:use-module (gnu packages maths)       ; glm
@@ -41,6 +43,7 @@
   #:use-module (gnu packages video)       ; ffmpeg, mpv
   #:use-module (gnu packages version-control) ; git-minimal
   #:use-module (gnu packages vulkan)      ; vulkan-loader
+  #:use-module (gnu packages webkit)      ; webkitgtk-for-gtk3
   #:use-module (gnu packages window-management) ; quickshell
   #:use-module (gnu packages xml)         ; expat
   #:use-module (gnu packages xdisorg)     ; libdrm, libxkbcommon
@@ -1145,3 +1148,128 @@ taskbar, launcher, control center, notifications, OSD, lock screen — in the
 visual language of deepin 15 (DDE 15).  It supports compositors like
 @code{niri}, @code{hyprland}, and @code{sway}.")
     (license license:gpl3+)))
+
+;; MSIME（水杉输入法）的 Linux 桌面发布物：IBus 宿主与 Fcitx5 插件是两条并列的
+;; 系统入口，链接同一份 libmsime_host_api。
+;;
+;; 安装布局刻意保持上游的 /usr 前缀形状：Linux 宿主按自身可执行文件路径推导
+;; install_prefix，再取 <prefix>/share/msime-client；装进 $out/bin 后该推导自然
+;; 落在 $out/share/msime-client。上游给 bin/ 下的 ELF 写的是
+;; $ORIGIN/../lib/x86_64-linux-gnu/msime-client，fcitx5 插件写的是
+;; $ORIGIN/../msime-client，与 $out 布局重合，故 preserve-rpath? 保留相对段，
+;; 只附加 Guix 库路径。
+;;
+;; 发行版前缀写死在 IBus 组件 XML、Fcitx5 addon 的 Library=、desktop 条目里，
+;; 装完统一改写为 $out 绝对路径。
+;;
+;; 上游用 systemd 用户单元托管三个常驻 provider（online.socket/.service、
+;; voice.socket/.service、clipboard.service），其中 online 与 voice 由 socket
+;; 激活。Guix 没有 systemd，这些单元文件装进去永远不会被消费，所以不安装；
+;; 同等能力由 jeans home services 的 home-msime-service-type 起成用户 Shepherd
+;; 服务（见 modules/jeans/home/services/desktop.scm）。没有该服务时，上游
+;; msime-linux-setup 会提示用 msime-linux-provider-session online|voice 手动启动。
+;;
+;; 主词库（msime-pinyin.db、msime-wubi.db 等，合计约 320 MiB）不在发布物内，
+;; 由 msime-linux-setup 在用户首次配置时下载。
+(define-public msime-bin
+  (package
+    (name "msime-bin")
+    (version "0.16.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://github.com/metasequoiaime/msime/releases/download/"
+             "linux-v" version "/msime-linux-" version
+             "-linux-x86_64.tar.gz"))
+       (sha256
+        (base32 "0ki12ax0vnyvh5q2sb2pw2jlvvr5xsic701310k6iirlwwjr3mhb"))))
+    (build-system binary-build-system)
+    (arguments
+     (list
+      #:unpack-method 'tar
+      #:install-plan
+      #~'(("usr/bin/" "bin/")
+          ("usr/lib/x86_64-linux-gnu/" "lib/x86_64-linux-gnu/")
+          ;; 逐目录安装而不是整棵 usr/share，是为了排除上游的 systemd 用户单元
+          ;; （usr/share/systemd）与 systemctl 驱动的 autostart 条目
+          ;; （etc/xdg/autostart）；两者在 Guix 下都没有消费者。
+          ("usr/share/applications/" "share/applications/")
+          ("usr/share/doc/" "share/doc/")
+          ("usr/share/fcitx5/" "share/fcitx5/")
+          ("usr/share/ibus/" "share/ibus/")
+          ("usr/share/icons/" "share/icons/")
+          ("usr/share/msime-client/" "share/msime-client/"))
+      #:patchelf-plan
+      #~'(("bin")
+          ("lib/x86_64-linux-gnu"))
+      #:preserve-rpath? #t
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'install 'rewrite-absolute-paths
+            (lambda* (#:key outputs #:allow-other-keys)
+              (let ((out (assoc-ref outputs "out")))
+                ;; IBus 组件的 exec 必须指向 store 内的启动器。
+                (substitute* (string-append
+                              out "/share/ibus/component/msime-linux.xml")
+                  (("/usr/bin/") (string-append out "/bin/"))
+                  (("/etc/msime-client/")
+                   (string-append out "/etc/msime-client/")))
+                ;; Fcitx5 按 addon.conf 的 Library= 绝对路径加载插件。
+                (substitute* (string-append out "/share/fcitx5/addon/msime.conf")
+                  (("Library=/usr/lib/x86_64-linux-gnu/fcitx5/")
+                   (string-append "Library=" out
+                                  "/lib/x86_64-linux-gnu/fcitx5/")))
+                (substitute* (string-append
+                              out "/share/applications/msime-linux.desktop")
+                  (("/usr/bin/") (string-append out "/bin/")))
+                ;; 两个启动脚本里的系统级配置回退路径。
+                (for-each (lambda (script)
+                            (substitute* script
+                              (("/etc/msime-client/")
+                               (string-append out "/etc/msime-client/"))))
+                          (list (string-append out "/bin/msime-linux-settings")
+                                (string-append
+                                 out "/bin/msime-linux-ibus-launcher")))))))))
+    (inputs
+     `(("glibc" ,glibc)
+       ("gcc:lib" ,gcc "lib")
+       ("alsa-lib" ,alsa-lib)
+       ("gtk+" ,gtk+)
+       ("gtk" ,gtk)
+       ("gdk-pixbuf" ,gdk-pixbuf)
+       ("cairo" ,cairo)
+       ("pango" ,pango)
+       ("glib" ,glib)
+       ("dbus" ,dbus)
+       ("webkitgtk-for-gtk3" ,webkitgtk-for-gtk3)
+       ("libsoup" ,libsoup)
+       ("ibus" ,ibus)
+       ("fcitx5" ,fcitx5)
+       ("libxkbcommon" ,libxkbcommon)
+       ("wayland" ,wayland)
+       ("libx11" ,libx11)
+       ("libxext" ,libxext)
+       ("libxfixes" ,libxfixes)
+       ("libxrandr" ,libxrandr)
+       ("python" ,python)))
+    (properties `((upstream-name . "msime")
+                  (release-tag-prefix . "^linux-v")))
+    (home-page "https://github.com/metasequoiaime/msime")
+    (synopsis "Chinese input method with IBus and Fcitx5 engines")
+    (description
+     "MSIME (Metasequoia IME) is a Chinese input method for Android, iOS,
+macOS, Linux, Windows and HarmonyOS built on one shared input engine.  This
+package provides the prebuilt Linux desktop release: the IBus engine host,
+the Fcitx5 addon and the Tauri settings application, plus the bundled offline
+dictionaries, sound packs and the online/voice provider services.
+
+The main typing dictionaries (@file{msime-pinyin.db}, @file{msime-wubi.db}
+and the bigram model, about 320 MiB in total) are not part of the release;
+the first-run page downloads them into the user data directory.  The optional
+online, voice and clipboard providers are not started by the package: enable
+them with the @code{home-msime-service-type} Guix Home service, or run
+@command{msime-linux-provider-session online} (or @code{voice}) by hand.  This
+package provides the prebuilt upstream Linux release.")
+    (license license:gpl3)
+    (supported-systems '("x86_64-linux"))))

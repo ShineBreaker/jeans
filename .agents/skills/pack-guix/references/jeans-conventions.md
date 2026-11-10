@@ -328,6 +328,29 @@ deb/AppImage 里常带上游自编译的**非 PIE**辅助二进制（基址 0x40
 - 二进制安装到 `lib/<pkg>/`，然后从 `bin/` 创建符号链接，使 patchelf 能找到同目录的 `.so` 文件。
 - 自动更新 CI（guix refresh 主力 + Python 兜底）会对本次更新的所有包运行构建测试；预编译包同样需要验证解包、patchelf 和 wrapper 阶段。
 
+### systemd 单元与 autostart：先判断有没有消费者，再决定装不装
+
+预编译包的上游几乎都按发行版布局发 `share/systemd/user/*.service|*.socket` 和 `etc/xdg/autostart/*.desktop`。Guix 没有 systemd，这些文件装进 `$out` 之后没有任何东西会读它们——不是"装了暂时没用"，而是纯死文件，还会让人误以为功能已经配好（2026-11-10 msime-bin 首版实证：整棵 `usr/share/` 安装把三个用户单元带了进去）。
+
+判定顺序：
+
+1. **看单元在做什么**：常驻进程、socket 激活，还是一次性注册。
+2. **找有没有替代拉起路径**：宿主自己 spawn、设置应用按需启动，或上游已经写了"没有 systemctl 就手动启动"的分支。msime 的上游就明说 `if shutil.which("systemctl") is None: print("... 可用 msime-linux-provider-session online|voice 手动启动")`——有这条就说明作者预期了非 systemd 系统。
+3. **有用户价值且没有其他拉起点** → 在 `modules/jeans/home/services/` 写 home shepherd 服务（参照 `home-nosdshell-service-type` 与 `hardware.scm` 的 otd-daemon）；**纯参考或没人消费** → 不装。
+
+安装侧：不要整棵 `("usr/" ...)` 或 `("usr/share/" ...)` 安装，逐目录列 `install-plan`（applications / doc / fcitx5 / ibus / icons / …），systemd 与 autostart 就不会跟进来。整包安装的上游（AppImage、`usr/` 全装）排除不掉时，至少在包前注释写明"这些 unit 无人消费，Guix 用 home service 代替"，别让下一个人以为它们在工作。
+
+shepherd 侧的环境时序（2026-11-10 实证，与 `hardware.scm` 注释同源）：
+
+- Shepherd 在 **TTY 登录**时启动，环境里有 `XDG_RUNTIME_DIR`（elogind 设），但**没有** `WAYLAND_DISPLAY` / `DISPLAY`。
+- `home-wayland-service-type` / `home-x11-service-type` 的 `start` 用 `setenv` 写进 Shepherd 自身；而 `make-forkexec-constructor` 的默认 `#:environment-variables` 在服务构造时就取好了，看不到这个变化。显式传 `#:environment-variables (environ)` 才会在 start thunk 里取值、拿到已经 setenv 的变量。
+- 所以需要显示的常驻服务必须 `(requirement '(wayland-display))` 或 `(requirement '(x11-display))`；两种会话都要支持的包用"等 compositor socket 出现再 exec"的 wrapper（OTD 做法）。requirement 是 AND 语义，写不了"任一"，会话类型二选一时给用户一个配置字段（msime 的 `clipboard-requirement`）而不是猜。
+- requirement 缺失不是静默失效：`guix home build` 在配置验证阶段直接报 `服务 'x' 需要 'y'，但没有任何服务提供该服务`。所以需要显示的服务默认必须关闭（`clipboard? #f` 之类），否则会连累整份 home 配置构建失败——这反而比运行期悄悄不启动好，错误信息足够让用户补上 wayland/x11 service 或把 requirement 置空。
+- 只依赖 `XDG_RUNTIME_DIR` 的服务（socket provider、音频、网络）**不需要** requirement。
+
+实例对照：`msime-bin`（三个 provider，包内不装 unit，`home-msime-service-type` 提供开关）；`sunshine-bin`（unit 随 AppImage payload 落在 `lib/sunshine/usr/share/sunshine/systemd/user/`，整包安装排不掉，注释声明用 home shepherd）；`opentabletdriver-bin`（`.deb` 里的 otd-daemon unit，`home-opentabletdriver-service-type` + wait-for-display wrapper）。
+
+
 ### Qt 预编译 bundle 缺插件
 
 自包含 Qt bundle（AppImage 等）常缺个别 Qt 插件。典型案例：waywallen 的 AppImage 不含 `iconengines/libqsvgicon.so`，所有主题 SVG 图标渲染为空白。补法：把 Guix 对应 qt 包的插件目录（如 `qtsvg` 的 `lib/qt6/plugins`）**追加**到 wrapper 的 `QT_PLUGIN_PATH`（bundle 自带目录在前）。前提：wrapper 的 `LD_LIBRARY_PATH` 让 bundle 的 Qt 库排在 Guix Qt 之前，插件于是链接回 bundle 的 Qt，避免两套 Qt ABI 混用。
