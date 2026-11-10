@@ -160,12 +160,20 @@ jobs:
               /var/log/guix
             uid=$(stat -c %u /gnu/store)
             gid=$(stat -c %g /gnu/store)
-            sudo groupadd -g "$gid" guix-daemon 2>/dev/null \
-              || sudo groupmod -g "$gid" guix-daemon
+            # 快照里的 gid 是保存时 runner 上动态分配的数字，恢复时可能已被
+            # 别的系统组占用：此时 groupadd 失败，而 groupmod 因 guix-daemon
+            # 组尚不存在也失败（exit 6，2026-11-10 实证）。所以先按数字查
+            # 现有组——占用该 gid 的组直接拿来当 daemon 主组，没有才新建。
+            # usermod/useradd 的 -g 传数字时要求 GID 已存在，统一用组名。
+            group_name=$(awk -F: -v g="$gid" '$3==g {print $1; exit}' /etc/group)
+            if [ -z "$group_name" ]; then
+              sudo groupadd -g "$gid" guix-daemon
+              group_name=guix-daemon
+            fi
             if id -u guix-daemon >/dev/null 2>&1; then
-              sudo usermod -u "$uid" -g "$gid" guix-daemon
+              sudo usermod -u "$uid" -g "$group_name" guix-daemon
             else
-              sudo useradd -g "$gid" -u "$uid" -d /var/empty \
+              sudo useradd -g "$group_name" -u "$uid" -d /var/empty \
                 -s "$(command -v nologin)" --system guix-daemon
             fi
             sudo systemctl daemon-reload
