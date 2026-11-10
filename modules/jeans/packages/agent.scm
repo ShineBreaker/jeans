@@ -188,7 +188,7 @@ release.")
 (define-public cindy-cn-bin
   (package
     (name "cindy-cn-bin")
-    (version "0.1.128")
+    (version "0.1.130")
     (source
      (origin
        (method url-fetch)
@@ -196,7 +196,7 @@ release.")
              "https://github.com/makecindy/cindy/releases/download/"
              "v" version "/cindy-" version "-linux-x64-cn.deb"))
        (sha256
-        (base32 "1j1d3l14n62ln27gg34xda2q429g8b2s2dp5hx9zl5c378h4lr1f"))))
+        (base32 "05qscps7zmnkjizg19fr1hdfmw7623m0q1snbxdcz66v1dc6a5iv"))))
     (build-system electron-build-system)
     (arguments
      (list
@@ -775,7 +775,7 @@ coding experience with context awareness.")
 (define-public paseo-bin
   (package
     (name "paseo-bin")
-    (version "0.15.3")
+    (version "0.15.4")
     (source
      (origin
        (method url-fetch)
@@ -783,7 +783,7 @@ coding experience with context awareness.")
              "https://github.com/getpaseo/paseo/releases/download/"
              "v" version "/Paseo-" version "-amd64.deb"))
        (sha256
-        (base32 "10s8826487rcmbvmkvy2x9jyb2yz88jjnkcs3836ybgmb3ynbkml"))))
+        (base32 "0k8rrp56k35d5pxiqbf2xxhswgmw8wycc01f9chbzkjn6199nqxv"))))
     (build-system electron-build-system)
     (arguments
      (list
@@ -917,7 +917,7 @@ telemetry or forced log-ins.")
 (define-public reasonix-bin
   (package
     (name "reasonix-bin")
-    (version "2.57.0")
+    (version "2.59.0")
     (source
      (origin
        (method url-fetch)
@@ -925,7 +925,7 @@ telemetry or forced log-ins.")
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
              "v" version "/reasonix-linux-amd64.tar.gz"))
        (sha256
-        (base32 "13wlzdsxmb38cqm91dz2lcij34as257fiaj9rkdjgbv5ik0bn9y2"))))
+        (base32 "13870pyiqb963qcf70k275m595chfinw1lh2qjz38in5svhm3c56"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -971,7 +971,7 @@ and ships as a single static binary with no runtime dependencies.")
 (define-public reasonix-studio-bin
   (package
     (name "reasonix-studio-bin")
-    (version "2.57.0")
+    (version "2.59.0")
     (source
      (origin
        (method url-fetch)
@@ -979,7 +979,7 @@ and ships as a single static binary with no runtime dependencies.")
              "https://github.com/esengine/DeepSeek-Reasonix/releases/download/"
              "studio-v" version "/ReasonixStudio-linux-amd64.deb"))
        (sha256
-        (base32 "0fm0z6zlx1igfd5x3hahvmx52y9x3ylpidin4bbfgv2p7d310ya0"))))
+        (base32 "031fyp92l1bjr9qhq4y8igxmv6fcsm5wiqzzvbqk3r79ai12w9kj"))))
     (build-system electron-build-system)
     (arguments
      (list
@@ -1288,7 +1288,7 @@ configure.  This package provides the prebuilt desktop release.")
 (define-public zcode
   (package
     (name "zcode")
-    (version "3.17.2")
+    (version "3.18.0")
     (source
      (origin
        (method url-fetch)
@@ -1296,7 +1296,7 @@ configure.  This package provides the prebuilt desktop release.")
              "https://cdn-zcode.z.ai/zcode/electron/releases/"
              version "/linux-x64/ZCode-" version "-linux-x64.deb"))
        (sha256
-        (base32 "0xgmmzss89ipl2b8zhk7hb336z1k18q08d9iwxbawijwg4m7pv46"))))
+        (base32 "02k9g02qh04fq62w7xhvd2z6y5m3nnbq558sa1gdmj909dn0if73"))))
     (build-system electron-build-system)
     (arguments
      (list
@@ -1423,7 +1423,7 @@ without friction.")
 (define-public zcode-proxy-bin
   (package
     (name "zcode-proxy-bin")
-    (version "4.8.8")
+    (version "4.8.9")
     (source
      (origin
        (method url-fetch)
@@ -1431,7 +1431,7 @@ without friction.")
              "https://github.com/TriDefender/zcode-api/releases/download/"
              "v" version "/zcode-proxy-linux-x64"))
        (sha256
-        (base32 "0m956qrrf2x0xwdk8j7dmdgnx3vcdirsv5vmg71pp5fpllk2fs3l"))))
+        (base32 "02xxb0cjvdifqm8qp755riabh9ls3w3qn1iq2rl1p2aq9vnv3fvh"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -1489,7 +1489,7 @@ release and needs the @code{nix-ld} system service to run.")
 (define-public omo-bin
   (package
     (name "omo-bin")
-    (version "5.1.62")
+    (version "5.1.66")
     (source
      (origin
        (method url-fetch)
@@ -1498,7 +1498,7 @@ release and needs the @code{nix-ld} system service to run.")
              "v" version "/omo-linux-x64"))
        (sha256
         (base32
-         "0jwld6p9vfjrp72543d0c3g7qdrwjf79hqpq6p65agcdpqz853yq"))))
+         "0clbphiq01l4dabbnkm3v8mbm7pz7m42gnrgq23qmjgkp2xk0254"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -1538,7 +1538,7 @@ run.")
 (define-public cua-driver-bin
   (package
     (name "cua-driver-bin")
-    (version "0.41.2")
+    (version "0.46.1")
     (source
      (origin
        (method url-fetch)
@@ -1547,7 +1547,7 @@ run.")
              "cua-driver-rs-v" version
              "/cua-driver-rs-" version "-linux-x86_64-binary.tar.gz"))
        (sha256
-        (base32 "0bc9mhdymda9m5zw3nwsa7mzglq1q6i0ldbnhazh48c2g04vrd5a"))))
+        (base32 "0sy9vhaq476a2w5ydj9bqa3sgagfzjah1naabgbwpf3bfd5wai9z"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -1669,7 +1669,7 @@ so the bundled self-updater should not be used.")
 (define-public magpie-bin
   (package
     (name "magpie-bin")
-    (version "0.1.3233")
+    (version "0.1.3630")
     (source
      (origin
        (method url-fetch)
@@ -1677,7 +1677,7 @@ so the bundled self-updater should not be used.")
              "https://github.com/yetone/magpie-releases/releases/download/"
              "v" version "/magpie-linux-amd64"))
        (sha256
-        (base32 "1rcniq7j44xg7y9j0y3kchby30s7f8kixnirrjypb7rv0svc3r91"))))
+        (base32 "1cjmid7lp8j2p4a1gvl6v670ck6spgmpxnlpn9idbblbvqwy1gmm"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -1949,7 +1949,7 @@ Tencent account.")
 (define-public qoder-cn
   (package
     (name "qoder-cn")
-    (version "0.5.6")
+    (version "0.5.7")
     (source
      (origin
        (method url-fetch)
@@ -1957,7 +1957,7 @@ Tencent account.")
              "https://static.qoder.com.cn/qoder-app/releases/"
              version "/Qoder-CN-linux-amd64.deb"))
        (sha256
-        (base32 "1s8409jdizbl9kpyphz3v54zkc809x00r7q9f9fsw8n7f9im0zbs"))))
+        (base32 "0871c7rbhrqqpkf505fifigqnq0yzsixaqknrkcfh82xjjjsixrd"))))
     (build-system electron-build-system)
     (arguments
      (list

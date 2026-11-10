@@ -265,7 +265,7 @@ editor that supports the protocol to provide Java language features.")
 (define-public aria2-next-bin
   (package
     (name "aria2-next-bin")
-    (version "3.0.10")
+    (version "3.1.0")
     (source
      (origin
        (method url-fetch)
@@ -274,7 +274,7 @@ editor that supports the protocol to provide Java language features.")
              "v" version "/aria2-next-" version "-linux-x86_64"))
        (file-name "aria2-next")
        (sha256
-        (base32 "1l7fv3l647ina5szfmz45lp912sfz0s2p7ic4lbjknp641v64y7n"))))
+        (base32 "1478hvb5pvpirghbaz7x941pzlk4ckcx5kqjdny1mk0jjg1ly9js"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -339,7 +339,7 @@ prebuilt binary release.")
 (define-public rayburst-bin
   (package
     (name "rayburst-bin")
-    (version "4.1.1")
+    (version "4.1.2")
     (source
      (origin
        (method url-fetch)
@@ -347,7 +347,7 @@ prebuilt binary release.")
              "https://github.com/AnInsomniacy/rayburst/releases/download/"
              "v" version "/Rayburst_" version "_amd64.deb"))
        (sha256
-        (base32 "17wrh0lgxv5sbh32cd1a3k66g4gfz1c7xd6602pnsnra91n9g7ya"))))
+        (base32 "1rgry6h0iiysv9pqhzlq6f76fk164zsqi17ayhprg9xzanv4q2p7"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -493,7 +493,7 @@ companion extension.  This package provides the prebuilt binary release.")
 (define-public cc-switch-bin
   (package
     (name "cc-switch-bin")
-    (version "4.0.26")
+    (version "4.0.29")
     (source
      (origin
        (method url-fetch)
@@ -501,7 +501,7 @@ companion extension.  This package provides the prebuilt binary release.")
              "https://github.com/farion1231/cc-switch/releases/download/"
              "v" version "/CC-Switch-v" version "-Linux-x86_64.deb"))
        (sha256
-        (base32 "0fmfam5i6m3yhxygn32q8m6n4hilgynnk24jyzsmknqmhgqf2c3d"))))
+        (base32 "12p3g1hvrfx4diz3a7mlmcz3s0h1mx39gryyaz29j8497sffrvph"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -804,7 +804,7 @@ It requires a writable @file{/var/lib/apm} directory at runtime; run the
 (define-public agenote
   (package
     (name "agenote")
-    (version "0.2.3")
+    (version "0.2.4")
     (source
      (origin
        (method git-fetch)
@@ -813,7 +813,7 @@ It requires a writable @file{/var/lib/apm} directory at runtime; run the
              (commit (string-append "agenote-v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "14k0v7xsizpvxnf69p9g7x6ji8dp9246qy3nkwy1zjzf8i75p7cd"))))
+        (base32 "0m2x2b6sdilijg8d110yf6c80sr5iz0vqx2pgrv4rzs5mwispngr"))))
     (build-system pyproject-build-system)
     (arguments
      (list

@@ -488,8 +488,8 @@ python-httpx would otherwise leave python-httpcore unreachable at run time."
                        (cons pkg seen))))))))
 
 (define-public waydroid-helper-se
-  (let* ((commit "03ba56c59c781a09659ad46826bc425da1e4027f")
-         (revision "2")
+  (let* ((commit "b15b61322f42a1abc4a36bf68e0920d3f6f072ca")
+         (revision "3")
          (py-site (string-append "/lib/python"
                                  (version-major+minor (package-version python))
                                  "/site-packages"))
@@ -509,7 +509,7 @@ python-httpx would otherwise leave python-httpcore unreachable at run time."
               (commit commit)))
         (file-name (git-file-name name version))
         (sha256
-         (base32 "15awjh5j54xzfbmddcx6np1jlw0pkcihcgwsdi6nxi1hmfpv4xnz"))))
+         (base32 "13blvm9fvrmk7rbdl6gr3l69aq0mh97gnx5ws1gpw3ki5nk7d40h"))))
       (build-system meson-build-system)
       (arguments
        (list

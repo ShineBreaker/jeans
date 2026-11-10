@@ -577,7 +577,7 @@ package provides the prebuilt binary release.")
 (define-public wu-bin
   (package
     (name "wu-bin")
-    (version "1.1.19")
+    (version "1.2.1")
     (source
      (origin
        (method url-fetch)
@@ -585,7 +585,7 @@ package provides the prebuilt binary release.")
              "https://github.com/dstrml/wu/releases/download/v"
              version "/wu-linux-x86_64.tar.gz"))
        (sha256
-        (base32 "174jx347xpmw9fa2p7s20ripmxl51n7zqzq5wgsfd26h3k3f2ady"))))
+        (base32 "1fwjjq4pni11m37xzzh3gl2dg62sgfissy5islrz1g0jgjrmyqa5"))))
     (build-system binary-build-system)
     (arguments
      (list
