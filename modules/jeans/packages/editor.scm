@@ -208,8 +208,8 @@ the webview (GTK/WebKitGTK) frontend with an ncurses fallback.")
 ;;; e.g. tree-sitter-json and point LD_LIBRARY_PATH at its lib/ to
 ;;; enable syntax highlighting for that language.
 (define-public lem-next
-  (let ((commit "ffab98ff7fa9816f34b3300130046993d89e1b25")
-        (revision "14"))
+  (let ((commit "c084cd80570807c2f9885b93667afb9a7d33c1ae")
+        (revision "15"))
     (package
       (inherit lem)
       (name "lem-next")
@@ -222,7 +222,7 @@ the webview (GTK/WebKitGTK) frontend with an ncurses fallback.")
                (commit commit)))
          (file-name (git-file-name name version))
          (sha256
-          (base32 "1zki6j9b7z85g2j2j5xcgxqmbzc5bjb242018yz2b0sj9zk4f96m"))
+          (base32 "0mbdpq1bgys0fxljhm4d58dym5if60y57s1ly7xj7pf4cq5rdmqn"))
          (patches
           (map canonicalize-path
                (search-patches
@@ -320,6 +320,7 @@ the webview (GTK/WebKitGTK) frontend with an ncurses fallback.")
                  sbcl-cffi
                  sbcl-cl-change-case
                  sbcl-cl-charms
+                 sbcl-cl-enchant
                  sbcl-cl-iconv
                  sbcl-cl-mustache
                  sbcl-cl-package-locks

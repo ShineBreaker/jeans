@@ -17,6 +17,7 @@
   #:use-module (guix build-system copy)
   #:use-module (guix build-system gnu)
   #:use-module (gnu packages cmake)
+  #:use-module (gnu packages enchant)
   #:use-module (gnu packages gtk)
   #:use-module (gnu packages lisp-xyz)
   #:use-module (gnu packages pkg-config)
@@ -299,3 +300,55 @@ cross-platform webview library, as used by Lem's webview frontend.")
                        "jsonrpc/transport/tcp"
                        "jsonrpc/transport/websocket"
                        "jsonrpc/transport/local-domain-socket")))))
+
+;;; CFFI bindings for the Enchant spell-checker library.  Lem's
+;;; lem-spell-check extension hard-depends on the "enchant" ASDF system
+;;; since upstream commit c084cd8, so the system must be on the CL
+;;; source registry for lem-next to load.  The binding dlopen()s
+;;; libenchant-2 by bare soname; rewrite it to the absolute store path
+;;; so the load works at build time and at runtime (same treatment as
+;;; sbcl-webview above).
+(define-public sbcl-cl-enchant
+  (let ((commit "49a5a8ecbf5ba2c2893c95aa84e5f1dd769c6711")
+        (revision "1"))
+    (package
+      (name "sbcl-cl-enchant")
+      (version (git-version "0.0.0" revision commit))
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://github.com/tlikonen/cl-enchant")
+               (commit commit)))
+         (file-name (git-file-name name version))
+         (sha256
+          (base32 "0a6gvj2gnb680pg0372dxj0bydnax08jf4adk9iybhidvjvihqxz"))))
+      (build-system asdf-build-system/sbcl)
+      (arguments
+       (list
+        #:tests? #f
+        ;; The ASDF system is named "enchant", not "cl-enchant".
+        #:asd-systems ''("enchant")
+        #:phases
+        #~(modify-phases %standard-phases
+            (add-after 'unpack 'patch-libenchant-path
+              (lambda* (#:key inputs #:allow-other-keys)
+                ;; CFFI appends the platform suffix (".so") to a
+                ;; (:default NAME) spec, so an absolute path must be
+                ;; passed as a bare string alternative instead.
+                (substitute* "enchant.lisp"
+                  (("\\(:default \"libenchant-2\"\\)")
+                   (string-append
+                    "\""
+                    (search-input-file inputs "/lib/libenchant-2.so.2")
+                    "\""))))))))
+      (inputs
+       `(("sbcl-cffi" ,sbcl-cffi)
+         ("enchant" ,enchant)))
+      (synopsis "Common Lisp interface to the Enchant spell-checker library")
+      (description
+       "This package provides CFFI bindings for Enchant, a generic
+spell-checker library that dispatches to backends such as Hunspell and
+Aspell.  It is a hard dependency of Lem's spell-check extension.")
+      (home-page "https://github.com/tlikonen/cl-enchant")
+      (license license:cc0))))

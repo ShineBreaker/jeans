@@ -135,6 +135,7 @@
 
 | Package | Description |
 | --- | --- |
+| `sbcl-cl-enchant` | Common Lisp interface to the Enchant spell-checker library |
 | `sbcl-frugal-uuid` | Common Lisp UUID library with zero dependencies |
 | `sbcl-jsonrpc-lem` | JSON-RPC 2.0 server/client for Common Lisp |
 | `sbcl-micros-lem` | SLIME/SWANK fork for the Lem editor |
