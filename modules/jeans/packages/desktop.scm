@@ -41,6 +41,7 @@
   #:use-module (gnu packages python-build) ; python-setuptools-scm
   #:use-module (gnu packages python-xyz)  ; python-screeninfo, python-platformdirs, python-pillow, ...
   #:use-module (gnu packages qt)          ; qtbase, qtsvg
+  #:use-module (gnu packages rust)        ; rust
   #:use-module (gnu packages sdl)         ; sdl2
   #:use-module (gnu packages tcl)         ; expect
   #:use-module (gnu packages video)       ; ffmpeg, mpv
@@ -1425,5 +1426,237 @@ and @code{org.freedesktop.FileManager1}) are installed under
 @file{share/dbus-1/services}; they need @code{python-pygobject} and the Python
 GI typelibs supplied by this package.  This package provides the prebuilt
 upstream Linux release.")
+    (license license:expat)
+    (supported-systems '("x86_64-linux"))))
+
+;;; gpui-omarchy is the Omarchy fork of gpui that flea pins in its workspace
+;;; dependencies.  It is a virtual workspace (crates/gpui-pre and 15 siblings
+;;; with path dependencies between them), so the crates cannot be vendored
+;;; individually: the whole checkout is an input and the two git declarations
+;;; in flea's Cargo.toml become path dependencies, the helix-steel pattern.
+(define flea-gpui-omarchy
+  (origin
+    (method git-fetch)
+    (uri (git-reference
+          (url "https://github.com/thisisgm/gpui-omarchy")
+          (commit "c1643efcf27498cb516c0831fd15f66ff9b1c811")))
+    (file-name (git-file-name "gpui-omarchy" "0.3.9"))
+    (sha256 (base32 "0bkf093sqbn9rvjc1b5lhm310v6qw1805aycvr8n0d6zmmxgfdml"))))
+
+;;; flea (source build): the same upstream release tree as flea-bin, built
+;;; with cargo-build-system from the tarball upstream's CI publishes (it
+;;; carries the i18n catalogs and ui/ tree, which are data, not build
+;;; inputs).  Two crates produce binaries: the workspace root (flea) and
+;;; crates/flea-gui, hence both cargo install paths.  The 616 vendored
+;;; crates come from `guix import crate --lockfile`; gpui-omarchy is the
+;;; only git dependency and is rewritten to its checkout in patch-gpui.
+;;; tests? is #f: the suite needs bubblewrap namespaces, ffmpegthumbnailer,
+;;; glycin and 40 GiB of free space, none of which a sandboxed build has.
+;;; The data install phase mirrors upstream's Makefile, with lib/flea
+;;; replaced by libexec/flea and the absolute /usr paths patched.
+(define-public flea
+  (package
+    (name "flea")
+    (version "0.4.2")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://github.com/thisisgm/flea/releases/download/v" version
+             "/flea-v" version ".tar.gz"))
+       (sha256
+        (base32 "0hxqhl4p4kkb20f7x5gndz0mcj1gcizb3sf6j17zpyhjhgr9zsz4"))))
+    (build-system cargo-build-system)
+    (arguments
+     (let ((python-version (version-major+minor (package-version python))))
+       (list
+        #:rust rust
+        #:install-source? #f
+        #:tests? #f
+        #:cargo-install-paths ''("." "crates/flea-gui")
+        #:phases
+        #~(modify-phases %standard-phases
+            (add-after 'unpack 'patch-gpui-git-dependency
+              (lambda* (#:key inputs #:allow-other-keys)
+                (let* ((gpui (assoc-ref inputs
+                                        "gpui-omarchy-0.3.9-checkout"))
+                       (gpui-git
+                        (string-append
+                         "gpui = \\{ package = \"gpui-pre\", git = \"[^\"]+\","
+                         " rev = \"[0-9a-f]+\" \\}"))
+                       (platform-git
+                        (string-append
+                         "gpui_platform = \\{ package = \"gpui-pre-platform\","
+                         " git = \"[^\"]+\", rev = \"[0-9a-f]+\","
+                         " features = \\[\"font-kit\", \"x11\", \"wayland\","
+                         " \"runtime_shaders\"\\] \\}"))
+                       (gpui-path (string-append
+                                   "gpui = { package = \"gpui-pre\", path = \""
+                                   gpui "/crates/gpui-pre\" }"))
+                       (platform-path
+                        (string-append
+                         "gpui_platform = { package = \"gpui-pre-platform\","
+                         " path = \"" gpui "/crates/gpui-pre-platform\","
+                         " features = [\"font-kit\", \"x11\", \"wayland\","
+                         " \"runtime_shaders\"] }")))
+                  (substitute* "Cargo.toml"
+                    ((gpui-git) gpui-path)
+                    ((platform-git) platform-path)))))
+            (add-after 'patch-gpui-git-dependency 'patch-absolute-paths
+              (lambda* (#:key inputs outputs #:allow-other-keys)
+                (let* ((out (assoc-ref outputs "out"))
+                       (flea (string-append out "/bin/flea"))
+                       (libexec (string-append out "/libexec/flea")))
+                  ;; The two D-Bus helpers are activated by absolute Exec path.
+                  (substitute*
+                      '("packaging/org.freedesktop.impl.portal.desktop.flea.service")
+                    (("/usr/lib/flea/flea-portal")
+                     (string-append libexec "/flea-portal")))
+                  (substitute*
+                      '("packaging/com.thisisgm.flea.FileManager1.service")
+                    (("/usr/lib/flea/flea-filemanager1")
+                     (string-append libexec "/flea-filemanager1")))
+                  ;; Both D-Bus helpers open windows by exec'ing the CLI name.
+                  (substitute* '("tools/flea-portal" "tools/flea-filemanager1")
+                    (("/usr/bin/flea") flea))
+                  ;; These are not under bin/ or libexec/, so the standard
+                  ;; patch-shebangs phase never visits them.
+                  (substitute* '("tools/flea-portal" "tools/flea-filemanager1"
+                                 "tools/flea-mpris" "tools/flea-udisks")
+                    (("#!/usr/bin/python3")
+                     (string-append "#!" #$(this-package-input "python") "/bin/python3")))
+                  (substitute* "tools/flea-gio-auth"
+                    (("#!/usr/bin/expect -f")
+                     (string-append "#!" #$(this-package-input "expect")
+                                    "/bin/expect -f"))))))
+            (add-after 'install 'install-data
+              (lambda* (#:key outputs #:allow-other-keys)
+                (let* ((out (assoc-ref outputs "out"))
+                       (share (string-append out "/share/flea"))
+                       (libexec (string-append out "/libexec/flea")))
+                  ;; The QML tree is data the binary resolves through FLEA_UI;
+                  ;; 0.4.2 still ships it even though the GPUI window is the
+                  ;; only frontend.
+                  (copy-recursively "ui" (string-append share "/ui"))
+                  (copy-recursively "shelf" (string-append share "/shelf"))
+                  (for-each
+                   (lambda (file)
+                     (let* ((rel (substring file (string-length "i18n/")))
+                            (lang (dirname rel)))
+                       (install-file file (string-append share "/i18n/" lang))))
+                   (find-files "i18n" "^flea\\.json$"))
+                  (for-each
+                   (lambda (file)
+                     (install-file file libexec))
+                   (find-files
+                    "tools"
+                    "^flea-(portal|filemanager1|mpris|udisks|gio-auth)$"))
+                  (install-file "packaging/com.thisisgm.flea.desktop"
+                                (string-append out "/share/applications"))
+                  (install-file "packaging/com.thisisgm.flea.svg"
+                                (string-append
+                                 out "/share/icons/hicolor/scalable/apps"))
+                  (install-file "packaging/flea.portal"
+                                (string-append out "/share/xdg-desktop-portal/portals"))
+                  (install-file
+                   "packaging/org.freedesktop.impl.portal.desktop.flea.service"
+                   (string-append out "/share/dbus-1/services"))
+                  (install-file "packaging/com.thisisgm.flea.FileManager1.service"
+                                (string-append out "/share/dbus-1/services"))
+                  (install-file "LICENSE"
+                                (string-append out "/share/doc/flea"))
+                  (install-file "THIRD-PARTY-LICENSES.txt"
+                                (string-append out "/share/doc/flea"))
+                  ;; Exec must be absolute in a store profile.
+                  (substitute* (string-append out "/share/applications/"
+                                              "com.thisisgm.flea.desktop")
+                    (("^Exec=flea ")
+                     (string-append "Exec=" out "/bin/flea "))))))
+            (add-after 'install-data 'add-gui-runpath
+              (lambda* (#:key inputs outputs #:allow-other-keys)
+                ;; rustc embeds only the -L paths its build scripts report;
+                ;; gdk-pixbuf and glib are linked through LIBRARY_PATH and
+                ;; never enter the RUNPATH, so validate-runpath fails.  This
+                ;; is the documented cargo-build-system gap for dlopened or
+                ;; indirectly linked system libraries.
+                (use-modules (ice-9 popen) (ice-9 rdelim))
+                (let* ((out (assoc-ref outputs "out"))
+                       (bin (string-append out "/bin/flea-gui"))
+                       (gdk (assoc-ref inputs "gdk-pixbuf"))
+                       (glib (assoc-ref inputs "glib"))
+                       (pipe (open-pipe* OPEN_READ "patchelf" "--print-rpath" bin))
+                       (rpath (read-line pipe)))
+                  (close-pipe pipe)
+                  (invoke "patchelf" "--set-rpath"
+                          (string-append rpath ":" gdk "/lib:" glib "/lib")
+                          bin))))
+            (add-after 'add-gui-runpath 'wrap-programs
+              (lambda* (#:key outputs #:allow-other-keys)
+                (let* ((out (assoc-ref outputs "out"))
+                       (python-path
+                        (list (string-append #$python "/lib/python"
+                                             #$python-version "/site-packages")
+                              (string-append #$python-pygobject
+                                             "/lib/python" #$python-version
+                                             "/site-packages")))
+                       (typelib (list (string-append #$glib
+                                                     "/lib/girepository-1.0"))))
+                  (for-each
+                   (lambda (prog)
+                     (wrap-program (string-append out prog)
+                       `("PYTHONPATH" ":" prefix ,python-path)
+                       `("GI_TYPELIB_PATH" ":" prefix ,typelib)))
+                   '("/libexec/flea/flea-portal"
+                     "/libexec/flea/flea-filemanager1"
+                     "/libexec/flea/flea-mpris"
+                     "/libexec/flea/flea-udisks"))
+                  (for-each
+                   (lambda (prog)
+                     (wrap-program (string-append out prog)
+                       (list "FLEA_UI" "=" '=
+                             (list (string-append out "/share/flea/ui")))
+                       (list "FLEA_SHELF" "=" '=
+                             (list (string-append out "/share/flea/shelf")))
+                       (list "FLEA_UDISKS" "=" '=
+                             (list (string-append out
+                                                  "/libexec/flea/flea-udisks")))))
+                   '("/bin/flea" "/bin/flea-gui")))))))))
+    (native-inputs (list pkg-config patchelf))
+    (inputs
+     (cons* flea-gpui-omarchy
+            bash-minimal
+            expect
+            fontconfig
+            freetype
+            gdk-pixbuf
+            glib
+            libglvnd
+            libxcb
+            libxkbcommon
+            python
+            python-pygobject
+            vulkan-loader
+            wayland
+            zlib
+            (cargo-inputs 'flea #:module '(jeans packages rust-crates))))
+    (properties `((upstream-name . "flea")))
+    (home-page "https://github.com/thisisgm/flea")
+    (synopsis "Fast, keyboard-first file manager")
+    (description
+     "Flea is a keyboard-first graphical file manager: columns, tabs, a
+searchable path bar, previews for images, media, PDF, Markdown and archives,
+a trash browser and a drop shelf.  This package builds both entry points from
+source: @command{flea} for the CLI and the window, and @command{flea-gui} for
+the window alone.
+
+The file-manager window is a GPU-rendered native application and does not
+require a desktop shell.  Optional integrations look for their host programs
+on @env{PATH}: media and PDF previews use @command{mpv} and Poppler's GObject
+library, HTML previews call @command{qml6}, content search uses
+@command{ripgrep}, archive work uses @command{7z}, and the Omarchy shelf
+plugin runs the @command{omarchy-*} commands only when it is enabled in
+Settings.  The two D-Bus services (@code{org.freedesktop.impl.portal.desktop.flea}
+and @code{org.freedesktop.FileManager1}) are installed under
+@file{share/dbus-1/services} and run the Python GI helpers shipped here.")
     (license license:expat)
     (supported-systems '("x86_64-linux"))))
