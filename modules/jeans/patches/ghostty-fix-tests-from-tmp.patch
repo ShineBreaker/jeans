@@ -1,0 +1,12 @@
+diff --git a/src/terminal/kitty/graphics_image.zig b/src/terminal/kitty/graphics_image.zig
+index e411bafe7..9d2fffc76 100644
+--- a/src/terminal/kitty/graphics_image.zig
+@@ -499,7 +499,7 @@ pub const LoadingImage = struct {
+         dir: []const u8,
+         path: []const u8,
+     ) Allocator.Error!bool {
+-        if (isPathInDir("/tmp", path)) return true;
++        // if (isPathInDir("/tmp", path)) return true;
+         if (isPathInDir("/dev/shm", path)) return true;
+         if (isPathInDir(dir, path)) return true;
+ 

@@ -26,7 +26,10 @@
                   (jeans packages theme)
                   (jeans packages nix-ld)
                   (jeans packages python-xyz)
+                  (jeans packages terminals)
                   (jeans packages tools)
+                  (jeans packages wuffs)
+                  (jeans packages zig)
 
                   (jeans home services desktop)
                   (jeans home services emacs-xyz)
