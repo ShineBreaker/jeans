@@ -34,6 +34,7 @@
  #:use-module (gnu packages databases)        ; mysql, unixodbc
  #:use-module (gnu packages elf)              ; patchelf
  #:use-module (gnu packages fontutils)        ; fontconfig
+ #:use-module (gnu packages freedesktop)      ; libappindicator, wayland
  #:use-module (gnu packages gcc)              ; gcc "lib"
  #:use-module (gnu packages geo)              ; gdal, proj
  #:use-module (gnu packages gl)               ; mesa, libglvnd
@@ -54,9 +55,11 @@
   #:use-module (gnu packages swig)
   #:use-module (gnu packages tls)              ; openssl
   #:use-module (gnu packages web)              ; rapidjson
+  #:use-module (gnu packages webkit)           ; webkitgtk-for-gtk3
   #:use-module (gnu packages xml)              ; libxml2, expat
   #:use-module (gnu packages xdisorg)          ; pixman, libxkbcommon
   #:use-module (gnu packages xorg)             ; libx11, libxcb, ...
+  #:use-module (jeans build-system binary)
   #:use-module (jeans packages agent)          ; electron phase helpers
   #:use-module (guix build-system gnu)
   #:use-module (guix build-system cmake)
@@ -901,3 +904,91 @@ administration and backup.  This package tracks the Electron-based 26.x
 distribution line built on MySQL Shell; it ships prebuilt binaries from
 the official archive.")
     (license license:gpl2)))
+
+;;; DBX: cross-platform database client (Tauri + WebKitGTK).
+;;;
+;;; The upstream .deb ships one 100 MB Tauri ELF (`usr/bin/dbx'), a
+;;; .desktop entry and hicolor icons; there is no external resource tree
+;;; (`resource_dir()' would point at lib/<identifier>/ but the frontend is
+;;; embedded in the binary).  Runtime needs WebKitGTK 4.1 (libwebkit2gtk-4.1
+;;; and libjavascriptcoregtk-4.1), GTK 3 and libappindicator: tray-icon
+;;; dlopens libayatana-appindicator3.so.1 first and falls back to
+;;; libappindicator3.so.1, and only the latter exists in Guix.
+;;;
+;;; The desktop file and icon names stay upstream's (DBX.desktop, dbx.png,
+;;; Icon=dbx); the MimeType handler for x-scheme-handler/dbx depends on them.
+(define-public dbx-bin
+  (package
+    (name "dbx-bin")
+    (version "0.6.69")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://github.com/t8y2/dbx/releases/download/"
+             "v" version "/DBX_" version "_amd64.deb"))
+       (sha256
+        (base32 "15f02aczll6nrl9nl8hgnp0zcclb2f579qg5m621751v7ymhgi69"))))
+    (build-system binary-build-system)
+    (arguments
+     (list
+      #:unpack-method 'deb
+      #:install-plan
+      #~'(("usr/bin/dbx" "bin/dbx")
+          ("usr/share/applications/DBX.desktop"
+           "share/applications/DBX.desktop")
+          ("usr/share/icons/hicolor/32x32/apps/dbx.png"
+           "share/icons/hicolor/32x32/apps/dbx.png")
+          ("usr/share/icons/hicolor/128x128/apps/dbx.png"
+           "share/icons/hicolor/128x128/apps/dbx.png")
+          ("usr/share/icons/hicolor/256x256@2/apps/dbx.png"
+           "share/icons/hicolor/256x256@2/apps/dbx.png"))
+      #:patchelf-plan
+      #~'(("bin/dbx"))
+      #:desktop-files
+      #~'(("share/applications/DBX.desktop" "bin/dbx" "dbx"))
+      #:wrap-plan
+      #~(list
+         (list "bin/dbx"
+               (list "XDG_DATA_DIRS" ":" 'prefix
+                     (list (string-append #$output "/share")
+                           (string-append #$gtk+ "/share")
+                           (string-append #$webkitgtk-for-gtk3 "/share")))
+               (list "GI_TYPELIB_PATH" ":" 'prefix
+                     (list (string-append #$glib "/lib/girepository-1.0")
+                           (string-append #$gtk+ "/lib/girepository-1.0")
+                           (string-append #$webkitgtk-for-gtk3
+                                          "/lib/girepository-1.0")
+                           (string-append #$gdk-pixbuf
+                                          "/lib/girepository-1.0")))
+               (list "GIO_EXTRA_MODULES" ":" 'prefix
+                     (list (string-append #$glib "/lib/gio/modules")))
+               (list "GSETTINGS_SCHEMA_DIR" ":" 'prefix
+                     (list (string-append #$gtk+
+                                          "/share/glib-2.0/schemas")))))))
+    (native-inputs (list binutils))
+    (inputs `(("bash-minimal" ,bash-minimal)
+              ("cairo" ,cairo)
+              ("dbus" ,dbus)
+              ("fontconfig-minimal" ,fontconfig)
+              ("gcc:lib" ,gcc "lib")
+              ("gdk-pixbuf" ,gdk-pixbuf)
+              ("glib" ,glib)
+              ("glibc" ,glibc)
+              ("gtk+" ,gtk+)
+              ("libappindicator" ,libappindicator)
+              ("libsoup" ,libsoup)
+              ("mesa" ,mesa)
+              ("wayland" ,wayland)
+              ("webkitgtk-for-gtk3" ,webkitgtk-for-gtk3)))
+    (properties `((upstream-name . "DBX")))
+    (home-page "https://github.com/t8y2/dbx")
+    (synopsis "Lightweight cross-platform database client")
+    (description
+     "DBX is a cross-platform database client supporting more than 100
+databases, including MySQL, PostgreSQL, SQLite, Redis, MongoDB, DuckDB,
+SQL Server and Dameng.  It provides a desktop GUI with a built-in AI
+assistant, an MCP server, a CLI and a Docker image.  This package provides
+the prebuilt desktop release.")
+    (license license:asl2.0)
+    (supported-systems '("x86_64-linux"))))

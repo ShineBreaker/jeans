@@ -1,0 +1,35 @@
+#!/bin/sh
+# docs/packages.md 必须等于 blue gen-docs 的当前输出。
+# 规则：新增/改名/改 synopsis 都跟跑 gen-docs，文件始终与生成器一致，
+# 这样每次提交的 docs diff 只有新包那一行，不会累积格式漂移。
+#
+# 安装（本机）：
+#   install -m755 scripts/hooks/pre-commit .git/hooks/pre-commit
+#
+# 只在暂存区动了包定义或 docs 本身时才检查，其余提交不付这个开销。
+
+if ! git diff --cached --name-only | grep -qE '^(modules/|docs/packages\.md$)'; then
+    exit 0
+fi
+
+blue=$(command -v blue 2>/dev/null || true)
+if [ -z "$blue" ] && [ -x "$HOME/.guix-home/profile/bin/blue" ]; then
+    blue="$HOME/.guix-home/profile/bin/blue"
+fi
+if [ -z "$blue" ]; then
+    echo "pre-commit: 找不到 blue，跳过 docs/packages.md 检查"
+    exit 0
+fi
+
+if ! "$blue" gen-docs >/dev/null 2>&1; then
+    echo "pre-commit: blue gen-docs 执行失败（模块可能加载不了），跳过检查"
+    exit 0
+fi
+
+if ! git diff --quiet -- docs/packages.md; then
+    echo "pre-commit: docs/packages.md 已按当前包定义重新生成，内容有变化。"
+    echo "           请 git add docs/packages.md 后重新提交。"
+    exit 1
+fi
+
+exit 0
