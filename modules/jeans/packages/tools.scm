@@ -6,6 +6,7 @@
   #:use-module (ice-9 match)
   #:use-module (guix packages)
   #:use-module (guix build-system cargo)
+  #:use-module (guix build-system cmake)
   #:use-module (guix build-system copy)
   #:use-module (guix build-system pyproject)
   #:use-module (guix download)
@@ -41,6 +42,8 @@
   #:use-module (gnu packages compression) ; xz
   #:use-module (gnu packages version-control) ; git
   #:use-module (gnu packages node)        ; node
+  #:use-module (gnu packages perl)        ; perl (aria2-next OpenSSL Configure)
+  #:use-module (gnu packages pkg-config)  ; pkg-config
   #:use-module (gnu packages dns)         ; avahi
   #:use-module (gnu packages fontutils)   ; fontconfig, freetype, harfbuzz
   #:use-module (gnu packages gl)          ; mesa, libglvnd
@@ -52,6 +55,8 @@
   #:use-module (gnu packages vulkan)      ; vulkan-loader
   #:use-module (gnu packages xorg)        ; libx11, libxcb, libice, libsm
   #:use-module (gnu packages curl)        ; curl
+  #:use-module (gnu packages ssh)         ; libssh2
+  #:use-module (gnu packages sqlite)      ; sqlite
   #:use-module (gnu packages nss)         ; nss-certs
   #:use-module (guix profiles)            ; ca-certificate-bundle
   #:use-module (guix store)
@@ -295,6 +300,75 @@ multi-protocol & multi-source command-line download utility.  It supports
 HTTP/HTTPS, FTP, SFTP, BitTorrent and Metalink.  This package provides the
 prebuilt binary release.")
      (license license:gpl2)))
+
+;;; aria2-next (source build): same fork as aria2-next-bin, built from the
+;;; upstream git tree.  Since 3.x upstream replaced autotools with a CMake
+;;; superbuild that vendors the whole dependency stack (boost, curl, expat,
+;;; ffmpeg, gpac, libssh2, libtorrent, nghttp2, openssl, sqlite, zlib) under
+;;; third_party/, so the build needs no network.  Every dependency is built
+;;; static and the engine links only libstdc++/libgcc_s dynamically — the
+;;; same linkage as the release ELF.
+;;;
+;;; The superbuild skips the inner project's install step (INSTALL_COMMAND
+;;; ""), so the snippet re-attaches it; the inner GNUInstallDirs rules then
+;;; install bin/aria2-next.  ffmpeg is configured --disable-x86asm (no nasm
+;;; needed) and --disable-autodetect; gpac is fully static with all optional
+;;; packages disabled.  Perl (OpenSSL Configure) and pkg-config are the only
+;;; extra native inputs.
+;;;
+;;; Two Guix-sandbox adaptations live in the snippet: (1) ffmpeg's configure
+;;; sanity check executes a generated #!/bin/sh script, but the sandbox has no
+;;; /bin/sh, so the shebang is rewritten to the store sh (same fix as Guix's
+;;; own ffmpeg recipe); (2) CMake dependencies default to lib64 on 64-bit while
+;;; the inner project searches lib/lib*.a, so CMAKE_INSTALL_LIBDIR=lib is forced
+;;; on the external projects.
+
+(define-public aria2-next
+  (package
+    (name "aria2-next")
+    (version "3.1.0")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/AnInsomniacy/aria2-next")
+             (commit (string-append "v" version))))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "0xl392bj9dazndpkh2833mfck1v9abhq3xpwrkd45rv7kz04p1wz"))
+       (modules '((guix build utils)))
+       (snippet
+        #~(begin
+            (substitute* "cmake/superbuild/Dependencies.cmake"
+              (("INSTALL_COMMAND \"\"")
+               (string-append
+                "INSTALL_COMMAND ${CMAKE_COMMAND} --install <BINARY_DIR>"
+                " --prefix ${CMAKE_INSTALL_PREFIX}"))
+              ;; 64 位 GNUInstallDirs 默认把 CMake 依赖装进 lib64，而内层
+              ;; 项目按 lib/lib*.a 硬搜索（OpenSSL 已 --libdir=lib）；统一
+              ;; 强制 lib，避免 sqlite/zlib 等装到 lib64 后找不到。
+              (("-DCMAKE_POSITION_INDEPENDENT_CODE=ON\\)")
+               "-DCMAKE_POSITION_INDEPENDENT_CODE=ON\n  -DCMAKE_INSTALL_LIBDIR=lib)"))
+            ;; ffmpeg 的 configure 会生成一个 #!/bin/sh 测试脚本并执行它做
+            ;; sanity check；Guix 构建沙箱没有 /bin/sh，把该 shebang 指向
+            ;; store 的 sh（与 Guix 官方 ffmpeg 包的 configure 阶段同一修复）。
+            (substitute* "third_party/ffmpeg/configure"
+              (("#!/bin/sh")
+               (string-append "#!" #$(file-append bash-minimal "/bin/sh"))))))))
+    (build-system cmake-build-system)
+    (arguments
+     (list
+      #:configure-flags
+      #~(list "-DARIA2_SUPERBUILD=ON"
+              "-DBUILD_TESTING=OFF")
+      #:tests? #f))
+    (native-inputs (list bash-minimal perl pkg-config))
+    (home-page "https://github.com/AnInsomniacy/aria2-next")
+    (synopsis "Maintained aria2 fork with bug fixes and modernized architecture")
+    (description "aria2-next is a maintained fork of aria2, the lightweight
+multi-protocol & multi-source command-line download utility.  It supports
+HTTP/HTTPS, FTP, SFTP, BitTorrent and Metalink.")
+    (license license:gpl2)))
 
 ;;; Rayburst (formerly Motrix-Next): prebuilt binary download manager
 ;;; (Tauri/WebKitGTK app).
@@ -1296,4 +1370,103 @@ prebuilt release binary.")
      "gh is GitHub on the command line.  It brings pull requests, issues, and
 other GitHub concepts to the terminal next to where you are already working
 with git and your code.")
+    (license license:expat)))
+
+;;; Zellij: terminal workspace / terminal multiplexer, built from the
+;;; v0.44.3 tag.  Upstream's "vendored_curl" default feature would compile
+;;; the bundled curl and OpenSSL sources; the snippet strips it so isahc
+;;; links Guix's libcurl, and the build phase points openssl-sys/curl-sys at
+;;; the system libraries.  Release builds embed the prebuilt default plugins
+;;; from zellij-utils/assets/plugins/, so no wasm32 target is needed.
+(define-public zellij
+  (package
+    (name "zellij")
+    (version "0.44.3")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/zellij-org/zellij")
+             (commit (string-append "v" version))))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "1a6w49gv63l015afy1klxfxw9sr4a309licbar7jdq5f4qx81hdg"))
+       (modules '((guix build utils)))
+       (snippet '(begin
+                   ;; Remove vendored features from all Cargo.toml files
+                   (for-each (lambda (file)
+                               (substitute* file
+                                 ;; Remove "vendored" features
+                                 (("features = \\[([^]]*?)\"vendored\"([^]]*?)\\]"
+                                   all before after)
+                                  (string-append "features = [" before after
+                                                 "]"))
+                                 (("features = \\[\"vendored\"\\]")
+                                  "features = []")
+                                 ;; Remove "vendored_curl" from default features
+                                 (("\"vendored_curl\"[,]?")
+                                  "")
+                                 ;; Remove trailing comma if present after removal
+                                 (("\\[,")
+                                  "[")
+                                 ((",\\]")
+                                  "]")))
+                             (find-files "." "Cargo\\.toml$"))))))
+    (build-system cargo-build-system)
+    (arguments
+     (list
+      #:install-source? #f
+      #:tests? #f
+      ;; The workspace's first member is a plugin crate with no binary
+      ;; target, which would make has-executable-target? skip the install
+      ;; phase; install the root package explicitly.
+      #:cargo-install-paths ''(".")
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-before 'build 'set-env
+            (lambda _
+              (setenv "OPENSSL_NO_VENDOR" "1")
+              ;; Tell curl-sys to use system libcurl
+              (setenv "CURL_SYS_NO_PKG_CONFIG" "0")
+              (setenv "CURL_STATIC" "0"))))))
+    (native-inputs (list pkg-config))
+    (inputs (cons* libssh2 sqlite openssl curl
+                   (cargo-inputs 'zellij #:module '(jeans packages rust-crates))))
+    (properties `((release-tag-prefix . "^v")))
+    (home-page "https://zellij.dev")
+    (synopsis "Terminal workspace with batteries included")
+    (description
+     "This package provides a terminal workspace with batteries included.")
+    (license license:expat)))
+
+;;; zellij-bin: the same upstream release as the source package, shipped as
+;;; upstream's musl static build (static-pie, no interpreter or RPATH), so it
+;;; needs neither patchelf nor a wrapper.
+(define-public zellij-bin
+  (package
+    (name "zellij-bin")
+    (version "0.44.3")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://github.com/zellij-org/zellij/releases/download/v"
+             version "/zellij-x86_64-unknown-linux-musl.tar.gz"))
+       (sha256
+        (base32 "0lfpr8768jr6z0wsf8n89zrcycw6fqbnaa9819n50zv2i1kk8z0g"))))
+    (build-system binary-build-system)
+    (arguments
+     (list
+      #:unpack-method 'gnu-unpack
+      #:install-plan #~'(("zellij" "bin/"))
+      #:patchelf? #f
+      #:wrap? #f))
+    (supported-systems '("x86_64-linux"))
+    (properties `((upstream-name . "zellij")
+                  (release-tag-prefix . "^v")))
+    (home-page "https://zellij.dev")
+    (synopsis "Terminal workspace with batteries included")
+    (description
+     "Zellij is a terminal workspace with batteries included.  This package
+contains upstream's prebuilt static binary for x86_64-linux.")
     (license license:expat)))

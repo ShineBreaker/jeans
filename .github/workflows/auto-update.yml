@@ -36,9 +36,9 @@ env:
   # no updater；由 Python updater 兜底（读包定义 release-tag-prefix
   # property 剥 ^ 锚点过滤 bun-v* 系列，2026-10-24 实测正常）。
   REFRESH_PACKAGES: >-
-    crush-bin opencode-desktop-bin herdr-bin omo-bin disktree-bin wu-bin
-    magpie-bin codewhale-bin reasonix-bin github-copilot dbx-bin
-    eask-bin neomacs-bin rayburst-bin cc-switch-bin
+    opencode-desktop-bin herdr-bin omo-bin disktree-bin wu-bin
+    magpie-bin codewhale-bin github-copilot dbx-bin
+    eask-bin neomacs-bin rayburst-bin cc-switch-bin flea-bin
     font-maple-font-nf-cn font-nerd-font-iosevka
     lr2oraja-endlessdream-bin osu-lazer-bin inso-bin g0v0-bin deltalazer-bin
     neomod-bin
@@ -47,6 +47,7 @@ env:
     nix-ld opentabletdriver-udev-rules waypaper
     waydroid libgbinder libglibutil python-gbinder
     pnpm-bin
+    zellij zellij-bin
 
 jobs:
   auto-update:
@@ -215,7 +216,7 @@ jobs:
       # ── guix refresh（主力 updater）：改写 GitHub release 包 + git-fetch 包 ──
       # guix refresh 作为主力 updater 接管 GitHub release 包（需 upstream-name
       # property）和 git-fetch 有 tag 包。Python updater 随后只处理 guix 力所
-      # 不及的少数派（zcode CDN、kimi-code npm tag、reasonix-desktop-bin 等）。
+      # 不及的少数派（zcode CDN、kimi-code npm tag、cua-driver-bin 等）。
       # GUIX_GITHUB_TOKEN 是 guix refresh 读 GitHub API 的专属环境变量名
       # （不是 GITHUB_TOKEN），必须单独映射。
 
@@ -246,8 +247,8 @@ jobs:
           # 不交给 refresh 的包：zcode（z.ai CDN 官网 JS 版本列表）、
           # font-misans（zip 无版本号，ETag 信号）、amber-pm（gitee 追踪
           # master）、jdtls-bin（Eclipse 目录页 + 日期戳）、
-          # librewolf-nongnu（inherit）、reasonix-desktop-bin（desktop-v
-          # 前缀 URL 重建失败）——这些交给 Python updater 的特殊源处理器。
+          # librewolf-nongnu（inherit）、cua-driver-bin（tag/资产命名
+          # refresh 不识别）——这些交给 Python updater 的特殊源处理器。
           # zen-browser-bin 不交 refresh：Guix version> 把字母后缀段排在
           # 数字段之后（1.22b > 1.22.3b），refresh 每次都会把版本降回 1.22b。
           # ellsp-bin / emacs-ellsp 不交 refresh：0.2.0 是 pre-release，
