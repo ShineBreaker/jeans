@@ -22,7 +22,6 @@
                   (jeans packages games)
                   (jeans packages hardware)
                   (jeans packages lisp)
-                  (jeans packages lzsync)
                   (jeans packages rust-crates)
                   (jeans packages theme)
                   (jeans packages nix-ld)
