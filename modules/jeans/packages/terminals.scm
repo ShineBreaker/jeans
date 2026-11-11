@@ -312,7 +312,8 @@ working with a wrapper.")
         (file-name (git-file-name name version))
         (sha256
          (base32 "12vpmhznknf6d467c4h16ljggfqi07gfl1riq1y84416a224d83b"))
-        (patches (search-patches "fontconfig-2.18.3-cache-ignore-mtime.patch"))))
+        (patches (search-patches
+                  "jeans/patches/fontconfig-2.18.3-cache-ignore-mtime.patch"))))
      (arguments
       ;; The PR writes a bare `arguments' here, which is unbound in a
       ;; (package (inherit ...)) body; refer to the inherited field instead.
@@ -577,10 +578,10 @@ others) packaged as a single font for terminal and editor use.")
           ;; for packages that are NOT in the C_INCLUDE_PATH and ARE in
           ;; PKG_CONFIG_PATH. Since x11 shows up in both, pkg-config defers to
           ;; C_INCLUDE_PATH and does not produce any output for some reason.
-          (add-before 'build 'pkg-config-allow-system-cflags
+          (add-before 'build+install 'pkg-config-allow-system-cflags
             (lambda _
               (setenv "PKG_CONFIG_ALLOW_SYSTEM_CFLAGS" "1")))
-          (add-before 'build 'fix-gtk-blueprint
+          (add-before 'build+install 'fix-gtk-blueprint
             (lambda _
               ;; GTK 4 & Adwaita provide a different symbol to provide a
               ;; shortcut label. This file already imports the Adw namespace,
@@ -591,7 +592,7 @@ others) packaged as a single font for terminal and editor use.")
               (substitute* "src/apprt/gtk/ui/1.5/command-palette.blp"
                 (("Gtk\\.ShortcutLabel") "Adw.ShortcutLabel"))))
           ;; Teach Zig about where Guix places fonts.
-          (add-before 'build 'fix-font-paths
+          (add-before 'build+install 'fix-font-paths
             (lambda _
               (substitute* "src/build/SharedDeps.zig"
                 (("fonts/ttf") "share/fonts/truetype")
