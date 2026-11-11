@@ -36,7 +36,7 @@ Mirror: `https://codeberg.org/BrokenShine/jeans.git`
 
 ## Quick Start
 
-- **Usage Guide** → [docs/usage.md](docs/usage.md) — Channel setup, package installation, OpenTabletDriver
+- **Usage Guide** → [docs/usage.md](docs/usage.md) — Channel setup, package installation, and service configuration guide
 - **nix-ld Guide** → [docs/nix-ld.md](docs/nix-ld.md) — Running pre-compiled binaries on Guix System
 - **Package List** → [docs/packages.md](docs/packages.md)
 

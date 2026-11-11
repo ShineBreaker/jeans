@@ -4,6 +4,8 @@
 
 # nix-ld: Run Pre-compiled Binaries
 
+**English** | [**中文**](zh_CN/nix-ld.md)
+
 ## What It Is
 
 [nix-ld](https://github.com/Mic92/nix-ld) is a minimal ELF dynamic linker shim (only 62K) that lets pre-compiled binaries built for FHS (Filesystem Hierarchy Standard) systems — such as Zoom, Master PDF Editor, game clients — run directly on non-FHS systems.

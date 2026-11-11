@@ -17,7 +17,7 @@
 
 [**English**](./README.md) \| **中文**
 
-[**Packages**](docs/packages.md) \| [**Usage**](docs/usage.md) \| [**nix-ld**](docs/nix-ld.md)
+[**Packages**](docs/packages.md) \| [**Usage**](docs/zh_CN/usage.md) \| [**nix-ld**](docs/zh_CN/nix-ld.md)
 
 一个个人 [Guix Channel](https://guix.gnu.org/manual/en/html_node/Channels.html)，打包了一些前沿软件和闭源软件。
 
@@ -40,9 +40,9 @@
 
 ## 快速开始
 
-- **用法指南** → [usage.md](usage.md) — 频道配置、包安装、OpenTabletDriver
-- **nix-ld 指南** → [nix-ld.md](nix-ld.md) — 在 Guix System 上运行预编译二进制
-- **包列表** → [packages.md](packages.md)
+- **用法指南** → [docs/zh_CN/usage.md](docs/zh_CN/usage.md) — 频道配置、包安装与服务使用指南
+- **nix-ld 指南** → [docs/zh_CN/nix-ld.md](docs/zh_CN/nix-ld.md) — 在 Guix System 上运行预编译二进制
+- **包列表** → [docs/packages.md](docs/packages.md)
 
 ---
 
