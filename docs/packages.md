@@ -13,7 +13,6 @@
 | ---------------------- | -------------------------------------------------------------- |
 | `cindy-cn-bin`         | Open-source AI agent desktop client                            |
 | `codewhale-bin`        | Multi-provider AI coding agent for the terminal                |
-| `crush-bin`            | AI-powered coding assistant for the CLI                        |
 | `cua-driver-bin`       | Cross-platform computer-use automation driver                  |
 | `github-copilot`       | Agent-native GitHub Copilot desktop application                |
 | `herdr-bin`            | Terminal workspace manager for AI coding agents                |
@@ -23,8 +22,6 @@
 | `opencode-desktop-bin` | AI coding agent desktop application                            |
 | `paseo-bin`            | Self-hosted desktop client for orchestrating coding agents     |
 | `qoder-cn`             | Agent workbench for human and AI software teams                |
-| `reasonix-bin`         | DeepSeek-native AI coding agent for the terminal               |
-| `reasonix-studio-bin`  | Desktop GUI for the Reasonix AI coding agent                   |
 | `thinkrail-bin`        | JetBrains' lightweight AI coding IDE with the pi agent         |
 | `workbuddy-cn`         | AI agent desktop workspace from Tencent                        |
 | `zcode`                | Desktop application for agent-assisted development             |
@@ -67,7 +64,10 @@
 
 | Package                     | Description                                                |
 | --------------------------- | ---------------------------------------------------------- |
+| `ai-usagebar`               | Waybar widget for AI coding assistant usage                |
 | `ai-usagebar-bin`           | Waybar widget for AI coding assistant usage                |
+| `flea`                      | Fast, keyboard-first file manager                          |
+| `flea-bin`                  | Fast, keyboard-first file manager                          |
 | `linux-wallpaperengine`     | Run Wallpaper Engine wallpapers on the Linux desktop       |
 | `msime-bin`                 | Chinese input method with IBus and Fcitx5 engines          |
 | `nosd-blur`                 | Pre-blur wallpapers for nosDshell                          |
@@ -75,6 +75,7 @@
 | `nosd-theme`                | Material theme processor for nosDshell                     |
 | `nosdshell`                 | Wayland desktop shell in the DDE 15 visual language        |
 | `open-wallpaper-engine-bin` | Wallpaper Engine plugin for the Waywallen wallpaper daemon |
+| `satty`                     | Modern screenshot annotation tool                          |
 | `satty-bin`                 | Modern screenshot annotation tool                          |
 | `waypaper`                  | GUI wallpaper manager for Wayland and Xorg Linux systems   |
 | `waywallen-bin`             | Dynamic wallpaper manager for Linux desktops               |
@@ -83,6 +84,7 @@
 
 | Package            | Description                                                         |
 | ------------------ | ------------------------------------------------------------------- |
+| `fresh-editor`     | Terminal-based text editor with LSP support                         |
 | `fresh-editor-bin` | Terminal-based text editor with LSP support                         |
 | `helix-steel`      | Post-modern modal text editor with an embedded Steel Scheme runtime |
 | `lem-next`         | Integrated IDE/editor for Common Lisp                               |
@@ -158,6 +160,17 @@
 | `python-jieba`     | Chinese text segmentation library        |
 | `python-pywayland` | Python bindings for the Wayland protocol |
 
+### (jeans packages terminals)
+
+| Package                       | Description                                                           |
+| ----------------------------- | --------------------------------------------------------------------- |
+| `dear-bindings-imgui-docking` | Pretty C header generator for Dear ImGui                              |
+| `font-nerd-font-symbols-only` | Nerd Fonts symbols-only icon font                                     |
+| `ghostty`                     | Fast, native, feature-rich terminal emulator pushing modern features  |
+| `ghostty-bin`                 | Fast, native, feature-rich terminal emulator                          |
+| `imgui-docking`               | Immediate-mode C++ GUI library with docking with minimal dependencies |
+| `iterm2-color-schemes`        | A set of color schemes for many TUI and GUI applications              |
+
 ### (jeans packages theme)
 
 | Package                | Description                                                                 |
@@ -174,6 +187,7 @@
 | -------------------------- | ---------------------------------------------------------------- |
 | `agenote`                  | Cross-agent experience platform CLI                              |
 | `amber-pm`                 | Container-based package manager using fuse-overlayfs             |
+| `aria2-next`               | Maintained aria2 fork with bug fixes and modernized architecture |
 | `aria2-next-bin`           | Maintained aria2 fork with bug fixes and modernized architecture |
 | `bun-bin`                  | All-in-one JavaScript runtime, package manager and bundler       |
 | `cc-switch-bin`            | All-in-One assistant for Claude Code, Codex & Gemini CLI         |
@@ -186,3 +200,26 @@
 | `rayburst-bin`             | Full-featured download manager                                   |
 | `sunshine-bin`             | Self-hosted game stream host for Moonlight                       |
 | `winapps`                  | Run Windows applications on GNU/Linux                            |
+| `zellij`                   | Terminal workspace with batteries included                       |
+| `zellij-bin`               | Terminal workspace with batteries included                       |
+
+### (jeans packages wuffs)
+
+| Package | Description                                           |
+| ------- | ----------------------------------------------------- |
+| `wuffs` | DSL for writing tools that handle binary file formats |
+
+### (jeans packages zig)
+
+| Package           | Description                                             |
+| ----------------- | ------------------------------------------------------- |
+| `zig-aro`         | A C compiler with fast compilation and low memory usage |
+| `zig-gobject`     | GObject bindings for Zig using GObject introspection    |
+| `zig-libvaxis`    | A modern TUI library written in Zig                     |
+| `zig-libxev`      | A cross-platform, high-performance event loop library   |
+| `zig-translate-c` | Translate C code into Zig code                          |
+| `zig-uucode`      | Fast unicode library written in Zig                     |
+| `zig-xml`         | XML parser for Zig                                      |
+| `zig-z2d`         | Pure Zig 2D graphics library                            |
+| `zig-zf`          | Command-line fuzzy finder and file path filter          |
+| `zig-zigimg`      | Zig image library                                       |

@@ -22,6 +22,7 @@
 (use-modules
  (gnu)                       ; 让 (gnu) 的所有包可用，满足 jeans 模块的依赖
  (guix)                      ; package?、package-name、package-synopsis
+ (guix packages)             ; hidden-package?
  (srfi srfi-1)               ; filter-map、sort
  (ice-9 exceptions)          ; with-exception-handler
  (ice-9 format))             ; format
@@ -46,8 +47,11 @@
     (jeans packages lisp)
     (jeans packages nix-ld)
     (jeans packages python-xyz)
+    (jeans packages terminals)
     (jeans packages theme)
-    (jeans packages tools)))
+    (jeans packages tools)
+    (jeans packages wuffs)
+    (jeans packages zig)))
 
 ;; ─── 输出文档的固定头部 ─────────────────────────────────────────────────
 ;;;
@@ -98,6 +102,8 @@
                   (val (and (module-bound? mod sym)
                             (module-ref mod sym))))
              (and (package? val)
+                  ;; hidden-package 不可 install，列出来只会误导。
+                  (not (hidden-package? val))
                   (cons sym val))))
          (module-map (lambda (s v) (cons s v)) mod))
         (lambda (a b)
