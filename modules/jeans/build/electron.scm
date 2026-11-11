@@ -247,9 +247,12 @@ e.g. \"lib/opencode-desktop\""
     (wrap-program (string-append out "/bin/" program)
       `("LD_LIBRARY_PATH" prefix
         (,lib ,mesa-lib ,nss-lib))
-      `("FONTCONFIG_FILE" =
-        (,(string-append (assoc-ref inputs "fontconfig-minimal")
-                         "/etc/fonts/fonts.conf")))
+      ;; 不覆盖 FONTCONFIG_FILE：强制指向 fontconfig-minimal 的默认配置会让
+      ;; Electron/Chromium 只认该配置里的字体目录与 alias，用户 Guix Home 的
+      ;; ~/.config/fontconfig/fonts.conf（含 Sans/Serif/Mono 偏好）与新增字体
+      ;; 全部失效（Qoder 实测：去掉后衬线字体才被 Chromium 加载）。Guix 系统
+      ;; 无 /etc/fonts，缺该变量时 fontconfig 默认读 $XDG_CONFIG_HOME，正是
+      ;; Guix Home 的部署位置。
       `("XDG_DATA_DIRS" prefix
         (,(string-append out "/share"))))
     ;; 内置终端 spawn 的 curl/git/python/node 等子进程在 Guix 下没有编译期
