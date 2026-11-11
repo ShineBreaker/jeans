@@ -49,7 +49,7 @@ See [nix-ld guide](nix-ld.md) for detailed instructions on running FHS binaries 
 ### Neomacs (Home Service)
 
 `home-neomacs-service-type` installs Neomacs together with Emacs Lisp
-extensions into your Guix Home profile.  The extensions live in an
+extensions into your Guix Home profile. The extensions live in an
 internal profile whose aggregated search paths (`EMACSLOADPATH` etc.)
 are set by a wrapper, so launching Neomacs from a shell or a desktop
 file always finds them:
@@ -69,7 +69,7 @@ file always finds them:
 ```
 
 Plain `(service home-neomacs-service-type)` installs Neomacs without
-extensions.  Extensions byte-compiled by GNU Emacs load fine; note that
+extensions. Extensions byte-compiled by GNU Emacs load fine; note that
 Neomacs' own daemon mode is still experimental upstream, so the service
 deliberately ships no shepherd daemon (see the commentary in
 `modules/jeans/home/services/neomacs.scm` for details).

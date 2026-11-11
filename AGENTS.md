@@ -14,13 +14,13 @@
 
 任务运行器是 [BLUE](https://codeberg.org/lapislazuli/blue)，定义在 `blueprint.scm`；`blue help` 列出命令，`blue help <命令>` 看单条细节。以下均在仓库根目录执行。
 
-| 命令 | 作用 |
-| --- | --- |
-| `blue build <包名>...` | 构建一个或多个包，等价于 `guix build --load-path=./modules <包名>` |
-| `blue upgrade` | 跑兜底 updater（Python 一层，不含主力 `guix refresh`） |
-| `blue import-crate <crate名>[@版本]` | 从 crates.io 导入 Rust crate 源码，写入 `rust-crates.scm` |
-| `blue gen-docs` | 由包定义重生成 `docs/packages.md` |
-| `blue check-paths` | 静态检查包名（`-bin` 等记号）是否渗入安装路径 |
+| 命令                                 | 作用                                                               |
+| ------------------------------------ | ------------------------------------------------------------------ |
+| `blue build <包名>...`               | 构建一个或多个包，等价于 `guix build --load-path=./modules <包名>` |
+| `blue upgrade`                       | 跑兜底 updater（Python 一层，不含主力 `guix refresh`）             |
+| `blue import-crate <crate名>[@版本]` | 从 crates.io 导入 Rust crate 源码，写入 `rust-crates.scm`          |
+| `blue gen-docs`                      | 由包定义重生成 `docs/packages.md`                                  |
+| `blue check-paths`                   | 静态检查包名（`-bin` 等记号）是否渗入安装路径                      |
 
 包定义新增、改名、改 `synopsis` 或 `description` 后跑一次 `blue gen-docs`，让文档与代码不漂移。
 
