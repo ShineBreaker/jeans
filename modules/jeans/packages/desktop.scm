@@ -27,12 +27,14 @@
   #:use-module (gnu packages guile)       ; guile-3.0
   #:use-module (gnu packages hardware)    ; ddcutil
   #:use-module (gnu packages ibus)        ; ibus
+  #:use-module (gnu packages image)       ; libheif
   #:use-module (gnu packages imagemagick) ; imagemagick
   #:use-module (gnu packages linux)       ; alsa-lib, eudev
   #:use-module (gnu packages maths)       ; glm
   #:use-module (gnu packages multiprecision) ; gmp
   #:use-module (gnu packages networking)  ; socat
   #:use-module (gnu packages nss)         ; nss, nspr
+  #:use-module (gnu packages pdf)         ; poppler
   #:use-module (gnu packages pkg-config)
   #:use-module (gnu packages pulseaudio)  ; pulseaudio
   #:use-module (gnu packages python)      ; python-minimal
@@ -40,6 +42,7 @@
   #:use-module (gnu packages python-xyz)  ; python-screeninfo, python-platformdirs, python-pillow, ...
   #:use-module (gnu packages qt)          ; qtbase, qtsvg
   #:use-module (gnu packages sdl)         ; sdl2
+  #:use-module (gnu packages tcl)         ; expect
   #:use-module (gnu packages video)       ; ffmpeg, mpv
   #:use-module (gnu packages version-control) ; git-minimal
   #:use-module (gnu packages vulkan)      ; vulkan-loader
@@ -1272,4 +1275,155 @@ them with the @code{home-msime-service-type} Guix Home service, or run
 @command{msime-linux-provider-session online} (or @code{voice}) by hand.  This
 package provides the prebuilt upstream Linux release.")
     (license license:gpl3)
+    (supported-systems '("x86_64-linux"))))
+
+;;; flea (prebuilt release): the 0.4.2 window is a GPUI application, so the
+;;; binary pair is Rust throughout and links no Qt; the QML tree is still
+;;; shipped as data, but FLEA_FRONTEND=qml is refused at startup.  The
+;;; binaries look their data up as FLEA_UI, FLEA_SHELF, FLEA_I18N,
+;;; FLEA_UDISKS first (paths.rs, shelfplugin.rs, i18n/mod.rs,
+;;; backend/flashhelper.rs) and fall back to /usr/share/flea or
+;;; /usr/lib/flea, hence the wrapper.  libexec/flea holds five helper
+;;; programs started by D-Bus or by flea itself; the two D-Bus service files
+;;; carry absolute Exec paths and are patched below, together with the
+;;; /usr/bin/flea fallback in the two Python portal helpers.  Omarchy is
+;;; optional: the shelf plugin, its bar widget and the omarchy-* commands are
+;;; only touched when the shelf is enabled in Settings.
+
+(define-public flea-bin
+  (package
+    (name "flea-bin")
+    (version "0.4.2")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://github.com/thisisgm/flea/releases/download/v" version
+             "/flea-v" version "-linux-x86_64.tar.gz"))
+       (sha256
+        (base32 "018wiqyappkpim1yqfl5rma78jc6gqsji58kxgsajm8pir482iml"))))
+    (build-system binary-build-system)
+    (arguments
+     (let ((python-version
+            (version-major+minor (package-version python))))
+       (list
+        #:unpack-method 'tar
+        #:install-plan
+        ;; 'tar 解包后 gnu-unpack-source 已 chdir 进唯一顶层目录。
+        #~'(("flea" "bin/flea")
+            ("flea-gui" "bin/flea-gui")
+            ("tools/" "libexec/flea/")
+            ("ui/" "share/flea/ui/")
+            ("shelf/" "share/flea/shelf/")
+            ("i18n/" "share/flea/i18n/")
+            ("packaging/com.thisisgm.flea.desktop"
+             "share/applications/com.thisisgm.flea.desktop")
+            ("packaging/com.thisisgm.flea.svg"
+             "share/icons/hicolor/scalable/apps/com.thisisgm.flea.svg")
+            ("packaging/flea.portal"
+             "share/xdg-desktop-portal/portals/flea.portal")
+            ("packaging/org.freedesktop.impl.portal.desktop.flea.service"
+             "share/dbus-1/services/org.freedesktop.impl.portal.desktop.flea.service")
+            ("packaging/com.thisisgm.flea.FileManager1.service"
+             "share/dbus-1/services/com.thisisgm.flea.FileManager1.service")
+            ("LICENSE" "share/doc/flea-bin/LICENSE")
+            ("THIRD-PARTY-LICENSES.txt"
+             "share/doc/flea-bin/THIRD-PARTY-LICENSES.txt"))
+        #:patchelf-plan
+        #~'(("bin/flea") ("bin/flea-gui"))
+        #:wrap-plan
+        #~(let ((python-path (list (string-append #$python "/lib/python"
+                                                  #$python-version
+                                                  "/site-packages")
+                                   (string-append #$python-pygobject
+                                                  "/lib/python" #$python-version
+                                                  "/site-packages")))
+                (typelib (list (string-append #$glib
+                                              "/lib/girepository-1.0"))))
+            (list
+             (list "bin/flea"
+                   (list "FLEA_UI" "=" '=
+                         (list (string-append #$output "/share/flea/ui")))
+                   (list "FLEA_SHELF" "=" '=
+                         (list (string-append #$output "/share/flea/shelf")))
+                   (list "FLEA_UDISKS" "=" '=
+                         (list (string-append #$output "/libexec/flea/flea-udisks"))))
+             (list "bin/flea-gui"
+                   (list "FLEA_UI" "=" '=
+                         (list (string-append #$output "/share/flea/ui"))))
+             (list "libexec/flea/flea-portal"
+                   (list "PYTHONPATH" ":" 'prefix python-path)
+                   (list "GI_TYPELIB_PATH" ":" 'prefix typelib))
+             (list "libexec/flea/flea-filemanager1"
+                   (list "PYTHONPATH" ":" 'prefix python-path)
+                   (list "GI_TYPELIB_PATH" ":" 'prefix typelib))
+             (list "libexec/flea/flea-mpris"
+                   (list "PYTHONPATH" ":" 'prefix python-path)
+                   (list "GI_TYPELIB_PATH" ":" 'prefix typelib))
+             (list "libexec/flea/flea-udisks"
+                   (list "PYTHONPATH" ":" 'prefix python-path)
+                   (list "GI_TYPELIB_PATH" ":" 'prefix typelib))))
+        #:desktop-files
+        #~(list (list "share/applications/com.thisisgm.flea.desktop"
+                      (string-append #$output "/bin/flea")
+                      "com.thisisgm.flea"))
+        #:phases
+        #~(modify-phases %standard-phases
+            (add-after 'unpack 'patch-absolute-paths
+              (lambda* (#:key outputs #:allow-other-keys)
+                (let* ((out (assoc-ref outputs "out"))
+                       (flea (string-append out "/bin/flea")))
+                  (substitute*
+                      '("packaging/org.freedesktop.impl.portal.desktop.flea.service")
+                    (("/usr/lib/flea/flea-portal")
+                     (string-append out "/libexec/flea/flea-portal")))
+                  (substitute*
+                      '("packaging/com.thisisgm.flea.FileManager1.service")
+                    (("/usr/lib/flea/flea-filemanager1")
+                     (string-append out "/libexec/flea/flea-filemanager1")))
+                  ;; Both D-Bus helpers open windows by exec'ing the CLI name.
+                  (substitute* '("tools/flea-portal" "tools/flea-filemanager1")
+                    (("/usr/bin/flea") flea)))))))))
+    (inputs
+     `(("bash-minimal" ,bash-minimal)
+       ("expect" ,expect)
+       ("fontconfig-minimal" ,fontconfig)
+       ("gcc:lib" ,gcc "lib")
+       ("gdk-pixbuf" ,gdk-pixbuf)
+       ("glib" ,glib)
+       ("glibc" ,glibc)
+       ("libglvnd" ,libglvnd)
+       ("libheif" ,libheif)
+       ("libxcb" ,libxcb)
+       ("libxkbcommon" ,libxkbcommon)
+       ("mpv" ,mpv)
+       ("poppler" ,poppler)
+       ("python" ,python)
+       ("python-pygobject" ,python-pygobject)
+       ("vulkan-loader" ,vulkan-loader)
+       ("wayland" ,wayland)))
+    ;; Release assets are flea-v<ver>-linux-x86_64.tar.gz; upstream-name is
+    ;; the filename prefix before the version, tags use v*.
+    (properties `((upstream-name . "flea")))
+    (home-page "https://github.com/thisisgm/flea")
+    (synopsis "Fast, keyboard-first file manager")
+    (description
+     "Flea is a keyboard-first graphical file manager: columns, tabs, a
+searchable path bar, previews for images, media, PDF, Markdown and archives,
+a trash browser and a drop shelf.  This package provides the prebuilt
+upstream Linux release, which has two entry points: @command{flea} for the
+CLI and the window, and @command{flea-gui} for the window alone.
+
+The file-manager window is a GPU-rendered native application and does not
+require a desktop shell.  Optional integrations look for their host programs
+on @env{PATH}: media and PDF previews use @command{mpv} and Poppler's GObject
+library, HTML previews call @command{qml6}, content search uses
+@command{ripgrep}, archive work uses @command{7z}, and the Omarchy shelf
+plugin runs the @command{omarchy-*} commands only when it is enabled in
+Settings.  The two D-Bus services (@code{org.freedesktop.impl.portal.desktop.flea}
+and @code{org.freedesktop.FileManager1}) are installed under
+@file{share/dbus-1/services}; they need @code{python-pygobject} and the Python
+GI typelibs supplied by this package.  This package provides the prebuilt
+upstream Linux release.")
+    (license license:expat)
     (supported-systems '("x86_64-linux"))))
