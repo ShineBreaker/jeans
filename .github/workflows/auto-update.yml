@@ -43,6 +43,7 @@ env:
     emacs-msgu
     colloid-gtk-theme vimix-gtk-themes vimix-kvantum-themes
     nix-ld opentabletdriver-udev-rules waypaper
+    oo7
     waydroid libgbinder libglibutil python-gbinder
     pnpm-bin
     zellij zellij-bin

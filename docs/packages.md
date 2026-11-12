@@ -75,6 +75,7 @@
 | `nosd-helpers`              | Small helper tools for nosDshell                           |
 | `nosd-theme`                | Material theme processor for nosDshell                     |
 | `nosdshell`                 | Wayland desktop shell in the DDE 15 visual language        |
+| `oo7`                       | Freedesktop Secret Service implementation                  |
 | `open-wallpaper-engine-bin` | Wallpaper Engine plugin for the Waywallen wallpaper daemon |
 | `satty`                     | Modern screenshot annotation tool                          |
 | `satty-bin`                 | Modern screenshot annotation tool                          |

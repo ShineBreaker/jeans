@@ -21,6 +21,7 @@
   #:use-module (gnu packages fontutils)   ; fontconfig, freetype
   #:use-module (gnu packages freedesktop) ; wayland, xdg-utils
   #:use-module (gnu packages gcc)         ; gcc:lib
+  #:use-module (gnu packages gettext)     ; gettext-minimal
   #:use-module (gnu packages gl)          ; mesa (libgbm), libglvnd
   #:use-module (gnu packages glib)        ; dbus, gobject-introspection
   #:use-module (gnu packages gnome)       ; network-manager
@@ -1815,5 +1816,142 @@ plugin runs the @command{omarchy-*} commands only when it is enabled in
 Settings.  The two D-Bus services (@code{org.freedesktop.impl.portal.desktop.flea}
 and @code{org.freedesktop.FileManager1}) are installed under
 @file{share/dbus-1/services} and run the Python GI helpers shipped here.")
+    (license license:expat)
+    (supported-systems '("x86_64-linux"))))
+
+;;; oo7 --- freedesktop Secret Service 的服务端实现（org.freedesktop.secrets）。
+;;;
+;;; 上游是 cargo workspace：server（oo7-daemon + 登录 helper）、cli、portal、
+;;; git-credential、cargo-credential、kwallet 读取工具，另有 pyo3 绑定
+;;; （python/）不从本包构建。上游的 meson 只负责安装 data 与编译 po，这里
+;;; 改用 cargo-build-system 的 workspace 支持：build 阶段只构建要安装的
+;;; 成员，install 阶段手工摆放 libexec/、lib/security/ 与 share/ 下的描述
+;;; 文件。
+;;;
+;;; 两处偏离上游原样的适配：
+;;;  - pam_oo7.so 用 option_env!("OO7_DAEMON_LOGIN_PATH") 在编译期嵌入
+;;;    login helper 的绝对路径（上游默认 /usr/libexec/oo7-daemon-login），
+;;;    所以 build-pam 阶段先把它指向本包的 libexec，否则 PAM 会话解锁会去
+;;;    调一个不存在的路径。
+;;;  - 上游 portal 的 D-Bus 激活文件写作 Exec=/bin/false + SystemdService，
+;;;    只在 systemd 管 D-Bus 激活时成立；Guix 不用 systemd，改写成直接执行
+;;;    libexec 里的 portal。daemon 的 systemd unit 同理不安装。
+(define-public oo7
+  (package
+    (name "oo7")
+    (version "0.7.1")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/linux-credentials/oo7")
+             (commit version)))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "01m6pyjpslnjm8bj5qacdgc0rb15qfampx22kckl76papl58q2cv"))))
+    (build-system cargo-build-system)
+    (arguments
+     (list
+      #:install-source? #f
+      ;; 上游测试要连会话 D-Bus 总线、起临时 keyring，Guix 构建环境里没有。
+      #:tests? #f
+      #:cargo-install-paths
+      ''("cli" "server" "portal" "git-credential" "cargo-credential"
+         "kwallet/cli")
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'build 'build-pam
+            (lambda* (#:key outputs #:allow-other-keys)
+              (setenv "OO7_DAEMON_LOGIN_PATH"
+                      (string-append (assoc-ref outputs "out")
+                                     "/libexec/oo7-daemon-login"))
+              (invoke "cargo" "build" "--offline" "--release" "-p" "oo7-pam")))
+          (replace 'install
+            (lambda* (#:key outputs #:allow-other-keys)
+              (let* ((out (assoc-ref outputs "out"))
+                     (bin (string-append out "/bin"))
+                     (libexec (string-append out "/libexec"))
+                     (security (string-append out "/lib/security"))
+                     (share (string-append out "/share"))
+                     (target "target/release")
+                     (install-from
+                      (lambda (file dir)
+                        (install-file (string-append target "/" file) dir))))
+                (for-each (lambda (file) (install-from file bin))
+                          '("oo7-cli" "git-credential-oo7"
+                            "cargo-credential-oo7" "kwallet-cli"))
+                (for-each (lambda (file) (install-from file libexec))
+                          '("oo7-daemon" "oo7-daemon-login"
+                            "oo7-portal"))
+                ;; PAM 按 pam_<service>.so 的名字查找模块。
+                (mkdir-p security)
+                (copy-file (string-append target "/libpam_oo7.so")
+                           (string-append security "/pam_oo7.so"))
+                ;; portal 的 .portal 描述与 .desktop 启动器带 meson 变量。
+                (let ((portals (string-append share "/xdg-desktop-portal/portals"))
+                      (apps (string-append share "/applications")))
+                  (mkdir-p portals)
+                  (mkdir-p apps)
+                  (copy-file "portal/data/oo7-portal.portal.in"
+                             (string-append portals "/oo7-portal.portal"))
+                  (substitute* (string-append portals "/oo7-portal.portal")
+                    (("@dbus_name@") "org.freedesktop.impl.portal.desktop.oo7"))
+                  (copy-file "portal/data/oo7-portal.desktop.in"
+                             (string-append apps "/oo7-portal.desktop"))
+                  (substitute*
+                      (string-append apps "/oo7-portal.desktop")
+                    (("@libexecdir@/@bin_name@")
+                     (string-append libexec "/oo7-portal"))))
+                ;; D-Bus 激活描述文件：portal 与 daemon 各一个。
+                (let ((services (string-append share "/dbus-1/services")))
+                  (mkdir-p services)
+                  (call-with-output-file
+                      (string-append services
+                                     "/org.freedesktop.impl.portal.desktop.oo7.service")
+                    (lambda (port)
+                      (format port "[D-BUS Service]~%Name=~a~%Exec=~a~%"
+                              "org.freedesktop.impl.portal.desktop.oo7"
+                              (string-append libexec "/oo7-portal"))))
+                  (call-with-output-file
+                      (string-append services "/org.freedesktop.secrets.service")
+                    (lambda (port)
+                      (format port "[D-BUS Service]~%Name=~a~%Exec=~a~%"
+                              "org.freedesktop.secrets"
+                              (string-append libexec "/oo7-daemon")))))
+                ;; daemon 的 gettext domain 是 oo7-daemon（上游 meson 的
+                ;; i18n.gettext 用项目名）。
+                (for-each
+                 (lambda (po)
+                   (let* ((lang (basename po ".po"))
+                          (dir (string-append share "/locale/" lang
+                                              "/LC_MESSAGES")))
+                     (mkdir-p dir)
+                     (invoke "msgfmt" "-o"
+                             (string-append dir "/oo7-daemon.mo") po)))
+                 (find-files "server/po" "\\.po$"))))))))
+    (native-inputs (list gettext-minimal))
+    ;; pam 的 build.rs 无条件声明 rustc-link-lib=pam，需要 Linux-PAM 的头
+    ;; 与 libpam.so。
+    (inputs
+     (cons linux-pam
+           (cargo-inputs 'oo7 #:module '(jeans packages rust-crates))))
+    (properties `((upstream-name . "oo7")))
+    (home-page "https://github.com/linux-credentials/oo7")
+    (synopsis "Freedesktop Secret Service implementation")
+    (description
+     "oo7 implements the @code{org.freedesktop.secrets} D-Bus API and the
+@code{org.freedesktop.impl.portal.Secret} portal backend, and replaces the
+@command{secret-tool} command line with @command{oo7-cli}.
+
+The package installs the daemon (@command{oo7-daemon}) and its login helper
+under @file{libexec}, the PAM module as @file{lib/security/pam_oo7.so}, the
+portal backend, and D-Bus activation files for both services.  The PAM module
+receives the login password and hands it to the daemon so the login keyring
+can be unlocked without prompting; systems without systemd should start the
+daemon from their service manager and add @code{pam_oo7.so} to the PAM stack.
+
+The @command{oo7-git-credential} and
+@command{cargo-credential-oo7} helpers are installed for Git and Cargo
+registry authentication.")
     (license license:expat)
     (supported-systems '("x86_64-linux"))))
