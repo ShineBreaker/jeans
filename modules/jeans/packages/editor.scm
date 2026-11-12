@@ -98,7 +98,7 @@
                 ;; shim; point straight at our wrapper instead.
                 (substitute* (string-append apps "/lem.desktop")
                   (("Exec=run-lem %F")
-                   (string-append "Exec=" #$output "/bin/lem"))))))
+                   (string-append "Exec=" #$output "/bin/lem %F"))))))
           ;; The SBCL core baked into lem.real dlopens exact Ubuntu
           ;; 22.04 sonames; alias them to Guix's libraries.
           (add-after 'install 'fix-so
@@ -176,7 +176,8 @@ package provides a prebuilt nightly build of Lem's master branch, using
 the webview (GTK/WebKitGTK) frontend with an ncurses fallback.")
     (properties
      `((upstream-name . "lem")))
-    (license license:expat)))
+    (license license:expat)
+    (supported-systems '("x86_64-linux"))))
 
 ;;; lem-next builds Lem from source, tracking the main branch (webview
 ;;; form).  It is based on the upstream Guix "lem" package definition
@@ -412,7 +413,10 @@ intelligence.  It handles multi-gigabyte files with low memory overhead and
 supports sandboxed TypeScript plugins.  This package provides the prebuilt
 binary release.")
     (properties `((upstream-name . "fresh-editor")))
-    (license license:gpl2)
+    ;; Cargo.toml at v0.5.8 says "GPL-3.0-or-later" (workspace license,
+    ;; crates/fresh-editor inherits it).  The .deb's own metadata says GPL-2;
+    ;; that metadata does not match the source the binary is built from.
+    (license license:gpl3+)
     (supported-systems '("x86_64-linux"))))
 
 ;;; fresh-editor (source build): same upstream as fresh-editor-bin.  The
@@ -435,9 +439,9 @@ binary release.")
 ;;; matches the upstream .deb, which builds the browser UI too.  The workspace
 ;;; install-skip trap (has-executable-target? reads packages[0], a lib member
 ;;; here) is avoided with an explicit #:cargo-install-paths.  License is
-;;; GPL-3.0-or-later per the workspace Cargo.toml and the LICENSE file (the
-;;; -bin package's gpl2 field is upstream's own .deb metadata, not the source
-;;; license).
+;;; GPL-3.0-or-later per the workspace Cargo.toml and the LICENSE file.
+;;; fresh-editor-bin uses the same license; the .deb metadata's GPL-2 claim
+;;; does not match that file.
 (define-public fresh-editor
   (package
     (name "fresh-editor")
@@ -629,7 +633,7 @@ source.")
        ("vulkan-loader" ,vulkan-loader)
        ("wayland" ,wayland)
        ("alsa-lib" ,alsa-lib)
-       ("fontconfig" ,fontconfig)
+       ("fontconfig-minimal" ,fontconfig)
        ("freetype" ,freetype)
        ("zlib" ,zlib)
        ("libxcursor" ,libxcursor)

@@ -98,12 +98,18 @@
              (lambda* (#:key outputs #:allow-other-keys)
                (let ((bin (string-append (assoc-ref outputs "out") "/bin")))
                  (delete-file (string-append bin "/dumbindent"))))))))
-     (native-inputs (list lz4 pkg-config zlib `(,zstd "lib")))
-     (propagated-inputs (list go-golang-org-x-image))
+     ;; go-golang-org-x-image is only imported while compiling the wuffs
+     ;; commands.  Propagating it would drag a Go library into every profile
+     ;; that installs wuffs.
+     (native-inputs (list go-golang-org-x-image
+                          lz4
+                          pkg-config
+                          zlib
+                          `(,zstd "lib")))
      (home-page "https://github.com/google/wuffs")
      (synopsis "DSL for writing tools that handle binary file formats")
      (description
-      "WUFFS (Writing Untrusted File Formats Safely) is a memory-safe programming
+      "WUFFS (Wrangling Untrusted File Formats Safely) is a memory-safe programming
 language (and a standard library written in that language) for Wrangling
 Untrusted File Formats Safely.  Wrangling includes parsing, decoding and
 encoding.  Example file formats include images, audio, video, fonts and
@@ -139,50 +145,14 @@ compressed archives.")
                (let ((cmd '("wuffs" "gen" "std/...")))
                  (format #t "running: ~s~%" cmd)
                  (apply invoke cmd))))
-           (replace 'check
-             (lambda* (#:key inputs #:allow-other-keys)
-               (define (run-cmd cmd-args)
-                 (format #t "running: ~s~%" cmd-args)
-                 (apply invoke cmd-args))
-
-               (let* ((warn-flags '())
-                      (cflags '())
-                      (cxxflags '()))
-                 (format #t "Building for C99~%")
-                 (run-cmd `(,(search-input-file inputs "bin/gcc")
-                            "-c"
-                            ,@cflags
-                            "-std=c99"
-                            "-Wc++-compat"
-                            "release/c/wuffs-unsupported-snapshot.c"))
-                 (run-cmd `(,(search-input-file inputs "bin/gcc")
-                            "-c"
-                            ,@cflags
-                            "-DWUFFS_IMPLEMENTATION"
-                            "-std=c99"
-                            "-Wc++-compat"
-                            "release/c/wuffs-unsupported-snapshot.c"))
-                 (format #t "Building for C++11~%")
-                 (run-cmd `(,(search-input-file inputs "bin/g++")
-                            "-c"
-                            ,@cxxflags
-                            "-std=c++11"
-                            "-x" "c++"
-                            "release/c/wuffs-unsupported-snapshot.c"))
-                 (run-cmd `(,(search-input-file inputs "bin/g++")
-                            "-c"
-                            ,@cxxflags
-                            "-DWUFFS_IMPLEMENTATION"
-                            "-std=c++11"
-                            "-x" "c++"
-                            "release/c/wuffs-unsupported-snapshot.c"))
-                 ;; We only explicitly list GCC a compiler because otherwise we
-                 ;; must add clang-toolchain as a native input.
-                 (run-cmd `("wuffs" "genlib" "-skipgen"
-                            "-ccompilers" "gcc"
-                            "-langs" "c"))
-                 (run-cmd `("wuffs" "test" "-skipgen" "-mimic"
-                            "-ccompilers" "gcc")))))
+           ;; A previous (replace 'check) compiled release/c/wuffs-unsupported-snapshot.c
+           ;; and ran `wuffs test`.  modify-phases keeps only the last replacement of a
+           ;; phase, so that body never ran; it also could not run, because
+           ;; delete-vendored-snapshot removes that file before check.  The png
+           ;; driver below is the check that actually executes.  The include in
+           ;; test/c/std/png.c is "../../../release/c/wuffs-unsupported-snapshot.c";
+           ;; substituting the basename yields release/c/wuffs-v0.4.c, which
+           ;; `wuffs gen` writes.
            (replace 'check
              (lambda* (#:key tests? #:allow-other-keys)
                (when tests?
@@ -224,7 +194,7 @@ compressed archives.")
      (home-page "https://github.com/google/wuffs")
      (synopsis "DSL for writing tools that handle binary file formats")
      (description
-      "WUFFS (Writing Untrusted File Formats Safely) is a memory-safe programming
+      "WUFFS (Wrangling Untrusted File Formats Safely) is a memory-safe programming
 language (and a standard library written in that language) for Wrangling
 Untrusted File Formats Safely.  Wrangling includes parsing, decoding and
 encoding.  Example file formats include images, audio, video, fonts and
@@ -236,9 +206,8 @@ compressed archives.")
     (name "wuffs")
     (version "0.4.0-alpha.10")
     (source #f)
-    (outputs '("out"                    ;libraries, locales, etc
-               "bin"                    ;executables
-               ))
+    (outputs '("out"                    ;C library and docs
+               "bin"))                  ;wuffs compiler
     (build-system trivial-build-system)
     (arguments
      (list
@@ -250,11 +219,16 @@ compressed archives.")
                             (assoc-ref %outputs "bin"))
           (copy-recursively (assoc-ref %build-inputs "wuffs-stdlib")
                             (assoc-ref %outputs "out")))))
-    (propagated-inputs (list wuffs-compiler wuffs-stdlib))
+    ;; Inputs, not propagated-inputs.  The builder copies the compiler and
+    ;; the generated C library into this package's outputs.  Propagating the
+    ;; same two packages installs those files a second time and `guix package`
+    ;; refuses the profile collision.  The compiler is the "bin" output
+    ;; (`guix install wuffs:bin`); the default output is the C library.
+    (inputs (list wuffs-compiler wuffs-stdlib))
     (home-page "https://github.com/google/wuffs")
     (synopsis "DSL for writing tools that handle binary file formats")
     (description
-     "WUFFS (Writing Untrusted File Formats Safely) is a memory-safe programming
+     "WUFFS (Wrangling Untrusted File Formats Safely) is a memory-safe programming
 language (and a standard library written in that language) for Wrangling
 Untrusted File Formats Safely.  Wrangling includes parsing, decoding and
 encoding.  Example file formats include images, audio, video, fonts and

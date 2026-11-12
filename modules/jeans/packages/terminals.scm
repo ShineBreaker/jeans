@@ -80,7 +80,7 @@
       #:install-plan
       #~'(("." "."))))
     (home-page "https://terminalthemes.com/")
-    (synopsis "A set of color schemes for many TUI and GUI applications")
+    (synopsis "Color schemes for many TUI and GUI applications")
     (description
      "A set of color schemes for iTerm (aka iTerm2).  It also includes ports to
 Terminal, Konsole, PuTTY, Xresources, XRDB, Remmina, Termite, XFCE, Tilda,
@@ -130,7 +130,13 @@ Windows Terminal, Visual Studio, Alacritty, Vim, and more.")
        (inherit (package-source imgui))
        (uri (git-reference
               (url "https://github.com/ocornut/imgui")
-              (commit (string-append "v" version "-docking"))))))
+              (commit (string-append "v" version "-docking"))))
+       (file-name (git-file-name "imgui-docking" version))
+       ;; Parent hash is for v1.92.9b, not v1.92.9b-docking.  This is the
+       ;; fixed-output hash Guix recorded for that tag after the inherited
+       ;; font-deletion snippet.
+       (sha256
+        (base32 "1wpa8r1cd1d92y9a4rizp0clncr4ivigjk919kvhwp9f2qpxcj9y"))))
     (home-page "https://github.com/ocornut/imgui/wiki/docking")
     (synopsis "Immediate-mode C++ GUI library with docking with minimal dependencies")
     (description "@code{dear imgui} (also know as ImGui) is a graphical user
@@ -217,22 +223,17 @@ working with a wrapper.")
      (license license:expat))))
 
 ;; FIXME: dear-bindings is a package.  There should also be a function that
-;; Takes in a dear-bindings version and an imgui version to produce the actual
-;; bindings files.  Right now, we are downloading the ones that are already
-;; built by upstream and using them.  We should generat them ourselves.
+;; takes a dear-bindings version and an imgui version and produces the
+;; bindings.  The builder below already does that from imgui.h.
 (define (dear-bindings-imgui dear-bindings imgui hash)
   "Create a dear-bindings-imgui <package>.
 
-DEAR-BINDINGS is the a dear_bindings <package> to use.  IMGUI is the imgui
-<package> to use as source for bindings generation.  HASH is the hash for the
-dear-bindings-imgui package being generated."
-  (let* ((dear-bindings-version (package-version dear-bindings))
-         (zip-name
-          (string-append "DearBindings_v" dear-bindings-version
-                         "_ImGui_v" (package-version imgui)
-                         (if (string-contains (package-name imgui) "docking")
-                             "-docking"
-                             ""))))
+DEAR-BINDINGS is the dear_bindings <package> to use.  IMGUI is the imgui
+<package> whose headers are parsed.  HASH is unused and kept so existing
+call sites stay valid."
+  (let ((dear-bindings-version (package-version dear-bindings)))
+    ;; Keep HASH reachable so a stale call site is still a real argument.
+    hash
   (package
     ;; dear-bindings-imgui or dear-bindings-imgui-docking
     ;; FIXME: dear-bindings-imgui package-name will conflict after multiple
@@ -245,15 +246,11 @@ dear-bindings-imgui package being generated."
     ;; no good way of expressing that, so we will use the dear-bindings version
     ;; instead.
     (version dear-bindings-version)
-    ;; This package's source is technically the dear_bindings package that is
-    ;; provided.
-    (source
-     (origin
-       (method url-fetch)
-       (uri (string-append
-             "https://github.com/dearimgui/dear_bindings/releases/download/"
-             zip-name "/" zip-name ".zip"))
-       (sha256 (base32 hash))))
+    ;; The builder generates headers from the imgui input.  The release zip
+    ;; named by HASH is not unpacked; fetching it only fails the build when
+    ;; that unused archive changes.  HASH stays in the signature so callers
+    ;; do not have to change.
+    (source #f)
     (build-system trivial-build-system)
     (arguments
      (list
@@ -725,9 +722,9 @@ Ghostty provides all three.")
                      (list (string-append #$output "/share/ghostty")))
                (list "TERMINFO_DIRS" ":" 'prefix
                      (list (string-append #$output "/share/terminfo")))
-               (list "GDK_PIXBUF_MODULE_FILE" '=
-                     (list #$(file-append gdk-pixbuf
-                                          "/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache")))
+               ;; Do not set GDK_PIXBUF_MODULE_FILE.  It replaces Guix's
+               ;; aggregated loader cache, so loaders outside gdk-pixbuf's
+               ;; own cache (for example SVG) disappear.
                (list "GIO_EXTRA_MODULES" ":" 'prefix
                      (list #$(file-append glib "/lib/gio/modules")))
                (list "GSETTINGS_SCHEMA_DIR" ":" 'prefix

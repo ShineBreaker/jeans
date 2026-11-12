@@ -55,8 +55,10 @@
                 (replace 'build
                   (lambda _
                     (let* ((pipe (open-input-pipe "bash generate-rules.sh"))
-                           (output (get-string-all pipe)))
-                      (close-pipe pipe)
+                           (output (get-string-all pipe))
+                           (status (close-pipe pipe)))
+                      (unless (eqv? 0 (status:exit-val status))
+                        (error "generate-rules.sh failed" status))
                       (call-with-output-file "70-opentabletdriver.rules"
                         (lambda (port)
                           (put-string port output))))))

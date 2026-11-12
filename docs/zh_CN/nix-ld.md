@@ -159,10 +159,6 @@ itch.io 等平台分发的预编译 Linux 游戏：
 ./game-binary
 ```
 
-### 运行 Steam 运行环境库
-
-配合 `%steam-runtime-libraries` 可运行 Steam 客户端及其运行库依赖。
-
 ### 运行商业开发工具与 IDE
 
 部分未提供源码打包的编译器、调试工具或闭源 IDE 可直接启动：

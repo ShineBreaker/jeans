@@ -10,8 +10,10 @@
   #:use-module (gnu packages gtk)
   #:use-module (gnu packages libffi)
   #:use-module (gnu packages pkg-config)
-  #:use-module (guix build-system pyproject)
-  #:use-module (guix build-system python)
+  #:use-module ((guix build-system pyproject)
+                #:select (pyproject-build-system pypi-uri))
+  ;; pypi-uri re-exported by (guix build-system python) is deprecated.
+  #:use-module ((guix build-system python) #:hide (pypi-uri))
   #:use-module (guix download)
   #:use-module (guix git-download)
   #:use-module (guix packages))
@@ -69,4 +71,5 @@ segmentation and custom dictionaries.")
      "Pywayland provides Python bindings for the Wayland protocol, built
 with cffi.  Core protocol bindings are generated at build time from the
 protocol XML shipped in the source distribution.")
-    (license license:expat)))
+    ;; pyproject.toml at v0.4.19: license = "Apache-2.0".
+    (license license:asl2.0)))

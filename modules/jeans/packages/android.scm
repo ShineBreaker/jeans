@@ -343,7 +343,8 @@ enabled), and waydroid mounts @code{binderfs} to obtain the
 @file{/dev/binder} nodes it needs, so no extra kernel module is required.
 Run @command{waydroid init} once to download the system and vendor images,
 then start the container with @command{waydroid session start}.")
-    (license license:gpl3)))
+    ;; waydroid.py at 1.6.3: SPDX-License-Identifier: GPL-3.0-or-later.
+    (license license:gpl3+)))
 
 ;;; The DEX server component pushed to the device at runtime.  scrcpy has
 ;;; two halves: a C client built from source here, and a small Android app

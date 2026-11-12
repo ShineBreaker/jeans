@@ -655,7 +655,11 @@ desktop through a Wayland layer shell and a QtQuick interface.")
           ("plugin.toml"
            "share/waywallen/plugins/org.waywallen.open-wallpaper-engine/plugin.toml")
           ("files.txt"
-           "share/waywallen/plugins/org.waywallen.open-wallpaper-engine/files.txt"))
+           "share/waywallen/plugins/org.waywallen.open-wallpaper-engine/files.txt")
+          ;; [plugin.probe] entry = "probe.lua" for scene types. files.txt
+          ;; lists it; omitting it makes the plugin fail the file check.
+          ("probe.lua"
+           "share/waywallen/plugins/org.waywallen.open-wallpaper-engine/probe.lua"))
       ;; 目录条目递归整棵插件树；#:preserve-rpath? #t 保留 $ORIGIN 首项，
       ;; 使 bundled CEF 库互相找到（旧逻辑 $ORIGIN 写死首项）。
       #:preserve-rpath? #t

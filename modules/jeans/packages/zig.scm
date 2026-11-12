@@ -103,7 +103,7 @@
               (when (file-exists? "test-out")
                 (delete-file-recursively "test-out")))))))
     (home-page "https://github.com/vancluever/arocc")
-    (synopsis "A C compiler with fast compilation and low memory usage")
+    (synopsis "C compiler with fast compilation and low memory usage")
     (description
      "@code{arocc} is a C compiler with the goal of providing fast compilation
 and low memory usage with good diagnostics.  The project supports standard C and
@@ -214,7 +214,7 @@ formats.")
        (list
         #:zig zig-0.16))
       (home-page "https://github.com/mitchellh/libxev")
-      (synopsis "A cross-platform, high-performance event loop library")
+      (synopsis "Cross-platform, high-performance event loop library")
       (description
        "libxev is a cross-platform, high-performance event loop that provides
 abstractions for non-blocking IO, timers, events, and more and works on Linux
@@ -260,7 +260,7 @@ abstractions for non-blocking IO, timers, events, and more and works on Linux
        (list zig-uucode
              zig-zigimg))
       (home-page "https://rockorager.github.io/libvaxis/")
-      (synopsis "A modern TUI library written in Zig")
+      (synopsis "Modern TUI library written in Zig")
       (description
        "Libvaxis provides both a low level API suitable for making applications
 of any sort as well as a higher level framework.  The low level API is suitable
@@ -490,7 +490,7 @@ file paths.")
     (home-page "https://z2d.vancluevertech.com/docs/")
     (synopsis "Pure Zig 2D graphics library")
     (description
-     "z2d is a 2D graphics library whose that rasterizes shapes composed of
+     "z2d is a 2D graphics library that rasterizes shapes composed of
 vector primitives: lines and cubic Beziers, e.g., things you would need if you
 were rendering something like an SVG file, or rendering shapes directly for UI
 elements.")

@@ -45,10 +45,6 @@
   (local-file (canonicalize-path
                (search-path %load-path "jeans/patches/librewolf-patch-omni.py"))))
 
-(define librewolf-patch-browser-omni-script
-  (local-file (canonicalize-path
-               (search-path %load-path "jeans/patches/librewolf-patch-browser-omni.py"))))
-
 ;;; 保留 LibreWolf 本体，仅修补其对 Mozilla 官方附加组件与语言包服务的限制。
 (define-public librewolf-nongnu
   (package
@@ -148,10 +144,13 @@
            (chmod app-file #o444))
 
          ;; 2.2 修补 omni.ja：修正 AppConstants 版本号 + 绕过 langpack 兼容性检查
+         ;;     + 移除 BrowserGlue 启动时卸载语言包的钩子。
          ;;     - AppConstants 中的 MOZ_APP_VERSION 带有 Guix 发行版后缀 (如 149.0-1)，
          ;;       Mozilla 语言包的 strict_max_version 无法匹配，需要去除。
          ;;     - isUsableAddon() 对 locale 类型扩展也会做版本兼容性检查，
          ;;       即使版本号正确，仍可能因其他原因失败。直接跳过 locale 类型的检查。
+         ;;     - BrowserGlue 在 Firefox ~159 从 browser/omni.ja 挪进根 omni.ja
+         ;;       的 moz-src/ 树，补丁脚本内做双候选路径回退。
          (let ((omni-file (string-append out "/lib/librewolf/omni.ja")))
            (dereference! omni-file)
            (chmod omni-file #o644)
@@ -159,15 +158,6 @@
                   #$librewolf-patch-omni-script
                   omni-file)
            (chmod omni-file #o444))
-
-         ;; 2.3 修补 browser/omni.ja：移除启动时无条件卸载所有语言包的逻辑
-         (let ((browser-omni-file (string-append out "/lib/librewolf/browser/omni.ja")))
-           (dereference! browser-omni-file)
-           (chmod browser-omni-file #o644)
-          (invoke #$(file-append python "/bin/python3")
-                  #$librewolf-patch-browser-omni-script
-                  browser-omni-file)
-           (chmod browser-omni-file #o444))
 
          ;; 3. Patch policies.json: 允许安装语言包，并显示语言切换 UI
          (let ((policies-file
@@ -194,10 +184,6 @@
                          (string-append "\"Preferences\": {\n"
                                         "            \"extensions.ui.locale.hidden\": {\n"
                                         "                \"Value\": false,\n"
-                                        "                \"Status\": \"user\"\n"
-                                        "            },\n"
-                                        "            \"intl.locale.requested\": {\n"
-                                        "                \"Value\": \"zh-CN,en-US\",\n"
                                         "                \"Status\": \"user\"\n"
                                         "            }\n"
                                         "        },\n"
@@ -342,9 +328,6 @@ keeps the language selection interface enabled.")
                                                               "/lib/zen")
                                                (string-append #$output
                                                 "/lib/zen/gmp-clearkey/0.1")
-                                               (string-append #$(this-package-input
-                                                                 "gtk+")
-                                                              "/share")
                                                (map (lambda (input)
                                                       (string-append (cdr
                                                                       input)

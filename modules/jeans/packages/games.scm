@@ -444,7 +444,7 @@ fonts, IR jars, and other assets at runtime.  The game requires OpenGL
    #:binary "osu!"
    #:desktop "osu!.desktop"
    #:home-page "https://osu.ppy.sh/"
-   #:synopsis "rhythm is just a *click* away!"
+   #:synopsis "Rhythm is just a *click* away!"
    #:description "A free-to-win rhythm game.  This is the future and final
 iteration of the osu! game client, which marks the beginning of an open era.
 It is currently known by and released under the codename lazer, as in sharper

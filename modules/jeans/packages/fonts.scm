@@ -97,31 +97,10 @@ A precursor, Mi Lanting, was launched with MIUI 8 in 2016.  MiSans Global
 debuted in 2023.")
     (license (license:nonfree "file://LICENSE"))))
 
-(define-public font-nerd-symbols
-  (package
-    (name "font-nerd-symbols")
-    (version "3.5.1")
-    (source
-      (origin
-        (method url-fetch/zipbomb)
-        (uri (string-append
-              "https://github.com/ryanoasis/nerd-fonts/releases/download/v"
-              version "/NerdFontsSymbolsOnly.zip"))
-        (sha256
-          (base32 "1g3k4hzfjih96cjq0z6aisdpvxncc81mnd5jrkhnavsgaf13djpx"))))
-    (build-system font-build-system)
-    ;; Versionless asset name; see font-maple-font-nf-cn for the rationale.
-    (properties `((upstream-name . "NerdFontsSymbolsOnly")))
-    (home-page "https://github.com/ryanoasis/nerd-fonts")
-    (synopsis "Iconic font collection")
-    (description "This package provides Symbols Nerd Font and Symbols Nerd Font
-Mono, fallback fonts containing glyphs from multiple popular icon sets for
-terminals, editors, and other text interfaces.")
-    (license (list license:expat
-                   license:cc-by4.0
-                   license:unlicense
-                   license:asl2.0
-                   license:silofl1.1))))
+;; font-nerd-symbols is already in upstream Guix (gnu/packages/fonts.scm) at
+;; the same version, built by running the nerd-fonts patcher.  A second
+;; public package with that name makes `guix lint` and `guix install`
+;; ambiguous.  Use the upstream package.
 
 (define-public font-nerd-font-iosevka
   (package

@@ -148,13 +148,6 @@ export NIX_LD_LIBRARY_PATH=/gnu/store/…-glibc-2.41/lib:\
 ./game-binary
 ```
 
-### Running Steam / Steam games
-
-```bash
-# After adding %steam-runtime-libraries to nix-ld-configuration
-steam
-```
-
 ### Running IDEs / toolchains
 
 ```bash

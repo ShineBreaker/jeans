@@ -4,6 +4,7 @@
 
 (define-module (jeans services nix-ld)
   #:use-module (gnu packages base)
+  #:use-module (gnu packages bootstrap)
   #:use-module (gnu packages gcc)
   #:use-module (gnu packages compression)
   #:use-module (gnu packages tls)
@@ -22,13 +23,13 @@
   #:use-module (guix gexp)
   #:use-module (guix packages)     ; package?
   #:use-module (guix records)
+  #:use-module (guix utils)
   #:use-module (ice-9 match)
   #:use-module (jeans packages nix-ld)
   #:export (nix-ld-configuration
             nix-ld-configuration?
             nix-ld-service-type
-            %default-nix-ld-libraries
-            %steam-runtime-libraries))
+            %default-nix-ld-libraries))
 
 ;;;
 ;;; Configuration record
@@ -62,20 +63,35 @@
         ))
 
 ;;;
-;;; Activation: create /lib64/ld-linux-x86-64.so.2 symlink
+;;; Activation: create the PT_INTERP symlink foreign binaries request.
 ;;;
 
+(define (nix-ld-fhs-interpreter)
+  "Absolute path named by a foreign ELF's PT_INTERP on this system.
+
+This is not `(glibc-dynamic-linker)`.  On x86_64, Guix's glibc installs
+its loader as lib/ld-linux-x86-64.so.2 inside the store, but System V
+binaries request /lib64/ld-linux-x86-64.so.2.  nix-ld has to occupy the
+path the kernel opens."
+  (match (or (%current-target-system) (%current-system))
+    ("x86_64-linux" "/lib64/ld-linux-x86-64.so.2")
+    ("i686-linux" "/lib/ld-linux.so.2")
+    ("aarch64-linux" "/lib/ld-linux-aarch64.so.1")
+    ("riscv64-linux" "/lib/ld-linux-riscv64-lp64d.so.1")
+    (system (error "nix-ld: unknown foreign dynamic linker" system))))
+
 (define (nix-ld-activation config)
-  "Return a G-exp that creates the /lib64/ld-linux-x86-64.so.2 symlink."
-  (let ((nix-ld-bin (file-append (nix-ld-package config) "/bin/nix-ld")))
+  "Return a G-exp that symlinks nix-ld at the foreign PT_INTERP path."
+  (let ((nix-ld-bin (file-append (nix-ld-package config) "/bin/nix-ld"))
+        (target (nix-ld-fhs-interpreter)))
     (with-imported-modules '((guix build utils))
       #~(begin
           (use-modules (guix build utils))
-          (mkdir-p "/lib64")
-          (let ((target "/lib64/ld-linux-x86-64.so.2"))
-            (when (file-exists? target)
-              (delete-file target))
-            (symlink #$nix-ld-bin target))))))
+          (mkdir-p #$(dirname target))
+          (let ((link #$target))
+            (when (file-exists? link)
+              (delete-file link))
+            (symlink #$nix-ld-bin link))))))
 
 ;;;
 ;;; ETC profile.d script: set NIX_LD and NIX_LD_LIBRARY_PATH
@@ -93,7 +109,7 @@
        #~(call-with-output-file #$output
            (lambda (port)
              (let ((nix-ld-value
-                    #$(file-append glibc "/lib/ld-linux-x86-64.so.2"))
+                    #$(file-append glibc (glibc-dynamic-linker)))
                    (lib-paths
                     (list
                      #$@(map (match-lambda
@@ -118,8 +134,9 @@
    (name 'nix-ld)
    (description
     "Configure nix-ld to run pre-compiled (FHS) binaries on Guix System.
-This creates the @file{/lib64/ld-linux-x86-64.so.2} symlink and sets
-@code{NIX_LD} and @code{NIX_LD_LIBRARY_PATH} environment variables.")
+This symlinks nix-ld over the architecture's foreign PT_INTERP
+(@file{/lib64/ld-linux-x86-64.so.2} on x86_64) and sets @code{NIX_LD}
+and @code{NIX_LD_LIBRARY_PATH}.")
    (extensions
     (list
      ;; 1. activation script: create /lib64 symlink

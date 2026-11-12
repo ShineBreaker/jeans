@@ -256,7 +256,8 @@
 implementation of the Language Server Protocol.  It can be used with any
 editor that supports the protocol to provide Java language features.")
     (home-page "https://github.com/eclipse-jdtls/eclipse.jdt.ls")
-    (license license:expat)))
+    ;; Eclipse JDT LS is EPL-2.0, not Expat.
+    (license license:epl2.0)))
 
 ;;; aria2-next: prebuilt binary of a maintained aria2 fork (GPL-2.0, same as aria2).
 ;;; This is the standalone CLI build; rayburst-bin bundles the same version as a
@@ -1328,16 +1329,12 @@ prebuilt release binary.")
     (source
      (origin
        (method url-fetch)
+       ;; source is not thunked: %current-system is read when the module
+       ;; loads, so a later --system= would still fetch this tarball.
        (uri (string-append "https://github.com/cli/cli/releases/download/v"
-                           version "/gh_" version "_linux_"
-                           (match (or (%current-system) (%current-target-system))
-                             ("x86_64-linux" "amd64")
-                             ("aarch64-linux" "arm64")) ".tar.gz"))
+                           version "/gh_" version "_linux_amd64.tar.gz"))
        (sha256
-        (base32
-         (match (or (%current-system) (%current-target-system))
-           ("x86_64-linux" "07fr7mih1ax8w6jdqymfkgqs8vdcf1nsa0ikhmqfq76fzxw6k02c")
-           ("aarch64-linux" "0qyf0qrpn7q2fzv253ws6bljhn57kjvb9dkcmigpz1684cixycpf"))))))
+        (base32 "07fr7mih1ax8w6jdqymfkgqs8vdcf1nsa0ikhmqfq76fzxw6k02c"))))
     (build-system copy-build-system)
     (arguments
      '(#:install-plan
@@ -1364,7 +1361,7 @@ prebuilt release binary.")
                  (lambda () (invoke gh "completion" "-s" "fish")))
                #t))))))
     (properties `((upstream-name . "gh")))
-    (supported-systems '("x86_64-linux" "aarch64-linux"))
+    (supported-systems '("x86_64-linux"))
     (home-page "https://cli.github.com")
     (synopsis "GitHub command-line tool")
     (description

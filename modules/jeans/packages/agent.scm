@@ -678,7 +678,8 @@ prebuilt distribution and launches it with the store Node.js runtime.")
      "OpenCode is a terminal-based AI coding agent with a desktop GUI built
 with Electron.  It supports multiple LLM providers and offers an interactive
 coding experience with context awareness.")
-    (license license:expat)))
+    (license license:expat)
+    (supported-systems '("x86_64-linux"))))
 
 ;;; Paseo: self-hosted orchestrator for coding agents (Electron).
 ;;;
@@ -1076,9 +1077,9 @@ configure.  This package provides the prebuilt desktop release.")
       #:unpack-method 'deb-xz
       #:install-plan
       #~'(("opt/ZCode" "lib/zcode"))
-      ;; install-bin symlink, generated desktop entry and the quirky
-      ;; icon rename+prune are beyond install-plan: kept as small
-      ;; escape-hatch phases on top of the electron defaults.
+      ;; install-bin symlink, generated desktop entry and the hicolor
+      ;; icon copy are beyond install-plan: kept as small escape-hatch
+      ;; phases on top of the electron defaults.
       #:modules '((guix build utils)
                   (ice-9 ftw)
                   (ice-9 regex)
@@ -1113,21 +1114,11 @@ configure.  This package provides the prebuilt desktop release.")
               (let* ((out #$output)
                      (icon-src "usr/share/icons/hicolor")
                      (icon-dst (string-append out "/share/icons/hicolor")))
+                ;; Upstream hicolor icons are already named zcode.png, which is
+                ;; what Icon=zcode looks up.  Copying each file onto that
+                ;; same path and then deleting every zcode.png removes them.
                 (when (file-exists? icon-src)
-                  (copy-recursively icon-src icon-dst)
-                  (for-each
-                   (lambda (old)
-                     (let ((new (string-append
-                                 (string-append out "/share/icons/hicolor/"
-                                                (match:substring
-                                                 (string-match "/([0-9]+x[0-9]+)/apps/"
-                                                               old) 1)
-                                                "/apps/zcode.png"))))
-                       (when (file-exists? old)
-                         (copy-file old new))))
-                   (find-files icon-dst "zcode\\.png$"))
-                  (for-each delete-file
-                           (find-files icon-dst "zcode\\.png$")))))))))
+                  (copy-recursively icon-src icon-dst))))))))
     (native-inputs (list binutils tar xz))
     (inputs `(("alsa-lib" ,alsa-lib)
               ("at-spi2-core" ,at-spi2-core)

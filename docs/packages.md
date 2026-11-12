@@ -114,7 +114,6 @@
 | `font-maple-font-nf-cn`  | Rounded monospace font with ligatures and Nerd Font icons |
 | `font-misans`            | Font family for Xiaomi HyperOS                            |
 | `font-nerd-font-iosevka` | Iosevka font patched with Nerd Font icons                 |
-| `font-nerd-symbols`      | Iconic font collection                                    |
 
 ### (jeans packages games)
 
@@ -126,7 +125,7 @@
 | `lr2oraja-endlessdream-bin` | Community fork of beatoraja BMS rhythm game with QoL improvements  |
 | `lzsync`                    | Sync beatmaps and settings across several osu! clients             |
 | `neomod-bin`                | Fork of the McOsu osu! client with extra features                  |
-| `osu-lazer-bin`             | rhythm is just a _click_ away!                                     |
+| `osu-lazer-bin`             | Rhythm is just a _click_ away!                                     |
 
 ### (jeans packages golang)
 
@@ -175,7 +174,7 @@
 | `ghostty`                     | Fast, native, feature-rich terminal emulator pushing modern features  |
 | `ghostty-bin`                 | Fast, native, feature-rich terminal emulator                          |
 | `imgui-docking`               | Immediate-mode C++ GUI library with docking with minimal dependencies |
-| `iterm2-color-schemes`        | A set of color schemes for many TUI and GUI applications              |
+| `iterm2-color-schemes`        | Color schemes for many TUI and GUI applications                       |
 
 ### (jeans packages theme)
 
@@ -217,15 +216,15 @@
 
 ### (jeans packages zig)
 
-| Package           | Description                                             |
-| ----------------- | ------------------------------------------------------- |
-| `zig-aro`         | A C compiler with fast compilation and low memory usage |
-| `zig-gobject`     | GObject bindings for Zig using GObject introspection    |
-| `zig-libvaxis`    | A modern TUI library written in Zig                     |
-| `zig-libxev`      | A cross-platform, high-performance event loop library   |
-| `zig-translate-c` | Translate C code into Zig code                          |
-| `zig-uucode`      | Fast unicode library written in Zig                     |
-| `zig-xml`         | XML parser for Zig                                      |
-| `zig-z2d`         | Pure Zig 2D graphics library                            |
-| `zig-zf`          | Command-line fuzzy finder and file path filter          |
-| `zig-zigimg`      | Zig image library                                       |
+| Package           | Description                                           |
+| ----------------- | ----------------------------------------------------- |
+| `zig-aro`         | C compiler with fast compilation and low memory usage |
+| `zig-gobject`     | GObject bindings for Zig using GObject introspection  |
+| `zig-libvaxis`    | Modern TUI library written in Zig                     |
+| `zig-libxev`      | Cross-platform, high-performance event loop library   |
+| `zig-translate-c` | Translate C code into Zig code                        |
+| `zig-uucode`      | Fast unicode library written in Zig                   |
+| `zig-xml`         | XML parser for Zig                                    |
+| `zig-z2d`         | Pure Zig 2D graphics library                          |
+| `zig-zf`          | Command-line fuzzy finder and file path filter        |
+| `zig-zigimg`      | Zig image library                                     |

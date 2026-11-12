@@ -5,6 +5,7 @@
 (define-module (jeans packages nix-ld)
   #:use-module (guix packages)
   #:use-module (gnu packages base)
+  #:use-module (gnu packages bootstrap)
   #:use-module (gnu packages gcc)
   #:use-module (gnu packages rust)
   #:use-module (guix build-system cargo)
@@ -75,8 +76,13 @@
               ;; which does not exist on Guix System, causing a panic
               ;; (Posix(2) = ENOENT) at src/main.rs:187 when NIX_LD is unset.
               (let ((glibc (assoc-ref inputs "glibc")))
+                ;; glibc-dynamic-linker is the store-relative loader path
+                ;; ("/lib/ld-linux-x86-64.so.2" on x86_64, the aarch64 loader
+                ;; on aarch64).  The previous literal only matched x86_64, so
+                ;; any other system baked a missing path and panicked with
+                ;; Posix(2) when NIX_LD was unset.
                 (setenv "DEFAULT_NIX_LD"
-                        (string-append glibc "/lib/ld-linux-x86-64.so.2")))))
+                        (string-append glibc #$(glibc-dynamic-linker))))))
 
           ;; Disable stack protector hardening — nolibc does not provide
           ;; __stack_chk_fail, causing link failures.
@@ -107,6 +113,8 @@
 binaries to run on non-FHS systems like Guix System or NixOS.  It redirects
 to the actual glibc dynamic linker via the @code{NIX_LD} and
 @code{NIX_LD_LIBRARY_PATH} environment variables.  On Guix System, use
-@code{nix-ld-service-type} to install it at @file{/lib64/ld-linux-x86-64.so.2}
-system-wide.")
-    (license license:lgpl2.1)))
+@code{nix-ld-service-type} to install it on the foreign PT_INTERP path
+(@file{/lib64/ld-linux-x86-64.so.2} on x86_64).")
+    ;; Root LICENSE is MIT.  Vendored nolibc (vendor/nolibc/nolibc.h) is
+    ;; "LGPL-2.1 OR MIT", so the MIT grant covers that file too.
+    (license license:expat)))

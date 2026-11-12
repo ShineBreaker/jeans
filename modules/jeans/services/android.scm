@@ -69,6 +69,11 @@ D-Bus.  Run @command{waydroid init} once before the first session.")
     (list (service-extension dbus-root-service-type
                              (lambda (config)
                                (list (waydroid-configuration-waydroid config))))
+          ;; The shepherd service execs the store path directly, which does
+          ;; not put `waydroid` on PATH for `waydroid init`.
+          (service-extension profile-service-type
+                             (lambda (config)
+                               (list (waydroid-configuration-waydroid config))))
           (service-extension shepherd-root-service-type
                              waydroid-shepherd-services)))
    (default-value (waydroid-configuration))))
