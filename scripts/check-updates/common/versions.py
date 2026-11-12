@@ -46,7 +46,7 @@ def package_tag_prefix(package: dict[str, Any], configured_prefixes: dict[str, s
     ``release-tag-prefix`` in a Guix package is a regular expression (for
     example ``^rust-v``), while the updater needs the literal text to remove
     from a release tag.  The JSON config remains an override for cases where
-    the package property cannot be used (such as ``reasonix-desktop-bin``).
+    the package property cannot be used (such as ``cua-driver-bin``).
     """
     configured = configured_prefixes.get(package["name"])
     if configured:

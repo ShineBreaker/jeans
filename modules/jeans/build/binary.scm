@@ -82,8 +82,8 @@
             normalize-app-dir))
 
 (define (derivation-name->package-name name)
-  "去掉 derivation 名 NAME 末尾的 \"-VERSION\"（\"crush-bin-0.97.1\" →
-\"crush-bin\"）。版本按 Guix 惯例以数字开头；找不到这种后缀时原样返回。
+  "去掉 derivation 名 NAME 末尾的 \"-VERSION\"（\"omo-bin-5.1.66\" →
+\"omo-bin\"）。版本按 Guix 惯例以数字开头；找不到这种后缀时原样返回。
 这是启发式：名字本身以 \"-数字\" 结尾的包请显式传 #:install-plan。"
   (let ((len (string-length name)))
     (let loop ((i (- len 2)))

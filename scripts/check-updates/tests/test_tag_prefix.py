@@ -185,8 +185,8 @@ def main() -> None:
     ]
 
     cases = (
-        ("reasonix-bin", "v", "v1.17.17", "1.17.17"),
-        ("reasonix-studio-bin", "studio-v", "studio-v2.16.0", "2.16.0"),
+        ("cindy-cn-bin", "v", "v0.1.130", "0.1.130"),
+        ("cua-driver-bin", "cua-driver-rs-v", "cua-driver-rs-v0.46.1", "0.46.1"),
     )
     for name, prefix, tag, version in cases:
         package = packages[name]
