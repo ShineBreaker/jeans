@@ -15,16 +15,14 @@
 ;;;   环境变量、create 的 --home-src、enter 的 --env-blacklist、export
 ;;;   注册 URL scheme handler、host-exec 转发显示环境变量给 GUI 启动器、
 ;;;   helper 脚本绑定源避开内容寻址 store 路径。
-;;; - go.mod 要求 urfave/cli v3.14.0，Guix 官方 golang-xyz 停在 3.4.1，且
-;;;   该符号被 gnu/packages 多个模块引用，不能整体升级，故按相同
-;;;   import-path 另立一个带版本后缀的包。
+;;; - Go 依赖按上游范式各自成完整包，集中在 (jeans packages golang)：
+;;;   urfave/cli v3.14.0 与 ini.v1 1.67.3 是 hidden-package 版本变体（官方
+;;;   分别停在 3.4.1 / 1.67.0，前者被 gnu/packages 多模块引用不能整体升级），
+;;;   x/term 0.45.0、x/sys 0.47.0 与 go.mod 完全一致，直接用官方包。
 ;;; - go-build-system 跑在 GO111MODULE=off 的 GOPATH 模式下：按 store 项名
 ;;;   的 go- 前缀识别 Go 依赖、按 #:import-path 决定解包位置，版本号不参与
 ;;;   匹配，所以并存的同名 import-path 版本互不干扰。
-;;; - x/term 0.45.0、x/sys 0.47.0 与 fork 的 go.mod 完全一致；ini.v1 官方是
-;;;   1.67.0（fork 要 1.67.3，差一个 patch 级，GOPATH 模式下 API 兼容），
-;;;   直接用官方包。testify 与 go.yaml.in/yaml/v3 只被测试代码引用，本包
-;;;   关测试，两者都不需要。
+;;; - testify 与 go.yaml.in/yaml/v3 只被测试代码引用，本包关测试，两者都不需要。
 ;;; - main 包在 cmd/distrobox 子目录，用 #:unpack-path 把源码放到模块根、
 ;;;   #:import-path 指向 cmd/distrobox（参照 go-github-com-davecgh-go-spew）。
 ;;; - distrobox-init / -export / -host-exec 三个脚本已被 go:embed 进二进制，
@@ -42,34 +40,8 @@
   #:use-module ((guix licenses) #:prefix license:)
   #:use-module (gnu packages bash)
   #:use-module (gnu packages golang-build)
-  #:use-module (gnu packages golang-xyz)
-  #:use-module (gnu packages containers))
-
-;;; urfave/cli v3.14.0，distrobox 的 go.mod 要求此版本。理由见文件头说明。
-;;; 私有定义：它是 distrobox-se 的实现细节，不属于通道对外提供的包。
-(define go-github-com-urfave-cli-v3-314
-  (package
-    (inherit go-github-com-urfave-cli-v3)
-    (name "go-github-com-urfave-cli-v3-314")
-    (version "3.14.0")
-    (source
-     (origin
-       (method git-fetch)
-       (uri (git-reference
-             (url "https://github.com/urfave/cli")
-             (commit (string-append "v" version))))
-       (file-name (git-file-name name version))
-       (sha256
-        (base32 "0vk3jykzs0hl33k7ww9ny9q13a86k4b9ffzvma75x1pv1fmcircv"))
-       (modules '((guix build utils)))
-       (snippet
-        #~(begin
-            ;; docs/ 有自己的 go.mod 并 import cli-altsrc，官方定义同样删除。
-            (delete-file-recursively "docs")))))
-    (arguments
-     (list
-      #:import-path "github.com/urfave/cli/v3"
-      #:tests? #f))))
+  #:use-module (gnu packages containers)
+  #:use-module (jeans packages golang))
 
 (define-public distrobox-se
   (let ((commit "1a12fd30a0a2f4e319a527051eb3fde27107bfdb")
@@ -200,9 +172,9 @@
                                           "/bin")))))))))
       (inputs
        (list bash-minimal               ; wrap-program 生成 wrapper 用
-             go-github-com-urfave-cli-v3-314
+             go-github-com-urfave-cli-v3-3.14
              go-golang-org-x-term
-             go-gopkg-in-ini-v1
+             go-gopkg-in-ini-v1-1.67.3
              podman))
       (home-page "https://github.com/ShineBreaker/distrobox")
       (synopsis "Create and start containers highly integrated with the hosts")
