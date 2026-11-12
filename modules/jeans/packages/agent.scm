@@ -35,6 +35,7 @@
   #:use-module (gnu packages rust-apps)    ; ripgrep
   #:use-module (gnu packages tls)          ; openssl
   #:use-module (gnu packages version-control) ; git
+  #:use-module (gnu packages vulkan)       ; vulkan-loader
   #:use-module (gnu packages web)          ; json-c
   #:use-module (gnu packages webkit)       ; webkitgtk-for-gtk3
   #:use-module (gnu packages xdisorg)      ; libxkbcommon
@@ -1797,4 +1798,112 @@ edits files, runs commands and reports progress while working.  This is the
 China build distributed through Qoder's own update channel; signing in
 requires a Qoder account.")
     (license (license:nonfree "https://qoder.com"))
+    (supported-systems '("x86_64-linux"))))
+
+;;; CrommaCode: proprietary agent terminal / desktop (GPUI + wgpu, not
+;;; Electron).  Upstream deb layout:
+;;;   /opt/crommacode/cromma-bees      main program (103 MB, stripped)
+;;;   /opt/crommacode/bees             swarm CLI (6 MB)
+;;;   /usr/bin/crommacode              symlink to the main program
+;;;   /usr/share/applications/ai.cromma.bees.desktop
+;;;   /usr/share/icons/hicolor/*/apps/ai.cromma.bees.png
+;;;
+;;; Two layout constraints drive the install plan:
+;;;
+;;; 1. bees must sit next to the main binary.  cromma-bees resolves it from
+;;;    the current_exe parent directory ("cromma-bees: no `bees` next to ")
+;;;    and only then falls back to PATH.  wrap-program renames the real ELF
+;;;    to .cromma-bees-real, which keeps current_exe inside lib/crommacode/,
+;;;    so both ELFs are installed there; bin/bees is an extra symlink for
+;;;    plain shells.
+;;;
+;;; 2. wgpu dlopen()s libEGL.so.1, libvulkan.so.1, libwayland-client.so.0
+;;;    and libwayland-egl.so.1.  Only libxcb, libxkbcommon, libxkbcommon-x11,
+;;;    libasound, libgcc_s and libc are NEEDED, so RPATH covers those while
+;;;    the wrapper's LD_LIBRARY_PATH supplies the dlopen'd set.
+;;;
+;;; 3. The UI is GPUI, whose fontdb reads FONTCONFIG_FILE (and a few
+;;;    homedir-relative paths) but never XDG_DATA_DIRS.  Guix has no
+;;;    /etc/fonts/fonts.conf, so a launcher-started session without that
+;;;    variable would panic in resolve_font; the wrapper therefore supplies
+;;;    a default and keeps any value the session already set.
+;;;
+;;; Runtime state lives in ~/.cromma-bees (0600 credential file) and the
+;;; bees hive, both homedir-relative and independent of the install prefix.
+
+(define-public crommacode
+  (package
+    (name "crommacode")
+    (version "0.2.20")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://dl.cromma.ai/code/artifacts/" version
+             "/CrommaCode-" version "-linux-amd64.deb"))
+       (sha256
+        (base32 "010j5zrmb2bflzm2aykajvl1cxf4vna98hiszx04429a7zz45r27"))))
+    (build-system binary-build-system)
+    (arguments
+     (list
+      #:unpack-method 'deb-xz
+      #:app-dir "crommacode"
+      ;; opt/crommacode/ contents (bees included) land in lib/crommacode/.
+      ;; The deb's /usr/bin/crommacode is an absolute /opt symlink, so it is
+      ;; skipped and recreated below.
+      #:install-plan
+      #~'(("opt/crommacode/" "lib/crommacode/")
+          ("usr/share/applications/ai.cromma.bees.desktop"
+           "share/applications/")
+          ("usr/share/icons/hicolor/" "share/icons/hicolor/"))
+      #:wrap-plan
+      #~'(("lib/crommacode/cromma-bees"
+           ("LD_LIBRARY_PATH" ":" prefix
+            (#$(file-append libglvnd "/lib")
+             #$(file-append vulkan-loader "/lib")
+             #$(file-append wayland "/lib")))))
+      #:desktop-files
+      #~'(("share/applications/ai.cromma.bees.desktop" "bin/crommacode"))
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'wrap 'wrap-fontconfig
+            (lambda _
+              ;; fontdb only looks at FONTCONFIG_FILE; keep a session-supplied
+              ;; value and fall back to fontconfig's own default otherwise.
+              (substitute*
+                  (string-append #$output "/lib/crommacode/cromma-bees")
+                (("^exec -a ")
+                 (string-append
+                  "export FONTCONFIG_FILE=\"${FONTCONFIG_FILE:-"
+                  #$(file-append fontconfig "/etc/fonts/fonts.conf")
+                  "}\"\n"
+                  "exec -a ")))))
+          (add-after 'desktop-files 'install-bin
+            (lambda _
+              (let ((bin (string-append #$output "/bin")))
+                (mkdir-p bin)
+                (symlink (string-append #$output "/lib/crommacode/cromma-bees")
+                         (string-append bin "/crommacode"))
+                (symlink (string-append #$output "/lib/crommacode/bees")
+                         (string-append bin "/bees"))))))))
+    (inputs `(("alsa-lib" ,alsa-lib)
+              ("fontconfig-minimal" ,fontconfig)
+              ("gcc:lib" ,gcc "lib")
+              ("glibc" ,glibc)
+              ("libglvnd" ,libglvnd)
+              ("libxcb" ,libxcb)
+              ("libxkbcommon" ,libxkbcommon)
+              ("vulkan-loader" ,vulkan-loader)
+              ("wayland" ,wayland)))
+    (home-page "https://cromma.ai/code")
+    (synopsis "Terminal that turns coding-agent work into a watchable game")
+    (description
+     "CrommaCode is a desktop terminal for coding agents such as Claude Code
+and Codex.  It runs an agent in a real terminal and renders the session as a
+side-view game console, turning tool calls, plans and sub-agents into
+watchable activity.  Its @command{bees} helper flies parallel workers, each in
+its own git worktree and branch, and collects them back into the hive.
+This package installs the vendor's prebuilt Linux release; an account is
+required for the hosted features.")
+    (license (license:nonfree "https://vibeloft.ai/terms"))
     (supported-systems '("x86_64-linux"))))

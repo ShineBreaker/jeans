@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, Optional
 
 from handlers.amber_pm import update_amber_pm
+from handlers.crommacode import update_crommacode
 from handlers.font_misans import update_font_misans
 from handlers.gh import update_gh
 from handlers.jdtls_bin import update_jdtls_bin
@@ -27,4 +28,5 @@ SPECIAL_UPDATERS: Dict[str, Callable[[Dict[str, Any], Dict[str, Any], Path], Opt
     "prettier-bin": update_prettier_bin,
     "qoder-cn": update_qoder_cn,
     "workbuddy-cn": update_workbuddy_cn,
+    "crommacode": update_crommacode,
 }

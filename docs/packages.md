@@ -13,6 +13,7 @@
 | ---------------------- | -------------------------------------------------------------- |
 | `cindy-cn-bin`         | Open-source AI agent desktop client                            |
 | `codewhale-bin`        | Multi-provider AI coding agent for the terminal                |
+| `crommacode`           | Terminal that turns coding-agent work into a watchable game    |
 | `cua-driver-bin`       | Cross-platform computer-use automation driver                  |
 | `github-copilot`       | Agent-native GitHub Copilot desktop application                |
 | `herdr-bin`            | Terminal workspace manager for AI coding agents                |
