@@ -128,6 +128,12 @@
 | `neomod-bin`                | Fork of the McOsu osu! client with extra features                  |
 | `osu-lazer-bin`             | rhythm is just a _click_ away!                                     |
 
+### (jeans packages golang)
+
+| Package                     | Description                                                   |
+| --------------------------- | ------------------------------------------------------------- |
+| `go-github-com-egoist-mygo` | Go framework for desktop applications with a webview frontend |
+
 ### (jeans packages hardware)
 
 | Package                       | Description                                 |

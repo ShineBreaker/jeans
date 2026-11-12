@@ -43,6 +43,7 @@
     (jeans packages emacs-xyz)
     (jeans packages fonts)
     (jeans packages games)
+    (jeans packages golang)
     (jeans packages hardware)
     (jeans packages lisp)
     (jeans packages nix-ld)
