@@ -15,6 +15,7 @@
   #:use-module (gnu packages calendar)    ; khal
   #:use-module (gnu packages compression) ; zlib, lz4
   #:use-module (gnu packages cups)        ; cups
+  #:use-module (gnu packages sqlite)      ; sqlite-next
   #:use-module (gnu packages elf)         ; patchelf
   #:use-module (gnu packages fcitx5)      ; fcitx5
   #:use-module (gnu packages fontutils)   ; fontconfig, freetype
@@ -160,6 +161,45 @@ release.")
     (license license:expat)
     (supported-systems '("x86_64-linux"))))
 
+;;; ai-usagebar (source build): same upstream as ai-usagebar-bin.  Single
+;;; crate, three [[bin]] targets; ai-usagebar-tray is a stub on Linux (the
+;;; WebView popover build in build.rs only runs on Windows/macOS), so all
+;;; three install without extra inputs.  The test suite contains live
+;;; network e2e tests (anthropic_e2e, live, public_api), hence #:tests? #f.
+
+(define-public ai-usagebar
+  (package
+    (name "ai-usagebar")
+    (version "1.50.0")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/akitaonrails/ai-usagebar")
+             (commit (string-append "v" version))))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "0hjrmjban6xaww382g9s84gc288bnh1s03x8zr4b82rfx721shb2"))))
+    (build-system cargo-build-system)
+    (arguments
+     (list #:install-source? #f
+           #:tests? #f))
+    ;; rusqlite 链接系统 sqlite3（-lsqlite3），非 bundled feature。
+    ;; 用 sqlite-next（3.53）而非 sqlite（3.39）：rusqlite 0.39 引用
+    ;; sqlite3_set_clientdata，该 API 自 SQLite 3.44 才引入。
+    (inputs (cons sqlite-next
+                  (cargo-inputs 'ai-usagebar #:module '(jeans packages rust-crates))))
+    (home-page "https://github.com/akitaonrails/ai-usagebar")
+    (synopsis "Waybar widget for AI coding assistant usage")
+    (description "AI UsageBar is a Rust waybar widget that monitors plans and
+credits of AI coding assistants: Claude, Codex, GLM, Kimi, Grok, Cursor,
+OpenRouter and more.  It reads each vendor's local credential or state files,
+queries usage endpoints where needed, and renders a compact bar text with
+percentage, reset timer and tooltip for the waybar panel.  It ships both the
+@command{ai-usagebar} CLI (JSON output for custom widgets) and an interactive
+@command{ai-usagebar-tui}.")
+    (license license:expat)))
+
 
 ;; Satty 上游（Satty-org/Satty，MPL-2.0）在 GitHub Releases 发布 x86_64 与
 ;; aarch64 预编译 tarball。本通道分发 x86_64 预编译产物、不从源码构建，故加
@@ -248,6 +288,119 @@ result to the clipboard or saves it to a file.  This package provides the
 prebuilt upstream binary release.")
     (license license:mpl2.0)
     (supported-systems '("x86_64-linux"))))
+
+
+;;; satty (source build): same upstream as satty-bin, built from the git tree
+;;; at 0.22.0.  Building from source lifts the binary package's 0.20.1 pin —
+;;; upstream's 0.21+ prebuilt ELFs carry a GLIBC_2.43 verneed that exceeds
+;;; Guix's glibc 2.41, whereas the source build links Guix's own glibc and
+;;; runs on current releases.
+;;;
+;;; Cargo workspace: root `satty` (GTK4/relm4 GUI) plus the path member `cli`
+;;; (satty_cli, a library); edition 2024.  build.rs is pure-Rust codegen (clap
+;;; shell completions, a man page and the relm4-icons bundle).  With the
+;;; upstream `ci-release` feature it writes completions/ and man/satty.1 into
+;;; the source root, which install-assets then installs exactly as the
+;;; upstream Makefile does.  #:install-source? #f also skips `cargo package`,
+;;; which a path-member workspace cannot run cleanly.
+;;;
+;;; The -sys crates probe system libraries through pkg-config: gtk4/gdk4/gsk4
+;;; (gtk), libadwaita, pango, gdk-pixbuf, glib/gio/gobject, cairo, graphene,
+;;; fontconfig (yeslogic-fontconfig-sys) and libepoxy (epoxy).  OpenGL is
+;;; dlopened at runtime by glow/femtovg; libglvnd supplies the libGL/libEGL
+;;; dispatch so no system GL is required.  The wrapper mirrors satty-bin:
+;;; GSETTINGS_SCHEMA_DIR (gtk + libadwaita) and XDG_DATA_DIRS (output/share),
+;;; both with prefix semantics so the system values survive.
+
+(define-public satty
+  (package
+    (name "satty")
+    (version "0.22.0")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/Satty-org/Satty")
+             (commit (string-append "v" version))))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "05j3vdvdwwdmzf0ky52kliy7di0klkj4jdbbn4v8qyjaa1k7i8pg"))))
+    (build-system cargo-build-system)
+    (arguments
+     (list #:install-source? #f
+           #:tests? #f
+           #:features ''("ci-release")
+           ;; workspace：cargo-build-system 的 has-executable-target? 取
+           ;; cargo metadata 的 packages[0]，这里是 lib 成员 satty_cli（无
+           ;; bin），会误判无二进制目标而跳过 cargo install。显式指定
+           ;; 安装根包 "."，装出 bin/satty。
+           #:cargo-install-paths ''(".")
+           #:phases
+           #~(modify-phases %standard-phases
+               (add-after 'install 'install-assets
+                 (lambda* (#:key outputs #:allow-other-keys)
+                   (let* ((out (assoc-ref outputs "out"))
+                          (share (string-append out "/share"))
+                          (install-to
+                           (lambda (src dest)
+                             (mkdir-p (dirname dest))
+                             (copy-file src dest))))
+                     (install-to "satty.desktop"
+                                 (string-append share "/applications/satty.desktop"))
+                     (install-to "assets/satty.svg"
+                                 (string-append
+                                  share "/icons/hicolor/scalable/apps/satty.svg"))
+                     (install-to "completions/satty.bash"
+                                 (string-append
+                                  share "/bash-completion/completions/satty"))
+                     (install-to "completions/_satty"
+                                 (string-append share "/zsh/site-functions/_satty"))
+                     (install-to "completions/satty.fish"
+                                 (string-append
+                                  share "/fish/vendor_completions.d/satty.fish"))
+                     (install-to "completions/satty.elv"
+                                 (string-append share "/elvish/lib/satty.elv"))
+                     (install-to "completions/satty.nu"
+                                 (string-append
+                                  share "/nushell/vendor/autoload/satty.nu"))
+                     (install-to "completions/satty.ts"
+                                 (string-append share "/fig/autocomplete/satty.ts"))
+                     (install-to "man/satty.1"
+                                 (string-append share "/man/man1/satty.1")))))
+               (add-after 'install-assets 'wrap
+                 (lambda* (#:key inputs outputs #:allow-other-keys)
+                   (let* ((out (assoc-ref outputs "out"))
+                          (gtk (assoc-ref inputs "gtk"))
+                          (libadwaita (assoc-ref inputs "libadwaita")))
+                     (wrap-program (string-append out "/bin/satty")
+                       `("GSETTINGS_SCHEMA_DIR" ":" prefix
+                         (,(string-append gtk "/share/glib-2.0/schemas")
+                          ,(string-append libadwaita "/share/glib-2.0/schemas")))
+                       `("XDG_DATA_DIRS" ":" prefix
+                         (,(string-append out "/share"))))))))))
+    (native-inputs (list pkg-config))
+    (inputs
+     (append (list bash-minimal
+                   gtk
+                   libadwaita
+                   pango
+                   gdk-pixbuf
+                   glib
+                   cairo
+                   graphene
+                   fontconfig
+                   libepoxy
+                   libglvnd)
+             (cargo-inputs 'satty #:module '(jeans packages rust-crates))))
+    (home-page "https://github.com/Satty-org/Satty")
+    (synopsis "Modern screenshot annotation tool")
+    (description
+     "Satty is a modern screenshot annotation tool for Wayland and X11.  It
+reads an image from a file or standard input, lets you annotate it with
+arrows, text, shapes, numbered markers, highlights and blur, then copies the
+result to the clipboard or saves it to a file.  This package builds Satty
+from source.")
+    (license license:mpl2.0)))
 
 
 ;; Waywallen bundles its entire Qt6/ffmpeg/Vulkan-stack in the AppImage
