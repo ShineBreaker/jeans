@@ -516,7 +516,7 @@ release ELF 一致（仅 libstdc++/libm/libgcc_s/libc 动态，余全静态）�
 
 参照包：
 
-- `modules/jeans/packages/games.scm` 的 `osu-lazer-appimage-package` —— osu!lazer 系 fork 的通用打包模板（`osu-lazer-bin` / `g0v0-bin` / `deltalazer-bin` 共用），7z 解包 + patchelf + wrap-program + 图标重命名防 profile 串台，已被自动更新 CI 构建验证多次。
+- `modules/jeans/packages/games.scm` 的 `osu-lazer-appimage-package` —— osu!lazer 系 fork 的通用打包模板（`osu-lazer-bin` / `g0v0-bin` / `deltalazer-bin` 共用），7z 解包 + patchelf + wrap-program + 图标重命名防 profile 串台，已被自动更新 CI 构建验证多次。**模板生成包的 guix refresh 盲区**：`package-field-location` 把 version 字段定位到模板内的 `(version version)`，refresh 会下载新资产、宣布 `updating from X to Y`，然后**静默不落盘**（g0v0-bin 2026-11-12 实证）——跑完 refresh 必须核对 `git diff` 里是否真有版本行改动，缺了就在调用点手写回写（资产已入 store，`guix download <url>` 直接出 hash）。
 - `modules/jeans/packages/desktop.scm` 的 `waywallen-bin` —— 复杂参照，Qt6 bundle 保留 AppRun 布局、QT_PLUGIN_PATH 补插件、插件发现桥接。
 
 ### tar.gz / .deb 等归档包
@@ -877,6 +877,10 @@ GNU Emacs 的 site-start.el/guix-emacs.el（包 autoloads 链 + TREE_SITTER_GRAM
 - `(guix build-system python)` 再导出的 `pypi-uri` 已废弃（加载即警告）；用 `(guix build-system pyproject)` 里的同名绑定，原模块 `#:hide` 掉（python-xyz.scm 实证）。
 - **`guix lint` 不带 `--checkers` 会跑联网 checker**（home-page、archival 等）且可能长挂；批量审查一律传显式离线 checker 列表（pack-guix SKILL.md 那份），网络型 finding 单独重试。
 - **`guix repl` 探包别忘 `(guix licenses)`**：`license-name`/`service-type-name` 等不在 `(guix packages)` 的导出里；私有包 `specification->package` 查不到要用 `@@` 或模块变量。
+
+### 预编译包大版本升级时核对 ELF/资源文件名
+
+`-bin` 包的 install/wrap/patchelf 阶段硬编码了上游产物里的文件名（主 ELF、图标名、desktop 文件名）。上游大版本可以静默改名：opencode-desktop 1.19→2.x 把主 ELF 从 `ai.opencode.desktop` 改成 `ai.opencode`、图标从 `ai.opencode.desktop.png` 改成 `ai.opencode.png`——`wrap-electron` 报 `canonicalize-path: No such file or directory`。升大版本前 `ar x <deb>` / 解包归档核对文件名清单，把 `#:program`、symlink 目标、`find-files` 正则一起改；desktop 文件的 `Exec=` 行是最权威的上游命名来源。
 
 ### 审查 issue 的补丁消费法（meta）
 

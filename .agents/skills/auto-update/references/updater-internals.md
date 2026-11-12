@@ -19,6 +19,8 @@
 
 `report.json` 里 `packages[].status` 取值：`updated` / `uptodate` / `skipped` / `failed`。闸门只取 `status == "updated"`。
 
+`--only <pkg>` 重跑单包会**覆盖** report.json——报告只含本轮处理的包（2026-11-12 实证：全量跑后 --only 补跑失败包，report 只剩那一包）。需要完整构建测试集时以 `refresh-changed-packages.sh` 从 git diff 重建 refresh-updates.json 为准，它不看 report。
+
 `report.json` **不入库**（单次运行产物）；`font-misans-state.json` 与 `stale-state.json` 是跨轮基线，**必须随包改动一起入库**。
 
 ## `SPECIAL_UPDATERS` 分发表（`handlers/__init__.py:SPECIAL_UPDATERS`）
@@ -49,11 +51,13 @@
 
 **无 tag 固定 commit 包**用 `let` + `git-version` 结构（见 `jeans-conventions.md`「上游无 tag」），脚本更新 let 绑定的 commit 并自增 revision，版本号形如 `base-revision.commit前7位`（`common/changes.py:build_let_git_version_change`）。
 
-## `compare_versions` 不是语义比较
+## `compare_versions` 的语义
 
-`common/versions.py:compare_versions` 只做**字符串不等**比较（docstring 原话："简单的字符串比较（对于语义化版本，可以改进）"）。它回答的是"变了没有"，不回答"哪个更新"。
+`common/versions.py:compare_versions`：两边都能解析成点分数字元组（`\d+(\.\d+)*`）时按**数值比较**，只在新版本严格更大时更新；解析不了（日期版、带字母尾缀、带 `-suffix`）退化为字符串不等。
 
-由此推出的实际后果：**兜底层不会发现版本倒退，也不会发现版本号变小**。Guix `version>` 对字母后缀段的排序（`1.22b > 1.22.3b`）只影响 `guix refresh` 那一层——zen-browser-bin 被 refresh 反复降级就是这个原因，也正是它被排除在 refresh 白名单外的原因。
+数值比较是 2026-11-12 加的降级保护：此前是纯粹「不等即更新」，GitHub `/releases/latest` 指针滞后于已发布新 tag 时会把 guix refresh 刚写的版本静默降回去（pnpm v12.20.0 已发布、latest 仍指 v12.18.0，兜底层把 12.20.0 降回 12.18.0；opencode-desktop-bin 2.2.7 被降回 1.19.5 同案）。refresh 层与兜底层对「最新」的定义不完全一致（release 列表扫描 vs `/releases/latest`），指针分歧窗口内比较方向必须可靠。
+
+残留盲区：字母尾缀版本（`1.22b`、`0.4.0-alpha.12`）仍走字符串不等——zen-browser-bin 被 refresh 反复降级是 `version>` 排序问题（`1.22b > 1.22.3b`），与本层无关；若兜底层也见到尾缀型版本倒退，按同一思路加后缀段比较。
 
 ## 哈希
 
@@ -79,3 +83,13 @@ NAR 序列化 + Guix base32 编码是纯 Python（`common/hashing.py:compute_nar
 | monorepo 组件 tag 被读成别的组件版本 | GitHub updater 优先级高于 generic-git，且忽略 `release-tag-prefix` | 移出 refresh 白名单；`release-tag-prefix` property 保留但不生效（agenote / emacs-agenote 2026-10-03 实证） |
 | `upstream-name` 写了仍 `no updater` | 它必须等于 release 资产文件名的前缀，不是仓库名加 `-bin` | 核对 `curl -s https://api.github.com/repos/<repo>/releases/latest` 里的资产文件名 |
 | 构建测试失败 | 闭源 / 预编译包 / ABI 漂移需要额外适配 | 不要按包名后缀跳过它们；看 issue 里的失败包逐个处理 |
+| updater 整个 sweep 崩在 `AttributeError`/`Traceback` | version 非字面量包（`(package-version imgui)`）让 `compare_versions` 对 None 调 `lstrip` | `discover_release_update` 已有早退 guard（2026-11-12）；同类包直接进 `skip_packages` 更省 API 调用 |
+| 崩出的 traceback 以 exit 1 退出、CI 当「有更新」继续 | 未捕获异常恰好命中「1=有更新」的退出码约定 | 已修根因；排查 CI 行为怪异时先怀疑「包级异常伪装成正常信号」 |
+| refresh 宣布 `updating` 但 `git diff` 无改动 | 版本字面量在模板函数调用点（`osu-lazer-appimage-package`），`package-field-location` 指到模板内 `(version version)` 而非调用点的字面量 | 手写回写版本+hash（资产已入 store，`guix download` 直接出 hash）；g0v0-bin 2026-11-12 实证 |
+| refresh 写的版本被兜底层降回去 | `/releases/latest` 指针滞后于新 tag + 旧 compare 不等即更新 | `compare_versions` 数值比较已修（2026-11-12）；再见到写小先查 latest 与 releases 列表是否分歧 |
+| 版本钉包（变量名带版本后缀，`imgui-docking-1.92.5`）被「更新」 | 解析器按变量名识别包，不知道它是钉版兼容包 | 进 `skip_packages` 并在 notes 写清原因；新增钉版包时同步 |
+| 同 repo 的伴生包版本错位（wuffs 主包 source #f 没被 updater 碰、编译器/库已升） | `source #f` 的包无 URI 可提取，恒报 skipped | 版本号手动对齐伴生包；这类包靠上游 tag 同源保证一致 |
+| wrap/patchelf 阶段 `canonicalize-path: No such file or directory` | 上游大版本改了主 ELF 或图标文件名（opencode 1.19→2.x：`ai.opencode.desktop`→`ai.opencode`、图标 `ai.opencode.desktop.png`→`ai.opencode.png`） | `ar x <deb>` 或解包新归档核对实际文件名，同步 `#:program`、install phase 路径与 `find-files` 正则（2026-11-12 实证） |
+| git-fetch 源 Software Heritage 查无此 revision、报 `release-release-...` 双前缀 | 包用 `(commit (string-append "release-" version))` 拼 tag，而 updater 把含前缀的完整 tag 写进了 `version` | version 归一化为裸后缀（`20261109-150625-5fad1bd`），hash 不动（updater 算的就是该 tag）；iterm2-color-schemes 2026-11-12 实证 |
+| 一批同语言生态包集体构建失败、错误是编译器 API 不兼容（zig `build.zig` exit 2） | 上游新 commit 已迁到比通道内工具链更新的语言 API（zig-* 新 commit 要 >0.16，Guix 最高 zig-0.16） | 整链回退包括下游应用自身的 commit bump（ghostty 随 zig-aro/zig-gobject-ghostty 一起回）；等工具链到位再让 updater 重试 |
+| 构建报告出现「未知软件包」但该包在 diff 里确实变了 | `define-private`/hidden 包无法按名字解析（wuffs-compiler、go-* inputs、zig-gobject-ghostty） | 不算真失败——构建其消费方（wuffs、lzsync、ghostty）即覆盖验证，或在报告里忽略 |
