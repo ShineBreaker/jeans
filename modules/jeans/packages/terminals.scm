@@ -41,6 +41,7 @@
   #:use-module (gnu packages fontutils)        ; fontconfig, freetype
   #:use-module (gnu packages freedesktop)      ; wayland, wayland-protocols
   #:use-module (gnu packages gettext)          ; gettext-minimal
+  #:use-module (gnu packages gl)               ; mesa
   #:use-module (gnu packages glib)             ; glib, gobject-introspection
   #:use-module (gnu packages gnome)            ; blueprint-compiler, gtk
   #:use-module (gnu packages gtk)              ; gdk-pixbuf, gtk4-layer-shell, harfbuzz
@@ -686,31 +687,33 @@ Ghostty provides all three.")
 ;;; its RPATH is the relative $ORIGIN/../lib, which patchelf can replace
 ;;; wholesale with store paths.
 ;;;
-;;; The 1.3.1 build is used so this can be compared against the source package
-;;; above at the same version; its --version string is "1.3.1-conda".
+;;; The conda-forge build's --version string carries a "-conda" suffix; the
+;;; pkgforge AppImage and COPR/Arch builds were also evaluated (2026-11-12)
+;;; and rejected on the same glibc grounds.
 
 (define-public ghostty-bin
   (package
     (name "ghostty-bin")
-    (version "1.3.1")
+    (version "1.4.0")
     (source
      (origin
        (method url-fetch)
-       (uri (string-append
-             "https://conda.anaconda.org/conda-forge/linux-64/"
-             "ghostty-1.3.1-h41fa4c7_4.conda"))
+       ;; conda 文件名里的 h<hash>_<build> 后缀不可由版本推导，
+       ;; 换版本只能整段改写（auto-update 无法接管此包）。
+       (uri "https://conda.anaconda.org/conda-forge/linux-64/ghostty-1.4.0-hc0dcdef_0.conda")
        (sha256
-        (base32 "1gsvqzp969r10sp3429d3q2axwyvr69fr3dlhv1pyfhy1kmls8x6"))))
+        (base32 "1i35ms34vr05fp7yc1n73gqmry21j3a8y9xx7a8gh12v2rz5cx7j"))))
     (build-system binary-build-system)
     (arguments
      (list
       ;; .conda 是 zip，内含 pkg-*.tar.zst，基座没有对应 unpack-method。
+      ;; 顺带：pkgforge 的 AppImage 需要 glibc 2.43（通道 glibc 2.41），
+      ;; conda-forge 是唯一 ABI 兼容的现成二进制渠道（2026-11-12 实证）。
       #:unpack-method 'none
       #:install-plan
       #~'(("bin/ghostty" "bin/ghostty")
           ("lib" "lib")
-          ("share" "share")
-          ("include" "include"))
+          ("share" "share"))
       #:patchelf-plan
       #~'("bin/ghostty" "lib")
       #:wrap-plan
@@ -751,9 +754,11 @@ Ghostty provides all three.")
            harfbuzz
            libadwaita
            libx11
+           mesa
            oniguruma
            wayland
            zlib))
+    (supported-systems '("x86_64-linux"))
     (home-page "https://ghostty.org/")
     (synopsis "Fast, native, feature-rich terminal emulator")
     (description

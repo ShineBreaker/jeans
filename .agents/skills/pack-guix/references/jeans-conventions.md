@@ -878,6 +878,10 @@ GNU Emacs 的 site-start.el/guix-emacs.el（包 autoloads 链 + TREE_SITTER_GRAM
 - **`guix lint` 不带 `--checkers` 会跑联网 checker**（home-page、archival 等）且可能长挂；批量审查一律传显式离线 checker 列表（pack-guix SKILL.md 那份），网络型 finding 单独重试。
 - **`guix repl` 探包别忘 `(guix licenses)`**：`license-name`/`service-type-name` 等不在 `(guix packages)` 的导出里；私有包 `specification->package` 查不到要用 `@@` 或模块变量。
 
+### `-bin` 包换源时先查 glibc 版本底线
+
+候选预编译二进制的可用性由 `GLIBC_*` 符号版本决定，与版本号无关：`ld.so --list <elf>` 或 `readelf -V` 看 `Version needs`。2026-11-12 实证（ghostty-bin 选源）：pkgforge AppImage、Arch、COPR 构建都需 `GLIBC_2.43`，通道 glibc 只有 2.41——patchelf 能修 RPATH 但修不了符号版本，这类包构建会过、`--version` 一跑就炸。conda-forge 面向老 glibc（ghostty 只需 2.34）常是唯一 ABI 兼容的现成渠道；代价是文件名带 `h<hash>_<build>` 后缀无法由版本推导 URI，updater 接管不了（在 origin 注释里写明）。另：pkgforge 的新式 uruntime AppImage 内嵌的是 **DwarFS**（不是 squashfs），`7z`/`unsquashfs` 都解不开；要解用 `dwarfsextract -i <img> -o <已存在目录>`，`--image-offset` 默认 auto 自动定位镜像。
+
 ### 预编译包大版本升级时核对 ELF/资源文件名
 
 `-bin` 包的 install/wrap/patchelf 阶段硬编码了上游产物里的文件名（主 ELF、图标名、desktop 文件名）。上游大版本可以静默改名：opencode-desktop 1.19→2.x 把主 ELF 从 `ai.opencode.desktop` 改成 `ai.opencode`、图标从 `ai.opencode.desktop.png` 改成 `ai.opencode.png`——`wrap-electron` 报 `canonicalize-path: No such file or directory`。升大版本前 `ar x <deb>` / 解包归档核对文件名清单，把 `#:program`、symlink 目标、`find-files` 正则一起改；desktop 文件的 `Exec=` 行是最权威的上游命名来源。
