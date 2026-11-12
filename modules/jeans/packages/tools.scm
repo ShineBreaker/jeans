@@ -682,18 +682,20 @@ binary release.")
 (define-public git-credential-keepassxc
   (package
     (name "git-credential-keepassxc")
-    (version "0.14.2")
+    (version "0.14.4")
     (source
      (origin
        (method url-fetch)
        (uri (crate-uri "git-credential-keepassxc" version))
        (file-name (string-append name "-" version ".tar.gz"))
         (sha256
-         (base32 "0mb3ms54is8jy8x441n4ki3if8ggkqjbdh5czahrgvxka0y482jv"))))
+         (base32 "0r6v8pqb73ws4cpxf375xanlhh80bfxcc0g13p1m1i4h44j08yzz"))))
     (build-system cargo-build-system)
+    ;; 0.14.4's Cargo.lock pulls sysinfo 0.39.6 (rust-version 1.95); the
+    ;; default rust (1.98.1) now satisfies the MSRV that froze 0.14.2.
     (arguments
      (list
-      #:rust rust-1.88
+      #:rust rust
       #:install-source? #f))
     (inputs (cargo-inputs 'git-credential-keepassxc
                           #:module
@@ -1032,7 +1034,9 @@ bundler and test runner built on JavaScriptCore.  It runs Node.js projects
 faster with native support for TypeScript and JSX, and replaces node, npm,
 yarn and jest with a single binary.  This package provides the official
 prebuilt binary.")
-    (license license:expat)
+    ;; Bun's own code is MIT.  The official binary statically links
+    ;; JavaScriptCore/WebKit (LGPL-2.0) and tinycc (LGPL-2.1).
+    (license (list license:expat license:lgpl2.0 license:lgpl2.1))
     (properties `((upstream-name . "bun")
                   (release-tag-prefix . "^bun-v")))))
 
