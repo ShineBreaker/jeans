@@ -80,6 +80,10 @@
      (list
       #:install-plan
       #~'(("." "."))))
+    ;; Tags are release-<date>-<sha>; the version field holds only the part
+    ;; after the prefix.  Without this the updater reads the whole tag and
+    ;; writes a doubled release-release-<...> commit (issue #96).
+    (properties `((release-tag-prefix . "^release-")))
     (home-page "https://terminalthemes.com/")
     (synopsis "Color schemes for many TUI and GUI applications")
     (description
