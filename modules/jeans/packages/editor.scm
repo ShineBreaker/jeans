@@ -211,8 +211,8 @@ the webview (GTK/WebKitGTK) frontend with an ncurses fallback.")
 ;;; e.g. tree-sitter-json and point LD_LIBRARY_PATH at its lib/ to
 ;;; enable syntax highlighting for that language.
 (define-public lem-next
-  (let ((commit "c084cd80570807c2f9885b93667afb9a7d33c1ae")
-        (revision "15"))
+  (let ((commit "b72d82b4dd40fba07dbde06a13e4a6a0bbec282e")
+        (revision "16"))
     (package
       (inherit lem)
       (name "lem-next")
@@ -225,7 +225,7 @@ the webview (GTK/WebKitGTK) frontend with an ncurses fallback.")
                (commit commit)))
          (file-name (git-file-name name version))
          (sha256
-          (base32 "0mbdpq1bgys0fxljhm4d58dym5if60y57s1ly7xj7pf4cq5rdmqn"))
+          (base32 "0jvjbmlbk2y1lhsyqm927bzd0g4d6kyi9fp993kav1phjxspnsdi"))
          (patches
           (map canonicalize-path
                (search-patches
@@ -554,7 +554,7 @@ source.")
 (define-public zed-bin
   (package
     (name "zed-bin")
-    (version "1.27.0")
+    (version "1.28.1")
     (source
      (origin
        (method url-fetch)
@@ -562,7 +562,7 @@ source.")
              "https://github.com/zed-industries/zed/releases/download/v"
              version "/zed-linux-x86_64.tar.gz"))
        (sha256
-        (base32 "1pa3zh61blaqjnadfwldb4zsq6sng3hjixyv3ab8g3ga97v6p7vi"))))
+        (base32 "0hipv96ha7f2shjwsllz9g29rml85fz64jl61s6jrrrkwp5w8gww"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -681,7 +681,7 @@ package provides the prebuilt binary release.")
 (define-public wu-bin
   (package
     (name "wu-bin")
-    (version "1.2.1")
+    (version "1.2.2")
     (source
      (origin
        (method url-fetch)
@@ -689,7 +689,7 @@ package provides the prebuilt binary release.")
              "https://github.com/dstrml/wu/releases/download/v"
              version "/wu-linux-x86_64.tar.gz"))
        (sha256
-        (base32 "1fwjjq4pni11m37xzzh3gl2dg62sgfissy5islrz1g0jgjrmyqa5"))))
+        (base32 "01023zfhb9iqfr5p4fcsn05i6qz7d5nz67qr22mng8rnln9d9mgb"))))
     (build-system binary-build-system)
     (arguments
      (list

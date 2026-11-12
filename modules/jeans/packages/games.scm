@@ -453,8 +453,8 @@ than cutting-edge."))
 ;; g0v0! —— osu!lazer 社区 fork（GooGuTeam）。
 (define-public g0v0-bin
   (osu-lazer-appimage-package
-   "g0v0-bin" "2026.1012.0-g0v0"
-   "1i4c49bpyabqvfqdlg4r7aph19qxlri7i2wqfgcna79y8i777hr3"
+   "g0v0-bin" "2026.1111.1-g0v0"
+   "0bm8igliifdrvb37b35v1n8qhdl9bmrqa05v86907bgw30ypwsx1"
    #:repo "https://github.com/GooGuTeam/g0v0"
    #:tag-prefix "v"
    #:asset "g0v0.AppImage"

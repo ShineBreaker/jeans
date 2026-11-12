@@ -75,7 +75,7 @@
   (hidden-package
    (package
      (name "wuffs-compiler")
-     (version "0.4.0-alpha.10")
+     (version "0.4.0-alpha.12")
      (source
       (origin
         (method git-fetch)
@@ -84,8 +84,7 @@
                (commit (string-append "v" version))))
         (file-name (git-file-name name version))
         (sha256
-         (base32
-          "1bcdim805f82vya58k64k588clqvy8j7xrjranhh1n77dacbdcvg"))))
+         (base32 "03ssk72n6xbgai1l6chlip8fns46f28zhz822whk3z629a03iq8j"))))
      (build-system go-build-system)
      (arguments
       (list
@@ -120,7 +119,7 @@ compressed archives.")
   (hidden-package
    (package
      (name "wuffs-stdlib")
-     (version "0.4.0-alpha.10")
+     (version "0.4.0-alpha.12")
      (source
       (origin
         (method git-fetch)
@@ -129,8 +128,7 @@ compressed archives.")
                (commit (string-append "v" version))))
         (file-name (git-file-name name version))
         (sha256
-         (base32
-          "1bcdim805f82vya58k64k588clqvy8j7xrjranhh1n77dacbdcvg"))))
+         (base32 "03ssk72n6xbgai1l6chlip8fns46f28zhz822whk3z629a03iq8j"))))
      (build-system gnu-build-system)
      (arguments
       (list
@@ -204,7 +202,7 @@ compressed archives.")
 (define-public wuffs
   (package
     (name "wuffs")
-    (version "0.4.0-alpha.10")
+    (version "0.4.0-alpha.12")
     (source #f)
     (outputs '("out"                    ;C library and docs
                "bin"))                  ;wuffs compiler

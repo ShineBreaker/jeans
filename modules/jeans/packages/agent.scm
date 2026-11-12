@@ -188,7 +188,7 @@ release.")
 (define-public cindy-cn-bin
   (package
     (name "cindy-cn-bin")
-    (version "0.1.130")
+    (version "0.1.133")
     (source
      (origin
        (method url-fetch)
@@ -196,7 +196,7 @@ release.")
              "https://github.com/makecindy/cindy/releases/download/"
              "v" version "/cindy-" version "-linux-x64-cn.deb"))
        (sha256
-        (base32 "05qscps7zmnkjizg19fr1hdfmw7623m0q1snbxdcz66v1dc6a5iv"))))
+        (base32 "0pgz6yxh0pm358wqvxpyg8k0923msqsir6880d6zf3xql0f42k1d"))))
     (build-system electron-build-system)
     (arguments
      (list
@@ -302,7 +302,7 @@ control, and a companion system.")
 (define-public github-copilot
   (package
     (name "github-copilot")
-    (version "1.1.35")
+    (version "1.3.0")
     (source
      (origin
        (method url-fetch)
@@ -310,7 +310,7 @@ control, and a companion system.")
              "https://github.com/github/app/releases/download/"
              "v" version "/GitHub-Copilot-linux-x64.deb"))
        (sha256
-        (base32 "0ks02fk6brlnyj1dq48xpqynxxf3zyri6mmychn38yvli41nzk62"))))
+        (base32 "06vdgrwzwhmb69mjigy915ajljy8vnbj0xl5mylwz2qwzpyg4dd6"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -578,7 +578,7 @@ prebuilt distribution and launches it with the store Node.js runtime.")
 (define-public opencode-desktop-bin
   (package
     (name "opencode-desktop-bin")
-    (version "1.19.5")
+    (version "2.2.7")
     (source
      (origin
        (method url-fetch)
@@ -586,7 +586,7 @@ prebuilt distribution and launches it with the store Node.js runtime.")
              "https://github.com/anomalyco/opencode/releases/download/"
              "v" version "/opencode-desktop-linux-amd64.deb"))
        (sha256
-        (base32 "0cmvfwwxmrdy00kwk9wvig9ym6ii62vachldzahknaplnnn2lf6y"))))
+        (base32 "1rbv5l426x2ic3knxlkjp6mxfgwipd861lidwildxficc7xiz212"))))
     (build-system electron-build-system)
     (arguments
      (list
@@ -611,7 +611,7 @@ prebuilt distribution and launches it with the store Node.js runtime.")
               (let* ((out #$output)
                      (bin (string-append out "/bin"))
                      (exe (string-append
-                           out "/lib/opencode-desktop/ai.opencode.desktop")))
+                           out "/lib/opencode-desktop/ai.opencode")))
                 (mkdir-p bin)
                 (symlink exe (string-append bin "/opencode-desktop")))))
           (add-after 'install-bin 'install-desktop
@@ -646,7 +646,7 @@ prebuilt distribution and launches it with the store Node.js runtime.")
                                                 "/apps/opencode-desktop.png"))))
                        (when (file-exists? old)
                          (copy-file old new))))
-                   (find-files icon-dst "ai\\.opencode\\.desktop\\.png$")))))))))
+                   (find-files icon-dst "ai\\.opencode\\.png$")))))))))
     (native-inputs (list binutils tar xz))
     (inputs `(("alsa-lib" ,alsa-lib)
               ("at-spi2-core" ,at-spi2-core)
@@ -1059,7 +1059,7 @@ configure.  This package provides the prebuilt desktop release.")
 (define-public zcode
   (package
     (name "zcode")
-    (version "3.18.0")
+    (version "3.18.1")
     (source
      (origin
        (method url-fetch)
@@ -1067,7 +1067,7 @@ configure.  This package provides the prebuilt desktop release.")
              "https://cdn-zcode.z.ai/zcode/electron/releases/"
              version "/linux-x64/ZCode-" version "-linux-x64.deb"))
        (sha256
-        (base32 "02k9g02qh04fq62w7xhvd2z6y5m3nnbq558sa1gdmj909dn0if73"))))
+        (base32 "01mxc0z2rlbnbh5k0vr9wmi8vby9shbj96hlafykkzbyzdwxzzlx"))))
     (build-system electron-build-system)
     (arguments
      (list
@@ -1250,7 +1250,7 @@ release and needs the @code{nix-ld} system service to run.")
 (define-public omo-bin
   (package
     (name "omo-bin")
-    (version "5.1.66")
+    (version "5.1.69")
     (source
      (origin
        (method url-fetch)
@@ -1259,7 +1259,7 @@ release and needs the @code{nix-ld} system service to run.")
              "v" version "/omo-linux-x64"))
        (sha256
         (base32
-         "0clbphiq01l4dabbnkm3v8mbm7pz7m42gnrgq23qmjgkp2xk0254"))))
+         "0i0lz8prf8za3gwnjq7zymar37gvq1qj2c1v0x0ff0ng2fkanx1s"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -1299,7 +1299,7 @@ run.")
 (define-public cua-driver-bin
   (package
     (name "cua-driver-bin")
-    (version "0.46.1")
+    (version "0.47.9")
     (source
      (origin
        (method url-fetch)
@@ -1308,7 +1308,7 @@ run.")
              "cua-driver-rs-v" version
              "/cua-driver-rs-" version "-linux-x86_64-binary.tar.gz"))
        (sha256
-        (base32 "0sy9vhaq476a2w5ydj9bqa3sgagfzjah1naabgbwpf3bfd5wai9z"))))
+        (base32 "1x6d5m6ba3s4p9n85a8wgkpj3j0z3wl7ig6l9a455jgh6q2ss7jm"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -1430,7 +1430,7 @@ so the bundled self-updater should not be used.")
 (define-public magpie-bin
   (package
     (name "magpie-bin")
-    (version "0.1.3630")
+    (version "0.1.3838")
     (source
      (origin
        (method url-fetch)
@@ -1438,7 +1438,7 @@ so the bundled self-updater should not be used.")
              "https://github.com/yetone/magpie-releases/releases/download/"
              "v" version "/magpie-linux-amd64"))
        (sha256
-        (base32 "1cjmid7lp8j2p4a1gvl6v670ck6spgmpxnlpn9idbblbvqwy1gmm"))))
+        (base32 "0fg3gdibnvzir1lla4vp0prq5zzy39d0j9w4pz5xmji0vhzcd97q"))))
     (build-system binary-build-system)
     (arguments
      (list

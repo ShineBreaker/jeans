@@ -63,7 +63,7 @@
    (package
      (inherit go-gopkg-in-ini-v1)
      (name "go-gopkg-in-ini-v1")
-     (version "1.67.3")
+     (version "1.68.0")
      (source
       (origin
         (method git-fetch)
@@ -72,7 +72,7 @@
               (commit (string-append "v" version))))
         (file-name (git-file-name name version))
         (sha256
-         (base32 "1mcyd42a3plmj9fliscsshiyy7xpwizsjgysprc2bi3mkp65v0p4")))))))
+         (base32 "16r4in2ryk5jgc1945yybaf3f8a0r0v536fm0gjl7r949q94vh4s")))))))
 
 ;;; LZSync 的依赖链。lzsync 的 go.mod 钉的版本多数高于 Guix 官方：
 ;;; humanize 1.1.0（官方 1.0.1）、purego 0.11.1（0.9.0）、x/sys 0.49.0
@@ -106,7 +106,7 @@
    (package
      (inherit go-github-com-ebitengine-purego)
      (name "go-github-com-ebitengine-purego")
-     (version "0.11.1")
+     (version "0.11.3")
      (source
       (origin
         (method git-fetch)
@@ -115,7 +115,7 @@
               (commit (string-append "v" version))))
         (file-name (git-file-name name version))
         (sha256
-         (base32 "1r7ivlgwn7ikifzxbp62vzdjccvh19iyill3mzqw4dgc9b0hvg15")))))))
+         (base32 "05pg7yfffq5xmk6lv360rlvcli9z04x7dca8x9ny0n0aszdmqayp")))))))
 
 (define-public go-golang-org-x-sys-0.49
   (hidden-package
@@ -235,7 +235,7 @@
 (define-public go-github-com-egoist-mygo
   (package
     (name "go-github-com-egoist-mygo")
-    (version "0.6.3")
+    (version "0.9.0")
     (source
      (origin
        (method git-fetch)
@@ -244,7 +244,7 @@
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "0zqy063s6pwagyd20bi7l0rf6mwgz5r7c0gp6wm1kvc4v6v8mlhs"))))
+        (base32 "07m19hkx5xfinwbfi34xrj1csrnp7y05n7y8779kfiki18ddj3h6"))))
     (build-system go-build-system)
     (arguments
      (list #:import-path "github.com/egoist/mygo"

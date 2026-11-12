@@ -33,8 +33,8 @@
 
 (define-public zig-xml
   ;; There have been some pretty big updates since 0.2.0 was tagged.
-  (let ((commit "d73304c3d56d6331a0caca4d339607e7c740aab5")
-        (revision "0"))
+  (let ((commit "4beab29d68ab308af4bd12a4fc4187c24fdad0d6")
+        (revision "1"))
   (package
     (name "zig-xml")
     (version (git-version "0.2.0" revision commit))
@@ -46,8 +46,7 @@
               (commit commit)))
        (file-name (git-file-name name version))
        (sha256
-        (base32
-         "0whv9szap0rddxlcabvg3zib10nss4gygkz6ylck6dvxbm6r0qxi"))))
+        (base32 "1jcbp3cqx904n3wmnzlxr9nw6g38v31n5941c07l7qjzd52n0fb2"))))
     (build-system zig-build-system)
     (arguments
      (list

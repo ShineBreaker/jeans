@@ -64,7 +64,7 @@
 (define-public iterm2-color-schemes
   (package
     (name "iterm2-color-schemes")
-    (version "20260921-150923-0b55a9e")
+    (version "20261109-150625-5fad1bd")
     (source
      (origin
        (method git-fetch)
@@ -73,7 +73,7 @@
               (commit (string-append "release-" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "07hy7xgb55qy07gsdz7wl19sa6ab0d9pqrip2yydlxh9nsc595b0"))))
+        (base32 "1x137f1rc871by0d8n1k3xgin046xq3iykfz69ayf6hgvf0f8dj7"))))
     (build-system copy-build-system)
     (arguments
      (list
@@ -333,7 +333,7 @@ working with a wrapper.")
 (define-public font-nerd-font-symbols-only
   (package
     (name "font-nerd-font-symbols-only")
-    (version "3.4.0")
+    (version "3.5.1")
     (source
      (origin
        ;; Use url-fetch instead of git-fetch since Git repo is enormous
@@ -341,8 +341,7 @@ working with a wrapper.")
        (uri (string-append "https://github.com/ryanoasis/nerd-fonts/releases/download/v"
                            version "/NerdFontsSymbolsOnly.zip"))
        (sha256
-        (base32
-         "0iscas5bvb8bgk5pcls95nfwjl7yi23q05mili43dzl0p427jqcf"))))
+        (base32 "1g3k4hzfjih96cjq0z6aisdpvxncc81mnd5jrkhnavsgaf13djpx"))))
     (build-system font-build-system)
     (home-page "https://www.nerdfonts.com")
     (synopsis "Nerd Fonts symbols-only icon font")

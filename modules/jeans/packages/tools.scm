@@ -569,7 +569,7 @@ companion extension.  This package provides the prebuilt binary release.")
 (define-public cc-switch-bin
   (package
     (name "cc-switch-bin")
-    (version "4.0.29")
+    (version "4.0.30")
     (source
      (origin
        (method url-fetch)
@@ -577,7 +577,7 @@ companion extension.  This package provides the prebuilt binary release.")
              "https://github.com/farion1231/cc-switch/releases/download/"
              "v" version "/CC-Switch-v" version "-Linux-x86_64.deb"))
        (sha256
-        (base32 "12p3g1hvrfx4diz3a7mlmcz3s0h1mx39gryyaz29j8497sffrvph"))))
+        (base32 "1vkz2nywndvmfli4slkr5pnhrvx9avc4pfrinpcpqy9g20m482a1"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -720,8 +720,8 @@ enables command-line applications to interact with @code{keepassxc} databases.")
 ;;; @file{/var/lib/apm}.
 
 (define-public amber-pm
-  (let ((commit "068d91329fa1e9b1c661a7b3f6cc8ac6d20b48a8")
-        (revision "1"))
+  (let ((commit "1751c7b8706e3040c192cfb6ebba4a9927c91b98")
+        (revision "2"))
     (package
       (name "amber-pm")
       (version (git-version "1.3.2" revision commit))
@@ -733,7 +733,7 @@ enables command-line applications to interact with @code{keepassxc} databases.")
                (commit commit)))
          (file-name (git-file-name name version))
          (sha256
-          (base32 "147vhpmxq5k4804y7aczm8sy7l7xrvj6ssy3zzzq10d2gnkshq02"))))
+          (base32 "0lvhd0rbmcipn83xc0pjgq0xrdz0dzmfrgkjnxhb6p50c3rc51g2"))))
       (build-system gnu-build-system)
       (arguments
        (list
@@ -942,7 +942,7 @@ configurable knowledge-base root (@env{KB_ROOT}, default
 (define-public prettier-bin
   (package
     (name "prettier-bin")
-    (version "3.9.10")
+    (version "3.10.0")
     (source
       (origin
         (method url-fetch)
@@ -951,7 +951,7 @@ configurable knowledge-base root (@env{KB_ROOT}, default
               version
               ".tgz"))
         (sha256
-          (base32 "1ds6jab5bphy4v0shzqam6m93azp4a3vfbs3fbwxz4qpb52j1iwx"))))
+          (base32 "1bx1kpywq93m5s2dpcw2g0p165hrdpmwpvl4ylq5v3bvgqyr0byd"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -1048,7 +1048,7 @@ prebuilt binary.")
 (define-public pnpm-bin
   (package
     (name "pnpm-bin")
-    (version "12.18.0")
+    (version "12.20.0")
     (source
       (origin
         (method url-fetch)
@@ -1056,7 +1056,7 @@ prebuilt binary.")
               "https://github.com/pnpm/pnpm/releases/download/v"
               version "/pnpm-linux-x64.tar.gz"))
         (sha256
-          (base32 "1hhp00lsy2zacfdi90k6nw6blh684gqml2jc2bkv63bc4c70c9ip"))))
+          (base32 "1x5546kw78b3xzr5grgbzd0vna52svhlph5cxy07x9bls46xb3sn"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -1449,7 +1449,7 @@ with git and your code.")
 (define-public zellij-bin
   (package
     (name "zellij-bin")
-    (version "0.44.3")
+    (version "0.46.0")
     (source
      (origin
        (method url-fetch)
@@ -1457,7 +1457,7 @@ with git and your code.")
              "https://github.com/zellij-org/zellij/releases/download/v"
              version "/zellij-x86_64-unknown-linux-musl.tar.gz"))
        (sha256
-        (base32 "0lfpr8768jr6z0wsf8n89zrcycw6fqbnaa9819n50zv2i1kk8z0g"))))
+        (base32 "17f7adldcjqrinrg5p3mrc8qiap3xjj0c5f98cj19djpnfg5kvm8"))))
     (build-system binary-build-system)
     (arguments
      (list
