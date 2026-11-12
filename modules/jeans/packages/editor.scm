@@ -29,6 +29,8 @@
   #:use-module (gnu packages lisp-check)
   #:use-module (gnu packages lisp-xyz)
   #:use-module (gnu packages ncurses)
+  #:use-module (gnu packages pkg-config)
+  #:use-module (gnu packages regex)
   #:use-module (gnu packages terminals)
   #:use-module (gnu packages text-editors)
   #:use-module (gnu packages tls)
@@ -411,6 +413,104 @@ supports sandboxed TypeScript plugins.  This package provides the prebuilt
 binary release.")
     (properties `((upstream-name . "fresh-editor")))
     (license license:gpl2)
+    (supported-systems '("x86_64-linux"))))
+
+;;; fresh-editor (source build): same upstream as fresh-editor-bin.  The
+;;; workspace default-members are the TUI (bin "fresh" lives in
+;;; crates/fresh-editor); fresh-gui is excluded, so the GTK/wgpu/clang
+;;; crates present in the lockfile are vendored but never compiled.  The
+;;; default rquickjs backend bundles quickjs-ng with pre-generated Linux
+;;; bindings (no clang/bindgen on Linux).  Guix's cargo-build-system sets
+;;; RUSTONIG_SYSTEM_LIBONIG=1 and strips the bundled oniguruma, so onig_sys
+;;; links the system oniguruma through pkg-config (same wiring as bat);
+;;; lzma-sys and ring compile their bundled C with the cc that
+;;; cargo-build-system pulls in via standard-packages, so no extra native
+;;; toolchain beyond pkg-config is needed.  fresh-input-parser dlopen's
+;;; "libgpm.so.2" for bare-console mouse; rustc only embeds RUNPATH for
+;;; actually-linked libs, so a post-install patchelf phase appends gpm/lib
+;;; (idiom from gnu maths.scm fix-rpath).  Wrapping is deliberately avoided:
+;;; fresh re-launches itself via current_exe() for the daemon and integrated
+;;; terminal, and a wrapper would make those subprocesses bypass the wrapper
+;;; environment.  #:features "web" is additive over the defaults and
+;;; matches the upstream .deb, which builds the browser UI too.  The workspace
+;;; install-skip trap (has-executable-target? reads packages[0], a lib member
+;;; here) is avoided with an explicit #:cargo-install-paths.  License is
+;;; GPL-3.0-or-later per the workspace Cargo.toml and the LICENSE file (the
+;;; -bin package's gpl2 field is upstream's own .deb metadata, not the source
+;;; license).
+(define-public fresh-editor
+  (package
+    (name "fresh-editor")
+    (version "0.5.8")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/sinelaw/fresh")
+             (commit (string-append "v" version))))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "0n1ch4w163pdwn568fkdd0nha6y3l3brwn00rki9ajmqbp3ijssi"))))
+    (build-system cargo-build-system)
+    (arguments
+     (list
+      #:install-source? #f
+      #:tests? #f
+      #:features ''("web")
+      #:cargo-install-paths ''("crates/fresh-editor")
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'install 'install-assets
+            (lambda* (#:key outputs #:allow-other-keys)
+              (let* ((out (assoc-ref outputs "out"))
+                     (apps (string-append out "/share/applications"))
+                     (man1 (string-append out "/share/man/man1"))
+                     (icons (string-append out "/share/icons/hicolor")))
+                (mkdir-p apps)
+                (copy-file "crates/fresh-editor/resources/fresh.desktop"
+                           (string-append apps "/fresh.desktop"))
+                (mkdir-p man1)
+                (copy-file "crates/fresh-editor/resources/fresh.1"
+                           (string-append man1 "/fresh.1"))
+                (for-each
+                 (lambda (size)
+                   (let ((dir (string-append icons "/" size "/apps")))
+                     (mkdir-p dir)
+                     (copy-file
+                      (string-append
+                       "docs/icons/linux/hicolor/" size "/apps/fresh.png")
+                      (string-append dir "/fresh.png"))))
+                 '("16x16" "22x22" "24x24" "32x32" "48x48"
+                   "64x64" "128x128" "256x256" "512x512")))))
+          (add-after 'install-assets 'add-gpm-runpath
+            (lambda* (#:key inputs outputs #:allow-other-keys)
+              (use-modules (ice-9 popen) (ice-9 rdelim))
+              (let* ((out (assoc-ref outputs "out"))
+                     (gpm (assoc-ref inputs "gpm"))
+                     (fresh (string-append out "/bin/fresh"))
+                     (pipe (open-pipe* OPEN_READ "patchelf"
+                                       "--print-rpath" fresh))
+                     (rpath (read-line pipe)))
+                (close-pipe pipe)
+                (invoke "patchelf" "--set-rpath"
+                        (string-append rpath ":" gpm "/lib")
+                        fresh)))))))
+    (native-inputs (list pkg-config patchelf))
+    (inputs
+     (cons* oniguruma gpm
+            (cargo-inputs 'fresh-editor #:module '(jeans packages rust-crates))))
+    (home-page "https://sinelaw.github.io/fresh/")
+    (synopsis "Terminal-based text editor with LSP support")
+    (description "Fresh is a modern terminal text editor that requires zero
+configuration.  It brings VS Code-style UX to the terminal: familiar
+keybindings, full mouse support, multi-cursor editing, split panes, a command
+palette with fuzzy finding, tree-sitter syntax highlighting, integrated
+terminal, file explorer, and Language Server Protocol integration for code
+intelligence.  It handles multi-gigabyte files with low memory overhead and
+supports sandboxed TypeScript plugins.  This package builds Fresh from
+source.")
+    (properties '((upstream-name . "fresh-editor")))
+    (license license:gpl3+)
     (supported-systems '("x86_64-linux"))))
 
 ;;; zed-bin packages the upstream Zed editor's prebuilt Linux release
