@@ -143,38 +143,70 @@ def main() -> int:
         scm = scm[:insert_at] + insertion + scm[insert_at:]
         print(f"[5] inserted {len(to_insert)} definitions before ssss-separator")
 
-    # 6. Replace the package's input list, located by the key + (list ...),
-    #    bounded by parenthesis depth so any inner structure is safe.
+    # 6. Locate the package's input list by the key + (list ...).  For an
+    #    existing key, replace the list in place (parenthesis-depth bounded so
+    #    any inner structure is safe).  For a NEW package the key is absent —
+    #    append a fresh `(pkg => (list ...))` entry to define-cargo-inputs,
+    #    reusing the indentation grid of the first existing entry.  This is the
+    #    sanctioned way to seed a new cargo package's inputs without hand-editing
+    #    rust-crates.scm (blue import-crate only inserts the flat crate-source
+    #    defines, it does not create the lookup key).
     key = re.escape(args.package)
     head = re.search(r'\(' + key + r' =>\s*\(list', scm)
-    if not head:
-        print(f"ERROR: input list for {args.package} not found", file=sys.stderr)
-        return 2
-    list_open = scm.index('(', head.start() + len(args.package))
-    list_close = find_paren_span(scm, list_open)
+    if head:
+        list_open = scm.index('(', head.start() + len(args.package))
+        list_close = find_paren_span(scm, list_open)
 
-    # Reproduce the original two-level indentation:
-    #   <list_indent>(list <first-var>
-    #   <item_indent><second-var>
-    # where list_indent aligns `(list` under the key's `(list` column and
-    # item_indent = list_indent + 1 (guix import aligns continuation lines
-    # one column past `(list`'s opening paren).  We derive both from the
-    # column of the matched `(list` rather than sampling a variable line,
-    # because the first variable shares its line with `(list` (ambiguous).
-    list_kw_start = scm.rfind('(list', head.start(), head.end())
-    line_start = scm.rfind('\n', 0, list_kw_start) + 1
-    list_indent = scm[line_start:list_kw_start]
-    item_indent = list_indent + ' '
-    after_list_kw = list_kw_start + len('(list')
+        # Reproduce the original two-level indentation:
+        #   <list_indent>(list <first-var>
+        #   <item_indent><second-var>
+        # where list_indent aligns `(list` under the key's `(list` column and
+        # item_indent = list_indent + 1 (guix import aligns continuation lines
+        # one column past `(list`'s opening paren).  We derive both from the
+        # column of the matched `(list` rather than sampling a variable line,
+        # because the first variable shares its line with `(list` (ambiguous).
+        list_kw_start = scm.rfind('(list', head.start(), head.end())
+        line_start = scm.rfind('\n', 0, list_kw_start) + 1
+        list_indent = scm[line_start:list_kw_start]
+        item_indent = list_indent + ' '
+        after_list_kw = list_kw_start + len('(list')
 
-    lines = [item_indent + v for v in new_inputs]
-    # First variable stays on the `(list` line (after a single space).
-    new_body = ' ' + new_inputs[0] + '\n' + '\n'.join(lines[1:]) if lines else ''
-    # list_close points just PAST the inner `(list ...)` closing paren.
-    # Preserve that inner `)` (at list_close-1) so both the list and the
-    # enclosing `(key => ...)` item stay balanced.
-    scm = scm[:after_list_kw] + new_body + scm[list_close - 1:]
-    print(f"[6] replaced input list for {args.package}")
+        lines = [item_indent + v for v in new_inputs]
+        # First variable stays on the `(list` line (after a single space).
+        new_body = ' ' + new_inputs[0] + '\n' + '\n'.join(lines[1:]) if lines else ''
+        # list_close points just PAST the inner `(list ...)` closing paren.
+        # Preserve that inner `)` (at list_close-1) so both the list and the
+        # enclosing `(key => ...)` item stay balanced.
+        scm = scm[:after_list_kw] + new_body + scm[list_close - 1:]
+        print(f"[6] replaced input list for {args.package}")
+    else:
+        dci = re.search(r'\(define-cargo-inputs\s+\S+', scm)
+        if not dci:
+            print("ERROR: define-cargo-inputs block not found", file=sys.stderr)
+            return 2
+        dci_open = scm.index('(', dci.start())
+        dci_close = find_paren_span(scm, dci_open)
+        # Derive the indentation grid from the first existing entry:
+        #   <key_indent>(some-package =>
+        #   <list_indent>(list rust-...
+        first = re.search(r'\n([ ]+)\(\S+ =>\n([ ]+)\(list',
+                          scm[dci_open:dci_close])
+        if not first:
+            print("ERROR: cannot derive indentation from define-cargo-inputs",
+                  file=sys.stderr)
+            return 2
+        key_indent, list_indent = first.group(1), first.group(2)
+        item_indent = list_indent + ' '
+        body = [list_indent + '(list ' + new_inputs[0]]
+        body += [item_indent + v for v in new_inputs[1:]]
+        entry = (key_indent + '(' + args.package + ' =>\n'
+                 + '\n'.join(body) + '))\n')
+        # Append before the final ')' that closes define-cargo-inputs.  The
+        # last existing entry ends with '))' (list + entry); our entry likewise
+        # ends with '))', and the preserved final ')' closes the whole block.
+        scm = scm[:dci_close - 1] + '\n' + entry + scm[dci_close - 1:]
+        print(f"[6] created new input list for {args.package} "
+              f"({len(new_inputs)} inputs)")
 
     # 7. POST-CONDITION: every input variable must now have a definition.
     merged_defines = set(re.findall(r'\(define (' + VAR + r')', scm))
