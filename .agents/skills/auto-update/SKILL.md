@@ -62,6 +62,20 @@ blue upgrade   # = guix shell --manifest=scripts/check-updates/manifest.scm \
 
 `guix build` 成功后还有第二道：ELF NEEDED 解析检查。预编译包的依赖清单随上游构建漂移——magpie-bin 0.1.1167 上游新增了 `libfontconfig.so.1` 直接依赖，hash 正确、构建通过，但启动即被加载器拒绝。闸门对产物里每个带 `PT_INTERP` 的 ELF 跑 `ld.so --list`：patchelf 过的二进制用自身 interpreter + RUNPATH 解析；ld-linux wrapper 包从脚本提取 store ld.so 与 `--library-path` 目录；`LD_LIBRARY_PATH` 型 env wrapper（electron/Tauri）的导出目录并入候选。直接 NEEDED 缺失（stderr `error while loading shared libraries`）与传递缺失（stdout `=> not found`）均判构建失败；无可用 ld.so 的自定位/nix-ld 包记 `skipped` 放行并在报告中留痕。此检查只覆盖静态 NEEDED——dlopen/FFI 依赖仍需真实运行验证，见 pack-guix 的 runtime verification。
 
+## 冻结与解冻（skip_packages / stale_watch / REFRESH_PACKAGES 三处联动）
+
+有意冻结的包同时落在三处：`skip_packages`（兜底脚本跳过）、`stale_watch`（超 stale_days 无人工更新则 CI 开提醒 issue）、被排除在 workflow 的 `REFRESH_PACKAGES` 外（行内注释写明原因）。`stale_watch` 的 `notes` 要记：障碍是什么、解除条件、解除路径。
+
+解冻时四处一起动（git-credential-keepassxc 2026-11-12 实证）：
+
+1. **先确认障碍已解除**。MSRV 型障碍查 Cargo.lock 里锁定版本的 `rust_version`：`curl https://index.crates.io/<name>/<name> | grep '"vers":"<锁定版本>"'` 比 crates.io API 的 max_stable_version 可靠（API 的 rust_version 字段常为 null）。
+2. **升版本 + 重钉 hash**；cargo 包还要 `guix import crate --lockfile=<新锁文件> <pkg>` → `merge_crate_inputs.py` 重做 rust-crates.scm 输入（**绝不手改**），再真构建验证。
+3. `config.json`：从 `skip_packages` 与 `stale_watch` 移除；`notes` 改写成解冻事实（日期+解除依据），别留旧障碍描述误导后人。
+4. `auto-update.yml`：包名加回 `REFRESH_PACKAGES`，注释更新为"已解冻"而非静默删除——下次有人搜包名能看到完整历史。
+5. `stale-state.json`：删掉该包条目；仍在 `stale_watch` 的包若刚人工核对过，顺手 bump `last_checked` 避免当期重开提醒 issue。
+
+解冻后跑一次 `guix refresh -L "$PWD/modules" <pkg>` 确认「已是最新」= 白名单与 properties 接管成功，才收工。
+
 ## Hard guards
 
 - 动版本号前先 `git pull`：CI 与本地会同时改同一个包定义。
