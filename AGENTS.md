@@ -7,12 +7,12 @@
 ## 按分支读，不要预先全读
 
 - **写或改任何 `.scm`**（包定义、服务定义、build-system）→ `CODING_STANDARDS.md`：文件头、`description` 边界、许可证导入、build-system 选型、模块导出门禁、只能由工具改写的文件。
-- **新增、修改或评审一个包定义**，或动取源、解包、wrapper、lint、运行时验证 → `.agents/skills/pack-guix/SKILL.md` 走它的 runbook；通道特有的坑查 `references/jeans-conventions.md`。命名（`-bin` 决策）、input label 规范、properties 写法都在那里，本文不重复。
+- **新增、修改或评审一个包定义**，或动取源、解包、wrapper、lint、运行时验证 → `.agents/skills/pack-guix/SKILL.md` 走它的 runbook；通道特有的坑按主题查 `references/conventions-*.md`。命名（`-bin` 决策）、input label 规范、properties 写法都在那里，本文不重复。
 - **版本、hash、自动更新、CI**——"这个包为什么不动""它现在该是哪个版本""updater 报错"、或要改 `scripts/check-updates/` 与 `.github/workflows/auto-update.yml` → `.agents/skills/auto-update/SKILL.md`。
 
 ## 命令
 
-任务运行器是 [BLUE](https://codeberg.org/lapislazuli/blue)，定义在 `blueprint.scm`；`blue help` 列出命令，`blue help <命令>` 看单条细节。以下均在仓库根目录执行。
+任务运行器是 [BLUE](https://codeberg.org/lapislazuli/blue)，定义在 `blueprint.scm`；`blue help` 列出命令，`blue help <命令>` 看单条细节。旧文档与旧会话里的 `maak` 命令已不存在，`blue` 是 drop-in 替代。以下均在仓库根目录执行。
 
 | 命令                                 | 作用                                                               |
 | ------------------------------------ | ------------------------------------------------------------------ |
@@ -22,11 +22,17 @@
 | `blue gen-docs`                      | 由包定义重生成 `docs/packages.md`                                  |
 | `blue check-paths`                   | 静态检查包名（`-bin` 等记号）是否渗入安装路径                      |
 
-包定义新增、改名、改 `synopsis` 或 `description` 后跑一次 `blue gen-docs`，让文档与代码不漂移。
+包定义新增、改名、改 `synopsis` 或 `description` 时，`docs/packages.md` 必须同 commit 更新：`blue gen-docs` 重生成，`.git/hooks/pre-commit` 会拦住漂移。
 
 ## 提交
 
-`<type>(<scope>): <简短描述>`（Conventional Commits），scope 取值与 BREAKING CHANGE 细则见 `~/.config/git/gitmessage`。自动更新 CI 自己发 `feat(packages): auto package update YYYY-MM-DD`，`git log` 里见到这条是 CI 的改动，不是你写的。
+`<type>(<scope>): <简短描述>`（Conventional Commits 通用格式见 `~/.config/git/gitmessage`），本仓库细则：
+
+- type：`feat`（新包/新功能）、`fix`、`update`（版本/依赖升级）、`refactor`、`docs`、`chore`；旧大写前缀映射 `FIX:→fix`、`ADD:`/`FEATURE:→feat`、`UPDATE:→update`、`MIGRATE:→refactor`、`DOC:→docs`。
+- scope：文件类或模块（如 `docs/packages.md`、`modules/jeans/packages/ghostel.scm`）；description 祈使句、小写、无句号。
+- body 按需取五段：`问题：`/`根因：`/`修复：`/`验证：`/`附注：`；footer：`Refs #N` / `Closes #N` / `BREAKING CHANGE:`。
+- 多行 body 用 heredoc 走 `git commit -F`（中文标点会踩 `git commit -m` 的 shell 转义）；不加 `Generated with Crush` trailer（本仓库非 Crush 管理）；作者只有 `ShineBreaker`（本地）与 `jeans workflow bot`（CI），`git config user.{name,email}` 已配好不要动。
+- 自动更新 CI 自己发 `feat(packages): auto package update YYYY-MM-DD`，`git log` 里见到这条是 CI 的改动，不是你写的。
 
 ## 签名与认证
 

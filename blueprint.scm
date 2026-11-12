@@ -257,7 +257,7 @@ rust-crates.scm 只含 crate-source 定义，不是包，故不在扫描之列�
 ;; `-bin` 后缀是本通道的记号，上游软件不认识它。把包名写进 bin/、lib/、
 ;; libexec/ 目录名或 .desktop 文件名，构建期一切正常、运行期静默失效
 ;; （资源找不到、配置写到新目录）。这条命令做静态扫描，退出码非 0，
-;; 可直接接入 CI。规则与实证见 pack-guix skill 的 jeans-conventions.md。
+;; 可直接接入 CI。规则与实证见 pack-guix skill 的 references/conventions-*.md。
 
 (define-command (check-paths-command arguments)
   ((invoke "check-paths")

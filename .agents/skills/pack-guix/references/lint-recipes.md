@@ -2,8 +2,8 @@
 
 Scope: concrete lint warnings observed in `~/Projects/Config/jeans` during
 cron auto-fix sessions (especially the `jeans-issue-fixer` cron job), with
-the exact patch hunks and re-check commands. Pairs with
-`jeans-channel-workflow` §3.
+the exact patch hunks and re-check commands.
+原 `jeans-channel-workflow` §3（已撤），2026-11-12 迁入本目录。
 
 Authoritative baseline: Guix `9e068cc03bfacbbcd199f3618fcf360df3f368e0`.
 Re-verify `guix lint -l` on the host before trusting these recipes — checker
@@ -226,3 +226,67 @@ These recipes were extracted from a real cron auto-fix session that touched
 achieved lint green on all three before being deleted from the working
 tree by the user. The 5-step verification chain (repl / lint / derivation
 / byte-diff / git diff self-check) was the working pattern.
+
+## 3. Lint + verification
+
+`guix lint -L modules <pkg>` is mandatory after any package modification per AGENTS.md. The repo's auto-update CI does NOT run lint — it only runs `guix build`. So lint regressions sneak in via auto-updates; spot-check lint on any package that appears in `report.json` with status `updated` before merging.
+
+### 3.1 `guix lint` checker names — Guix 9e068cc baseline
+
+The single combined `inputs` checker from older Guix was **split into 4** in 9e068cc. When debugging lint invocation failures, run `guix lint -l` once on the host to confirm the current name set; this list drifts between Guix commits. As of Guix `9e068cc03bfacbbcd199f3618fcf360df3f368e0`:
+
+- `wrapper-inputs` — flags packages using `wrap-program` but missing `bash-minimal` in `inputs`. **Common in -bin packages** that do `wrap-program ... LD_LIBRARY_PATH prefix ...` after patchelf. (This was rolled into the old `inputs` checker; treat "wrapper-inputs" as the authoritative name now.)
+- `input-labels` — label must match the package's actual `name` field. Use quasiquote alist `("foo:lib" ,foo "lib")`, not `(list foo `(,foo "lib"))` (the modern form generates bare `"foo"` label and trips lint). AGENTS.md has the full table.
+- `inputs-should-be-minimal` — suggests `coreutils` → `coreutils-minimal`, etc. Usually **a false positive** for -bin packages that need full GNU coreutils at install time (cp / install / find). Don't blindly apply.
+- `inputs-should-be-native` — only relevant for `native-inputs`. Less common.
+- `description` — first-sentence-validity + **"description should end with a period"** (sentence-terminator check). Trailing `(revert guix patch)` and similar parentheticals without a final period trip this; fix is to append a final English sentence ending in `.`.
+- `formatting` — line-length and formatting hygiene. Long `(substitute* "..." "..."  "..."` patterns with embedded `\n` legitimately exceed 89 chars; treat as unfixable noise.
+- `source-unstable-tarball` / `source-file-name` — flags `archive/refs/tags/v<X>.tar.gz` from GitHub. Often a false positive for jeans since the CI auto-update script depends on the GitHub archive tarball URL format. Don't mask with `file-name` override without checking §1.1 first.
+- `patch-file-names` / `patch-headers` — flags `Foo.patch` style. Cosmetic only.
+
+**Cron rule of thumb:** when picking packages to lint-sweep during auto-fix, pick 1 representative from each category that lint complains about; the **wrapper-inputs** class is the highest-impact silent failure (introduced by any auto-update that adds `wrap-program` but forgets `bash-minimal`).
+
+### 3.2 Text-level paren delta is a false signal, not a real mismatch
+
+If you `git diff` or byte-count `(` vs `)` on a `.scm` file and get a non-zero delta, **do not panic**. The delta almost always comes from `(`, `)` characters inside string literals — URLs (`https://...`), `(revert guix patch)`, `substitute*` regex patterns (`\\(`), or `local-file` paths. Verify the real signal via:
+
+1. `(use-modules (jeans))` in a fresh `guix repl -L modules /dev/stdin` — should print your sentinel string.
+2. `guix build -L modules -e '(@ (jeans packages <file>) <pkg>)' --no-grafts` — must resolve to a derivation without throwing.
+3. `guix lint -n -L modules <pkg>` — for the specific class of warning you changed.
+
+All three green = real verification. The byte-delta alone is meaningless.
+
+反过来，当 REPL 报 `Syntax error` 或 `package: missing field initializers (synopsis description license home-page)` 时，那是**真的**括号错了——后者特指多了一个 `)` 提前闭合 `package` 表单，往 `inputs` / `rpath` 列表插行时数错尾部括号就会触发（列表收尾的 `)` 和表单收尾的 `)` 是两个）。此时 `guix build -L modules <pkg>` 只会报 `未绑定变量` / `未知软件包`（模块加载失败 → 符号找不到），所以**报"未知软件包"时先跑一次 `guix repl -L modules` 拿真实错误**，别照着 §5.1 的 re-export 缺失去改 `%public-modules`。
+
+### 3.3 Common lint-fix recipes (proven recipes)
+
+Full transcripts (input/output, the exact patch hunks, and re-check commands) live in `references/lint-recipes.md`. Canonical classes:
+
+- **Wrap-program + missing bash-minimal** → add one line to `inputs` after `at-spi2-core` (alphabetical insert), `("bash-minimal" ,bash-minimal)`. Re-run `guix lint -c wrapper-inputs -L modules <pkg>` to confirm.
+- **Description trailing-period** → two valid fixes: add `.` at end of last quoted string in `(description "...")`; or append `.<sentence>.` after a trailing parenthetical.
+- **coreutils → coreutils-minimal** → DON'T apply for binary wrappers; verify with `man <pkg>` what install-time tools are needed before subsituting.
+
+### 3.4 Auto-fix session template
+
+When cron auto-fix runs lint sweep, follow this exact 5-step flow:
+
+```bash
+# 1. Pull + status
+git -C ~/Projects/Config/jeans pull --ff-only
+
+# 2. Module load smoke
+guix repl -L modules /dev/stdin <<< '(use-modules (jeans)) (display "OK\n")'
+
+# 3. Lint 3-5 representative packages per category
+guix lint -n -L modules <representative-1> <representative-2> ...
+
+# 4. Apply minimal patches via `patch` tool with surrounding context
+#    - keep alphabetical input order
+#    - match §3.3 recipes
+
+# 5. Re-run lint targeted at patched packages only
+guix lint -n -L modules <pkg>  # each one you touched
+```
+
+Critical: **do not auto-push or auto-commit** GPG-signed fixes for jeans. The cron only generates patches; user owns the GPG signature + push. This matches the existing §4.1 commit-message guidance.
+

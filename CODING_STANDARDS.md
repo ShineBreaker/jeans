@@ -24,13 +24,13 @@
 
 留在 `description` 里的只有两类：**面向用户的使用须知**（运行时数据目录、首次启动的初始化步骤）和**一句** prebuilt 来源声明。
 
-可泛化到其他包的打包经验凝练进 `.agents/skills/pack-guix/references/jeans-conventions.md`，不要在包定义和本文各留一份。
+可泛化到其他包的打包经验凝练进 `.agents/skills/pack-guix/references/conventions-*.md`（按主题分文件），不要在包定义和本文各留一份。
 
 ## 包名是记号，不渗入路径
 
 `-bin`（预编译）、`-next`（追 master 版本线）、`-se`（跟踪我们自己的 fork）等通道记号属于 Guix 包名命名空间。`$out` 下的 `bin/` 程序名、`lib/`、`libexec/`、`share/` 目录名，`.desktop` 文件名与 `Icon=`，man / 补全文件名，wrapper 的 `exec -a` 参数，以及程序会读写的用户配置目录，一律用上游原名。唯一例外是 Guix 自用的 `share/doc/<package-name>/`。
 
-判断标准：这个字符串会被上游程序读到吗？会 → 上游名。清单与实证见 `.agents/skills/pack-guix/references/jeans-conventions.md`「包名是本通道的记号，不渗入安装路径」；`blue check-paths` 做静态检查。
+判断标准：这个字符串会被上游程序读到吗？会 → 上游名。清单与实证见 `.agents/skills/pack-guix/references/conventions-naming.md`「包名是本通道的记号，不渗入安装路径」；`blue check-paths` 做静态检查。
 
 ## 许可证导入
 
@@ -68,4 +68,4 @@
 
 ## 通道
 
-`nonguix` 是 `.guix-channel` 里声明的硬依赖。`(nongnu ...)` 模块找不到时修 channel（`guix pull`），不要改包定义绕过。FSL 等限制性许可证走 nonguix `nonfree` 的判定见 `jeans-conventions.md`「命名规范」。
+`nonguix` 是 `.guix-channel` 里声明的硬依赖。`(nongnu ...)` 模块找不到时修 channel（`guix pull`），不要改包定义绕过。FSL 等限制性许可证走 nonguix `nonfree` 的判定见 `conventions-naming.md`「命名规范」。

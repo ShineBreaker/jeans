@@ -1,0 +1,8 @@
+{
+  "_comment": "项目级 gate（jeans 专属）。由 gate-core/pi-gate 从 cwd 向上遍历合并，只能在全局规则之上加码。",
+  "path_hints": {
+    "modules/": "改 .scm 前先读 CODING_STANDARDS.md：文件头、description 边界、许可证、build-system 选型、模块导出门禁、受管文件都在那里。打包约定按主题在 .agents/skills/pack-guix/references/conventions-*.md。",
+    "blueprint.scm": "blueprint.scm 是 BLUE 命令定义——改它等价于改任务运行器入口，先读 CODING_STANDARDS.md 的文件头与函数规范。",
+    "scripts/gen-docs.scm": "gen-docs 是 docs/packages.md 的生成器，同目录 pre-commit hook 会用它的输出对账，改完跑 blue gen-docs 验证。"
+  }
+}

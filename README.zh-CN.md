@@ -48,17 +48,17 @@
 
 ## 开发
 
-本仓库包含 `maak.scm` 用于常见任务：
+本仓库使用 [BLUE](https://codeberg.org/lapislazuli/blue)（`blueprint.scm`）处理常见任务：
 
 ```bash
 # 检查包更新
-maak upgrade
+blue upgrade
 
 # 构建包
-maak build librewolf-nongnu
+blue build librewolf-nongnu
 
 # 导入 Rust crate 源
-maak import-crate <crate-name>[@version]
+blue import-crate <crate-name>[@version]
 ```
 
 ## 许可证

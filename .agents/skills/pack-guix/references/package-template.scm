@@ -65,7 +65,7 @@
     (synopsis "%short-description")
     (description "%Long description with complete sentences.")
     ;; upstream-name 几乎对所有 -bin 包必需：github updater 用它匹配 release
-    ;; 资产文件名前缀。值 = 文件名里 version 之前的部分。详见 jeans-conventions.md。
+    ;; 资产文件名前缀。值 = 文件名里 version 之前的部分。详见 conventions-refresh.md。
     ;; 多个 property 用 alist 合并：`((upstream-name . "foo") (release-tag-prefix . "^v"))
     (properties `((upstream-name . "%upstream-repo-name%")))
     (license license:expat)

@@ -1,6 +1,6 @@
 ---
 name: pack-guix
-description: "Use when creating, updating, or reviewing a GNU Guix package in this channel, especially precompiled binaries, .deb/AppImage/tarball extraction, ELF/FHS compatibility, self-locating or bun-compiled binaries, package naming, hashes, wrappers, lint, build verification, auto-update properties for guix refresh, or Rust cargo dependency updates via import-crate."
+description: "Use when creating, updating, or reviewing a Guix package in this channel: naming (-bin/-se/-next), license evidence, hashes, wrappers, precompiled binaries (.deb/AppImage/ELF/FHS), cargo inputs via import-crate, lint, build verification, refresh properties. Not for version-bump mechanics or CI failures — that's auto-update."
 ---
 
 # Pack-Guix
@@ -14,9 +14,8 @@ description: "Use when creating, updating, or reviewing a GNU Guix package in th
 ### 0. Preflight
 
 1. 读取仓库根目录的 CODING_STANDARDS.md 和目标分类文件，先理解本地约定（文件头、`description` 边界、build-system 选型、模块导出门禁、受管文件都在那里）。
-2. 读 jeans-conventions.md 的「自动更新 properties」章节——新包必须根据上游情况设置 `upstream-name`/`release-tag-prefix` 等属性，否则无法被 guix refresh 自动更新。
-3. 按仓库要求先执行 git pull，再执行 git status --short；保留用户已有修改。
-4. 创建唯一临时目录，并把下载、解压、clone 和 hash 中间物都放进去：
+2. 读 `references/conventions-refresh.md`——新包必须根据上游情况设置 `upstream-name`/`release-tag-prefix` 等 properties，否则无法被 guix refresh 自动更新。
+3. 创建唯一临时目录，并把下载、解压、clone 和 hash 中间物都放进去：
 
 ```bash
 PKG_NAME="package"
@@ -24,7 +23,7 @@ WORK_DIR="$(mktemp -d "/tmp/pack-guix-$PKG_NAME-XXXXXX")"
 trap 'rm -rf "$WORK_DIR"' EXIT
 ```
 
-4. 搜索已有定义、同名包、旧包名和 jeans.scm 导出列表，选择现有分类；只有没有合适归属时才新建文件。
+4. 搜索已有定义、同名包、旧包名和 `modules/jeans.scm` 的 `%public-modules` 导出列表，选择现有分类；只有没有合适归属时才新建文件。
 
 完成标准：知道要修改的模块、包名候选、上游仓库、release 资产和验证命令；没有把临时文件写进仓库或共享固定目录。
 
@@ -42,7 +41,7 @@ trap 'rm -rf "$WORK_DIR"' EXIT
 
 记录证据：许可证文件 URL、源码仓库 URL、使用的 release 资产 URL。-bin 是软件许可状态和本次打包来源的结论，不是文件格式的别名。
 
-**包名是本通道的记号，不渗入安装路径**：`-bin`（预编译）与 `-next`（追 master 的版本线）都只是 Guix 包名记号，上游软件不认识它。凡是上游会读取或显示的标识——`bin/` 程序名、`lib/`、`libexec/`、`share/` 目录名、`.desktop` 文件名与 `Icon=`、man / 补全文件名、wrapper 的 `exec -a <argv0>`、程序自己的用户配置目录——一律用上游原名。唯一例外是 Guix 自用的 `share/doc/<package-name>/`。写完用 `blue check-paths` 扫一遍。
+**包名是记号，不渗入路径**：记号（`-bin`、`-next`）与上游可读标识的完整判定清单见 `references/conventions-naming.md`；写完 `blue check-paths` 自查。
 
 完成标准：define-public 名称、name 字段、docs 名称、自动更新 properties 和测试命令全部一致；许可证与上游证据一致；已确认 release 资产文件名前缀（决定 upstream-name 的值）。
 
@@ -57,7 +56,7 @@ trap 'rm -rf "$WORK_DIR"' EXIT
 - AppImage：永远用 `7z x` 静态解压（`p7zip` 进 native-inputs），不要执行
   AppImage 自身的 `--appimage-extract`——那需要执行构建树内的二进制，CI 上
   一律 Permission denied。解压产物在顶层（无 `squashfs-root/` 前缀）；产物
-  结构、install-plan 符号链接陷阱与参照包见 jeans-conventions.md「AppImage
+  结构、install-plan 符号链接陷阱与参照包见 conventions-prebuilt.md「AppImage
   包」。解压后检查所有 ELF 和 .so；不要把 AppImage 自带更新器带进 Guix runtime。
 
 预编译产物至少执行：
@@ -122,16 +121,16 @@ fontconfig 变量的实际包名是 fontconfig-minimal，openjdk17 变量的实�
 - 静态 ELF（`patchelf --print-interpreter` 探测失败、无 .interp 段）：直接复制安装，不做 interpreter/RPATH 处理。
 - 能安全修改 ELF：patchelf --set-interpreter + RPATH，遍历所有实际 ELF，不只 patch 主入口。
 - 不能修改或需要保持自定位：安装到 libexec/<pkg>，用 Guix ld-linux wrapper，并传 --argv0 和 --library-path。
-- 自定位二进制（按 /proc/self/exe 或自身文件名找资源、自解包；bun --compile 产物已知属于此类）：patchelf 和 wrapper 都会破坏自定位——原样安装 + 系统级 nix-ld，或真名住 libexec + 手写 thin wrapper，见 jeans-conventions.md「自定位二进制」。
+- 自定位二进制（按 /proc/self/exe 或自身文件名找资源、自解包；bun --compile 产物已知属于此类）：patchelf 和 wrapper 都会破坏自定位——原样安装 + 系统级 nix-ld，或真名住 libexec + 手写 thin wrapper，见 conventions-prebuilt.md「自定位二进制」。
 - wrapper 中所有路径类环境变量使用 prefix/追加语义。手写 GTK wrapper 的 XDG_DATA_DIRS 必须保留原值；不要设置有害的单数 GDK_PIXBUF_MODULE_FILE。
 - shell wrapper 使用 store 中的 bash-minimal，不写宿主 /bin/sh 或 /usr/bin/env。
-- Electron 包删除会触发 electron-updater 的 resources/package-type；Wayland 支持复用 agent.scm 的 prefer-electron-wayland-phase（注入 flag）或 prefer-electron-wayland-hint-phase（argv 解析严格的上游只认 ELECTRON_OZONE_PLATFORM_HINT env），见 jeans-conventions.md「Electron 包的 Wayland/Ozone 参数」。
+- Electron 包删除会触发 electron-updater 的 resources/package-type；Wayland 支持复用 agent.scm 的 prefer-electron-wayland-phase（注入 flag）或 prefer-electron-wayland-hint-phase（argv 解析严格的上游只认 ELECTRON_OZONE_PLATFORM_HINT env），见 conventions-prebuilt.md「Electron 包的 Wayland/Ozone 参数」。
 
 完成标准：构建阶段不依赖网络更新、不写入 store 外的源码目录；wrapper、desktop 文件、资源和可写数据路径都指向正确位置；所有输入 label 可由 guix show 证明。
 
 ### 5. Load, build, and lint
 
-先做低成本检查，再做实际构建。`.scm` 加载失败时按括号症状定位：`missing field initializers` = 某个 package 提前闭合；`unexpected end of input` = 整体未闭合（详见 jeans-conventions.md「括号失衡的两类症状」）：
+先做低成本检查，再做实际构建。`.scm` 加载失败时按括号症状定位：`missing field initializers` = 某个 package 提前闭合；`unexpected end of input` = 整体未闭合（详见 conventions-misc.md「括号失衡的两类症状」）：
 
 ```bash
 guix package -L modules -A >/dev/null
@@ -170,7 +169,7 @@ synopsis,gnu-description <package-name>
 ### 7. Integrate and hand off
 
 1. 新包文件加入 modules/jeans.scm；不要手动编辑 rust-crates.scm。
-2. 根据包类型设置自动更新 properties（见 jeans-conventions.md「自动更新 properties」）：
+2. 根据包类型设置自动更新 properties（见 conventions-refresh.md「自动更新 properties」）：
    - **GitHub release 的 `-bin` 包**：几乎必需 `(upstream-name . "<repo-name>")`，否则 guix refresh 报 "no updater"。
    - **多 tag 系列 repo**：加 `(release-tag-prefix . "^<prefix>")`。
    - **跟踪预发布**：加 `(accept-pre-releases? . #t)`。
@@ -194,14 +193,25 @@ synopsis,gnu-description <package-name>
 - 不对自定位二进制（按 /proc/self/exe 或自身文件名定位资源；bun --compile 产物）用 patchelf 或 wrap-program；改用系统级 nix-ld，或真名住 libexec + 手写 thin wrapper。
 - 不把无仓库实证（file:line 或 commit）的单次经验写成普遍结论；写进本 skill 的条目注明实例来源，探索性结论标注"待实证"。
 - 不把网络故障、GUI 不可用或只完成 dry-run 写成构建/运行时成功。
-- 不把 `-bin` 后缀带进任何上游可读的标识：`bin/` 程序名、`lib/`、`libexec/`、`share/` 目录名、`.desktop` 文件名、`Icon=`、man / 补全文件名、`exec -a` 的 argv[0]。例外仅 `share/doc/<package-name>/`。
+- 不把 `-bin` 后缀带进上游可读的标识（清单见 `references/conventions-naming.md`）；例外仅 `share/doc/<package-name>/`。
 - 不提交缺少 `upstream-name` 的 GitHub release `-bin` 包；否则 guix refresh 会报 "no updater" 且包永远收不到自动更新。交付前必须用 `guix refresh` dry-run 确认 updater 识别。
 
 ## Channel references
 
 - 仓库级 Scheme 规则（文件头、`description` 边界、build-system 选型、模块导出门禁、受管文件）：../../../CODING_STANDARDS.md
 - 仓库约定与命令入口：../../../AGENTS.md
-- jeans 通道特定约定（命名、-bin 决策、自动更新 properties、input label、git-fetch 无 tag 结构、裸 ELF、trivial-build-system、XDG_DATA_DIRS 等）：references/jeans-conventions.md
+- 通道约定按主题分文件（原 jeans-conventions.md 已拆分）：
+  - 命名与 input label（`-bin`/`-se`/`-next` 决策、label 陷阱）：references/conventions-naming.md
+  - 自动更新 properties（upstream-name、预发布、兜底盲区）：references/conventions-refresh.md
+  - Rust/cargo 双文件与 merge 脚本：references/conventions-rust.md、references/rust-packaging-patterns.md
+  - Go 包（禁 vendor 捷径）：references/conventions-go.md
+  - CMake superbuild / vendored 依赖栈：references/conventions-cmake-superbuild.md
+  - 预编译二进制（AppImage/.deb/Electron/Tauri/patchelf/dlopen/systemd 单元）：references/conventions-prebuilt.md
+  - Emacs 包：references/conventions-emacs.md
+  - trivial / git-fetch 定 commit / 构建阶段 / 字体 / 服务 / 运行时验证：references/conventions-misc.md
+  - 2026-11-12 全通道审查实证：references/conventions-audit-20261112.md
+- lint 修复配方与 auto-fix 模板：references/lint-recipes.md
+- langpack / theme 资源合并模式：references/langpack-resource-merge-pattern.md
 - 通用 Guix 打包参考（包结构、构建系统、输入类型、阶段修改、最佳实践）：references/guix-reference.md
 - 自动更新层（refresh 白名单、Python 兜底、CI、state 文件）：../auto-update/SKILL.md
 - Guix package templates：references/package-template.scm

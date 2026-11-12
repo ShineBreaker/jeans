@@ -290,7 +290,7 @@ When upstream libreoffice bumps its version, the langpack wrapper must be update
    - `<shortver>` in deb file names (e.g. `libobasis25.3-zh-cn_*`) → new
    - `<shortver>` in `opt/libreoffice<shortver>/` extraction paths in builder → new
    - `base32` hash → recompute with `guix download <url>`
-4. `maak build libreoffice-langpack-zh-cn` to confirm.
+4. `blue build libreoffice-langpack-zh-cn` to confirm.
 5. `blue home` to deploy.
 
 If you used `(version (package-version libreoffice))` instead of hardcoded, only the URL, hash, and `<shortver>` constants need touching.
@@ -334,3 +334,11 @@ Need to add resources to a Guix package.
     └─ YES → Plain pack-guix pattern.
             (e.g. Android Studio plugins, standalone JVM apps)
 ```
+## 2.1 Wrapping an existing Guix package to add resources (langpack / theme / extension)
+
+A distinct pattern from §2: you're not packaging a new upstream; you're **(inherit <existing-package>)** + replacing source/build with `trivial-build-system` + `copy-recursively` + `union-build` to merge external resources (langpack .deb, theme archive, extension zip) into the existing package's store layout.
+
+Why a separate pattern: many GUI apps (LibreOffice / Firefox / Chromium / Thunderbird) hard-code resource paths in their bootstrap files (`fundamentalrc`, `omni.ja`, `chrome.manifest`) using `${ORIGIN}/..` or argv[0]-relative paths. **Profile-derivation's `union-build` cannot reach inside `<existing-pkg>/lib/<app>/` from a sibling package** — the only way to add resources is to wrap the existing package itself.
+
+Full recipe (background, .deb internals, package template, verification, upgrade checklist) lives in `references/langpack-resource-merge-pattern.md`. Do **not** attempt the "add langpack as a separate `propagated-input`" approach — confirmed empirically that LibreOffice 25.x doesn't see resources added via `XDG_DATA_DIRS` for paths inside `lib/<app>/`.
+

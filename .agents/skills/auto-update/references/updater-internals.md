@@ -1,6 +1,6 @@
 # updater 内部导航
 
-薄入口 `scripts/check-updates/update_versions.py` 只剩 `main()`（分支骨架）+ 3 个嵌套闭包；其余实现按域拆进 `scripts/check-updates/common/`（13 模块）与 `scripts/check-updates/handlers/`（注册表 + 7 处理器），回归测试在 `scripts/check-updates/tests/`。本文件只做**导航事实**：入口顺序、分发表、版本号与哈希算法、以及"失效信号 → 处置"。语义重复的部分不复述——properties 规则见 `../../pack-guix/references/jeans-conventions.md`，`config.json` 各键语义见它自己的 `notes`，CI 步骤见工作流注释。
+薄入口 `scripts/check-updates/update_versions.py` 只剩 `main()`（分支骨架）+ 3 个嵌套闭包；其余实现按域拆进 `scripts/check-updates/common/`（13 模块）与 `scripts/check-updates/handlers/`（注册表 + 7 处理器），回归测试在 `scripts/check-updates/tests/`。本文件只做**导航事实**：入口顺序、分发表、版本号与哈希算法、以及"失效信号 → 处置"。语义重复的部分不复述——properties 规则见 `../../pack-guix/references/conventions-refresh.md`，`config.json` 各键语义见它自己的 `notes`，CI 步骤见工作流注释。
 
 下文引用一律用 `模块:符号` 定位，不要信死行号。
 
@@ -49,7 +49,7 @@
 - `common/versions.py:normalize_tag_to_version` —— 有 prefix 就剥 prefix；没有则依次尝试 npm scoped tag（`@scope/name@1.2.3` 取最后一个 `@` 之后）、最后只去前导 `v`。
 - `common/versions.py:format_commit_version` —— 保留原版本号前缀只替换日期段：`0-unstable-2026-03-01` + `2026-03-16` → `0-unstable-2026-03-16`；无匹配前缀时直接返回新日期。
 
-**无 tag 固定 commit 包**用 `let` + `git-version` 结构（见 `jeans-conventions.md`「上游无 tag」），脚本更新 let 绑定的 commit 并自增 revision，版本号形如 `base-revision.commit前7位`（`common/changes.py:build_let_git_version_change`）。
+**无 tag 固定 commit 包**用 `let` + `git-version` 结构（见 `conventions-misc.md`「上游无 tag」），脚本更新 let 绑定的 commit 并自增 revision，版本号形如 `base-revision.commit前7位`（`common/changes.py:build_let_git_version_change`）。
 
 ## `compare_versions` 的语义
 

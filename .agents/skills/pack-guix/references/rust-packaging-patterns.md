@@ -3,7 +3,7 @@
 Patterns from packaging Rust crates that use compile-time environment
 variables (`option_env!()`, `env!()`) for configuration, and the
 cargo-build-system input-label resolution mechanics. Pairs with
-`jeans-channel-workflow` §2.
+原 `jeans-channel-workflow` §2，2026-11-12 迁入本目录。
 
 ---
 

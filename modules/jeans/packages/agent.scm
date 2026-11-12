@@ -1162,7 +1162,7 @@ without friction.")
 ;;; self-extraction message.  Rewriting the interpreter/RPATH with patchelf
 ;;; would shift the ELF layout and corrupt that section, and a Guix ld-linux
 ;;; wrapper would redirect /proc/self/exe away from the real binary — both are
-;;; forbidden for this category (see jeans-conventions.md "自定位二进制").  The
+;;; forbidden for this category (see conventions-prebuilt.md "自定位二进制").  The
 ;;; binary is therefore installed unpatched and runs through the system-wide
 ;;; nix-ld-service-type, whose default library list already covers the only
 ;;; NEEDED entries (`readelf -d`: libc.so.6, ld-linux-x86-64.so.2,
@@ -1228,7 +1228,7 @@ release and needs the @code{nix-ld} system service to run.")
 ;;; Upstream builds the release asset with `bun build --compile`:
 ;;; readelf -S shows the self-locating `.bun` / `.bun_builtins` sections,
 ;;; so patchelf and ld-linux wrappers are both forbidden here
-;;; (jeans-conventions.md "自定位二进制").  Installed unpatched; runs
+;;; (conventions-prebuilt.md "自定位二进制").  Installed unpatched; runs
 ;;; through the system-wide nix-ld-service-type, whose default library
 ;;; list already covers the only NEEDED entries (readelf -d: libc.so.6,
 ;;; ld-linux-x86-64.so.2, libpthread.so.0, libdl.so.2, libm.so.6 -- all

@@ -1,6 +1,6 @@
 ---
 name: auto-update
-description: "Use when checking whether a package in this channel has a newer upstream version, when a release was missed (a package never moves, or a CI run produced no commit), when deciding how a new or renamed package stays current (guix refresh 白名单、upstream-name 等 properties、config.json 的 skip/tag_prefix/check_pre_release/stale_watch), or when touching scripts/check-updates/、.github/workflows/auto-update.yml、font-misans-state.json / stale-state.json。架构两层：guix refresh 主力，Python 脚本兜底 refresh 的盲区。"
+description: "Use when checking a channel package's latest upstream version, a release was missed (package never moves / CI produced no commit), deciding how a package stays current (refresh 白名单、properties、skip/stale_watch/config.json), triaging CI failures or cron issues, or touching scripts/check-updates/ 与 .github/workflows/auto-update.yml。Not for writing package definitions — that's pack-guix."
 ---
 
 # Auto-Update
@@ -11,7 +11,7 @@ description: "Use when checking whether a package in this channel has a newer up
 
 ## 两层
 
-**refresh 主力**：GitHub release 包（靠 `upstream-name` 匹配资产文件名前缀）与 git-fetch 有 tag 包，由 `guix refresh` 改写 version + base32。properties 怎么写见 `../pack-guix/references/jeans-conventions.md`「自动更新 properties」——不在此复述。
+**refresh 主力**：GitHub release 包（靠 `upstream-name` 匹配资产文件名前缀）与 git-fetch 有 tag 包，由 `guix refresh` 改写 version + base32。properties 怎么写见 `../pack-guix/references/conventions-refresh.md`——不在此复述。
 
 **Python 兜底**：非 GitHub 源（zcode 的 z.ai CDN、amber-pm 的 gitee、font-misans 的 ETag）、refresh 报 `no updater` 的边缘 case（reasonix-studio-bin、cua-driver-bin）、以及 stale 监控。逐包处理器与通用逻辑见 `references/updater-internals.md`；`config.json` 每个键的语义写在它自己的 `notes` 字段里。
 
@@ -31,7 +31,7 @@ CI 的 refresh 步骤在 `.github/workflows/auto-update.yml` 里**逐个列出�
 GUIX_GITHUB_TOKEN="$(gh auth token)" guix refresh -L "$PWD/modules" -L /tmp/nonguix <package>
 # "已是最新" / "would be upgraded" → 白名单与 properties 都生效
 # "no updater"                → 先查 upstream-name 是否等于资产文件名前缀，
-#                                再查 jeans-conventions.md 的静默盲区清单
+#                                再查 conventions-refresh.md 的静默盲区清单
 ```
 
 `GUIX_GITHUB_TOKEN` 是 guix refresh 读 GitHub API 的专属变量名，不是 `GITHUB_TOKEN`。
@@ -86,7 +86,11 @@ blue upgrade   # = guix shell --manifest=scripts/check-updates/manifest.scm \
 
 ## Channel references
 
-- 打包侧 conventions（命名、properties、input label、git-fetch 无 tag 结构）：`../pack-guix/SKILL.md` 与 `../pack-guix/references/jeans-conventions.md`
+- 打包侧 conventions（命名、properties、input label、git-fetch 无 tag 结构）：`../pack-guix/SKILL.md` 与 `../pack-guix/references/conventions-*.md`（按主题拆分）
 - updater 内部（SPECIAL_UPDATERS 分发、通用逻辑、版本号与哈希算法）：`references/updater-internals.md`
+- CI 失败判定 / issue 协议 / masked failures：`references/ci-failure-triage.md`、`references/auto-update-ci-failures.md`
+- 运维陷阱（rate limit、`blue upgrade` 旁路、手动 hash、refresh dry-run、症状索引）：`references/updater-operations.md`
+- cron 运维（边界、working-tree 陷阱、GPG 死结、fixer prompt 模板）：`references/cron-operations.md`、`references/cron-issue-fixer-prompt-template.md`
+- git-fetch 沙箱修复全程：`references/git-fetch-sandbox-fix-journey.md`；ghostel↔ghostty zig 连锁：`references/ghostel-ghostty-zig-version-chain.md`
 - CI 步骤与其中的环境陷阱（`/etc/gitconfig`、userns sysctl、Guix 安装快照、GPG、Codeberg 镜像）：`.github/workflows/auto-update.yml` 各 step 的注释本身就是真相源
 - 配置键语义：`scripts/check-updates/config.json` 的 `notes`

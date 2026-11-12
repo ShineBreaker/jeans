@@ -42,17 +42,17 @@ Mirror: `https://codeberg.org/BrokenShine/jeans.git`
 
 ## Development
 
-This repository includes a `maak.scm` for common tasks:
+This repository uses [BLUE](https://codeberg.org/lapislazuli/blue) (`blueprint.scm`) for common tasks:
 
 ```bash
 # Check for package updates
-maak upgrade
+blue upgrade
 
 # Build a package
-maak build librewolf-nongnu
+blue build librewolf-nongnu
 
 # Import Rust crate sources
-maak import-crate <crate-name>[@version]
+blue import-crate <crate-name>[@version]
 ```
 
 ## License
