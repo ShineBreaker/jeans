@@ -35,6 +35,13 @@ def discover_release_update(
     tag_exclude: Optional[str] = None,
     resolve_peel: bool = False,
 ) -> tuple[str, Optional[ReleaseCandidate], str]:
+    if not current_version:
+        # version 字段是 (package-version imgui) 这类非字面量：脚本
+        # 无法比较、也无法回写。直接跳过——否则 compare_versions 拿
+        # None 调 lstrip 会让整个 sweep 崩在半路（imgui-docking 实证，
+        # 未捕获异常以 exit 1 退出还被 CI 当成「有更新」放行）。
+        print(f"     ⏭️  当前版本非字面量，无法比较，跳过")
+        return ("skipped", None, "当前版本非字面量")
     try:
         latest_release = with_retry(
             get_latest_github_release,

@@ -413,6 +413,9 @@ def main():
                     if outcome == "failed":
                         finish_shared("failed", package["version"], err)
                         continue
+                    if outcome == "skipped":
+                        finish_shared("skipped", package["version"], err)
+                        continue
                     if outcome != "candidate" or cand is None:
                         finish_shared("uptodate", package["version"])
                         continue
@@ -463,6 +466,12 @@ def main():
                         add_retries(_fn)
                     if outcome == "failed":
                         package_report["status"] = "failed"
+                        package_report["error"] = err
+                        finalize_package_report()
+                        continue
+                    if outcome == "skipped":
+                        print(f"     ⏭️  {err}")
+                        package_report["status"] = "skipped"
                         package_report["error"] = err
                         finalize_package_report()
                         continue

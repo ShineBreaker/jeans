@@ -61,12 +61,26 @@ def package_tag_prefix(package: dict[str, Any], configured_prefixes: dict[str, s
 
 
 def compare_versions(current_version: str, new_version: str) -> bool:
-    """比较两个版本，返回是否需要更新"""
+    """比较两个版本，返回是否需要更新。
+
+    两边都能解析成点分数字元组时按数值比较，新版本严格更大才更新——
+    GitHub /releases/latest 指针可能滞后于已发布的新 tag（pnpm v12.20.0
+    已发布、latest 仍指 v12.18.0，2026-11-12 实证），「不等即更新」会把
+    guix refresh 刚写的新版本静默降回去。解析不了（日期版、带字母尾缀、
+    带 -suffix）保持原有的不等即更新语义。
+    """
     # 移除版本号前面的'v'前缀
     current = current_version.lstrip("v")
     new = new_version.lstrip("v")
 
-    # 简单的字符串比较（对于语义化版本，可以改进）
+    def numeric_tuple(v: str):
+        if not re.fullmatch(r"\d+(\.\d+)*", v):
+            return None
+        return tuple(int(x) for x in v.split("."))
+
+    cur_t, new_t = numeric_tuple(current), numeric_tuple(new)
+    if cur_t is not None and new_t is not None:
+        return new_t > cur_t
     return current != new
 
 
