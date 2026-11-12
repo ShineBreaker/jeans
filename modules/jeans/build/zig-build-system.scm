@@ -1,6 +1,9 @@
+;;; SPDX-FileCopyrightText: 2023 Ekaitz Zarraga <ekaitz@elenq.tech>
+;;; SPDX-FileCopyrightText: 2024 Hilton Chain <hako@ultrarare.space>
+;;; SPDX-FileCopyrightText: 2026 Raven Hallsby <raven@hallsby.com>
 ;;; SPDX-FileCopyrightText: 2026 BrokenShine <xchai404@gmail.com>
 ;;;
-;;; SPDX-License-Identifier: GPL-3.0-only
+;;; SPDX-License-Identifier: GPL-3.0-or-later
 ;;;
 ;;; Copied from GNU Guix's (guix build zig-build-system) with the changes from
 ;;; <https://codeberg.org/guix/guix/pulls/4087> applied: zig-extra-inputs

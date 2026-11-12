@@ -1,6 +1,7 @@
+;;; SPDX-FileCopyrightText: 2026 Raven Hallsby <raven@hallsby.com>
 ;;; SPDX-FileCopyrightText: 2026 BrokenShine <xchai404@gmail.com>
 ;;;
-;;; SPDX-License-Identifier: GPL-3.0-only
+;;; SPDX-License-Identifier: GPL-3.0-or-later
 
 ;;; Terminal emulators and the helper packages they need, ported from GNU Guix
 ;;; PR 4087 <https://codeberg.org/guix/guix/pulls/4087>.

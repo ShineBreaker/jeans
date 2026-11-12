@@ -16,6 +16,8 @@
 ;;; SPDX-License-Identifier: GPL-3.0-only
 ```
 
+复制或移植上游代码（Guix 自身、其他 channel、上游 PR）时，SPDX 头列全版权持有者，每人一行；`SPDX-License-Identifier` 照抄上游的值，不要收窄成 `-only`。来源（PR 链接、原模块名）写在 SPDX 块下方的注释里。
+
 ## `description` 只描述软件本身
 
 `description` 写软件是什么。打包过程、wrapper 机制、安装布局写成包定义前的 `;;;` 注释，不进 `description`。

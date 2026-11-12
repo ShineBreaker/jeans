@@ -1,6 +1,7 @@
+;;; SPDX-FileCopyrightText: 2026 gr1n <gr1n@noreply.codeberg.org>
 ;;; SPDX-FileCopyrightText: 2026 BrokenShine <xchai404@gmail.com>
 ;;;
-;;; SPDX-License-Identifier: GPL-3.0-only
+;;; SPDX-License-Identifier: GPL-3.0-or-later
 
 (define-module (jeans packages tools)
   #:use-module (ice-9 match)
@@ -1373,11 +1374,13 @@ with git and your code.")
     (license license:expat)))
 
 ;;; Zellij: terminal workspace / terminal multiplexer, built from the
-;;; v0.44.3 tag.  Upstream's "vendored_curl" default feature would compile
-;;; the bundled curl and OpenSSL sources; the snippet strips it so isahc
-;;; links Guix's libcurl, and the build phase points openssl-sys/curl-sys at
-;;; the system libraries.  Release builds embed the prebuilt default plugins
-;;; from zellij-utils/assets/plugins/, so no wasm32 target is needed.
+;;; v0.44.3 tag, ported from GNU Guix PR 6878
+;;; <https://codeberg.org/guix/guix/pulls/6878>.  Upstream's "vendored_curl"
+;;; default feature would compile the bundled curl and OpenSSL sources; the
+;;; snippet strips it so isahc links Guix's libcurl, and the build phase
+;;; points openssl-sys/curl-sys at the system libraries.  Release builds
+;;; embed the prebuilt default plugins from zellij-utils/assets/plugins/, so
+;;; no wasm32 target is needed.
 (define-public zellij
   (package
     (name "zellij")
