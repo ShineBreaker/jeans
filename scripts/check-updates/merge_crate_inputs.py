@@ -28,7 +28,7 @@ Usage:
 
 <package>        the lookup-cargo-inputs key (e.g. git-credential-keepassxc)
 <rust-crates.scm> target file (managed by guix import; this script edits in place)
-<import.scm>     output of `guix import crate --lockfile ...` — a flat list of
+<import.scm>     output of `guix import crate --lockfile=<file> <pkg>` — a flat list of
                  `(define rust-... (crate-source ...))` blocks.  The set of
                  defines IS the new input list (every transitive dep appears).
 

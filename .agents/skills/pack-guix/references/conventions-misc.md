@@ -195,7 +195,7 @@ error: unable to load package manifest '...deps/ghostty/build.zig.zon': NotDir
 
 Standard flow lives in `AGENTS.md` (see `blue build`, `blue upgrade`, `blue import-crate`). Recurring pitfalls:
 
-- **`rust-crates.scm` is auto-managed.** Never edit by hand. `guix import crate -f ./Cargo.lock` rewrites it whole. Manual edits cause `cargo build --offline` failures later.
+- **`rust-crates.scm` is auto-managed.** Never edit by hand. `guix import crate -f ./Cargo.lock <pkg>` rewrites it whole (the package name is required, and `-f/--lockfile` must be attached with `=` for the long form). Manual edits cause `cargo build --offline` failures later.
 - **`-bin` suffix packages use one of three templates** depending on artifact shape (AppImage / archive / bare ELF). Pattern details + the "bare ELF still links libgcc_s via dlopen'd .node addon" trap are in AGENTS.md "预编译二进制包" — re-read that section before touching a -bin package.
 - **Rust packages with `option_env!()` compile-time config** (e.g. nix-ld's `DEFAULT_NIX_LD`) bake NixOS paths into the binary if the env var isn't set at build time, causing runtime `Posix(2)`/ENOENT panics. Diagnosis recipe + fix pattern + cargo-build-system input-label mechanics (`"glibc"` vs `"libc"` dual-label gotcha) + two-step verification when guix build is network-blocked: `references/rust-packaging-patterns.md`.
 - **Electron 预编译 `.deb`（data.tar.zst 形态）四个坑**：

@@ -35,9 +35,13 @@ cargo 包升级时，`guix refresh` 只能改写包文件里的 `version`/`hash`
    WORK="$(mktemp -d /tmp/<pkg>-XXXXXX)"
    guix download "$(crate-uri '<pkg>' '<new-ver>')" -o "$WORK/src.tar.gz"
    tar xf "$WORK/src.tar.gz" -C "$WORK"
-   guix import crate --lockfile "$WORK/<pkg>-<new-ver>/Cargo.lock" \
+   guix import crate --lockfile="$WORK/<pkg>-<new-ver>/Cargo.lock" <pkg> \
      > "$WORK/import.scm"
    ```
+
+   包名与 `--lockfile=<文件>` 的等号形式都是必需的：省略包名报「太少参数」，写成
+   `--lockfile <文件>` 报「Missing required argument after `--lockfile'」（guix
+   31ef6a40 实测，2026-11-13）。
 
 `import.scm` 是扁平的 `(define rust-... (crate-source ...))` 列表，**它的全部 define 就是新的 input 列表**（已用 0.14.2 的 266 个 input 全部能在现有 define 中找到验证过）。
 
@@ -79,8 +83,8 @@ guile 能 `use-modules` 加载不代表语法正确（可能命中 `.go` cache�
 `ERROR: input list for <pkg> not found`。脚本已扩展「新包分支」：键不存在时，
 从 `define-cargo-inputs` 块里第一个条目推导缩进网格（key 21 列、`(list` 47 列、
 item 48 列），在块尾插入新的 `(pkg => (list ...))` 条目（ai-usagebar 560 inputs、
-satty 211 inputs 实证）。流程不变：`guix import crate --lockfile <Cargo.lock> >
-import.scm` → `merge_crate_inputs.py <pkg> rust-crates.scm import.scm --dry-run`
+satty 211 inputs 实证）。流程不变：`guix import crate --lockfile=<Cargo.lock> <pkg>
+> import.scm` → `merge_crate_inputs.py <pkg> rust-crates.scm import.scm --dry-run`
 → 去 dry-run 正式执行。import.scm 的 define 数 = Cargo.lock crate 数减去
 **从源码构建的 path 成员/根包**（satty：213 − 根 satty − path 成员 satty_cli = 211；
 herdr：297 − 根 − ghostty-vt − path-patch portable-pty = 294）。
