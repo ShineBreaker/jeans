@@ -1950,7 +1950,7 @@ receives the login password and hands it to the daemon so the login keyring
 can be unlocked without prompting; systems without systemd should start the
 daemon from their service manager and add @code{pam_oo7.so} to the PAM stack.
 
-The @command{oo7-git-credential} and
+The @command{git-credential-oo7} and
 @command{cargo-credential-oo7} helpers are installed for Git and Cargo
 registry authentication.")
     (license license:expat)
