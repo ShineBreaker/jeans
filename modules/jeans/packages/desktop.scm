@@ -1003,13 +1003,13 @@ renderer relies on the upstream Chromium binary distribution.")
   (origin
     (method git-fetch)
     (uri (git-reference
-          (url "https://github.com/ShineBreaker/nosDshell")
+          (url "https://github.com/nosDshell/nosDshell")
           (commit (string-append "v" %nosdshell-version))))
     (file-name (git-file-name "nosdshell" %nosdshell-version))
     (sha256
      (base32 "1936y4dddmshsqirp4lxcyjflx3wcsr76qz2292lnix130qan7a0"))))
 
-;; Our quickshell fork (ShineBreaker/quickshell-nosd): upstream master
+;; Our quickshell fork (nosDshell/quickshell-nosd): upstream master
 ;; kept linear on top of the version 0.3.2 commit by a daily CI sync
 ;; (baseline cherry-pick; the baseline sits in .github/upstream-sync-base).
 ;; Beyond upstream it carries:
@@ -1039,7 +1039,7 @@ renderer relies on the upstream Chromium binary distribution.")
      (origin
        (method git-fetch)
        (uri (git-reference
-             (url "https://github.com/ShineBreaker/quickshell-nosd")
+             (url "https://github.com/nosDshell/quickshell-nosd")
              (commit "b0a8a7f77996ec9fee036e200447c07be86d1c44")))
        (file-name (git-file-name name version))
        (sha256
@@ -1059,7 +1059,7 @@ renderer relies on the upstream Chromium binary distribution.")
                         (add-after 'unpack 'chdir
                           (lambda _ (chdir "tools/nosd-blur"))))))
     (inputs (cargo-inputs 'nosd-blur #:module '(jeans packages rust-crates)))
-    (home-page "https://github.com/ShineBreaker/nosDshell")
+    (home-page "https://github.com/nosDshell/nosDshell")
     (synopsis "Pre-blur wallpapers for nosDshell")
     (description
      "nosd-blur produces a cover-resized, blurred variant of a wallpaper at
@@ -1110,7 +1110,7 @@ DBusName=org.freedesktop.impl.portal.desktop.nosdshell~%\
 Interfaces=org.freedesktop.impl.portal.Settings~%\
 UseIn=niri;sway;Hyprland;labwc;scroll;mangowc;~%")))))))))
     (inputs (cargo-inputs 'nosd-helpers #:module '(jeans packages rust-crates)))
-    (home-page "https://github.com/ShineBreaker/nosDshell")
+    (home-page "https://github.com/nosDshell/nosDshell")
     (synopsis "Small helper tools for nosDshell")
     (description
      "nosd-helpers is the single Rust binary behind nosDshell's helper
@@ -1134,7 +1134,7 @@ xdg-desktop-portal Settings backend.")
                         (add-after 'unpack 'chdir
                           (lambda _ (chdir "tools/nosd-theme"))))))
     (inputs (cargo-inputs 'nosd-theme #:module '(jeans packages rust-crates)))
-    (home-page "https://github.com/ShineBreaker/nosDshell")
+    (home-page "https://github.com/nosDshell/nosDshell")
     (synopsis "Material theme processor for nosDshell")
     (description
      "nosd-theme is the Rust port of the former nosDshell theming tree:
@@ -1299,7 +1299,7 @@ exec ~a --config ~a/etc/xdg/quickshell/nosdshell \"$@\"~%"
            wl-clipboard
            wlsunset
            wtype))
-    (home-page "https://github.com/ShineBreaker/nosDshell")
+    (home-page "https://github.com/nosDshell/nosDshell")
     (properties `((upstream-name . "nosDshell")
                   (release-tag-prefix . "^v")))
     (synopsis "Wayland desktop shell in the DDE 15 visual language")
