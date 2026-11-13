@@ -184,6 +184,7 @@
 | ---------------------- | --------------------------------------------------------------------------- |
 | `colloid-gtk-theme`    | Colloid GTK theme for Linux                                                 |
 | `colloid-kde-themes`   | Colloid themes for KDE Plasma                                               |
+| `nosd-app-themes`      | DDE 15-style GTK and Kvantum themes for the nosDshell desktop               |
 | `orchis-kde-themes`    | Orchis themes for KDE Plasma                                                |
 | `vimix-gtk-themes`     | Vimix is a flat Material Design theme for GTK 3, GTK 2 and Gnome-Shell etc. |
 | `vimix-kvantum-themes` | Vimix Kvantum themes for KDE Plasma                                         |
