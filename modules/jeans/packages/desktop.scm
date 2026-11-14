@@ -1040,11 +1040,16 @@ renderer relies on the upstream Chromium binary distribution.")
        (method git-fetch)
        (uri (git-reference
              (url "https://github.com/nosDshell/quickshell-nosd")
-             (commit "b0a8a7f77996ec9fee036e200447c07be86d1c44")))
+             (commit "472047177d881d0e89c16576601087cd19bff9c9")))
        (file-name (git-file-name name version))
        (sha256
         (base32
-         "0mz7a2201gk05a9sp0dy1hzd880a6g6212vmj9jgnmgzm3lc6w9h"))))))
+         "0p1jrly6y1i64w7cjygm8rcv6880w07d0dxiq3k0qxyli0yp0j36"))))
+    ;; The keyring prompter builds the org.gnome.keyring.SystemPrompter side
+    ;; of oo7's unlock flow on libgcr's GcrSystemPrompter (gcr 4).
+    (inputs
+     (modify-inputs (package-inputs quickshell)
+       (prepend gcr)))))
 
 (define-public nosd-blur
   (package
@@ -1213,7 +1218,7 @@ template rendering.")
                     (format #t "~
 #!~a
 if [ \"$1\" = \"--version\" ] || [ \"$1\" = \"-V\" ]; then
-  echo \"nosdshell v~a (with quickshell v0.3.2 b0a8a7f)\"
+  echo \"nosdshell v~a (with quickshell v0.3.2 4720471)\"
   exit 0
 fi
 : \"${MALLOC_ARENA_MAX:=4}\"
