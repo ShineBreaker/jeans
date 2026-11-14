@@ -265,15 +265,11 @@ jobs:
           # 2026-10-03 实测）。二者交给 Python updater：由其读取包定义的
           # release-tag-prefix property（剥 ^ 锚点）过滤 agenote-v* /
           # agenote-el-v* 系列。
-          # nosdshell 不交 refresh：version 与 source 都是模块级共享变量
-          # (%nosdshell-version / %nosdshell-source)，包定义里没有可改写的
-          # 字面 version/hash，refresh 报 "updating from 1.5.0 to 1.6.0" 后
-          # 文件原样不动（2026-10-20 实测；它算出的新 commit 是 tag 名
-          # v<version>，但落不了盘）。交给 Python updater——共享变量源是它
-          # 的一等能力，nosdshell / nosd-blur / nosd-helpers / nosd-theme
-          # 同 key 去重、一次改写全组。2026-11-05 的冻结针对的是已删除的
-          # nosdshell-release.yml 跨仓库 workflow（PR commit 无法签名），
-          # 本流水线的 bot 提交由授权 key 签名，认证一直通过。
+          # nosdshell 系列已迁入 nosd-pkgs channel（2026-11-15 起不再由
+          # 本仓分发）。此处留存历史教训：version 与 source 均为模块级共享
+          # 变量的包（%<pkg>-version / %<pkg>-source）包定义里没有可改写的
+          # 字面 version/hash，refresh 报新版本后文件原样不动——交给
+          # Python updater 的共享变量源路径处理，它同 key 去重一次改写全组。
           # emacs-ghostel 不交 refresh：0.60.0 的 build.zig 用 comptime 硬
           # 检查要求恰好 zig 0.17.0，并已改用 std.Io.Threaded /
           # std.lang.Optimize 等 0.17 API；Guix 最高只有 zig-0.16.0（zig

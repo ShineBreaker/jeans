@@ -1,23 +1,12 @@
 ;;; SPDX-FileCopyrightText: 2026 BrokenShine <xchai404@gmail.com>
-;;; SPDX-FileCopyrightText: 2026 Hilton Chain <hako@ultrarare.space>
 ;;;
 ;;; SPDX-License-Identifier: GPL-3.0-or-later
 
-;; Guix Home service for nosDshell, modeled on Rosenthal's
-;; home-noctalia-service-type
-;; (modules/rosenthal/home/services/desktop.scm of
-;; https://codeberg.org/hako/rosenthal): the shell runs as a forkexec'd
-;; user Shepherd service and inherits the Shepherd environment (environ),
-;; so it picks up WAYLAND_DISPLAY once the graphical-session target's
-;; wayland-display waiter has putenv'd it.
+;; Guix Home services for desktop components.
 ;;
-;; Deviation from the Rosenthal original: this module deliberately does
-;; not ship home-graphical-session-service-type.  The nosdshell service
-;; requires the 'wayland-display provision, which upstream Guix's
-;; home-wayland-service-type (gnu home services desktop) provides;
-;; Rosenthal's home-graphical-session-service-type (wayland? #t)
-;; provisions it as well, so configs loading either channel satisfy
-;; the link without duplicate provisions.
+;; The nosdshell Shepherd service moved to the nosd-pkgs channel
+;; ((nosd home services desktop) — home-nosdshell-service-type); the
+;; MSIME providers below remain.
 
 (define-module (jeans home services desktop)
   ;; Utilities
@@ -30,67 +19,9 @@
   #:use-module (gnu home services)
   #:use-module (gnu home services shepherd)
   ;; Jeans packages
-  #:autoload   (jeans packages desktop) (msime-bin nosdshell)
-  #:export (home-nosdshell-configuration
-            home-nosdshell-service-type
-            home-msime-configuration
+  #:autoload   (jeans packages desktop) (msime-bin)
+  #:export (home-msime-configuration
             home-msime-service-type))
-
-;;;
-;;; Configuration record.
-;;;
-
-(define-configuration/no-serialization home-nosdshell-configuration
-  (nosdshell
-   (file-like nosdshell)
-   "File-like object to provide @command{/bin/nosdshell}.")
-  (auto-start?
-   (boolean #t)
-   "Whether to start the shell when the graphical session target is up."))
-
-;;;
-;;; Shepherd service.
-;;;
-
-(define (home-nosdshell-shepherd-service config)
-  (match-record config <home-nosdshell-configuration>
-      (nosdshell auto-start?)
-    (list (shepherd-service
-           (documentation "Start nosDshell.")
-           (provision '(nosdshell))
-           (requirement '(dbus wayland-display))
-           (modules '((shepherd support))) ;for '%user-log-dir'
-           (auto-start? auto-start?)
-           (start
-            #~(lambda args
-                ((make-forkexec-constructor
-                  (list #$(file-append nosdshell "/bin/nosdshell"))
-                  #:log-file (in-vicinity %user-log-dir "nosdshell.log")
-                  ;; Inherit graphical session environment.
-                  #:environment-variables (environ))
-                 args)))
-           (stop #~(make-kill-destructor))))))
-
-;;;
-;;; Service type.
-;;;
-
-(define home-nosdshell-service-type
-  (service-type
-    (name 'home-nosdshell)
-    (extensions
-     (list (service-extension home-profile-service-type
-                              (compose list
-                                       home-nosdshell-configuration-nosdshell))
-           (service-extension home-shepherd-service-type
-                              home-nosdshell-shepherd-service)))
-    (default-value (home-nosdshell-configuration))
-    (description
-     "Run nosDshell, a quickshell-based Wayland desktop shell, as a user
-Shepherd service.  Requires the @code{dbus} and @code{wayland-display}
-Shepherd provisions; with upstream Guix's @code{home-wayland-service-type}
-or Rosenthal's @code{home-graphical-session-service-type} (Wayland)
-configured, the shell starts once @code{wayland-display} is up.")))
 
 ;;;
 ;;; MSIME (水杉输入法) providers.
