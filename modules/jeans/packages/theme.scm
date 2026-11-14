@@ -255,20 +255,22 @@ feel, and wallpaper components.")
 ;; 仓库内的 Rust 主题处理器（tools/nosd-theme），本包是独立的主题资源仓库
 ;; nosDshell/nosd-app-themes（GTK 2/3/4 皮肤 + Kvantum 皮肤），两者不是一回事。
 (define-public nosd-app-themes
-  (package
+  ;; 上游尚未打 tag，追踪 master 分支 HEAD；发版后改用 tag 并补
+  ;; upstream-name / release-tag-prefix，让 guix refresh 接管自动更新。
+  (let ((commit "1ce355e81692bfa7d0fbb3d2c9d1605fb2b555d9")
+        (revision "0"))
+    (package
     (name "nosd-app-themes")
-    (version "0.1.0")
+    (version (git-version "0.1.0" revision commit))
     (source
      (origin
        (method git-fetch)
        (uri (git-reference
              (url "https://github.com/nosDshell/nosd-app-themes")
-             ;; 上游尚未打 tag；发版后改用 tag 并补 upstream-name /
-             ;; release-tag-prefix，让 guix refresh 接管自动更新。
-             (commit "5f9a5e495135f10d756dfe62da3ba36d30ff95c1")))
-       (file-name (git-file-name "nosd-app-themes" version))
+             (commit commit)))
+       (file-name (git-file-name name version))
        (sha256
-        (base32 "0fh8rnmr536437bpila0xshldjcmn6yiajvxh3ynksmra7ljq0j2"))))
+        (base32 "0ffkls62znd2lz91d3w58xnx6rqqnb0w7ax943av26a0vklz40za"))))
     (build-system copy-build-system)
     (arguments
      (list
@@ -293,4 +295,5 @@ theme for Qt.  Every colour literal in the GTK themes is routed through
 @@define-color, and the Kvantum theme ships template sources, so nosDshell
 can inject a wallpaper-derived palette without editing any theme file.
 Shape tokens follow DESIGN.md in the nosDshell repository.")
-    (license license:gpl3+)))
+    (properties `((with-latest-git-commit . #t)))
+    (license license:gpl3+))))
