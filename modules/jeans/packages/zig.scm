@@ -288,8 +288,7 @@ terminal queries.")
               (commit commit)))
        (file-name (git-file-name name version))
        (sha256
-        (base32
-         "1frw5slj23wngv6iwi1dw4ii99fpr7skkrk71jrbs1gnii4mypgp"))))
+        (base32 "1frw5slj23wngv6iwi1dw4ii99fpr7skkrk71jrbs1gnii4mypgp"))))
     (build-system zig-build-system)
     (arguments
      (list
@@ -315,7 +314,7 @@ introspection data.")
 ;; (define-public zig-gobject-ghostty
 ;;   (package
 ;;     (name "zig-gobject-ghostty")
-;;     (version "0.10.0-2026-07-28-36-1")
+;;     (version "2026-07-28")
 ;;     (source
 ;;      (origin
 ;;        (method git-fetch)

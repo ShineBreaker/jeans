@@ -189,7 +189,7 @@ release.")
 (define-public cindy-cn-bin
   (package
     (name "cindy-cn-bin")
-    (version "0.1.133")
+    (version "0.1.136")
     (source
      (origin
        (method url-fetch)
@@ -197,7 +197,7 @@ release.")
              "https://github.com/makecindy/cindy/releases/download/"
              "v" version "/cindy-" version "-linux-x64-cn.deb"))
        (sha256
-        (base32 "0pgz6yxh0pm358wqvxpyg8k0923msqsir6880d6zf3xql0f42k1d"))))
+        (base32 "0qqwv82v0pz7z20i4d90abl2gjmzhprqql1nc154b6zny5hzbi20"))))
     (build-system electron-build-system)
     (arguments
      (list
@@ -303,7 +303,7 @@ control, and a companion system.")
 (define-public github-copilot
   (package
     (name "github-copilot")
-    (version "1.3.0")
+    (version "1.4.1")
     (source
      (origin
        (method url-fetch)
@@ -311,7 +311,7 @@ control, and a companion system.")
              "https://github.com/github/app/releases/download/"
              "v" version "/GitHub-Copilot-linux-x64.deb"))
        (sha256
-        (base32 "06vdgrwzwhmb69mjigy915ajljy8vnbj0xl5mylwz2qwzpyg4dd6"))))
+        (base32 "0g3v555808pf3nvccjp19qpqjnni5ni306rlcbjdb2hbznz3my2s"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -579,7 +579,7 @@ prebuilt distribution and launches it with the store Node.js runtime.")
 (define-public opencode-desktop-bin
   (package
     (name "opencode-desktop-bin")
-    (version "2.2.7")
+    (version "2.3.0")
     (source
      (origin
        (method url-fetch)
@@ -587,7 +587,7 @@ prebuilt distribution and launches it with the store Node.js runtime.")
              "https://github.com/anomalyco/opencode/releases/download/"
              "v" version "/opencode-desktop-linux-amd64.deb"))
        (sha256
-        (base32 "1rbv5l426x2ic3knxlkjp6mxfgwipd861lidwildxficc7xiz212"))))
+        (base32 "15j4ph2vzx83lwb7ss3wr5r58migzizpzjqf16xvmzldnj5ww04q"))))
     (build-system electron-build-system)
     (arguments
      (list
@@ -883,7 +883,7 @@ telemetry or forced log-ins.")
 (define-public thinkrail-bin
   (package
     (name "thinkrail-bin")
-    (version "0.3.2")
+    (version "0.4.0")
     (source
      (origin
        (method url-fetch)
@@ -891,7 +891,7 @@ telemetry or forced log-ins.")
              "https://github.com/JetBrains/thinkrail/releases/download/"
              "v" version "/stable-linux-x64-ThinkRail-" version ".tar.zst"))
        (sha256
-        (base32 "1yjs2myi2vkdpq1m94fj265y1wp669p6q6xlj90w7sh5q2f158w5"))))
+        (base32 "1syv1khaqvxi42ca6vmac94ag665ad8cmcjglk3nkd5lqk68ym5q"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -1060,7 +1060,7 @@ configure.  This package provides the prebuilt desktop release.")
 (define-public zcode
   (package
     (name "zcode")
-    (version "3.18.1")
+    (version "3.18.2")
     (source
      (origin
        (method url-fetch)
@@ -1068,7 +1068,7 @@ configure.  This package provides the prebuilt desktop release.")
              "https://cdn-zcode.z.ai/zcode/electron/releases/"
              version "/linux-x64/ZCode-" version "-linux-x64.deb"))
        (sha256
-        (base32 "01mxc0z2rlbnbh5k0vr9wmi8vby9shbj96hlafykkzbyzdwxzzlx"))))
+        (base32 "0wsgjzx0qqm04lsiz6vnfsczq812d79lv8a66m05xl8qn3p6dq57"))))
     (build-system electron-build-system)
     (arguments
      (list
@@ -1251,7 +1251,7 @@ release and needs the @code{nix-ld} system service to run.")
 (define-public omo-bin
   (package
     (name "omo-bin")
-    (version "5.1.69")
+    (version "5.1.70")
     (source
      (origin
        (method url-fetch)
@@ -1260,7 +1260,7 @@ release and needs the @code{nix-ld} system service to run.")
              "v" version "/omo-linux-x64"))
        (sha256
         (base32
-         "0i0lz8prf8za3gwnjq7zymar37gvq1qj2c1v0x0ff0ng2fkanx1s"))))
+         "0aldljy0h2431hb5n70mb09pnf42xh20lvxz5kbqyv6wyqs7zjvd"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -1300,7 +1300,7 @@ run.")
 (define-public cua-driver-bin
   (package
     (name "cua-driver-bin")
-    (version "0.47.9")
+    (version "0.49.9")
     (source
      (origin
        (method url-fetch)
@@ -1309,7 +1309,7 @@ run.")
              "cua-driver-rs-v" version
              "/cua-driver-rs-" version "-linux-x86_64-binary.tar.gz"))
        (sha256
-        (base32 "1x6d5m6ba3s4p9n85a8wgkpj3j0z3wl7ig6l9a455jgh6q2ss7jm"))))
+        (base32 "1jkiwdd50l2j9m8a0agkkqjxq79caifzdclhnbhmhrlzlh2r30vm"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -1431,7 +1431,7 @@ so the bundled self-updater should not be used.")
 (define-public magpie-bin
   (package
     (name "magpie-bin")
-    (version "0.1.3838")
+    (version "0.1.4152")
     (source
      (origin
        (method url-fetch)
@@ -1439,7 +1439,7 @@ so the bundled self-updater should not be used.")
              "https://github.com/yetone/magpie-releases/releases/download/"
              "v" version "/magpie-linux-amd64"))
        (sha256
-        (base32 "0fg3gdibnvzir1lla4vp0prq5zzy39d0j9w4pz5xmji0vhzcd97q"))))
+        (base32 "0fy19hvabb8r154nrflfiq34wbyxpxdf29pfb3cfm4y37ijnb83j"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -1711,7 +1711,7 @@ Tencent account.")
 (define-public qoder-cn
   (package
     (name "qoder-cn")
-    (version "0.5.7")
+    (version "0.5.11")
     (source
      (origin
        (method url-fetch)
@@ -1719,7 +1719,7 @@ Tencent account.")
              "https://static.qoder.com.cn/qoder-app/releases/"
              version "/Qoder-CN-linux-amd64.deb"))
        (sha256
-        (base32 "0871c7rbhrqqpkf505fifigqnq0yzsixaqknrkcfh82xjjjsixrd"))))
+        (base32 "1mk1cqjvdi59xsr557lji7b47bqymbh3zi0hhjy6aqbvz8i5cm4j"))))
     (build-system electron-build-system)
     (arguments
      (list
@@ -1834,7 +1834,7 @@ requires a Qoder account.")
 (define-public crommacode
   (package
     (name "crommacode")
-    (version "0.2.20")
+    (version "0.3.0")
     (source
      (origin
        (method url-fetch)
@@ -1842,7 +1842,7 @@ requires a Qoder account.")
              "https://dl.cromma.ai/code/artifacts/" version
              "/CrommaCode-" version "-linux-amd64.deb"))
        (sha256
-        (base32 "010j5zrmb2bflzm2aykajvl1cxf4vna98hiszx04429a7zz45r27"))))
+        (base32 "130wwlvv8phinri3fx3yp53sybdksp098z9h6c3f8zvggr7hgw6y"))))
     (build-system binary-build-system)
     (arguments
      (list

@@ -124,7 +124,7 @@ and Xorg.")
 (define-public ai-usagebar-bin
   (package
     (name "ai-usagebar-bin")
-    (version "1.50.0")
+    (version "1.52.0")
     (source
      (origin
        (method url-fetch)
@@ -132,7 +132,7 @@ and Xorg.")
              "https://github.com/akitaonrails/ai-usagebar/releases/download/"
              "v" version "/ai-usagebar-linux-x86_64.tar.gz"))
        (sha256
-        (base32 "1fgj9bqjlcfngjhf4j3l72cs8mk4yrjam83la3hyd1m7c3lk4y9j"))))
+        (base32 "07zihs1ynz43pzx0j6x9isg90svnd4aimjs2ayh9c36f27p14qch"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -171,7 +171,7 @@ release.")
 (define-public ai-usagebar
   (package
     (name "ai-usagebar")
-    (version "1.50.0")
+    (version "1.52.0")
     (source
      (origin
        (method git-fetch)
@@ -180,7 +180,7 @@ release.")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "0hjrmjban6xaww382g9s84gc288bnh1s03x8zr4b82rfx721shb2"))))
+        (base32 "0sfrnllnviq0vvzqh4nm967ry1hxdifsb941dsmgc0ak1n1xyzj0"))))
     (build-system cargo-build-system)
     (arguments
      (list #:install-source? #f
@@ -1457,7 +1457,7 @@ package provides the prebuilt upstream Linux release.")
 (define-public flea-bin
   (package
     (name "flea-bin")
-    (version "0.4.2")
+    (version "0.4.3")
     (source
      (origin
        (method url-fetch)
@@ -1465,7 +1465,7 @@ package provides the prebuilt upstream Linux release.")
              "https://github.com/thisisgm/flea/releases/download/v" version
              "/flea-v" version "-linux-x86_64.tar.gz"))
        (sha256
-        (base32 "018wiqyappkpim1yqfl5rma78jc6gqsji58kxgsajm8pir482iml"))))
+        (base32 "0jpd6jrm0754r7kldnn75p0wha93adwhyzwzaj32s4mlvk6plhlq"))))
     (build-system binary-build-system)
     (arguments
      (let ((python-version

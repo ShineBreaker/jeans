@@ -839,7 +839,7 @@ x86_64 release.")
 (define-public emacs-agenote
   (package
     (name "emacs-agenote")
-    (version "0.1.0")
+    (version "0.1.1")
     (source
      (origin
        (method git-fetch)
@@ -848,7 +848,7 @@ x86_64 release.")
              (commit (string-append "agenote-el-v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "0yfhcr1xzs2v8qrcniq2rymfyy6gldxgbjlqsrvrq1a5rfznrc0q"))))
+        (base32 "1zdl445li336czs1fgdlz5dybjs9z3pmnkjzx6874ywbjkhhnzqq"))))
     (build-system emacs-build-system)
     (arguments
      (list

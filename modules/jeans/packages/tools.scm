@@ -569,7 +569,7 @@ companion extension.  This package provides the prebuilt binary release.")
 (define-public cc-switch-bin
   (package
     (name "cc-switch-bin")
-    (version "4.0.30")
+    (version "4.0.31")
     (source
      (origin
        (method url-fetch)
@@ -577,7 +577,7 @@ companion extension.  This package provides the prebuilt binary release.")
              "https://github.com/farion1231/cc-switch/releases/download/"
              "v" version "/CC-Switch-v" version "-Linux-x86_64.deb"))
        (sha256
-        (base32 "1vkz2nywndvmfli4slkr5pnhrvx9avc4pfrinpcpqy9g20m482a1"))))
+        (base32 "1cx783c2nq0xcbkvc4rkykg1l2r3bsxq8w4iyx45265l1znwr73l"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -942,7 +942,7 @@ configurable knowledge-base root (@env{KB_ROOT}, default
 (define-public prettier-bin
   (package
     (name "prettier-bin")
-    (version "3.10.0")
+    (version "3.10.1")
     (source
       (origin
         (method url-fetch)
@@ -951,7 +951,7 @@ configurable knowledge-base root (@env{KB_ROOT}, default
               version
               ".tgz"))
         (sha256
-          (base32 "1bx1kpywq93m5s2dpcw2g0p165hrdpmwpvl4ylq5v3bvgqyr0byd"))))
+          (base32 "0g116jj88gp1h347m9d33rpilm9a9fdjdk4ya09xbmzhyh4d09c6"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -1048,7 +1048,7 @@ prebuilt binary.")
 (define-public pnpm-bin
   (package
     (name "pnpm-bin")
-    (version "12.20.0")
+    (version "12.21.0")
     (source
       (origin
         (method url-fetch)
@@ -1056,7 +1056,7 @@ prebuilt binary.")
               "https://github.com/pnpm/pnpm/releases/download/v"
               version "/pnpm-linux-x64.tar.gz"))
         (sha256
-          (base32 "1x5546kw78b3xzr5grgbzd0vna52svhlph5cxy07x9bls46xb3sn"))))
+          (base32 "0454an7k0zgk5qlc29i4yhy11rnfwj8jlyydhd07y8aarwxpgi44"))))
     (build-system binary-build-system)
     (arguments
      (list
