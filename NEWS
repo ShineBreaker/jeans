@@ -35,4 +35,11 @@
       introduction commit 由 1e30ccb 前移到 35d1811，签名者指纹不变。如果你
       此前已经添加过本频道，请把 channels.scm 里的 introduction 同步改成
       35d1811c26daf2c132880fe304149b1363064a79，否则 guix pull 会在认证阶段
-      报 bytevector-u16-ref 类型错误。"))))
+      报 bytevector-u16-ref 类型错误。")))
+
+  ;2026-11-14
+   (entry
+    (commit "ec9ee10d20ef078325fce9e2d62a4b3a8258fe68")
+    (title (zh "删除 nosd 相关包"))
+    (body (zh "我们目前将 nosDshell 相关的包迁移到了另外的 repo 中，请转移到
+      https://github.com/nosDshell/nosd-pkgs 以获取对应的包以及周边设施"))))
