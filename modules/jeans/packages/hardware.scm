@@ -24,6 +24,7 @@
    #:use-module (guix build utils)
   #:use-module (jeans build-system binary)
    #:use-module (guix build-system gnu)
+   #:use-module (guix build-system linux-module)
    #:use-module (guix download)
    #:use-module (guix git-download)
    #:use-module (guix gexp)
@@ -381,4 +382,58 @@ XenceLabs, Gaomon, Veikk and others, configured through a graphical interface.")
     (properties `((upstream-name . "opentabletdriver")
                   (release-tag-prefix . "^v")))
     (license license:lgpl3+)
+    (supported-systems '("x86_64-linux"))))
+
+;;; i915-sriov-dkms 是标准 kbuild 外部模块：顶层 Makefile 通过
+;;; `make -C $KDIR M=$PWD` 编出 intel_sriov_compat、i915、xe 三个模块，
+;;; linux-module-build-system 的 build/install 阶段正好驱动它，无需额外阶段。
+;;;
+;;; 本定义不写 #:linux：operating-system 的 kernel-loadable-modules 会经
+;;; gnu/services.scm 的 package-for-kernel 把该关键字重绑到实际内核，写死默认
+;;; 内核反而破坏这条路径（同机 v4l2loopback-linux-module 的既有做法）。
+;;;
+;;; 上游只支持 6.18.x–7.3.x 内核，include/config.h 在缺少 CONFIG_HMM_MIRROR 或
+;;; CONFIG_MMU_NOTIFIER 时直接 #error。本包的实际用法是加进
+;;; kernel-loadable-modules 由目标内核重建，所以这里只验证依赖解析与源码哈希，
+;;; 没有对 linux-libre 做真构建。
+;;;
+;;; build 阶段删掉 kvmgt 一行：上游 Makefile 无条件 `obj-m += kvmgt.o`，但
+;;; gvt/Makefile 的对象列表挂在 `kvmgt-$(CONFIG_DRM_I915_GVT)` 上。目标内核
+;;; 关掉 GVT-g 后（CONFIG_DRM_I915_GVT=n，本机 machine trim 即如此），kvmgt-y
+;;; 为空，ld 去链接一个没有输入对象的复合目标，报
+;;; `ld: read in flex scanner failed`，整包构建失败。kvmgt 是 GVT-g 的 KVM 侧
+;;; 支持，与 SR-IOV 无关，删掉不影响直通。
+(define-public i915-sriov-linux-module
+  (package
+    (name "i915-sriov-linux-module")
+    (version "2026.11.05")
+    (source
+      (origin
+        (method git-fetch)
+        (uri (git-reference
+              (url "https://github.com/strongtz/i915-sriov-dkms")
+              (commit version)))
+        (file-name (git-file-name name version))
+        (sha256
+          (base32 "0azy55v6z6ap01xb1rnhj8imbqzakm18j6lqwn86770hmy8yamsq"))))
+    (build-system linux-module-build-system)
+    (arguments
+     (list #:tests? #f
+           #:phases
+           #~(modify-phases %standard-phases
+               (add-after 'unpack 'drop-kvmgt
+                 (lambda _
+                   (substitute* "drivers/gpu/drm/i915/Makefile"
+                     (("^obj-m \\+= kvmgt.o\n") "")))))))
+    (home-page "https://github.com/strongtz/i915-sriov-dkms")
+    (synopsis "Intel i915 and xe drivers with SR-IOV support")
+    (description
+      "Linux i915 and xe drivers backported from mainline and extended with
+SR-IOV support, letting an Intel GPU expose virtual functions that can be
+assigned to virtual machines.  Both the host and the guest need to load the
+module; virtual functions are enabled on the kernel command line through
+@code{intel_iommu=on} together with @code{i915.max_vfs=} or
+@code{xe.max_vfs=}.  Kernels 6.18.x through 7.3.x are supported.")
+    (properties '((upstream-name . "i915-sriov-dkms")))
+    (license (list license:gpl2 license:expat))
     (supported-systems '("x86_64-linux"))))

@@ -42,7 +42,7 @@ env:
     neomod-bin
     emacs-msgu
     colloid-gtk-theme vimix-gtk-themes vimix-kvantum-themes
-    nix-ld opentabletdriver-udev-rules waypaper
+    i915-sriov-linux-module nix-ld opentabletdriver-udev-rules waypaper
     oo7
     waydroid libgbinder libglibutil python-gbinder
     pnpm-bin

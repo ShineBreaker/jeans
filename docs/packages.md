@@ -133,10 +133,11 @@
 
 ### (jeans packages hardware)
 
-| Package                       | Description                                 |
-| ----------------------------- | ------------------------------------------- |
-| `opentabletdriver-bin`        | User-mode tablet driver for drawing tablets |
-| `opentabletdriver-udev-rules` | UDev rules for OpenTabletDriver             |
+| Package                       | Description                                   |
+| ----------------------------- | --------------------------------------------- |
+| `i915-sriov-linux-module`     | Intel i915 and xe drivers with SR-IOV support |
+| `opentabletdriver-bin`        | User-mode tablet driver for drawing tablets   |
+| `opentabletdriver-udev-rules` | UDev rules for OpenTabletDriver               |
 
 ### (jeans packages lisp)
 
