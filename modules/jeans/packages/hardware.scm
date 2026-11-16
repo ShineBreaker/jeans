@@ -10,6 +10,9 @@
    #:use-module (gnu packages bootstrap)
    #:use-module (gnu packages compression)
    #:use-module (gnu packages elf)
+   #:use-module ((gnu packages freedesktop)
+                 #:select ((fprintd . fprintd/upstream)
+                           (libfprint . libfprint/upstream)))
    #:use-module (gnu packages gcc)
    #:use-module (gnu packages gnome)
    #:use-module (gnu packages gtk)
@@ -17,6 +20,8 @@
    #:use-module (gnu packages instrumentation)
    #:use-module (gnu packages kerberos)
    #:use-module (gnu packages linux)
+   #:use-module ((gnu packages power)
+                 #:select ((tuned . tuned/upstream)))
    #:use-module (gnu packages libunwind)
    #:use-module (gnu packages tls)
    #:use-module (gnu packages web)
@@ -28,7 +33,8 @@
    #:use-module (guix download)
    #:use-module (guix git-download)
    #:use-module (guix gexp)
-   #:use-module (guix packages))
+   #:use-module (guix packages)
+   #:use-module (guix utils))
 
 (define-public opentabletdriver-udev-rules
   (package
@@ -437,3 +443,118 @@ module; virtual functions are enabled on the kernel command line through
     (properties '((upstream-name . "i915-sriov-dkms")))
     (license (list license:gpl2 license:expat))
     (supported-systems '("x86_64-linux"))))
+
+;;; —— 指纹栈 ——
+;;;
+;;; 主线 libfprint 1.94.5 / fprintd 1.94.2 都早于 goodixmoc 驱动可用的
+;;; 1.94.9（Goodix 27c6:689a 等 USB 传感器所需），而两包上游最新 release
+;;; 分别是 1.94.100 与 1.94.5。以 -next 记号提供这两个最新 release，
+;;; 不覆盖主线同名包：主线追上后删除本组定义即可。
+;;;
+;;; libfprint-next 只换 TLS 后端：goodixmoc 走 USB 传输，不需要 nss 的
+;;; URU4x00 证书支持，改 openssl 可少拉一整棵嵌入运行时；同时必须覆盖
+;;; configure-flags —— 主线的 -Dc_link_args 里写死了 lib/nss。
+;;;
+;;; fprintd-next 的 arguments 不能继承主线：1.94.5 把 systemd 依赖改成
+;;; `dependency(get_option('libsystemd'))`，主线用 substitute 改
+;;; `dependency('libsystemd')` 的补丁匹配不到，配置直接报
+;;; "Dependency libsystemd not found"。这里改走 meson 自己的
+;;; -Dlibsystemd=libelogind 选项（1.94.5 起提供），并保留把 dbus/polkit
+;;; 输出目录改指 $out 的那段（Guix 的 meson 默认装到上游 owner 包）。
+
+(define %libfprint-version "1.94.100")
+(define %fprintd-version "1.94.5")
+
+(define-public libfprint-next
+  (package
+    (inherit libfprint/upstream)
+    (name "libfprint-next")
+    (version %libfprint-version)
+    (source
+      (origin
+        (method git-fetch)
+        (uri (git-reference
+              (url "https://gitlab.freedesktop.org/libfprint/libfprint")
+              (commit (string-append "v" %libfprint-version))))
+        (file-name (git-file-name "libfprint" %libfprint-version))
+        (sha256
+          (base32 "1c5n1xl7b32hssfs6yl4ndn1dfs6aqa26igmpahpym53l19zq017"))))
+    (arguments
+      (list #:configure-flags
+            #~(list "-Dudev_hwdb=enabled"
+                    (string-append "-Dudev_hwdb_dir=" #$output
+                                   "/lib/udev/hwdb.d")
+                    (string-append "-Dudev_rules_dir=" #$output
+                                   "/lib/udev/rules.d"))))
+    (inputs
+      (modify-inputs (package-inputs libfprint/upstream)
+                     (replace "nss" openssl)))
+    (properties '((upstream-name . "libfprint")))))
+
+(define-public fprintd-next
+  (package
+    (inherit fprintd/upstream)
+    (name "fprintd-next")
+    (version %fprintd-version)
+    (source
+      (origin
+        (method git-fetch)
+        (uri (git-reference
+              (url "https://gitlab.freedesktop.org/libfprint/fprintd")
+              (commit (string-append "v" %fprintd-version))))
+        (file-name (git-file-name "fprintd" %fprintd-version))
+        (sha256
+          (base32 "1rf80qzx4fx5y3x04n7wb58ywga34agjd42ymlvz3kdl8kkk6qk8"))))
+    (arguments
+      (list #:configure-flags
+            #~(list "-Dsystemd_system_unit_dir=/tmp"
+                    "-Dlibsystemd=libelogind"
+                    (string-append "-Ddbus_service_dir=" #$output
+                                   "/share/dbus-1/system-services")
+                    (string-append "-Dpam_modules_dir=" #$output
+                                   "/lib/security"))
+            #:phases
+            #~(modify-phases %standard-phases
+                (add-before 'configure 'patch-output-directories
+                  (lambda* (#:key outputs #:allow-other-keys)
+                    (let ((out (assoc-ref outputs "out")))
+                      (substitute* "meson.build"
+                        (("(dbus_interfaces_dir = ).*" _ set)
+                         (string-append set "'" out
+                                        "/share/dbus-1/interfaces'\n"))
+                        (("(polkit_policy_directory = ).*" _ set)
+                         (string-append set "'" out
+                                        "/share/polkit-1/actions/'\n"))
+                        (("(dbus_data_dir = ).*" _ set)
+                         (string-append set "get_option('prefix')"
+                                        " / get_option('datadir')\n")))))))
+            #:tests? #f))
+    (inputs
+      (modify-inputs (package-inputs fprintd/upstream)
+                     (replace "libfprint" libfprint-next)))
+    (properties '((upstream-name . "fprintd")))))
+
+;;; tuned 主线在 patch-paths 阶段把 tuned/consts.py 里所有 /etc/tuned 改写成
+;;; $out/etc/tuned（覆盖 GLOBAL_CONFIG_FILE、USER_PROFILES_DIR、
+;;; PPD_CONFIG_FILE 等全部运行时路径），而 tuned-service-type 的 activation
+;;; 把配置写到 /etc/tuned：两条路径不搭界，activation 生成的 tuned-main.conf、
+;;; profiles 与 ppd.conf 从未被读取，系统一直跑内置档位。这里在 install 后把
+;;; store 内路径整体改回 /etc/tuned，让 activation 产物真正生效。
+(define-public tuned
+  (package
+    (inherit tuned/upstream)
+    (arguments
+      (substitute-keyword-arguments (package-arguments tuned/upstream)
+        ((#:phases phases '%standard-phases)
+         #~(begin
+             (use-modules (guix build utils))
+             (modify-phases #$phases
+               (add-after 'install 'point-tuned-at-etc
+                 (lambda* (#:key outputs #:allow-other-keys)
+                   (let ((consts (car (find-files
+                                       (string-append (assoc-ref outputs "out")
+                                                      "/lib")
+                                       "^consts\\.py$"))))
+                     (substitute* consts
+                       (("/gnu/store/[^/]+/etc/tuned")
+                        "/etc/tuned"))))))))))))

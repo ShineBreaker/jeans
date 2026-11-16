@@ -133,11 +133,14 @@
 
 ### (jeans packages hardware)
 
-| Package                       | Description                                   |
-| ----------------------------- | --------------------------------------------- |
-| `i915-sriov-linux-module`     | Intel i915 and xe drivers with SR-IOV support |
-| `opentabletdriver-bin`        | User-mode tablet driver for drawing tablets   |
-| `opentabletdriver-udev-rules` | UDev rules for OpenTabletDriver               |
+| Package                       | Description                                                |
+| ----------------------------- | ---------------------------------------------------------- |
+| `fprintd-next`                | D-Bus daemon that exposes fingerprint reader functionality |
+| `i915-sriov-linux-module`     | Intel i915 and xe drivers with SR-IOV support              |
+| `libfprint-next`              | Library to access fingerprint readers                      |
+| `opentabletdriver-bin`        | User-mode tablet driver for drawing tablets                |
+| `opentabletdriver-udev-rules` | UDev rules for OpenTabletDriver                            |
+| `tuned`                       | Dynamic adaptive system tuning daemon                      |
 
 ### (jeans packages lisp)
 
