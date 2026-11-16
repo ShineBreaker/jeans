@@ -409,6 +409,14 @@ XenceLabs, Gaomon, Veikk and others, configured through a graphical interface.")
 ;;; 为空，ld 去链接一个没有输入对象的复合目标，报
 ;;; `ld: read in flex scanner failed`，整包构建失败。kvmgt 是 GVT-g 的 KVM 侧
 ;;; 支持，与 SR-IOV 无关，删掉不影响直通。
+;;;
+;;; build 阶段再给编译参数补一个 -Ulinux：GCC 在 Linux 上把 `linux` 预定义
+;;; 为 1（非标准内建宏）。本包名带 -linux-module，构建目录因此是
+;;; /tmp/guix-build-i915-sriov-linux-module-<版本>.drv-0/source；上游 Makefile
+;;; 用 -DDKMS_MODULE_SOURCE_DIR='$(abspath $(src))' 把该路径当裸 token 拼进
+;;; #include，路径里的 linux 被替换成 1，得到不存在的
+;;; ...-i915-sriov-1-module-...，i915/xe 的 trace 头全部报找不到。内核头不依
+;;; 赖该宏，undef 掉即可。
 (define-public i915-sriov-linux-module
   (package
     (name "i915-sriov-linux-module")
@@ -430,7 +438,12 @@ XenceLabs, Gaomon, Veikk and others, configured through a graphical interface.")
                (add-after 'unpack 'drop-kvmgt
                  (lambda _
                    (substitute* "drivers/gpu/drm/i915/Makefile"
-                     (("^obj-m \\+= kvmgt.o\n") "")))))))
+                     (("^obj-m \\+= kvmgt.o\n") ""))))
+               (add-after 'unpack 'undef-linux-macro
+                 (lambda _
+                   (substitute* "Makefile"
+                     (("-DDKMS_MODULE_SOURCE_DIR=")
+                      "-Ulinux -DDKMS_MODULE_SOURCE_DIR=")))))))
     (home-page "https://github.com/strongtz/i915-sriov-dkms")
     (synopsis "Intel i915 and xe drivers with SR-IOV support")
     (description
