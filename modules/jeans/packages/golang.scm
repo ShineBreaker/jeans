@@ -115,7 +115,16 @@
               (commit (string-append "v" version))))
         (file-name (git-file-name name version))
         (sha256
-         (base32 "05pg7yfffq5xmk6lv360rlvcli9z04x7dca8x9ny0n0aszdmqayp")))))))
+         (base32 "05pg7yfffq5xmk6lv360rlvcli9z04x7dca8x9ny0n0aszdmqayp"))))
+     ;; 官方包 -skip 只挡 TestNestedDlopenCall；TestSetuidEtc 需要
+     ;; setuid/setgid 特权（构建沙箱拒绝，恒 invalid argument），
+     ;; TestDlopenThenAllThreadsSyscall 走同一受限路径，一并跳过。
+     (arguments
+      (list
+       #:import-path "github.com/ebitengine/purego"
+       #:test-flags
+       #~(list "-skip"
+               "TestNestedDlopenCall|TestSetuidEtc|TestDlopenThenAllThreadsSyscall"))))))
 
 (define-public go-golang-org-x-sys-0.49
   (hidden-package
