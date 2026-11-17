@@ -1907,3 +1907,128 @@ This package installs the vendor's prebuilt Linux release; an account is
 required for the hosted features.")
     (license (license:nonfree "https://vibeloft.ai/terms"))
     (supported-systems '("x86_64-linux"))))
+
+;;; DeepSeek Harness 桌面版（MIT，预编译 .deb）。
+;;;
+;;; 两层结构，包的布局由这两层各自的路径假设决定，不能按包名改名：
+;;; usr/bin/deepseek-harness-desktop 是 Rust/Tauri 外壳（GTK3，负责设置、
+;;; 依赖下载、dsh 服务生命周期与单实例），窗口与页面全部跑在自带的
+;;; lib/<productName>/runtime/<arch>/ 里的 Electron 44.7（crates/electron-rs），
+;;; 由外壳 spawn 并把 --port、IPC 凭据经 stdin 传进去。外壳按
+;;; current_exe 的父目录推导 runtime 候选目录
+;;; （crates/tauri-runtime-electron 的 bundled_roots：
+;;; ../lib/<productName>/runtime、$APPDIR/usr/lib/...、/usr/lib/...），
+;;; productName 是 tauri.conf.json 的 "DSH Tauri"——所以 lib/ 下的目录必须
+;;; 叫 "DSH Tauri"（含空格），与包名无关；改名或改成 libexec 会让外壳找不到
+;;; runtime 并直接报 "Electron runtime was not bundled"。
+;;;
+;;; sandbox：deb 的 postinst 只把 chrome-sandbox chmod 0755（不是 SUID）并给
+;;; runtime 里每个可执行文件装 AppArmor unconfined profile（含 userns 规则），
+;;; 也就是说上游走的是 user-namespace sandbox。Guix 系统没有 Ubuntu 的
+;;; AppArmor userns 限制，不需要这份 profile；chrome-sandbox 原样保留、
+;;; 不做 patchelf（它是 sandbox helper 自身，且不需要 SUID）。
+;;;
+;;; 内核名下的 arm64 预编译 .node（@tailwindcss/oxide-linux-arm64-gnu，供
+;;; dsh-tauri-remote 推给 ARM 远端用）在 x86_64 上永远不会被 dlopen，给
+;;; x86_64 interpreter/RPATH 只会写坏它，故排除。
+;;;
+;;; 自动更新语义由上游自己处理：主程序读 /etc/debian_version 判断发行版托管
+;;; （is_desktop_distro_managed），Guix 下没有该文件，deb 的 package-type 也
+;;; 不存在，disable-electron-updater 因此是 no-op。
+;;;
+;;; 选 Bundle 资产：普通版 deb 首次启动要从 dsh-tauri/deepseek-harness-pkg 的
+;;; release 下载 441MB 内核 asar（GitHub API 定 tag，限流时回退 HTML 解析），
+;;; 内核不在包里意味着每次重装都赌一次网络与限流状态（2026-11-17 实测本机
+;;; 匿名 API 403 → 回退解析拿到不存在的 tag → 404 重试 5 次失败）。Bundle
+;;; 版把内核 asar 与 pnpm 放进 resources/，manifest 的 managedRoot 指向
+;;; $Resources，首次启动离线可用，也符合 Guix 对包自包含的期望。
+
+(define-public deepseek-harness-desktop-bin
+  (package
+    (name "deepseek-harness-desktop-bin")
+    (version "0.31.7")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://github.com/dsh-tauri/deepseek-harness-desktop/releases/"
+             "download/v" version "/Deepseek.Harness.Desktop_Bundle_"
+             version "_amd64.deb"))
+       (sha256
+        (base32 "1y83413ch886cg3iva7jsl21bfnnjr93bf0k1pqm0b5r5ys1v1lg"))))
+    (build-system electron-build-system)
+    (arguments
+     (list
+      #:program "deepseek-harness-desktop"
+      ;; 上游 productName，带空格；外壳据此找 runtime（见上方注释）。
+      #:app-dir "lib/DSH Tauri"
+      #:application-directory "DSH Tauri"
+      ;; 外壳把 TAURI_RUNTIME_ELECTRON_ARGS 原样交给 Electron，而自身 argv
+      ;; 不解析 Chromium flag，所以只 export Electron 原生 hint 变量。
+      #:wayland? 'hint-env
+      #:unpack-method 'deb
+      #:install-plan
+      #~'(("usr/bin/deepseek-harness-desktop"
+           "bin/deepseek-harness-desktop")
+          ("usr/lib/DSH Tauri/" "lib/DSH Tauri/")
+          ("usr/share/applications/DSH Tauri.desktop"
+           "share/applications/DSH Tauri.desktop")
+          ("usr/share/icons/hicolor/" "share/icons/hicolor/"))
+      ;; 外壳与整棵 Electron runtime 都要 patchelf；arm64 addon 与
+      ;; chrome-sandbox 见包前注释。
+      #:patchelf-plan
+      #~'("lib/DSH Tauri" "bin/deepseek-harness-desktop")
+      #:patchelf-exclude
+      #~'("lib/DSH Tauri/runtime/linux-x64/chrome-sandbox"
+          "lib/DSH Tauri/resources/node_modules/@tailwindcss/oxide-linux-arm64-gnu/")
+      #:desktop-files
+      #~'(("share/applications/DSH Tauri.desktop"
+           "bin/deepseek-harness-desktop"))))
+    (native-inputs (list binutils tar xz))
+    (inputs `(("alsa-lib" ,alsa-lib)
+              ("at-spi2-core" ,at-spi2-core)
+              ("bash-minimal" ,bash-minimal)
+              ("nss-certs" ,nss-certs)
+              ("cups" ,cups)
+              ("dbus" ,dbus)
+              ("eudev" ,eudev)
+              ("expat" ,expat)
+              ("fontconfig-minimal" ,fontconfig)
+              ("gcc:lib" ,gcc "lib")
+              ("gcr-3" ,gcr-3)
+              ("glibc" ,glibc)
+              ("glib" ,glib)
+              ("glib:bin" ,glib "bin")
+              ("gnome-keyring" ,gnome-keyring)
+              ("gtk+" ,gtk+)
+              ("libx11" ,libx11)
+              ("libxcb" ,libxcb)
+              ("libxcomposite" ,libxcomposite)
+              ("libxdamage" ,libxdamage)
+              ("libxext" ,libxext)
+              ("libxfixes" ,libxfixes)
+              ("libxkbcommon" ,libxkbcommon)
+              ("libxrandr" ,libxrandr)
+              ;; 托盘：deb Depends 的 libappindicator3-1。libappindicator-sys
+              ;; 依次 dlopen libayatana-appindicator3.so.1 /
+              ;; libappindicator3.so.1（运行时 dlopen，NEEDED 里看不到）；
+              ;; Guix 只提供后者，缺整个 input 时四个候选全失败并 panic。
+              ("libappindicator" ,libappindicator)
+              ("mesa" ,mesa)
+              ("nss" ,nss)
+              ("openssl" ,openssl)
+              ("vulkan-loader" ,vulkan-loader)
+              ("wayland" ,wayland)))
+    (properties `((upstream-name . "Deepseek.Harness.Desktop_Bundle")
+                  (release-tag-prefix . "^v")))
+    (home-page "https://github.com/dsh-tauri/deepseek-harness-desktop")
+    (synopsis "Desktop application for DeepSeek Harness")
+    (description
+     "DeepSeek Harness Desktop is a desktop shell for the DeepSeek Harness
+agent platform: it manages the @command{dsh} service, ships a first-run
+plugin wizard and keeps profiles, sessions and credentials in the
+@file{\\$DSH_HOME} directory shared with the command-line install.  This
+package installs the vendor's prebuilt Linux release; the Harness core
+distribution itself is downloaded on first launch.")
+    (license license:expat)
+    (supported-systems '("x86_64-linux"))))

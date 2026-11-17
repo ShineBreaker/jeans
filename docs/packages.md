@@ -9,24 +9,25 @@
 
 ### (jeans packages agent)
 
-| Package                | Description                                                    |
-| ---------------------- | -------------------------------------------------------------- |
-| `cindy-cn-bin`         | Open-source AI agent desktop client                            |
-| `codewhale-bin`        | Multi-provider AI coding agent for the terminal                |
-| `crommacode`           | Terminal that turns coding-agent work into a watchable game    |
-| `cua-driver-bin`       | Cross-platform computer-use automation driver                  |
-| `github-copilot`       | Agent-native GitHub Copilot desktop application                |
-| `herdr-bin`            | Terminal workspace manager for AI coding agents                |
-| `magpie-bin`           | Menu-bar hub that routes AI coding agents to any model         |
-| `minimax-code-bin`     | Open-source coding agent for your terminal, powered by MiniMax |
-| `omo-bin`              | AI coding agent CLI with memory system and extensions          |
-| `opencode-desktop-bin` | AI coding agent desktop application                            |
-| `paseo-bin`            | Self-hosted desktop client for orchestrating coding agents     |
-| `qoder-cn`             | Agent workbench for human and AI software teams                |
-| `thinkrail-bin`        | JetBrains' lightweight AI coding IDE with the pi agent         |
-| `workbuddy-cn`         | AI agent desktop workspace from Tencent                        |
-| `zcode`                | Desktop application for agent-assisted development             |
-| `zcode-proxy-bin`      | Local proxy exposing GLM coding plans as OpenAI/Anthropic APIs |
+| Package                        | Description                                                    |
+| ------------------------------ | -------------------------------------------------------------- |
+| `cindy-cn-bin`                 | Open-source AI agent desktop client                            |
+| `codewhale-bin`                | Multi-provider AI coding agent for the terminal                |
+| `crommacode`                   | Terminal that turns coding-agent work into a watchable game    |
+| `cua-driver-bin`               | Cross-platform computer-use automation driver                  |
+| `deepseek-harness-desktop-bin` | Desktop application for DeepSeek Harness                       |
+| `github-copilot`               | Agent-native GitHub Copilot desktop application                |
+| `herdr-bin`                    | Terminal workspace manager for AI coding agents                |
+| `magpie-bin`                   | Menu-bar hub that routes AI coding agents to any model         |
+| `minimax-code-bin`             | Open-source coding agent for your terminal, powered by MiniMax |
+| `omo-bin`                      | AI coding agent CLI with memory system and extensions          |
+| `opencode-desktop-bin`         | AI coding agent desktop application                            |
+| `paseo-bin`                    | Self-hosted desktop client for orchestrating coding agents     |
+| `qoder-cn`                     | Agent workbench for human and AI software teams                |
+| `thinkrail-bin`                | JetBrains' lightweight AI coding IDE with the pi agent         |
+| `workbuddy-cn`                 | AI agent desktop workspace from Tencent                        |
+| `zcode`                        | Desktop application for agent-assisted development             |
+| `zcode-proxy-bin`              | Local proxy exposing GLM coding plans as OpenAI/Anthropic APIs |
 
 ### (jeans packages android)
 

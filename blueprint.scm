@@ -241,11 +241,21 @@ rust-crates.scm 只含 crate-source 定义，不是包，故不在扫描之列�
             (log:warning! "生成失败，请检查上面的 guix repl 输出。")
             #f)
           ;; gen-docs.scm 输出未填充的 Markdown 表格；用 prettier 把表格
-          ;; 对齐为仓库一贯的填充风格。prettier 通过 npx 按需获取，无需
-          ;; 预装；若 npx/prettier 不可用则保留未填充输出（功能不受影响）。
-          (let ((fmt-cmd (string-append "npx --yes prettier@3 --write "
-                                        packages-doc " >/dev/null 2>&1")))
-            (run-shell fmt-cmd)
+          ;; 对齐为仓库一贯的填充风格。优先用 PATH 里的 prettier（Guix
+          ;; Home 已装），缺失时才退回 npx 按需获取——npx 要写 npm 缓存
+          ;; （~/.cache/npm），文件系统受限时必然 EROFS 失败。失败不再
+          ;; 静默：未对齐的表格会让后续 commit 的 docs diff 出现整表重排
+          ;; 噪音，必须让人看见（2026-11-17 沙箱内实测）。
+          (let ((fmt-cmd (string-append
+                          "if command -v prettier >/dev/null 2>&1; then "
+                          "prettier --write " packages-doc " >/dev/null; "
+                          "else npx --yes prettier@3 --write " packages-doc
+                          " >/dev/null 2>&1; fi")))
+            (unless (zero? (run-shell fmt-cmd))
+              (log:warning! "prettier 格式化失败，~a 保持未对齐输出。" packages-doc)
+              (log:hint! (string-append
+                          "装好 prettier（或让 npx 可写缓存）后重跑 blue "
+                          "gen-docs，否则提交的 docs diff 会整表重排。")))
             (log:progress "已生成 ~a" packages-doc)
             #t))))))
 
