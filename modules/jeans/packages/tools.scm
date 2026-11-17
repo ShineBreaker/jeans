@@ -569,7 +569,7 @@ companion extension.  This package provides the prebuilt binary release.")
 (define-public cc-switch-bin
   (package
     (name "cc-switch-bin")
-    (version "4.0.31")
+    (version "4.0.34")
     (source
      (origin
        (method url-fetch)
@@ -577,7 +577,7 @@ companion extension.  This package provides the prebuilt binary release.")
              "https://github.com/farion1231/cc-switch/releases/download/"
              "v" version "/CC-Switch-v" version "-Linux-x86_64.deb"))
        (sha256
-        (base32 "1cx783c2nq0xcbkvc4rkykg1l2r3bsxq8w4iyx45265l1znwr73l"))))
+        (base32 "16q5m79zfzw4j0c9llk4qmsvd04xgsyj6x4wkjfdi9j16xfcv8k8"))))
     (build-system gnu-build-system)
     (arguments
      (list
