@@ -1953,7 +1953,10 @@ required for the hosted features.")
        (uri (string-append
              "https://github.com/dsh-tauri/deepseek-harness-desktop/releases/"
              "download/v" version "/Deepseek.Harness.Desktop_Bundle_"
-             version "_amd64.deb"))
+             ;; Bundle 的 Linux deb 资产名不带架构后缀（带 _amd64 的是非
+             ;; Bundle 版）；写错会 404，而且因为 hash 正确，guix 会先试
+             ;; bordeaux / ci 兜底再 Disarchive，全部 404 后才报失败。
+             version ".deb"))
        (sha256
         (base32 "1y83413ch886cg3iva7jsl21bfnnjr93bf0k1pqm0b5r5ys1v1lg"))))
     (build-system electron-build-system)
