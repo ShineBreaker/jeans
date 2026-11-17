@@ -920,7 +920,7 @@ the official archive.")
 (define-public dbx-bin
   (package
     (name "dbx-bin")
-    (version "0.6.70")
+    (version "0.6.71")
     (source
      (origin
        (method url-fetch)
@@ -928,7 +928,7 @@ the official archive.")
              "https://github.com/t8y2/dbx/releases/download/"
              "v" version "/DBX_" version "_amd64.deb"))
        (sha256
-        (base32 "1l1gh14lhwbw652l5qg0vs649wnlysakg0yqv532gvnv7x5zhs8x"))))
+        (base32 "1d63q4iyaqk40f6adyzqxp37xb6jw6yxlszrdl67mrsfidqf1165"))))
     (build-system binary-build-system)
     (arguments
      (list

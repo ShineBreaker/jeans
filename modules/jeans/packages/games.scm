@@ -707,7 +707,7 @@ them.")
                           "neomod.png")))
     (package
       (name "neomod-bin")
-      (version "44.04")
+      (version "45.00")
       (source
        (origin
          (method url-fetch)
@@ -715,7 +715,7 @@ them.")
                "https://github.com/neomodnet/neomod/releases/download/"
                "v" version "/neomod-linux-x64.tar.gz"))
          (sha256
-          (base32 "19sadwrvklbrynji1zlq3l4a1bsvbfx9wk90sl6lxyv4i1sx18h8"))))
+          (base32 "1nddpsdafqsrv2cpfsqc90cdcnrhn69mcpy9pkpbivbg2vn3n7cz"))))
       (build-system binary-build-system)
       (arguments
        (list

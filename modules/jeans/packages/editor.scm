@@ -62,7 +62,7 @@
 (define-public lem-next-bin
   (package
     (name "lem-next-bin")
-    (version "20260531-0400")
+    (version "20261117-0657")
     (source
      (origin
        (method url-fetch)
@@ -70,7 +70,7 @@
              "https://github.com/lem-project/lem/releases/download/"
              "nightly-latest/Lem-x86_64.AppImage"))
        (sha256
-        (base32 "1k37fr76w0sknss90nj8hgr3c7b4nbnrk03dlbdlfdnc9iib6rqs"))))
+        (base32 "0rqvb62m4yw9a7a1nlh4xsxdi7wl7djl1wrb767p3ry354di5gma"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -211,8 +211,8 @@ the webview (GTK/WebKitGTK) frontend with an ncurses fallback.")
 ;;; e.g. tree-sitter-json and point LD_LIBRARY_PATH at its lib/ to
 ;;; enable syntax highlighting for that language.
 (define-public lem-next
-  (let ((commit "b72d82b4dd40fba07dbde06a13e4a6a0bbec282e")
-        (revision "16"))
+  (let ((commit "da31ecd48c78ff4294e62ea5cbfd91022c33afff")
+        (revision "17"))
     (package
       (inherit lem)
       (name "lem-next")
@@ -225,7 +225,7 @@ the webview (GTK/WebKitGTK) frontend with an ncurses fallback.")
                (commit commit)))
          (file-name (git-file-name name version))
          (sha256
-          (base32 "0jvjbmlbk2y1lhsyqm927bzd0g4d6kyi9fp993kav1phjxspnsdi"))
+          (base32 "030sq3q3r4n3q7q8rr2y5gjpjmhi7imkr3hdiw2xhffg0n05mvky"))
          (patches
           (map canonicalize-path
                (search-patches
@@ -372,7 +372,7 @@ the webview (GTK/WebKitGTK) frontend with an ncurses fallback.")
 (define-public fresh-editor-bin
   (package
     (name "fresh-editor-bin")
-    (version "0.5.8")
+    (version "0.5.9")
     (source
      (origin
        (method url-fetch)
@@ -380,7 +380,7 @@ the webview (GTK/WebKitGTK) frontend with an ncurses fallback.")
              "https://github.com/sinelaw/fresh/releases/download/"
              "v" version "/fresh-editor_" version "-1_amd64.deb"))
        (sha256
-        (base32 "0a5f29val3vhpxvkgf67mldpgmnx0wa0zcmdy7y6xb3sxzlypgsp"))))
+        (base32 "1zkydpjbm523bpz1yvlc716cbkln43d1cg93wfyfyfx89cs6g0sb"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -445,7 +445,7 @@ binary release.")
 (define-public fresh-editor
   (package
     (name "fresh-editor")
-    (version "0.5.8")
+    (version "0.5.9")
     (source
      (origin
        (method git-fetch)
@@ -454,7 +454,7 @@ binary release.")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "0n1ch4w163pdwn568fkdd0nha6y3l3brwn00rki9ajmqbp3ijssi"))))
+        (base32 "0zd0jay7lpsyr49f276vzlqnwj7nv1n1vkwnkdmybi4nr4bj4zgv"))))
     (build-system cargo-build-system)
     (arguments
      (list
@@ -681,7 +681,7 @@ package provides the prebuilt binary release.")
 (define-public wu-bin
   (package
     (name "wu-bin")
-    (version "1.2.2")
+    (version "1.3.0")
     (source
      (origin
        (method url-fetch)
@@ -689,7 +689,7 @@ package provides the prebuilt binary release.")
              "https://github.com/dstrml/wu/releases/download/v"
              version "/wu-linux-x86_64.tar.gz"))
        (sha256
-        (base32 "01023zfhb9iqfr5p4fcsn05i6qz7d5nz67qr22mng8rnln9d9mgb"))))
+        (base32 "1p2sldja56b8kj73q2cz58ncy10bn7z4lz88l5yqhh2f4grr1xbc"))))
     (build-system binary-build-system)
     (arguments
      (list

@@ -65,7 +65,7 @@
 (define-public iterm2-color-schemes
   (package
     (name "iterm2-color-schemes")
-    (version "20261109-150625-5fad1bd")
+    (version "20261116-150709-494b809")
     (source
      (origin
        (method git-fetch)
@@ -74,7 +74,7 @@
               (commit (string-append "release-" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "1x137f1rc871by0d8n1k3xgin046xq3iykfz69ayf6hgvf0f8dj7"))))
+        (base32 "1m6vakrr0bwly04qgbjn57akgq1l31dhhqjih9w6ckjbybwn3dpd"))))
     (build-system copy-build-system)
     (arguments
      (list
