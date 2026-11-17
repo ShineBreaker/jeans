@@ -1,8 +1,9 @@
 {
-  "_comment": "项目级 gate（jeans 专属）。由 gate-core/pi-gate 从 cwd 向上遍历合并，只能在全局规则之上加码。",
-  "path_hints": {
-    "modules/": "改 .scm 前先读 CODING_STANDARDS.md：文件头、description 边界、许可证、build-system 选型、模块导出门禁、受管文件都在那里。打包约定按主题在 .agents/skills/pack-guix/references/conventions-*.md。",
-    "blueprint.scm": "blueprint.scm 是 BLUE 命令定义——改它等价于改任务运行器入口，先读 CODING_STANDARDS.md 的文件头与函数规范。",
-    "scripts/gen-docs.scm": "gen-docs 是 docs/packages.md 的生成器，同目录 pre-commit hook 会用它的输出对账，改完跑 blue gen-docs 验证。"
+  "_comment": "jeans 是 Guix channel 认证仓库（.guix-authorizations 授权签名列表），未签名 commit 入库会使 guix git authenticate 失败（agenote F048）。git -c commit.gpgsign=false 是同一逃门的开关形式，一并冻结。--no-verify 保留作人工逃生通道。",
+  "frozen_command_args": {
+    "git": {
+      "pattern": "(--no-gpg-sign|-c[[:space:]]+commit[.]gpgsign=false|config[[:space:]]+commit[.]gpgsign)",
+      "reason": "jeans 走 Guix channel 认证，任何未签名 commit 都会让 guix git authenticate 失败。签名报超时/失败时先查 GNUPGHOME（应指向 ~/.local/share/gnupg）与 pinentry 链路，修环境而不是绕签名；已推送历史补签流程见 agenote F048。"
+    }
   }
 }
