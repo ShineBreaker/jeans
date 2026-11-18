@@ -182,6 +182,33 @@ string when inputs provide gdbus / gnome-keyring-daemon / gcr-prompter"
         (substitute* wrapper
           (("^exec -a ")
            (string-append
+            ;; libdbus（@napi-rs/keyring 等原生凭据库）只认
+            ;; DBUS_SESSION_BUS_ADDRESS，没有它就去试编译期已禁用的 X11
+            ;; autolaunch，直接报 "Using X11 for dbus-daemon autolaunch was
+            ;; disabled at compile time"。libsecret/secret-tool 会自己回退到
+            ;; $XDG_RUNTIME_DIR/bus，libdbus 不会，所以在 wrapper 位置补一次
+            ;; 探测：先标准位置，再从同 UID 的存活进程环境里借（niri +
+            ;; dbus-run-session 的会话总线落在 /tmp/dbus-*，没有固定路径）。
+            "_dbus_addr=\"${DBUS_SESSION_BUS_ADDRESS:-}\"\n"
+            "if [ -z \"$_dbus_addr\" ]; then\n"
+            "  _rt=\"${XDG_RUNTIME_DIR:-/run/user/$UID}\"\n"
+            "  if [ -S \"$_rt/bus\" ]; then\n"
+            "    _dbus_addr=\"unix:path=$_rt/bus\"\n"
+            "  else\n"
+            "    for _e in /proc/[0-9]*/environ; do\n"
+            "      [ -r \"$_e\" ] || continue\n"
+            "      while IFS= read -r -d '' _v; do\n"
+            "        case \"$_v\" in\n"
+            "          DBUS_SESSION_BUS_ADDRESS=*)"
+            " _dbus_addr=\"${_v#*=}\"; break 2 ;;\n"
+            "        esac\n"
+            "      done < \"$_e\" 2>/dev/null\n"
+            "    done\n"
+            "  fi\n"
+            "  [ -n \"$_dbus_addr\" ]"
+            " && export DBUS_SESSION_BUS_ADDRESS=\"$_dbus_addr\"\n"
+            "fi\n"
+            "unset _dbus_addr _rt _e _v\n"
             "_had_store=0\n"
             "for _a in \"$@\"; do\n"
             "  case \"$_a\" in --password-store=*) _had_store=1 ;; esac\n"

@@ -32,6 +32,7 @@
   #:use-module (gnu packages ncurses)
   #:use-module (gnu packages node)         ; node
   #:use-module (gnu packages pulseaudio)   ; pulseaudio
+  #:use-module (gnu packages python)       ; python (asar 定长替换)
   #:use-module (gnu packages rust-apps)    ; ripgrep
   #:use-module (gnu packages tls)          ; openssl
   #:use-module (gnu packages version-control) ; git
@@ -1124,8 +1125,36 @@ configure.  This package provides the prebuilt desktop release.")
                 ;; what Icon=zcode looks up.  Copying each file onto that
                 ;; same path and then deleting every zcode.png removes them.
                 (when (file-exists? icon-src)
-                  (copy-recursively icon-src icon-dst))))))))
-    (native-inputs (list binutils tar xz))
+                  (copy-recursively icon-src icon-dst)))))
+          ;; zcode 在 fork 子进程时用 $b() 构造环境：打包版只返回 4 个
+          ;; OTEL/telemetry 变量（不读 .env），经 pa() 加工后 fork 出去的
+          ;; zcode-host 完全没有会话环境。而 runPhase 里的凭据走
+          ;; @napi-rs/keyring（dbus-secret-service → C libdbus），libdbus 只认
+          ;; DBUS_SESSION_BUS_ADDRESS，缺失时退回编译期已禁用的 X11
+          ;; autolaunch（"Using X11 for dbus-daemon autolaunch was disabled at
+          ;; compile time"），表现为所有 oauth/credential RPC 报
+          ;; CREDENTIAL_SECURE_STORAGE_UNAVAILABLE。wrapper 里 export 无效
+          ;; （白名单会丢掉），所以必须让 fork 处展开 process.env。
+          ;; 替换保持字节数相同，asar 的 offset 表无需重算。
+          (add-after 'install-icons 'patch-host-process-env
+            (lambda _
+              (invoke "python3" "-c"
+                      (string-append
+                       "import sys,base64\n"
+                       "p=sys.argv[1]\n"
+                       "old=base64.b64decode("
+                       "\"ey4uLnBhKG4uaG9zdFByb2Nlc3NMb2NhbEVudiksLi4uTlAoKSxaQ09ERV9QUk9DRVNTX0xBQkVMOnQs\")\n"
+                       "new=base64.b64decode("
+                       "\"ey4uLnBhKFdyKSwuLi5wcm9jZXNzLmVudiwuLi5OUCgpICAgICxaQ09ERV9QUk9DRVNTX0xBQkVMOnQs\")\n"
+                       "d=bytearray(open(p,'rb').read())\n"
+                       "n=d.count(old)\n"
+                       "assert n==1, 'unexpected host-env anchor count: %d' % n\n"
+                       "i=d.find(old)\n"
+                       "d[i:i+len(old)]=new\n"
+                       "open(p,'wb').write(d)\n")
+                      (string-append #$output
+                                     "/lib/zcode/resources/app.asar")))))))
+    (native-inputs (list binutils python tar xz))
     (inputs `(("alsa-lib" ,alsa-lib)
               ("at-spi2-core" ,at-spi2-core)
               ("bash-minimal" ,bash-minimal)
