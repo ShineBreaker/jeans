@@ -1075,6 +1075,11 @@ configure.  This package provides the prebuilt desktop release.")
       #:program "zcode"
       #:app-dir "lib/zcode"
       #:application-directory "zcode"
+      ;; safeStorage 凭据持久化需要会话 secrets 服务：inputs 能定位到 gdbus /
+      ;; gnome-keyring-daemon / gcr-prompter（即含 glib:bin / gnome-keyring /
+      ;; gcr-3 三个输入）便自动启用 build/electron.scm 的
+      ;; ensure-secret-service-phase（探测在位就不动，缺服务才兜底拉
+      ;; gnome-keyring；用户显式 --password-store 永远最优先）。
       #:unpack-method 'deb-xz
       #:install-plan
       #~'(("opt/ZCode" "lib/zcode"))
@@ -1131,9 +1136,13 @@ configure.  This package provides the prebuilt desktop release.")
               ("expat" ,expat)
               ("fontconfig-minimal" ,fontconfig)
               ("gcc:lib" ,gcc "lib")
+              ("gcr-3" ,gcr-3)
               ("glibc" ,glibc)
               ("glib" ,glib)
+              ("glib:bin" ,glib "bin")
+              ("gnome-keyring" ,gnome-keyring)
               ("gtk+" ,gtk+)
+              ("libsecret" ,libsecret)
               ("libx11" ,libx11)
               ("libxcb" ,libxcb)
               ("libxcomposite" ,libxcomposite)
