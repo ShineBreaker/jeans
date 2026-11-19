@@ -1196,45 +1196,7 @@ configure.  This package provides the prebuilt desktop release.")
                        "d[i:i+len(old)]=new\n"
                        "open(p,'wb').write(d)\n")
                       (string-append #$output
-                                     "/lib/zcode/resources/app.asar"))))
-          ;; host（Electron utilityProcess）里的裸包名 import 在 asar 上做不了
-          ;; 目录遍历：相对路径的 chunk 能加载，import("@napi-rs/keyring")
-          ;; 却解析失败并被 catch 成 CREDENTIAL_SECURE_STORAGE_UNAVAILABLE。
-          ;; 把该包解包到 resources/ 下的真实 node_modules，Node 的 ESM
-          ;; 解析从 asar 内向上查找时会命中它。
-          (add-after 'patch-host-process-env 'expose-keyring-module
-            (lambda _
-              (invoke "python3" "-c"
-                      (string-append
-                       "import json,struct,os,sys,shutil\n"
-                       "asar,root=sys.argv[1],sys.argv[2]\n"
-                       "f=open(asar,'rb');raw=f.read(16)\n"
-                       "size=struct.unpack('<I',raw[12:16])[0]\n"
-                       "hdr=json.loads(f.read(size));base=16+size\n"
-                       "if base%4: base+=4-base%4\n"
-                       "def walk(n,p=''):\n"
-                       " for k,v in n.get('files',{}).items():\n"
-                       "  pp=p+'/'+k\n"
-                       "  if 'files' in v:\n"
-                       "   yield from walk(v,pp)\n"
-                       "  else: yield pp,v\n"
-                       "pkgs=('@napi-rs/keyring','@napi-rs/keyring-linux-x64-gnu')\n"
-                       "for name,v in walk(hdr):\n"
-                       " for p in pkgs:\n"
-                       "  pre='/node_modules/'+p+'/'\n"
-                       "  if name.startswith(pre) and not name.endswith('.node'):\n"
-                       "   out=os.path.join(root,p,name[len(pre):])\n"
-                       "   os.makedirs(os.path.dirname(out),exist_ok=True)\n"
-                       "   f.seek(base+int(v['offset']))\n"
-                       "   open(out,'wb').write(f.read(int(v['size'])))\n"
-                       "   os.chmod(out,0o644)\n"
-                       "src=os.path.join(asar+'.unpacked','node_modules/@napi-rs/keyring-linux-x64-gnu/keyring.linux-x64-gnu.node')\n"
-                       "dst=os.path.join(root,'@napi-rs/keyring-linux-x64-gnu','keyring.linux-x64-gnu.node')\n"
-                       "os.makedirs(os.path.dirname(dst),exist_ok=True)\n"
-                       "shutil.copyfile(src,dst)\n"
-                       "os.chmod(dst,0o755)\n")
-                      (string-append #$output "/lib/zcode/resources/app.asar")
-                      (string-append #$output "/lib/zcode/resources/node_modules")))))))
+                                     "/lib/zcode/resources/app.asar")))))))
     (native-inputs (list binutils python tar xz))
     (inputs `(("alsa-lib" ,alsa-lib)
               ("at-spi2-core" ,at-spi2-core)
