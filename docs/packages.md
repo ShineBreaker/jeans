@@ -13,6 +13,7 @@
 | ------------------------------ | -------------------------------------------------------------- |
 | `cindy-cn-bin`                 | Open-source AI agent desktop client                            |
 | `codewhale-bin`                | Multi-provider AI coding agent for the terminal                |
+| `codex-bin`                    | OpenAI's coding agent that runs in the terminal                |
 | `crommacode`                   | Terminal that turns coding-agent work into a watchable game    |
 | `cua-driver-bin`               | Cross-platform computer-use automation driver                  |
 | `deepseek-harness-desktop-bin` | Desktop application for DeepSeek Harness                       |
@@ -81,15 +82,17 @@
 
 ### (jeans packages editor)
 
-| Package            | Description                                                         |
-| ------------------ | ------------------------------------------------------------------- |
-| `fresh-editor`     | Terminal-based text editor with LSP support                         |
-| `fresh-editor-bin` | Terminal-based text editor with LSP support                         |
-| `helix-steel`      | Post-modern modal text editor with an embedded Steel Scheme runtime |
-| `lem-next`         | Integrated IDE/editor for Common Lisp                               |
-| `lem-next-bin`     | Integrated IDE/editor for Common Lisp (nightly prebuild)            |
-| `wu-bin`           | Fast native code editor with built-in coding agents                 |
-| `zed-bin`          | High-performance multiplayer code editor                            |
+| Package                      | Description                                                         |
+| ---------------------------- | ------------------------------------------------------------------- |
+| `fresh-editor`               | Terminal-based text editor with LSP support                         |
+| `fresh-editor-bin`           | Terminal-based text editor with LSP support                         |
+| `helix-steel`                | Post-modern modal text editor with an embedded Steel Scheme runtime |
+| `lem-next`                   | Integrated IDE/editor for Common Lisp                               |
+| `lem-next-bin`               | Integrated IDE/editor for Common Lisp (nightly prebuild)            |
+| `package-version-server`     | Language server for package.json dependency hover information       |
+| `typescript-language-server` | Language Server Protocol implementation for TypeScript              |
+| `wu-bin`                     | Fast native code editor with built-in coding agents                 |
+| `zed-bin`                    | High-performance multiplayer code editor                            |
 
 ### (jeans packages emacs-xyz)
 
@@ -120,6 +123,7 @@
 | --------------------------- | ------------------------------------------------------------------ |
 | `deltalazer-bin`            | Unofficial osu!lazer client with variable CS/AR/OD and HP gimmicks |
 | `g0v0-bin`                  | Free and open rhythm game based on the osu!lazer codebase          |
+| `gamescope`                 | Micro-compositor for running games                                 |
 | `inso-bin`                  | Performant osu! clone with Lua and GLSL shader support             |
 | `lr2oraja-endlessdream-bin` | Community fork of beatoraja BMS rhythm game with QoL improvements  |
 | `lzsync`                    | Sync beatmaps and settings across several osu! clients             |
@@ -191,25 +195,28 @@
 
 ### (jeans packages tools)
 
-| Package                    | Description                                                      |
-| -------------------------- | ---------------------------------------------------------------- |
-| `agenote`                  | Cross-agent experience platform CLI                              |
-| `amber-pm`                 | Container-based package manager using fuse-overlayfs             |
-| `aria2-next`               | Maintained aria2 fork with bug fixes and modernized architecture |
-| `aria2-next-bin`           | Maintained aria2 fork with bug fixes and modernized architecture |
-| `bun-bin`                  | All-in-one JavaScript runtime, package manager and bundler       |
-| `cc-switch-bin`            | All-in-One assistant for Claude Code, Codex & Gemini CLI         |
-| `disktree-bin`             | Treemap for finding and removing what fills your disk            |
-| `gh`                       | GitHub command-line tool                                         |
-| `git-credential-keepassxc` | Use KeePassXC as a command-line credential store                 |
-| `jdtls-bin`                | Java language server                                             |
-| `pnpm-bin`                 | Fast, disk space efficient package manager for Node.js           |
-| `prettier-bin`             | Opinionated multi-language code formatter                        |
-| `rayburst-bin`             | Full-featured download manager                                   |
-| `sunshine-bin`             | Self-hosted game stream host for Moonlight                       |
-| `winapps`                  | Run Windows applications on GNU/Linux                            |
-| `zellij`                   | Terminal workspace with batteries included                       |
-| `zellij-bin`               | Terminal workspace with batteries included                       |
+| Package                    | Description                                                              |
+| -------------------------- | ------------------------------------------------------------------------ |
+| `agenote`                  | Cross-agent experience platform CLI                                      |
+| `amber-pm`                 | Container-based package manager using fuse-overlayfs                     |
+| `aria2-next`               | Maintained aria2 fork with bug fixes and modernized architecture         |
+| `aria2-next-bin`           | Maintained aria2 fork with bug fixes and modernized architecture         |
+| `biome-bin`                | Formatter and linter for JavaScript, TypeScript, CSS and JSON            |
+| `bun-bin`                  | All-in-one JavaScript runtime, package manager and bundler               |
+| `cc-switch-bin`            | All-in-One assistant for Claude Code, Codex & Gemini CLI                 |
+| `disktree-bin`             | Treemap for finding and removing what fills your disk                    |
+| `gh`                       | GitHub command-line tool                                                 |
+| `git-credential-keepassxc` | Use KeePassXC as a command-line credential store                         |
+| `jdtls-bin`                | Java language server                                                     |
+| `kotlin-language-server`   | Kotlin code completion and diagnostics over the Language Server Protocol |
+| `officecli-bin`            | Command-line tool for creating and editing Office documents              |
+| `pnpm-bin`                 | Fast, disk space efficient package manager for Node.js                   |
+| `prettier-bin`             | Opinionated multi-language code formatter                                |
+| `rayburst-bin`             | Full-featured download manager                                           |
+| `sunshine-bin`             | Self-hosted game stream host for Moonlight                               |
+| `winapps`                  | Run Windows applications on GNU/Linux                                    |
+| `zellij`                   | Terminal workspace with batteries included                               |
+| `zellij-bin`               | Terminal workspace with batteries included                               |
 
 ### (jeans packages wuffs)
 

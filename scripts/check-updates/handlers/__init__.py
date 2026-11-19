@@ -5,13 +5,14 @@ from pathlib import Path
 from typing import Any, Callable, Dict, Optional
 
 from handlers.amber_pm import update_amber_pm
+from handlers.codex_bin import update_codex_bin
 from handlers.crommacode import update_crommacode
 from handlers.font_misans import update_font_misans
 from handlers.gh import update_gh
 from handlers.jdtls_bin import update_jdtls_bin
 from handlers.lem_next_bin import update_lem_next_bin
 from handlers.mysql_workbench_bin import update_mysql_workbench_bin
-from handlers.prettier_bin import update_prettier_bin
+from handlers.prettier_bin import update_npm_package, update_prettier_bin
 from handlers.qoder_cn import update_qoder_cn
 from handlers.workbuddy_cn import update_workbuddy_cn
 from handlers.zcode import update_zcode
@@ -25,7 +26,9 @@ SPECIAL_UPDATERS: Dict[str, Callable[[Dict[str, Any], Dict[str, Any], Path], Opt
     "font-misans": update_font_misans,
     "lem-next-bin": update_lem_next_bin,
     "mysql-workbench-community-bin": update_mysql_workbench_bin,
-    "prettier-bin": update_prettier_bin,
+    "prettier-bin": update_npm_package,
+    "typescript-language-server": update_npm_package,
+    "codex-bin": update_codex_bin,
     "qoder-cn": update_qoder_cn,
     "workbuddy-cn": update_workbuddy_cn,
     "crommacode": update_crommacode,

@@ -1,11 +1,22 @@
 ;;; SPDX-FileCopyrightText: 2026 BrokenShine <xchai404@gmail.com>
+;;; SPDX-FileCopyrightText: 2025 dan <i@dan.games>
+;;; SPDX-FileCopyrightText: 2025 aurtzy <aurtzy@gmail.com>
+;;; SPDX-FileCopyrightText: 2025 Demis Balbach <db@minikn.xyz>
 ;;;
-;;; SPDX-License-Identifier: GPL-3.0-only
+;;; SPDX-License-Identifier: GPL-3.0-or-later
+;;;
+;;; gamescope 及其四个钉住依赖（libliftoff/reshade/vkroots/wlroots-for-gamescope）
+;;; 的包定义移植自 Guix 上游 bug#70493 v2（dan、aurtzy、Demis Balbach）：
+;;; https://issues.guix.gnu.org/70493 。版本与四个依赖的 commit 已更新到
+;;; gamescope 3.17.0 的 gitlink，并补了 glm 的 subproject 与 --wrap-mode /
+;;; enable_tests 的调整。
 
 (define-module (jeans packages games)
   #:use-module (srfi srfi-1)
+  #:use-module (srfi srfi-26)
   #:use-module ((guix licenses) #:prefix license:)
   #:use-module ((nonguix licenses) #:prefix license:)
+  #:use-module (gnu packages admin)
   #:use-module (gnu packages base)
   #:use-module (gnu packages bash)
   #:use-module (gnu packages bootstrap)
@@ -23,6 +34,8 @@
   #:use-module (gnu packages golang)       ; go-1.27
   #:use-module (gnu packages golang-build) ; go-github-com-google-uuid
   #:use-module (gnu packages golang-maths) ; bigfft, mathutil
+  #:use-module (gnu packages benchmark)
+  #:use-module (gnu packages ghostscript)
   #:use-module (gnu packages gtk)
   #:use-module (gnu packages java)
   #:use-module (gnu packages gnome)
@@ -36,14 +49,21 @@
   #:use-module (gnu packages libevent)
   #:use-module (gnu packages libffi)
   #:use-module (gnu packages linphone)
+  #:use-module (gnu packages lua)
   #:use-module (gnu packages linux)
+  #:use-module (gnu packages maths)
   #:use-module (gnu packages nss)
   #:use-module (gnu packages pciutils)
+  #:use-module (gnu packages pkg-config)
+  #:use-module (gnu packages python)
   #:use-module (gnu packages pulseaudio)
+  #:use-module (gnu packages sdl)
+  #:use-module (gnu packages stb)
   #:use-module (gnu packages tls)
   #:use-module (gnu packages video)
   #:use-module (gnu packages vulkan)
   #:use-module (gnu packages web)
+  #:use-module (gnu packages window-management)
   #:use-module (gnu packages webkit)
   #:use-module (gnu packages xdisorg)
   #:use-module (gnu packages xorg)
@@ -52,6 +72,7 @@
   #:use-module (guix build-system copy)
   #:use-module (guix build-system go)
   #:use-module (guix build-system gnu)
+  #:use-module (guix build-system meson)
   #:use-module (guix build-system trivial)
   #:use-module (guix download)
   #:use-module (guix gexp)
@@ -1157,3 +1178,194 @@ client's database.")
       (properties `((with-latest-git-commit . #t)))
       (license license:expat)
       (supported-systems '("x86_64-linux")))))
+
+;;; gamescope 依赖若干上游「不稳定分支」的库，必须用钉住的 commit，否则
+;;; 编不过或行为不对（见 gamescope 上游 commit 7741cd5 的说明）。这里沿用
+;;; Guix 上游 bug#70493 v2（aurtzy/dan）的做法：不递归拉 submodule，而是把
+;;; 4 个依赖作为独立 origin，在 source snippet 里复制到源码树期望的位置。
+;;; commit 取自 gamescope 3.17.0 的 gitlink。
+(define %gamescope-version "3.17.0")
+
+(define libliftoff-for-gamescope
+  (origin
+    (method git-fetch)
+    (uri (git-reference
+          (url "https://gitlab.freedesktop.org/emersion/libliftoff.git")
+          (commit "8b08dc1c14fd019cc90ddabe34ad16596b0691f4")))
+    (file-name (git-file-name "libliftoff-for-gamescope" %gamescope-version))
+    (sha256 (base32 "163g8ndsbma7acy2k9mrnvlpb7yi4431hgkx1gygkafgwpq1ii1x"))))
+
+(define reshade-for-gamescope
+  (origin
+    (method git-fetch)
+    (uri (git-reference
+          (url "https://github.com/Joshua-Ashton/reshade")
+          (commit "696b14cd6006ae9ca174e6164450619ace043283")))
+    (file-name (git-file-name "reshade-for-gamescope" %gamescope-version))
+    (sha256
+     (base32 "1zvhf3pgd8bhn8bynrsh725xn1dszsf05j8c9g6zabgv7vnz04a5"))))
+
+(define vkroots-for-gamescope
+  (origin
+    (method git-fetch)
+    (uri (git-reference
+          (url "https://github.com/Joshua-Ashton/vkroots")
+          (commit "20733b938267dcac60f6ac105dbb757f9cc8df9c")))
+    (file-name (git-file-name "vkroots-for-gamescope" %gamescope-version))
+    (sha256 (base32 "0pdji4gj96h0dxv3yqwvf656pphmg8jp8xzawfgarsdrfb4pxafr"))))
+
+(define wlroots-for-gamescope
+  (origin
+    (method git-fetch)
+    (uri (git-reference
+          (url "https://gitlab.freedesktop.org/wlroots/wlroots.git")
+          (commit "d783533489e1f75d6886c2ab5c5960090ef268f8")))
+    (file-name (git-file-name "wlroots-for-gamescope" %gamescope-version))
+    (sha256 (base32 "15jizs8487pq8mi06rn2jvwds5734dnjnh4yvg8sz9yqzjd35mjm"))))
+
+(define-public gamescope
+  (package
+    (name "gamescope")
+    (version %gamescope-version)
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/ValveSoftware/gamescope")
+             (commit version)))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "0zw4c8jwxg7296gxs5l8gm3557c1bxkj2ccpjd1bjfi0pm7mqdb0"))
+       (modules '((guix build utils)
+                  (ice-9 match)))
+       (snippet
+        #~(begin
+            ;; 把钉住的依赖放进源码树，meson 会把它们当作本地 subproject。
+            (for-each (match-lambda
+                        ((source dest)
+                         (copy-recursively source dest)))
+                      '((#$libliftoff-for-gamescope "subprojects/libliftoff")
+                        (#$reshade-for-gamescope "src/reshade")
+                        (#$vkroots-for-gamescope "subprojects/vkroots")
+                        (#$wlroots-for-gamescope "subprojects/wlroots")))))))
+    (build-system meson-build-system)
+    (arguments
+     (list
+      ;; meson-build-system 默认 --wrap-mode=nofallback，会让 wlroots 等本地
+      ;; subproject 的 fallback 被禁用；nodownload 允许用源码树内的依赖但
+      ;; 禁止构建期下载。
+      #:configure-flags #~(list "--wrap-mode=nodownload"
+                                "-Dpipewire=enabled"
+                                "-Denable_openvr_support=false"
+                                "-Denable_tests=false")
+      #:modules '((guix build meson-build-system)
+                  (guix build utils)
+                  (srfi srfi-26))
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'unpack 'patch-usr-dir
+            (lambda _
+              (substitute* "src/reshade_effect_manager.cpp"
+                (("/usr") #$output))))
+          (add-after 'unpack 'patch-loader-path
+            ;; 不打这个补丁会报 "Failed to load vulkan module"（issue 71109）。
+            (lambda* (#:key inputs #:allow-other-keys)
+              (substitute* "src/rendervulkan.cpp"
+                (("dlopen\\( \"libvulkan\\.so")
+                 (string-append "dlopen( \""
+                                (search-input-file
+                                 inputs "/lib/libvulkan.so"))))))
+          (add-after 'unpack 'patch-version
+            (lambda _
+              (substitute* "src/meson.build"
+                (("^vcs_tag = .*$")
+                 (string-append
+                  "vcs_tag = '" #$(package-version this-package) "'\n")))))
+          ;; 3.17 的 meson.build 用硬编码 subproject('glm')，不认 -Dglm_include_dir；
+          ;; 把系统 glm 头连同一个最小 meson.build 放进 subprojects，避免 wrap 下载。
+          (add-after 'unpack 'patch-glm
+            (lambda _
+              (let ((glm-dir #$(this-package-input "glm")))
+                (mkdir-p "subprojects/glm")
+                (copy-recursively (string-append glm-dir "/include/glm")
+                                  "subprojects/glm/glm")
+                (call-with-output-file "subprojects/glm/meson.build"
+                  (cut format <>
+                       (string-append
+                        "project('glm', 'cpp')\n"
+                        "glm_inc = include_directories('.')\n"
+                        "glm_dep = declare_dependency("
+                        "include_directories: glm_inc)\n"))))))
+          (add-after 'unpack 'patch-stb
+            (lambda _
+              (let ((stb-files-dir #+(directory-union
+                                      "stb"
+                                      (map (cut this-package-native-input <>)
+                                           (list "stb-image"
+                                                 "stb-image-write"
+                                                 "stb-image-resize")))))
+                (copy-recursively (string-append stb-files-dir "/include")
+                                  "subprojects/stb"))
+              (copy-recursively "subprojects/packagefiles/stb"
+                                "subprojects/stb")
+              (call-with-output-file "subprojects/stb.wrap"
+                (cut format <> "\
+[wrap-file]
+directory = stb
+"))))
+          (add-after 'unpack 'patch-spirv-headers
+            (lambda _
+              (substitute* "src/meson.build"
+                (("../thirdparty/SPIRV-Headers")
+                 #$(this-package-native-input "spirv-headers"))))))))
+    (native-inputs (list gcc-14
+                         glslang
+                         pkg-config
+                         python
+                         spirv-headers
+                         stb-image
+                         stb-image-write
+                         stb-image-resize
+                         vulkan-headers))
+    (inputs (list benchmark
+                  glm
+                  hwdata
+                  lcms
+                  libavif
+                  libdecor
+                  libdisplay-info
+                  libdrm
+                  libei
+                  libinput
+                  libseat
+                  libx11
+                  libxcomposite
+                  libxcursor
+                  libxdamage
+                  libxext
+                  libxkbcommon
+                  libxmu
+                  libxrender
+                  libxres
+                  libxt
+                  libxtst
+                  libxxf86vm
+                  luajit
+                  pipewire
+                  pixman
+                  sdl2
+                  vulkan-loader
+                  xcb-util-wm
+                  xcb-util-errors
+                  xorg-server-xwayland
+                  wayland
+                  wayland-protocols))
+    (home-page "https://github.com/ValveSoftware/gamescope")
+    (synopsis "Micro-compositor for running games")
+    (description
+     "Gamescope is a micro-compositor for running games.  It provides an
+isolated compositor tailored towards gaming: it spoofs resolutions, upscales
+with FSR/NIS, limits the frame rate and can drive HDR output.")
+    (properties '((upstream-name . "gamescope")))
+    (license license:bsd-2)
+    (supported-systems '("x86_64-linux"))))

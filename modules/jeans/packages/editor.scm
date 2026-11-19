@@ -29,8 +29,11 @@
   #:use-module (gnu packages lisp-check)
   #:use-module (gnu packages lisp-xyz)
   #:use-module (gnu packages ncurses)
+  #:use-module (gnu packages node)
+  #:use-module (gnu packages node-xyz)
   #:use-module (gnu packages pkg-config)
   #:use-module (gnu packages regex)
+  #:use-module (gnu packages rust)
   #:use-module (gnu packages terminals)
   #:use-module (gnu packages text-editors)
   #:use-module (gnu packages tls)
@@ -516,6 +519,105 @@ source.")
     (properties '((upstream-name . "fresh-editor")))
     (license license:gpl3+)
     (supported-systems '("x86_64-linux"))))
+
+;;; package-version-server is the language server Zed ships for hover
+;;; information on dependencies in package.json.  Plain Rust binary whose
+;;; only native dependency is OpenSSL, so it is built from source.
+(define-public package-version-server
+  (package
+    (name "package-version-server")
+    (version "0.0.10")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/zed-industries/package-version-server")
+             (commit (string-append "v" version))))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "0i9xcmppvbp536d2d1z5g9x74na7dn21k0sna8cv0xw9d2lyivnp"))))
+    (build-system cargo-build-system)
+    (arguments
+     (list
+      #:rust rust
+      #:install-source? #f
+      #:tests? #f))
+    (native-inputs (list pkg-config))
+    (inputs
+     (cons* openssl
+            (cargo-inputs 'package-version-server
+                          #:module '(jeans packages rust-crates))))
+    (home-page "https://github.com/zed-industries/package-version-server")
+    (synopsis "Language server for package.json dependency hover information")
+    (description
+     "This package provides Zed's language server that reads the dependency
+sections of a @file{package.json} and reports the latest published version of
+each package on hover.")
+    (license license:expat)))
+
+;;; typescript-language-server is published on npm as a dependency-free
+;;; bundle (lib/cli.mjs plus its own modules), so the tarball is the whole
+;;; program.  Its shebang is "#!/usr/bin/env node", which cannot resolve on
+;;; Guix; the launcher below runs it through node with an absolute path
+;;; instead of wrapping the script.
+(define-public typescript-language-server
+  (package
+    (name "typescript-language-server")
+    (version "6.1.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://registry.npmjs.org/typescript-language-server/-/"
+             "typescript-language-server-" version ".tgz"))
+       (sha256
+        (base32 "1c372yjjximbnlr2m9k84xnqjmi4c28x178nszjzdsaciyaz6cky"))))
+    (build-system binary-build-system)
+    (arguments
+     (list
+      #:unpack-method 'gnu-unpack
+      #:install-plan
+      #~'(("./" "lib/node_modules/typescript-language-server/"))
+      #:patchelf? #f
+      #:wrap? #f
+      #:modules '((jeans build binary)
+                  (guix build utils))
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'install 'install-launcher
+            (lambda _
+              (let ((bin (string-append
+                          #$output "/bin/typescript-language-server"))
+                    (cli (string-append
+                          #$output
+                          "/lib/node_modules/typescript-language-server"
+                          "/lib/cli.mjs")))
+                (mkdir-p (dirname bin))
+                (call-with-output-file bin
+                  (lambda (port)
+                    (format port
+                            (string-append
+                             "#!~a~%export NODE_PATH=~a"
+                             "${NODE_PATH:+:$NODE_PATH}"
+                             "~%exec ~a ~a \"$@\"~%")
+                            #$(file-append bash-minimal "/bin/bash")
+                            #$(file-append
+                               (this-package-input "node-typescript")
+                               "/lib/node_modules")
+                            #$(file-append node "/bin/node")
+                            cli)))
+                (chmod bin #o755)))))))
+    ;; tsserver 是运行时依赖：缺 node-typescript 时 initialize 会报
+    ;; "Could not find a valid TypeScript installation"，故经 NODE_PATH 提供。
+    (inputs (list node node-typescript bash-minimal))
+    (properties '((upstream-name . "typescript-language-server")))
+    (home-page "https://github.com/typescript-language-server/typescript-language-server")
+    (synopsis "Language Server Protocol implementation for TypeScript")
+    (description
+     "TypeScript Language Server wraps @code{tsserver} behind the Language
+Server Protocol, giving editors completion, diagnostics, go-to-definition and
+other code intelligence for TypeScript and JavaScript files.")
+    (license license:asl2.0)))
 
 ;;; zed-bin packages the upstream Zed editor's prebuilt Linux release
 ;;; (zed-industries/zed): Zed's GPL-3.0-or-later binaries exactly as

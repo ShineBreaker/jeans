@@ -35,6 +35,7 @@
   #:use-module (gnu packages base)     ; glibc, binutils, coreutils
   #:use-module (gnu packages bootstrap) ; glibc-dynamic-linker
   #:use-module (gnu packages glib)     ; glib
+  #:use-module (gnu packages icu4c)    ; icu4c (.NET 自包含二进制的 globalization)
   #:use-module (gnu packages freedesktop) ; libappindicator
   #:use-module (gnu packages gcc)         ; gcc:lib
   #:use-module (gnu packages backup)      ; libarchive (bsdtar 解 zip)
@@ -984,6 +985,163 @@ consistent style by parsing code and re-printing it with its own rules,
 supporting many languages including JavaScript, TypeScript, CSS, HTML,
 JSON, YAML, Markdown and GraphQL.")
     (home-page "https://prettier.io")
+    (license license:expat)))
+
+;;; officecli is a .NET command-line tool for reading, creating and editing
+;;; Office documents (.docx/.xlsx/.pptx).  Upstream publishes a
+;;; self-contained single-file Linux binary; its bundled runtime still
+;;; resolves the system ICU for globalization, so icu4c must be an input
+;;; (without it the binary aborts with "Couldn't find a valid ICU package").
+(define-public officecli-bin
+  (package
+    (name "officecli-bin")
+    (version "1.0.162")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://github.com/iOfficeAI/OfficeCLI/releases/download/v"
+             version
+             "/officecli-linux-x64"))
+       (sha256
+        (base32 "1461mjp3wlvhmnyhgda1w6zzyw0sgrpwkjgpcmjq512w3grfhh6z"))))
+    (build-system binary-build-system)
+    (arguments
+     (list
+      #:unpack-method 'file
+      #:install-plan
+      #~'(("officecli-linux-x64" "bin/officecli"))
+      ;; 不传 patchelf-plan 时 basе 阶段不打任何 ELF，interpreter 仍指向
+      ;; /lib64/ld-linux 且 RPATH 为空，于是 ICU / libstdc++ 都找不到。
+      #:patchelf-plan
+      #~'(("bin/officecli"))
+      #:modules '((jeans build binary)
+                  (guix build utils))
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'install 'make-executable
+            (lambda _
+              (chmod (string-append #$output "/bin/officecli") #o755))))))
+    (inputs `(("icu4c" ,icu4c)
+              ("gcc:lib" ,gcc "lib")))
+    (properties '((upstream-name . "OfficeCLI")))
+    (home-page "https://github.com/iOfficeAI/OfficeCLI")
+    (synopsis "Command-line tool for creating and editing Office documents")
+    (description
+     "officecli reads, creates and edits @file{.docx}, @file{.xlsx} and
+@file{.pptx} documents from the command line.  Every command accepts a
+@option{--json} flag for machine-readable output, and a resident mode keeps a
+document in memory between commands.  This package installs the upstream
+prebuilt Linux binary.")
+    (license license:asl2.0)
+    (supported-systems '("x86_64-linux"))))
+
+;;; biome-bin packages the upstream Biome CLI from its prebuilt
+;;; x86_64-linux release.  The Rust sources pull ~700 crates, so building
+;;; from source is not worth it for a formatter/linter binary.  The ELF
+;;; only needs libgcc_s beyond glibc.
+(define-public biome-bin
+  (package
+    (name "biome-bin")
+    (version "2.6.8")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://github.com/biomejs/biome/releases/download/"
+             "@biomejs/biome@" version "/biome-linux-x64"))
+       (sha256
+        (base32 "1pfm0f9daqh2m108hls1wqsx1rbf141vsn2g2has6vsdcv3bf77w"))))
+    (build-system binary-build-system)
+    (arguments
+     (list
+      #:unpack-method 'file
+      #:install-plan
+      #~'(("biome-linux-x64" "bin/biome"))
+      #:patchelf-plan
+      #~'(("bin/biome"))
+      #:modules '((jeans build binary)
+                  (guix build utils))
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'install 'make-executable
+            (lambda _
+              (chmod (string-append #$output "/bin/biome") #o755))))))
+    (inputs `(("gcc:lib" ,gcc "lib")))
+    (properties '((upstream-name . "biome")
+                  (release-tag-prefix . "^@biomejs/biome@")))
+    (home-page "https://biomejs.dev")
+    (synopsis "Formatter and linter for JavaScript, TypeScript, CSS and JSON")
+    (description
+     "Biome is a toolchain for the web, combining a formatter and a linter for
+JavaScript, TypeScript, JSX, CSS and JSON in a single fast binary built in
+Rust.  This package installs the upstream prebuilt Linux binary.")
+    (license license:expat)
+    (supported-systems '("x86_64-linux"))))
+
+;;; kotlin-language-server ships as a zip containing the JVM server jars
+;;; (server/lib) plus a Gradle-generated launcher that resolves java through
+;;; JAVA_HOME or PATH.  The whole server/ tree is installed under
+;;; lib/kotlin-language-server so the launcher's APP_HOME-relative jar lookup
+;;; keeps working; the shell launcher is rewritten to the store bash with an
+;;; absolute JAVA_HOME.
+(define-public kotlin-language-server
+  (package
+    (name "kotlin-language-server")
+    (version "1.3.13")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://github.com/fwcd/kotlin-language-server/releases/"
+             "download/" version "/server.zip"))
+       (sha256
+        (base32 "1lmnv6r4x8mhk28bh9bwrn244slcknyp2q83d5w7qc3v10fxgrsg"))))
+    (build-system binary-build-system)
+    (arguments
+     (list
+      #:unpack-method 'bsdtar
+      #:install-plan
+      #~'(("server/" "lib/kotlin-language-server/"))
+      #:patchelf? #f
+      #:wrap? #f
+      #:modules '((jeans build binary)
+                  (guix build utils))
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'install 'install-launcher
+            (lambda _
+              (let* ((real (string-append
+                            #$output
+                            "/lib/kotlin-language-server/bin/kotlin-language-server"))
+                     (bin (string-append #$output "/bin/kotlin-language-server")))
+                (substitute* real
+                  (("^#!/bin/sh")
+                   (string-append "#!"
+                                  #$(file-append bash-minimal "/bin/bash"))))
+                (chmod real #o555)
+                (mkdir-p (dirname bin))
+                (call-with-output-file bin
+                  (lambda (port)
+                    (display (string-append
+                              "#!" #$(file-append bash-minimal "/bin/bash") "\n"
+                              "export JAVA_HOME=" #$(file-append openjdk21 "/")
+                              "\n"
+                              "exec " real " \"$@\"\n")
+                             port)))
+                (chmod bin #o555)))))))
+    (native-inputs (list libarchive))
+    ;; 1.3.13 内置的 IntelliJ JavaVersion.parse 解析不了 JDK 25 的版本串
+    ;; （IllegalArgumentException: 25.0.2），必须用 JDK 21。
+    (inputs (list openjdk21 bash-minimal))
+    (properties '((upstream-name . "kotlin-language-server")))
+    (home-page "https://github.com/fwcd/kotlin-language-server")
+    (synopsis "Kotlin code completion and diagnostics over the Language Server Protocol")
+    (description
+     "Kotlin Language Server implements the Language Server Protocol for
+Kotlin, providing completion, diagnostics, hover information, formatting and
+navigation for any editor or IDE that speaks LSP.  This package installs the
+upstream prebuilt server distribution.")
     (license license:expat)))
 
 

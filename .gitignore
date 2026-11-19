@@ -13,3 +13,4 @@ scripts/check-updates/build-report.json
 .mimosa/
 scripts/check-updates/refresh-updates.json
 .workbuddy
+.tmp/

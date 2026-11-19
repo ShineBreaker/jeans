@@ -284,6 +284,49 @@ control, and a companion system.")
     (license license:asl2.0)
     (supported-systems '("x86_64-linux"))))
 
+;;; codex-bin packages OpenAI's Codex CLI from the prebuilt musl release:
+;;; a single static-pie ELF with no interpreter, so it is installed as-is
+;;; (no patchelf, no wrapper).  Upstream tags the Rust release line as
+;;; "rust-vX.Y.Z" and mixes in -alpha pre-releases, hence the tag prefix.
+(define-public codex-bin
+  (package
+    (name "codex-bin")
+    (version "0.170.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://github.com/openai/codex/releases/download/rust-v"
+             version
+             "/codex-x86_64-unknown-linux-musl.tar.gz"))
+       (sha256
+        (base32 "1xa7w8629vmqpsx4pm7w827wm12ihxy2z3bb6wh3i998rmn92m6h"))))
+    (build-system binary-build-system)
+    (arguments
+     (list
+      #:unpack-method 'gnu-unpack
+      #:install-plan
+      #~'(("codex-x86_64-unknown-linux-musl" "bin/codex"))
+      #:patchelf? #f
+      #:wrap? #f
+      #:modules '((jeans build binary)
+                  (guix build utils))
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'install 'make-executable
+            (lambda _
+              (chmod (string-append #$output "/bin/codex") #o755))))))
+    (properties '((upstream-name . "codex")
+                  (release-tag-prefix . "^rust-v")))
+    (home-page "https://github.com/openai/codex")
+    (synopsis "OpenAI's coding agent that runs in the terminal")
+    (description
+     "Codex is OpenAI's local coding agent.  It reads and edits files and runs
+commands in the current workspace, driving the model from the terminal.  This
+package installs the upstream prebuilt Linux binary.")
+    (license license:asl2.0)
+    (supported-systems '("x86_64-linux"))))
+
 ;;; GitHub Copilot app: agent-native desktop client (Tauri + WebKitGTK).
 ;;;
 ;;; The upstream .deb bundles a 668 MB Tauri ELF (`github') plus a small
