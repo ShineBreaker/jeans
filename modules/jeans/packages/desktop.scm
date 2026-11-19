@@ -124,7 +124,7 @@ and Xorg.")
 (define-public ai-usagebar-bin
   (package
     (name "ai-usagebar-bin")
-    (version "1.52.2")
+    (version "1.52.3")
     (source
      (origin
        (method url-fetch)
@@ -132,7 +132,7 @@ and Xorg.")
              "https://github.com/akitaonrails/ai-usagebar/releases/download/"
              "v" version "/ai-usagebar-linux-x86_64.tar.gz"))
        (sha256
-        (base32 "13qlqz74073zlc22ngqldj0zd16vkzdlxvm6vfyl52c2l96864cq"))))
+        (base32 "10mnbnmpbga1yhya66q9lxv15nmwldxw24655i13v8ms7hv28sxl"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -171,7 +171,7 @@ release.")
 (define-public ai-usagebar
   (package
     (name "ai-usagebar")
-    (version "1.52.2")
+    (version "1.52.3")
     (source
      (origin
        (method git-fetch)
@@ -180,7 +180,7 @@ release.")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "0w1rvfriq461c3xh96hchy1phmfdgg8mqjq2xhns1i5y18s5nbx5"))))
+        (base32 "177n4vsrmya985x7fnyfiqv88qn53nydj1w3711d44sb62lgmc8x"))))
     (build-system cargo-build-system)
     (arguments
      (list #:install-source? #f
@@ -423,7 +423,7 @@ from source.")
 (define-public waywallen-bin
   (package
     (name "waywallen-bin")
-    (version "0.6.0")
+    (version "0.6.1")
     (source
      (origin
        (method url-fetch)
@@ -432,7 +432,7 @@ from source.")
              version
              "/waywallen-" version "-x86_64.AppImage"))
        (sha256
-        (base32 "1zaindd2bq4qchl79yn6pnl1amf77n1k9pxakrln46dbf731jzni"))))
+        (base32 "0bg6fv8phwxii9dhdidizssxcr6qpkhb1n9szj8i5vndxb3mh76x"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -629,7 +629,7 @@ desktop through a Wayland layer shell and a QtQuick interface.")
 (define-public open-wallpaper-engine-bin
   (package
     (name "open-wallpaper-engine-bin")
-    (version "0.3.3")
+    (version "0.3.4")
     (source
      (origin
        (method url-fetch)
@@ -639,7 +639,7 @@ desktop through a Wayland layer shell and a QtQuick interface.")
              "/org.waywallen.open-wallpaper-engine-" version
              "-linux-x86_64.zip"))
        (sha256
-        (base32 "1qrhrnhggkpwjccrlawnbn26ggryciw6wxg9rramammhxgsyci09"))))
+        (base32 "1qks136yjrlg4v583ww9z3qdk7l05nirkjj43fda4b668xqi1nwl"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -1006,7 +1006,7 @@ renderer relies on the upstream Chromium binary distribution.")
 (define-public msime-bin
   (package
     (name "msime-bin")
-    (version "0.16.1")
+    (version "0.17.0")
     (source
      (origin
        (method url-fetch)
@@ -1015,7 +1015,7 @@ renderer relies on the upstream Chromium binary distribution.")
              "linux-v" version "/msime-linux-" version
              "-linux-x86_64.tar.gz"))
        (sha256
-        (base32 "0ki12ax0vnyvh5q2sb2pw2jlvvr5xsic701310k6iirlwwjr3mhb"))))
+        (base32 "1swycyl9mxbbh2hx1yabymh7jkahfy8m3rvdfbzi5v5bs5617ajv"))))
     (build-system binary-build-system)
     (arguments
      (list

@@ -190,7 +190,7 @@ release.")
 (define-public cindy-cn-bin
   (package
     (name "cindy-cn-bin")
-    (version "0.1.139")
+    (version "0.1.140")
     (source
      (origin
        (method url-fetch)
@@ -198,7 +198,7 @@ release.")
              "https://github.com/makecindy/cindy/releases/download/"
              "v" version "/cindy-" version "-linux-x64-cn.deb"))
        (sha256
-        (base32 "1pgmdqxc5ykihjhrip7n0y2h6k67k5wmj8whf6k5w85h0g5gbzny"))))
+        (base32 "0ffknq55bgaj0r2fb3zmn95ggrvc0jnwi1zpg5lhcmdar4g9iavw"))))
     (build-system electron-build-system)
     (arguments
      (list
@@ -347,7 +347,7 @@ package installs the upstream prebuilt Linux binary.")
 (define-public github-copilot
   (package
     (name "github-copilot")
-    (version "1.4.2")
+    (version "1.4.3")
     (source
      (origin
        (method url-fetch)
@@ -355,7 +355,7 @@ package installs the upstream prebuilt Linux binary.")
              "https://github.com/github/app/releases/download/"
              "v" version "/GitHub-Copilot-linux-x64.deb"))
        (sha256
-        (base32 "1ygq31mbjd587znidfxpi0vzsymsdnbk8cz90gy26scm1hjn8wm5"))))
+        (base32 "1ps3lblhpaaqcc7jgcj8fiygk3p17snw0h8h46cmn48hx7avz2i8"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -623,7 +623,7 @@ prebuilt distribution and launches it with the store Node.js runtime.")
 (define-public opencode-desktop-bin
   (package
     (name "opencode-desktop-bin")
-    (version "2.3.0")
+    (version "2.3.2")
     (source
      (origin
        (method url-fetch)
@@ -631,7 +631,7 @@ prebuilt distribution and launches it with the store Node.js runtime.")
              "https://github.com/anomalyco/opencode/releases/download/"
              "v" version "/opencode-desktop-linux-amd64.deb"))
        (sha256
-        (base32 "15j4ph2vzx83lwb7ss3wr5r58migzizpzjqf16xvmzldnj5ww04q"))))
+        (base32 "05vvg2mdz5zkj1h6qbdhljlvmwxyxv8yc63i6vs9i6zxw7i00w7d"))))
     (build-system electron-build-system)
     (arguments
      (list
@@ -756,7 +756,7 @@ coding experience with context awareness.")
 (define-public paseo-bin
   (package
     (name "paseo-bin")
-    (version "0.16.1")
+    (version "0.16.2")
     (source
      (origin
        (method url-fetch)
@@ -764,7 +764,7 @@ coding experience with context awareness.")
              "https://github.com/getpaseo/paseo/releases/download/"
              "v" version "/Paseo-" version "-amd64.deb"))
        (sha256
-        (base32 "17kicn21vbrmv2vizxaypj6770p1mfp23mqdw7irjaf3ghx89a5i"))))
+        (base32 "10mx40qb2aw742iccpf50wwhabxg5q12qr4clbvizbxg3vw45xb4"))))
     (build-system electron-build-system)
     (arguments
      (list
@@ -1370,7 +1370,7 @@ release and needs the @code{nix-ld} system service to run.")
 (define-public omo-bin
   (package
     (name "omo-bin")
-    (version "5.1.75")
+    (version "5.1.79")
     (source
      (origin
        (method url-fetch)
@@ -1379,7 +1379,7 @@ release and needs the @code{nix-ld} system service to run.")
              "v" version "/omo-linux-x64"))
        (sha256
         (base32
-         "0v4rlq8sac190pyncjbvf8pwca1zd22r49yb7r5bkzif0y5mp2zg"))))
+         "0x2l4b1rbl1wf1gh2bxx8fyh7j2jxkvnvvdwqs79x0ccwv1j9w8v"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -1419,7 +1419,7 @@ run.")
 (define-public cua-driver-bin
   (package
     (name "cua-driver-bin")
-    (version "0.52.13")
+    (version "0.54.0")
     (source
      (origin
        (method url-fetch)
@@ -1428,7 +1428,7 @@ run.")
              "cua-driver-rs-v" version
              "/cua-driver-rs-" version "-linux-x86_64-binary.tar.gz"))
        (sha256
-        (base32 "17g6wm9kpslcdzh15y117axyr001xpq4hvaz216mi36k5bpjl3yy"))))
+        (base32 "13l69466hi9kyy52vpz92lrys3lam6zf1kisrnykkvdflpiqxcsk"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -1550,7 +1550,7 @@ so the bundled self-updater should not be used.")
 (define-public magpie-bin
   (package
     (name "magpie-bin")
-    (version "0.1.4366")
+    (version "0.1.4537")
     (source
      (origin
        (method url-fetch)
@@ -1558,7 +1558,7 @@ so the bundled self-updater should not be used.")
              "https://github.com/yetone/magpie-releases/releases/download/"
              "v" version "/magpie-linux-amd64"))
        (sha256
-        (base32 "1rjhxbb442v43x146h1zcana2ahill1wpl1332vbdj004y3p1lj0"))))
+        (base32 "068j37nn72f2c0rrs6g7vx06jhq9vzjbdkv3jn0jrxrbfxb9z5gs"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -1830,7 +1830,7 @@ Tencent account.")
 (define-public qoder-cn
   (package
     (name "qoder-cn")
-    (version "0.5.13")
+    (version "0.5.14")
     (source
      (origin
        (method url-fetch)
@@ -1838,7 +1838,7 @@ Tencent account.")
              "https://static.qoder.com.cn/qoder-app/releases/"
              version "/Qoder-CN-linux-amd64.deb"))
        (sha256
-        (base32 "0y6x0rkjy2n980nzfrpnq3kr22pf6av8g3ak23z74ma7p68rmshk"))))
+        (base32 "1jl8rfdf54hyf8hqm4gsj9y20rqccjk3psgr9jq1fxvlx8ngi09c"))))
     (build-system electron-build-system)
     (arguments
      (list
@@ -1953,7 +1953,7 @@ requires a Qoder account.")
 (define-public crommacode
   (package
     (name "crommacode")
-    (version "0.3.22")
+    (version "0.3.31")
     (source
      (origin
        (method url-fetch)
@@ -1961,7 +1961,7 @@ requires a Qoder account.")
              "https://dl.cromma.ai/code/artifacts/" version
              "/CrommaCode-" version "-linux-amd64.deb"))
        (sha256
-        (base32 "08vygdl4r1d8d9dl6977yz7qhf29713ybcy3laj6xncjwvcq9763"))))
+        (base32 "0l92y1kccb3q83k46c54l8gr7ak224ajgr687s7zgpj9bgm0yn0m"))))
     (build-system binary-build-system)
     (arguments
      (list

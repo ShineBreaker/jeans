@@ -244,7 +244,7 @@
 (define-public go-github-com-egoist-mygo
   (package
     (name "go-github-com-egoist-mygo")
-    (version "0.9.0")
+    (version "0.10.0")
     (source
      (origin
        (method git-fetch)
@@ -253,7 +253,7 @@
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "07m19hkx5xfinwbfi34xrj1csrnp7y05n7y8779kfiki18ddj3h6"))))
+        (base32 "0n279l5lyv5ly9a8f6lpgjl3y9cybqiyp7w955ws18mc0wargfq0"))))
     (build-system go-build-system)
     (arguments
      (list #:import-path "github.com/egoist/mygo"
