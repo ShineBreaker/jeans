@@ -65,7 +65,7 @@
 (define-public lem-next-bin
   (package
     (name "lem-next-bin")
-    (version "20261117-0657")
+    (version "20261118-0618")
     (source
      (origin
        (method url-fetch)
@@ -73,7 +73,7 @@
              "https://github.com/lem-project/lem/releases/download/"
              "nightly-latest/Lem-x86_64.AppImage"))
        (sha256
-        (base32 "0rqvb62m4yw9a7a1nlh4xsxdi7wl7djl1wrb767p3ry354di5gma"))))
+        (base32 "0xvw6a9dqvd9caxzz7brs0al3sw5ihwsvvzpvzfnqjwxh9qakmjz"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -214,8 +214,8 @@ the webview (GTK/WebKitGTK) frontend with an ncurses fallback.")
 ;;; e.g. tree-sitter-json and point LD_LIBRARY_PATH at its lib/ to
 ;;; enable syntax highlighting for that language.
 (define-public lem-next
-  (let ((commit "da31ecd48c78ff4294e62ea5cbfd91022c33afff")
-        (revision "17"))
+  (let ((commit "d3ff8bd07388e1fd05d82bb1412b2d0986caff36")
+        (revision "18"))
     (package
       (inherit lem)
       (name "lem-next")
@@ -228,7 +228,7 @@ the webview (GTK/WebKitGTK) frontend with an ncurses fallback.")
                (commit commit)))
          (file-name (git-file-name name version))
          (sha256
-          (base32 "030sq3q3r4n3q7q8rr2y5gjpjmhi7imkr3hdiw2xhffg0n05mvky"))
+          (base32 "0k9j6qvbbaziclhak4iqlfaf5zrzv85lyjjs01m287vz7cj0ppd9"))
          (patches
           (map canonicalize-path
                (search-patches
@@ -656,7 +656,7 @@ other code intelligence for TypeScript and JavaScript files.")
 (define-public zed-bin
   (package
     (name "zed-bin")
-    (version "1.28.1")
+    (version "1.29.2")
     (source
      (origin
        (method url-fetch)
@@ -664,7 +664,7 @@ other code intelligence for TypeScript and JavaScript files.")
              "https://github.com/zed-industries/zed/releases/download/v"
              version "/zed-linux-x86_64.tar.gz"))
        (sha256
-        (base32 "0hipv96ha7f2shjwsllz9g29rml85fz64jl61s6jrrrkwp5w8gww"))))
+        (base32 "18pzlxvbqhliglm46dy526ayqxyh609kcsfjzy0h4b8qi9rbm11m"))))
     (build-system binary-build-system)
     (arguments
      (list

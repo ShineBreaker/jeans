@@ -273,7 +273,7 @@ editor that supports the protocol to provide Java language features.")
 (define-public aria2-next-bin
   (package
     (name "aria2-next-bin")
-    (version "3.1.0")
+    (version "3.1.1")
     (source
      (origin
        (method url-fetch)
@@ -282,7 +282,7 @@ editor that supports the protocol to provide Java language features.")
              "v" version "/aria2-next-" version "-linux-x86_64"))
        (file-name "aria2-next")
        (sha256
-        (base32 "1478hvb5pvpirghbaz7x941pzlk4ckcx5kqjdny1mk0jjg1ly9js"))))
+        (base32 "1mi03hlqn2nspf3picy0l3788z1ri5hgxk4s4rg0ia9jkh4lcyq2"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -329,7 +329,7 @@ prebuilt binary release.")
 (define-public aria2-next
   (package
     (name "aria2-next")
-    (version "3.1.0")
+    (version "3.1.1")
     (source
      (origin
        (method git-fetch)
@@ -338,7 +338,7 @@ prebuilt binary release.")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "0xl392bj9dazndpkh2833mfck1v9abhq3xpwrkd45rv7kz04p1wz"))
+        (base32 "1kv0lzpi5ijdr5h37rwr1hrcsd5ydmbxlr17k2haqq2wzl8csxar"))
        (modules '((guix build utils)))
        (snippet
         #~(begin
@@ -570,7 +570,7 @@ companion extension.  This package provides the prebuilt binary release.")
 (define-public cc-switch-bin
   (package
     (name "cc-switch-bin")
-    (version "4.0.34")
+    (version "4.0.35")
     (source
      (origin
        (method url-fetch)
@@ -578,7 +578,7 @@ companion extension.  This package provides the prebuilt binary release.")
              "https://github.com/farion1231/cc-switch/releases/download/"
              "v" version "/CC-Switch-v" version "-Linux-x86_64.deb"))
        (sha256
-        (base32 "16q5m79zfzw4j0c9llk4qmsvd04xgsyj6x4wkjfdi9j16xfcv8k8"))))
+        (base32 "1bf5ijdv36calynds85ipcwlsp7yszjybrkix6n5a5wjigscsqib"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -1156,7 +1156,7 @@ upstream prebuilt server distribution.")
 (define-public bun-bin
   (package
     (name "bun-bin")
-    (version "1.4.4")
+    (version "1.4.5")
     (source
       (origin
         (method url-fetch)
@@ -1164,7 +1164,7 @@ upstream prebuilt server distribution.")
               "https://github.com/oven-sh/bun/releases/download/bun-v"
               version "/bun-linux-x64.zip"))
         (sha256
-          (base32 "0p1rrgy55nry189wdnrlfl3xib8pag2iavcs1yg1b00b5gxwp35z"))))
+          (base32 "1sv66qnb056jih5002kfs3byzwklxi641wpraaaa95c9a8xrnmcl"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -1206,7 +1206,7 @@ prebuilt binary.")
 (define-public pnpm-bin
   (package
     (name "pnpm-bin")
-    (version "12.21.0")
+    (version "12.22.0")
     (source
       (origin
         (method url-fetch)
@@ -1214,7 +1214,7 @@ prebuilt binary.")
               "https://github.com/pnpm/pnpm/releases/download/v"
               version "/pnpm-linux-x64.tar.gz"))
         (sha256
-          (base32 "0454an7k0zgk5qlc29i4yhy11rnfwj8jlyydhd07y8aarwxpgi44"))))
+          (base32 "1by7yf1mggadvhax99fvn1s2r4sj84gl1567n3nj27mgj5pikvh7"))))
     (build-system binary-build-system)
     (arguments
      (list
