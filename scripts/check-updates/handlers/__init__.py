@@ -6,9 +6,11 @@ from typing import Any, Callable, Dict, Optional
 
 from handlers.amber_pm import update_amber_pm
 from handlers.codex_bin import update_codex_bin
+from handlers.conda_bin import update_conda_bin
 from handlers.crommacode import update_crommacode
 from handlers.font_misans import update_font_misans
 from handlers.gh import update_gh
+from handlers.gitlab_tags import update_gitlab_package
 from handlers.jdtls_bin import update_jdtls_bin
 from handlers.lem_next_bin import update_lem_next_bin
 from handlers.mysql_workbench_bin import update_mysql_workbench_bin
@@ -32,4 +34,7 @@ SPECIAL_UPDATERS: Dict[str, Callable[[Dict[str, Any], Dict[str, Any], Path], Opt
     "qoder-cn": update_qoder_cn,
     "workbuddy-cn": update_workbuddy_cn,
     "crommacode": update_crommacode,
+    "libfprint-next": update_gitlab_package,
+    "fprintd-next": update_gitlab_package,
+    "ghostty-bin": update_conda_bin,
 }

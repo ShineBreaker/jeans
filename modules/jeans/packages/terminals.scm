@@ -702,8 +702,8 @@ Ghostty provides all three.")
     (source
      (origin
        (method url-fetch)
-       ;; conda 文件名里的 h<hash>_<build> 后缀不可由版本推导，
-       ;; 换版本只能整段改写（auto-update 无法接管此包）。
+       ;; conda 文件名里的 h<hash>_<build> 后缀不可由版本推导，换版本只能
+       ;; 整段改写：由 Python updater 的 conda handler（ghostty-bin）接管。
        (uri "https://conda.anaconda.org/conda-forge/linux-64/ghostty-1.4.0-hc0dcdef_0.conda")
        (sha256
         (base32 "1i35ms34vr05fp7yc1n73gqmry21j3a8y9xx7a8gh12v2rz5cx7j"))))

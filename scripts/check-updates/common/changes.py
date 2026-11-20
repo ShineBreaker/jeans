@@ -217,11 +217,18 @@ def apply_pending_updates(pending: List[Dict[str, Any]]) -> bool:
                     file_content = applied
                     continue
 
-                old_version_pattern = rf'\(version\s+"{re.escape(change["old_version"])}"\)'
-                new_version_str = f'(version "{change["new_version"]}")'
-                package_content = re.sub(
-                    old_version_pattern, new_version_str, package_content, count=1
-                )
+                # version 是模块级变量（如 %libfprint-version）时
+                # package["version"] 为 None：字面量替换无从谈起，由
+                # change["module_replacements"] 改 define 行。
+                if change.get("old_version"):
+                    old_version_pattern = (
+                        rf'\(version\s+"{re.escape(change["old_version"])}"\)'
+                    )
+                    new_version_str = f'(version "{change["new_version"]}")'
+                    package_content = re.sub(
+                        old_version_pattern, new_version_str,
+                        package_content, count=1,
+                    )
 
                 # 特殊源（如 jdtls-bin）需要额外替换 URI 里的字面量片段
                 # （例如归档时间戳 -202606262232.tar.gz）。
@@ -250,6 +257,22 @@ def apply_pending_updates(pending: List[Dict[str, Any]]) -> bool:
                 file_content = (
                     file_content[:start_pos] + package_content + file_content[end_pos:]
                 )
+
+            # 模块级 define 替换（如 %libfprint-version）：这类定义在包块
+            # 外面，必须在所有包块区间处理完后按整文件替换——放进上面的
+            # 循环会改变文件长度，让后续包块的 start_pos/end_pos 错位。
+            for change in changes:
+                for old_frag, new_frag in change.get("module_replacements", []):
+                    replaced, n_sub = re.subn(
+                        re.escape(old_frag),
+                        lambda _m, value=new_frag: value,
+                        file_content,
+                        count=1,
+                    )
+                    if not n_sub:
+                        print(f"  ❌ 模块级替换失败: {change['package']}: {old_frag}")
+                        return False
+                    file_content = replaced
 
             file_path.write_text(file_content, encoding="utf-8")
 

@@ -16,6 +16,10 @@ arm）。通用 url-fetch 路径处理不了这种形态，两处都会坏：
 本处理器按架构分别构造 URL、下载并计算 hash，用 extra_replacements 逐
 arm 替换 sha256 match 里的旧值；任一 arm 的旧 hash 找不到就整体失败，
 不写半截更新。
+
+包定义已收敛为单架构字面 sha256（supported-systems 只留 x86_64-linux）
+时不再有 match 双 arm：此时只下载 amd64 资产，hash 交给通用 base32 替换。
+形态由包块里是否存在 ("x86_64-linux" "<52 位 hash>") 判定。
 """
 import re
 from pathlib import Path
@@ -44,8 +48,14 @@ def update_gh(package: dict[str, Any], _config: dict[str, Any], scm_file: Path) 
         return None
 
     # 资产 URL 形如 .../releases/download/<tag>/gh_<ver>_linux_<arch>.tar.gz。
+    # 双架构 match 形态需要两个 arm 的 hash；单架构字面 sha256 只需 amd64。
+    dual_arch = bool(
+        re.search(r'\("x86_64-linux"\s+"[0-9a-z]{52}"\)', package["content"])
+    )
+    if not dual_arch and not package.get("base32"):
+        raise RetryableError("包定义里找不到 x86_64-linux 的旧 hash")
     hashes: Dict[str, str] = {}
-    for system, arch in GH_ARCHES:
+    for system, arch in (GH_ARCHES if dual_arch else GH_ARCHES[:1]):
         url = (
             f"https://github.com/cli/cli/releases/download/{tag}/"
             f"gh_{latest}_linux_{arch}.tar.gz"
@@ -64,6 +74,8 @@ def update_gh(package: dict[str, Any], _config: dict[str, Any], scm_file: Path) 
     )
     if not change:
         return None
+    if not dual_arch:
+        return change
 
     # 逐 arm 替换 sha256 match 里的旧 hash（旧值从包块原文提取）。
     replacements = []

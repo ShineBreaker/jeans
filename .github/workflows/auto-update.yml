@@ -65,6 +65,18 @@ jobs:
         shell: bash
         run: python3 scripts/check-updates/tests/test_tag_prefix.py
 
+      - name: Test gh single/double-arch handler
+        shell: bash
+        run: python3 scripts/check-updates/tests/test_gh.py
+
+      - name: Test gitlab tags handler
+        shell: bash
+        run: python3 scripts/check-updates/tests/test_gitlab_tags.py
+
+      - name: Test conda-forge handler
+        shell: bash
+        run: python3 scripts/check-updates/tests/test_conda_bin.py
+
       - name: Test updater shared-variable sources
         shell: bash
         run: python3 scripts/check-updates/tests/test_shared_source.py
