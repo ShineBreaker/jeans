@@ -1509,7 +1509,7 @@ and @code{org.freedesktop.FileManager1}) are installed under
 (define-public oo7
   (package
     (name "oo7")
-    (version "0.7.1")
+    (version "0.7.2")
     (source
      (origin
        (method git-fetch)
@@ -1518,7 +1518,7 @@ and @code{org.freedesktop.FileManager1}) are installed under
              (commit version)))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "01m6pyjpslnjm8bj5qacdgc0rb15qfampx22kckl76papl58q2cv"))))
+        (base32 "09d5srwai7nah71sihqmrypwxc2mcfpm3rsalfvshi40si8ka0ab"))))
     (build-system cargo-build-system)
     (arguments
      (list

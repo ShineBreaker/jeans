@@ -9299,9 +9299,11 @@
   (crate-source "aes" "0.9.4"
                 "1labw01pbfwqc8f62k01ppmmdq403si0ifk8ajs1bl20finw63zw"))
 
-(define rust-ashpd-0.14.0
-  (crate-source "ashpd" "0.14.0"
-                "1k6b47cr1yy1fbc83j8515c68ld4q3kziw90fa874f8yzgqpg8wb"))
+;; oo7 0.7.2+ 的 SecretImpl::retrieve 带 RetrieveOptions 参数，只有 ashpd
+;; 0.14.1 起提供该签名；0.14.0 会报 E0050 / E0599 构建失败（issue #103）。
+(define rust-ashpd-0.14.1
+  (crate-source "ashpd" "0.14.1"
+                "0xkdv5lfx87nkkwfxf6c2q8kk0f2awkfjnl4nw1yka2vpjr07rvj"))
 
 (define rust-async-lock-3.5.0
   (crate-source "async-lock" "3.5.0"
@@ -13784,7 +13786,7 @@
                                                 rust-anstyle-query-1.1.5
                                                 rust-anstyle-wincon-3.0.11
                                                 rust-anyhow-1.0.104
-                                                rust-ashpd-0.14.0
+                                                rust-ashpd-0.14.1
                                                 rust-async-channel-2.5.0
                                                 rust-async-fs-2.2.0
                                                 rust-async-io-2.6.0
