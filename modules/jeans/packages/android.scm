@@ -48,6 +48,7 @@
   #:use-module (gnu packages bison)
   #:use-module (gnu packages compiler-tools)
   #:use-module (gnu packages dns)
+  #:use-module (gnu packages file-systems)
   #:use-module (gnu packages freedesktop)
   #:use-module (gnu packages gawk)
   #:use-module (gnu packages gettext)
@@ -65,6 +66,7 @@
   #:use-module (gnu packages sdl)
   #:use-module (gnu packages video)
   #:use-module (gnu packages virtualization)
+  #:use-module (gnu packages window-management)
   #:use-module (gnu packages xdisorg)
   #:use-module (jeans packages python-xyz))
 
@@ -454,8 +456,8 @@ variable to override it.")
 ;;; - Python 依赖必须展开传播闭包：GUI 的 PYTHONPATH 只列直接 inputs，
 ;;;   而 httpx 这类库的运行时依赖（httpcore 等）放在 propagated-inputs，
 ;;;   不展开就会 ModuleNotFoundError。
-;;; - Guix 无 systemd / dbus-1 的 pc 文件：传空 -Dsystemd-* / -Ddbus-* 关闭
-;;;   服务文件安装（meson 侧对应 required:false 分支）。
+;;; - Guix 无 systemd；不引入 dbus 输入使 dbus-1.pc 不可见，配合传空
+;;;   -Dsystemd-* / -Ddbus-* 关闭服务文件安装。
 ;;; - 上游脚本的 bin-labels 查 "bash" 而 inputs 给的是 bash-minimal（label
 ;;;   不一致导致 bash 不进 wrapper PATH）；此处直接用 gexp 引用展开路径，
 ;;;   不再经过 assoc-ref 查表。
@@ -490,7 +492,7 @@ python-httpx would otherwise leave python-httpcore unreachable at run time."
 
 (define-public waydroid-helper-se
   (let* ((commit "b15b61322f42a1abc4a36bf68e0920d3f6f072ca")
-         (revision "3")
+         (revision "4")
          (py-site (string-append "/lib/python"
                                  (version-major+minor (package-version python))
                                  "/site-packages"))
@@ -548,7 +550,13 @@ python-httpx would otherwise leave python-httpcore unreachable at run time."
                                (string-append #$sed "/bin")
                                (string-append #$tar "/bin")
                                (string-append #$pciutils "/bin")
-                               (string-append #$fakeroot "/bin"))))
+                               (string-append #$fakeroot "/bin")
+                               ;; debugfs 只装在 e2fsprogs 的 sbin 下
+                               (string-append #$e2fsprogs "/sbin")
+                               (string-append #$adb "/bin")
+                               (string-append #$cage "/bin")
+                               (string-append #$bindfs "/bin")
+                               (string-append #$util-linux "/bin"))))
                        (waydroid-bin (string-append #$waydroid "/bin")))
                   (wrap-program (string-append out "/bin/waydroid-helper")
                     `("PATH" ":" prefix ,path-dirs)
@@ -596,6 +604,11 @@ python-httpx would otherwise leave python-httpcore unreachable at run time."
          ("tar" ,tar)
          ("pciutils" ,pciutils)
          ("fakeroot" ,fakeroot)
+         ("adb" ,adb)
+         ("cage" ,cage)
+         ("e2fsprogs" ,e2fsprogs)
+         ("bindfs" ,bindfs)
+         ("util-linux" ,util-linux)
          ("gtk" ,gtk)                        ; typelib 在 out output
          ("libadwaita" ,libadwaita)
          ("vte" ,vte)
