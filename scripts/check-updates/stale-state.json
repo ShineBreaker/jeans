@@ -1,5 +1,11 @@
 {
   "librewolf-nongnu": {
     "last_checked": "2026-11-12"
+  },
+  "python-pywayland": {
+    "last_checked": "2026-11-21"
+  },
+  "mysql-workbench-community-classic-bin": {
+    "last_checked": "2026-11-21"
   }
 }

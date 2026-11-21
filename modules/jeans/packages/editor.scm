@@ -65,7 +65,7 @@
 (define-public lem-next-bin
   (package
     (name "lem-next-bin")
-    (version "20261118-0618")
+    (version "20261121-0558")
     (source
      (origin
        (method url-fetch)
@@ -73,7 +73,7 @@
              "https://github.com/lem-project/lem/releases/download/"
              "nightly-latest/Lem-x86_64.AppImage"))
        (sha256
-        (base32 "0xvw6a9dqvd9caxzz7brs0al3sw5ihwsvvzpvzfnqjwxh9qakmjz"))))
+        (base32 "09q3y0l66plyi1yy0b8cpd7nwqzz9nh3v78mcl3ywfb5pd708bdi"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -214,8 +214,8 @@ the webview (GTK/WebKitGTK) frontend with an ncurses fallback.")
 ;;; e.g. tree-sitter-json and point LD_LIBRARY_PATH at its lib/ to
 ;;; enable syntax highlighting for that language.
 (define-public lem-next
-  (let ((commit "d3ff8bd07388e1fd05d82bb1412b2d0986caff36")
-        (revision "18"))
+  (let ((commit "60cb7c379b61d63666c21388261bb04037bd4be6")
+        (revision "19"))
     (package
       (inherit lem)
       (name "lem-next")
@@ -228,7 +228,7 @@ the webview (GTK/WebKitGTK) frontend with an ncurses fallback.")
                (commit commit)))
          (file-name (git-file-name name version))
          (sha256
-          (base32 "0k9j6qvbbaziclhak4iqlfaf5zrzv85lyjjs01m287vz7cj0ppd9"))
+          (base32 "18x4lcdbqvvw84ahgnrsfldyrc34lqj2jvg1b6rsj0750ypzi4yp"))
          (patches
           (map canonicalize-path
                (search-patches
@@ -656,7 +656,7 @@ other code intelligence for TypeScript and JavaScript files.")
 (define-public zed-bin
   (package
     (name "zed-bin")
-    (version "1.29.2")
+    (version "1.29.3")
     (source
      (origin
        (method url-fetch)
@@ -664,7 +664,7 @@ other code intelligence for TypeScript and JavaScript files.")
              "https://github.com/zed-industries/zed/releases/download/v"
              version "/zed-linux-x86_64.tar.gz"))
        (sha256
-        (base32 "18pzlxvbqhliglm46dy526ayqxyh609kcsfjzy0h4b8qi9rbm11m"))))
+        (base32 "1hbp9w5iiligb6rpksf57g0f4v9scwxjvaha3cfmbx3vm98g7c24"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -783,7 +783,7 @@ package provides the prebuilt binary release.")
 (define-public wu-bin
   (package
     (name "wu-bin")
-    (version "1.3.0")
+    (version "1.4.0")
     (source
      (origin
        (method url-fetch)
@@ -791,7 +791,7 @@ package provides the prebuilt binary release.")
              "https://github.com/dstrml/wu/releases/download/v"
              version "/wu-linux-x86_64.tar.gz"))
        (sha256
-        (base32 "1p2sldja56b8kj73q2cz58ncy10bn7z4lz88l5yqhh2f4grr1xbc"))))
+        (base32 "1jr6z610lxf9360g68mi6sgrvy9qp81kkzk9d46323x3c59izffm"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -880,8 +880,8 @@ account or telemetry.  This package provides the prebuilt binary release.")
 ;;; are compiled in via include_str!, and the inherited install phases
 ;;; (binary + runtime + desktop entry, HELIX_RUNTIME wrapper) work unchanged.
 (define-public helix-steel
-  (let ((commit "424add100eac9ca258d969b985a8ac370469ec05")
-        (revision "7"))
+  (let ((commit "8c381ba3783046fe75c5fef7df6966711c1ff860")
+        (revision "8"))
     (package
       (inherit helix)
       (name "helix-steel")
@@ -894,7 +894,7 @@ account or telemetry.  This package provides the prebuilt binary release.")
                (commit commit)))
          (file-name (git-file-name name version))
          (sha256
-          (base32 "0cc2yvv13gscaskrxzc6ycvmdwxpvi58nfcggvz198vigcgd2660"))))
+          (base32 "0rgl07q81dgz0g9lywfjwn9mhz68q9p1z2jpk37cv78625dib5in"))))
       (arguments
        (substitute-keyword-arguments (package-arguments helix)
          ((#:phases phases)
