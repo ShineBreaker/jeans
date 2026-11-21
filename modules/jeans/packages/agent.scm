@@ -1104,7 +1104,7 @@ configure.  This package provides the prebuilt desktop release.")
 (define-public zcode
   (package
     (name "zcode")
-    (version "3.19.0")
+    (version "3.19.1")
     (source
      (origin
        (method url-fetch)
@@ -1112,7 +1112,7 @@ configure.  This package provides the prebuilt desktop release.")
              "https://cdn-zcode.z.ai/zcode/electron/releases/"
              version "/linux-x64/ZCode-" version "-linux-x64.deb"))
        (sha256
-        (base32 "11ga00b5kszf71fncjk61z8ykdvbdfk2mi7bfr8bjwf36392a7yp"))))
+        (base32 "1xka8pfvldc8x01rd7nfpajr05m1axxabpa85npigi7d0bkvvb7b"))))
     (build-system electron-build-system)
     (arguments
      (list
@@ -1186,9 +1186,9 @@ configure.  This package provides the prebuilt desktop release.")
                        "import sys,base64\n"
                        "p=sys.argv[1]\n"
                        "old=base64.b64decode("
-                       "\"ey4uLmFuKG8uaG9zdFByb2Nlc3NMb2NhbEVudiksLi4uT0koKSxaQ09ERV9QUk9DRVNTX0xBQkVMOnQs\")\n"
+                       "\"ey4uLmFuKG8uaG9zdFByb2Nlc3NMb2NhbEVudiksLi4uQkkoKSxaQ09ERV9QUk9DRVNTX0xBQkVMOnQs\")\n"
                        "new=base64.b64decode("
-                       "\"ey4uLmFuKHdyICAgICksLi4ucHJvY2Vzcy5lbnYsLi4uT0koKSxaQ09ERV9QUk9DRVNTX0xBQkVMOnQs\")\n"
+                       "\"ey4uLmFuKHdyICAgICksLi4ucHJvY2Vzcy5lbnYsLi4uQkkoKSxaQ09ERV9QUk9DRVNTX0xBQkVMOnQs\")\n"
                        "d=bytearray(open(p,'rb').read())\n"
                        "n=d.count(old)\n"
                        "assert n==1, 'unexpected host-env anchor count: %d' % n\n"
