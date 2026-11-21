@@ -570,7 +570,7 @@ companion extension.  This package provides the prebuilt binary release.")
 (define-public cc-switch-bin
   (package
     (name "cc-switch-bin")
-    (version "4.0.35")
+    (version "4.0.37")
     (source
      (origin
        (method url-fetch)
@@ -578,7 +578,7 @@ companion extension.  This package provides the prebuilt binary release.")
              "https://github.com/farion1231/cc-switch/releases/download/"
              "v" version "/CC-Switch-v" version "-Linux-x86_64.deb"))
        (sha256
-        (base32 "1bf5ijdv36calynds85ipcwlsp7yszjybrkix6n5a5wjigscsqib"))))
+        (base32 "02biris1w6cvhv7lf5sa9yhfgcjk322gkhym779sbzmqy7gh9kwi"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -721,8 +721,8 @@ enables command-line applications to interact with @code{keepassxc} databases.")
 ;;; @file{/var/lib/apm}.
 
 (define-public amber-pm
-  (let ((commit "1751c7b8706e3040c192cfb6ebba4a9927c91b98")
-        (revision "2"))
+  (let ((commit "de85728c39ad45e632abea9bd47439a8e0ce3e4f")
+        (revision "3"))
     (package
       (name "amber-pm")
       (version (git-version "1.3.2" revision commit))
@@ -734,7 +734,7 @@ enables command-line applications to interact with @code{keepassxc} databases.")
                (commit commit)))
          (file-name (git-file-name name version))
          (sha256
-          (base32 "0lvhd0rbmcipn83xc0pjgq0xrdz0dzmfrgkjnxhb6p50c3rc51g2"))))
+          (base32 "0x614qi9nhxch51p1dw9n08cwxafcn3v1vz19n435csc0s91id98"))))
       (build-system gnu-build-system)
       (arguments
        (list
@@ -995,7 +995,7 @@ JSON, YAML, Markdown and GraphQL.")
 (define-public officecli-bin
   (package
     (name "officecli-bin")
-    (version "1.0.162")
+    (version "1.0.163")
     (source
      (origin
        (method url-fetch)
@@ -1004,7 +1004,7 @@ JSON, YAML, Markdown and GraphQL.")
              version
              "/officecli-linux-x64"))
        (sha256
-        (base32 "1461mjp3wlvhmnyhgda1w6zzyw0sgrpwkjgpcmjq512w3grfhh6z"))))
+        (base32 "15gsrwaq00bdzr5qkqi89air8gwsar6hg4wpclif5zmfjg97akds"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -1487,7 +1487,7 @@ prebuilt release binary.")
 (define-public gh
   (package
     (name "gh")
-    (version "2.103.3")
+    (version "2.105.0")
     (source
      (origin
        (method url-fetch)
@@ -1496,7 +1496,7 @@ prebuilt release binary.")
        (uri (string-append "https://github.com/cli/cli/releases/download/v"
                            version "/gh_" version "_linux_amd64.tar.gz"))
        (sha256
-        (base32 "07fr7mih1ax8w6jdqymfkgqs8vdcf1nsa0ikhmqfq76fzxw6k02c"))))
+        (base32 "0bzy0w23f9pls924yhpvxdyn9w18nkw79qwnnrvqgi1qnxfsprvr"))))
     (build-system copy-build-system)
     (arguments
      '(#:install-plan

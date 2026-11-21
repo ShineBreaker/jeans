@@ -190,7 +190,7 @@ release.")
 (define-public cindy-cn-bin
   (package
     (name "cindy-cn-bin")
-    (version "0.1.140")
+    (version "0.1.143")
     (source
      (origin
        (method url-fetch)
@@ -198,7 +198,7 @@ release.")
              "https://github.com/makecindy/cindy/releases/download/"
              "v" version "/cindy-" version "-linux-x64-cn.deb"))
        (sha256
-        (base32 "0ffknq55bgaj0r2fb3zmn95ggrvc0jnwi1zpg5lhcmdar4g9iavw"))))
+        (base32 "04km4j6wg0kv3v17sb9fb5vg52jpph55bxyx928qviv5jc1k7x82"))))
     (build-system electron-build-system)
     (arguments
      (list
@@ -291,7 +291,7 @@ control, and a companion system.")
 (define-public codex-bin
   (package
     (name "codex-bin")
-    (version "0.170.0")
+    (version "0.171.0")
     (source
      (origin
        (method url-fetch)
@@ -300,7 +300,7 @@ control, and a companion system.")
              version
              "/codex-x86_64-unknown-linux-musl.tar.gz"))
        (sha256
-        (base32 "1xa7w8629vmqpsx4pm7w827wm12ihxy2z3bb6wh3i998rmn92m6h"))))
+        (base32 "13ayq5b71ndap8plql3frddzpqyzwkaapy5jwmxmky09g3ja5fh1"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -1266,7 +1266,7 @@ without friction.")
 (define-public zcode-proxy-bin
   (package
     (name "zcode-proxy-bin")
-    (version "4.9.0")
+    (version "4.9.1")
     (source
      (origin
        (method url-fetch)
@@ -1274,7 +1274,7 @@ without friction.")
              "https://github.com/TriDefender/zcode-api/releases/download/"
              "v" version "/zcode-proxy-linux-x64"))
        (sha256
-        (base32 "020zq0dx0c7myk4752j92mn1kfx54d3fc7mpfl5lpm0r5lw9b6d4"))))
+        (base32 "1rynhx3krzlcfqmqg23yxgylk3fg71ydmvpsv71yn309wmcwfwql"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -1381,7 +1381,7 @@ run.")
 (define-public cua-driver-bin
   (package
     (name "cua-driver-bin")
-    (version "0.54.0")
+    (version "0.56.4")
     (source
      (origin
        (method url-fetch)
@@ -1390,7 +1390,7 @@ run.")
              "cua-driver-rs-v" version
              "/cua-driver-rs-" version "-linux-x86_64-binary.tar.gz"))
        (sha256
-        (base32 "13l69466hi9kyy52vpz92lrys3lam6zf1kisrnykkvdflpiqxcsk"))))
+        (base32 "1gfpxiblgzhrm4q0ga1mmw06zvmcmw4d866if2ng9sn4y82p51xw"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -1512,7 +1512,7 @@ so the bundled self-updater should not be used.")
 (define-public magpie-bin
   (package
     (name "magpie-bin")
-    (version "0.1.4537")
+    (version "0.1.4650")
     (source
      (origin
        (method url-fetch)
@@ -1520,7 +1520,7 @@ so the bundled self-updater should not be used.")
              "https://github.com/yetone/magpie-releases/releases/download/"
              "v" version "/magpie-linux-amd64"))
        (sha256
-        (base32 "068j37nn72f2c0rrs6g7vx06jhq9vzjbdkv3jn0jrxrbfxb9z5gs"))))
+        (base32 "0x7nhxm0v0rg7m1kcc1cf0070krp10r77cj6lggs2422wzymxc5s"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -1792,7 +1792,7 @@ Tencent account.")
 (define-public qoder-cn
   (package
     (name "qoder-cn")
-    (version "0.5.14")
+    (version "0.5.17")
     (source
      (origin
        (method url-fetch)
@@ -1800,7 +1800,7 @@ Tencent account.")
              "https://static.qoder.com.cn/qoder-app/releases/"
              version "/Qoder-CN-linux-amd64.deb"))
        (sha256
-        (base32 "1jl8rfdf54hyf8hqm4gsj9y20rqccjk3psgr9jq1fxvlx8ngi09c"))))
+        (base32 "0g0dw2lyln007i1dvhy7dr3n8ay8h0kp6bmpr4f6b3ky0vm6n6h8"))))
     (build-system electron-build-system)
     (arguments
      (list
@@ -1915,7 +1915,7 @@ requires a Qoder account.")
 (define-public crommacode
   (package
     (name "crommacode")
-    (version "0.3.31")
+    (version "0.3.38")
     (source
      (origin
        (method url-fetch)
@@ -1923,7 +1923,7 @@ requires a Qoder account.")
              "https://dl.cromma.ai/code/artifacts/" version
              "/CrommaCode-" version "-linux-amd64.deb"))
        (sha256
-        (base32 "0l92y1kccb3q83k46c54l8gr7ak224ajgr687s7zgpj9bgm0yn0m"))))
+        (base32 "1rzp34k7fnjhfjy9x8w3hhpbmn2s0bm1dj77yx8chmccnav83wp3"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -2027,7 +2027,7 @@ required for the hosted features.")
 (define-public deepseek-harness-desktop-bin
   (package
     (name "deepseek-harness-desktop-bin")
-    (version "0.31.7")
+    (version "0.33.0")
     (source
      (origin
        (method url-fetch)
@@ -2039,7 +2039,7 @@ required for the hosted features.")
              ;; bordeaux / ci 兜底再 Disarchive，全部 404 后才报失败。
              version ".deb"))
        (sha256
-        (base32 "1y83413ch886cg3iva7jsl21bfnnjr93bf0k1pqm0b5r5ys1v1lg"))))
+        (base32 "0zcc8nnq2q590nvarr5dwcgrspklvlnzp6i97jsqjhpx7zsijvyq"))))
     (build-system electron-build-system)
     (arguments
      (list
