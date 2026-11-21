@@ -122,6 +122,7 @@
 | Package                     | Description                                                        |
 | --------------------------- | ------------------------------------------------------------------ |
 | `deltalazer-bin`            | Unofficial osu!lazer client with variable CS/AR/OD and HP gimmicks |
+| `ez2lazer-bin`              | Heavily customized osu!lazer client for Mania and BMS              |
 | `g0v0-bin`                  | Free and open rhythm game based on the osu!lazer codebase          |
 | `gamescope`                 | Micro-compositor for running games                                 |
 | `inso-bin`                  | Performant osu! clone with Lua and GLSL shader support             |

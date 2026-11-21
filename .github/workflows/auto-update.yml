@@ -39,6 +39,7 @@ env:
     git-credential-keepassxc
     font-maple-font-nf-cn font-nerd-font-iosevka
     lr2oraja-endlessdream-bin osu-lazer-bin inso-bin g0v0-bin deltalazer-bin
+    ez2lazer-bin
     neomod-bin
     emacs-msgu
     colloid-gtk-theme vimix-gtk-themes vimix-kvantum-themes

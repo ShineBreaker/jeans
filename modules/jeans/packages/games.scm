@@ -38,6 +38,7 @@
   #:use-module (gnu packages ghostscript)
   #:use-module (gnu packages gtk)
   #:use-module (gnu packages java)
+  #:use-module (gnu packages kerberos)
   #:use-module (gnu packages gnome)
   #:use-module (gnu packages gnuzilla)
   #:use-module (gnu packages gstreamer)
@@ -311,19 +312,32 @@ fonts, IR jars, and other assets at runtime.  The game requires OpenGL
 ;; desktop。fork 之间只有仓库/资产/入口名/元数据不同，共同处理：
 ;; - fix-so 补 liblttng-ust.so.0 / libudev.so.0（Guix 只提供 .so.1）；
 ;; - wrapper 设 OSU_EXTERNAL_UPDATE_PROVIDER 禁用应用内自我更新（store
-;;   只读必然失败）；
+;;   只读必然失败），并把应用 libdir 与 ALSA/PulseAudio 加入
+;;   LD_LIBRARY_PATH；包内自带 libfreetype.so 时额外 LD_PRELOAD，供
+;;   libplutosvgft 之类未声明 DT_NEEDED 的库解析符号；
 ;; - 上游 hicolor 图标与 Icon= 硬编码 osu，重命名为应用名（BINARY 去掉
 ;;   尾部 !）：多个 lazer 系包同装一个 profile 时不再互相覆盖图标；
 ;;   图标为 .ico 时（g0v0）先转最大帧 png——hicolor 查找不认 .ico；
 ;; - 安装 opentabletdriver 的 udev 规则（数位板权限）。
+;;
+;; 可选参数：APP-NAME 覆盖由 BINARY 推导的应用名；INSTALL-UPSTREAM-SHARE?
+;; 为 #f 时跳过 AppImage 的 usr/share；EXTRA-INSTALL-PLAN / EXTRA-INPUTS /
+;; EXTRA-NATIVE-INPUTS / EXTRA-WRAPPER-ARGS 供 fork 追加安装项、依赖和
+;; wrapper 环境变量。
 ;; upstream-name 取应用名，须与 release 资产文件名的版本前缀一致，否则
 ;; guix refresh 报 no updater。
 (define* (osu-lazer-appimage-package name version hash
                                      #:key repo tag-prefix asset
                                      binary desktop
+                                     (app-name (string-trim-right binary #\!))
+                                     (install-upstream-share? #t)
+                                     (extra-install-plan '())
+                                     (extra-inputs '())
+                                     (extra-native-inputs '())
+                                     (extra-wrapper-args #~'())
                                      home-page synopsis description
                                      (license license:expat))
-  (let ((app (string-trim-right binary #\!)))
+  (let ((app app-name))
     (package
       (name name)
       (version version)
@@ -341,9 +355,14 @@ fonts, IR jars, and other assets at runtime.  The game requires OpenGL
         #:install-plan
         ;; 计划值须以 #~(list ...) 在构建期求值：宿主侧裸列表经 gexp
         ;; 序列化会变成 builder 里的待求值代码（"Wrong type to apply"）。
-        #~(list (list "usr/share/" "share/")
-                (list "usr/bin/" #$(string-append "lib/" app "/"))
-                (list #$desktop "share/applications/"))
+        #~(quote #$(append
+                    (if install-upstream-share?
+                        '(("usr/share/" "share/"))
+                        '())
+                    (list (list "usr/bin/"
+                                (string-append "lib/" app "/"))
+                          (list desktop "share/applications/"))
+                    extra-install-plan))
         ;; 资源根是 lib/<app>（derivation 名去版本得 <name>，对不上），
         ;; 必须显式指定，否则 RPATH 缺第一项。
         #:app-dir app
@@ -366,40 +385,54 @@ fonts, IR jars, and other assets at runtime.  The game requires OpenGL
             ;; osu.png 仍会被 rebrand-icon 重命名为应用名。
             (add-after 'unpack 'rebrand-icon
               (lambda _
-                (for-each
-                 (lambda (png)
-                   (rename-file png
-                                (string-append (dirname png) "/"
-                                               #$app ".png")))
-                 (find-files "usr/share/icons" "^osu\\.png$"))))
+                (when (directory-exists? "usr/share/icons")
+                  (for-each
+                   (lambda (png)
+                     (rename-file png
+                                  (string-append (dirname png) "/"
+                                                 #$app ".png")))
+                   (find-files "usr/share/icons" "^osu\\.png$")))))
             (add-after 'unpack 'convert-ico-icon
               (lambda _
-                (for-each
-                 (lambda (ico)
-                   (let ((dir "usr/share/icons/hicolor/256x256/apps"))
-                     (mkdir-p dir)
-                     (invoke "convert"
-                             (string-append ico "[-1]")
-                             (string-append dir "/"
-                                            (basename ico ".ico") ".png"))
-                     (delete-file ico)))
-                 (find-files "usr/share/icons" "\\.ico$"))))
+                (when (directory-exists? "usr/share/icons")
+                  (for-each
+                   (lambda (ico)
+                     (let ((dir "usr/share/icons/hicolor/256x256/apps"))
+                       (mkdir-p dir)
+                       (invoke "convert"
+                               (string-append ico "[-1]")
+                               (string-append dir "/"
+                                              (basename ico ".ico") ".png"))
+                       (delete-file ico)))
+                   (find-files "usr/share/icons" "\\.ico$")))))
             ;; 7z 解包由基座承担；删掉不需安装的更新器。
             (add-after 'unpack 'remove-unused-files
               (lambda _
                 (when (file-exists? "usr/bin/UpdateNix")
                   (delete-file "usr/bin/UpdateNix"))))
             (add-after 'patchelf 'wrap-program
-              (lambda _
+              (lambda* (#:key inputs #:allow-other-keys)
                 (let* ((bin (string-append #$output "/lib/" #$app "/"
                                            #$binary))
-                       (wrapper (string-append #$output "/bin/" #$binary)))
+                       (wrapper (string-append #$output "/bin/" #$binary))
+                       (libdir (string-append #$output "/lib/" #$app))
+                       (freetype (string-append libdir "/libfreetype.so"))
+                       (native-libdirs
+                        (map (lambda (name)
+                               (string-append (assoc-ref inputs name) "/lib"))
+                             '("alsa-lib" "pulseaudio"))))
                   (mkdir-p (dirname wrapper))
                   (symlink bin wrapper)
-                  (wrap-program wrapper
-                    `("OSU_EXTERNAL_UPDATE_PROVIDER" = ("1"))
-                    `("LD_LIBRARY_PATH" prefix
-                      (,(string-append #$output "/lib/" #$app)))))))
+                  (apply wrap-program wrapper
+                         (append
+                          (list
+                           `("OSU_EXTERNAL_UPDATE_PROVIDER" = ("1"))
+                           `("LD_LIBRARY_PATH" prefix
+                             (,libdir ,@native-libdirs)))
+                          (if (file-exists? freetype)
+                              (list `("LD_PRELOAD" prefix (,freetype)))
+                              '())
+                          #$extra-wrapper-args)))))
             (add-after 'wrap-program 'fix-so
               (lambda _
                 (symlink #$(file-append lttng-ust
@@ -427,27 +460,32 @@ fonts, IR jars, and other assets at runtime.  The game requires OpenGL
                                                  "/70-opentabletdriver.rules"))
                        (rules.d (string-append #$output relative-rules.d)))
                   (install-file otd-rules rules.d)))))))
-      (native-inputs (list p7zip imagemagick opentabletdriver-udev-rules))
+      (native-inputs
+       (append (list p7zip imagemagick opentabletdriver-udev-rules)
+               extra-native-inputs))
       (inputs
-       `(("bash-minimal" ,bash-minimal)
-         ("alsa-lib" ,alsa-lib)
-         ("dbus" ,dbus)
-         ("elfutils" ,elfutils)
-         ("eudev" ,eudev)
-         ("gcc:lib" ,gcc "lib")
-         ("glib" ,glib)
-         ("glibc" ,glibc)
-         ("icu4c" ,icu4c)
-         ("libdrm" ,libdrm)
-         ("libxcb" ,libxcb)
-         ("libxext" ,libxext)
-         ("libxkbcommon" ,libxkbcommon)
-         ("lttng-ust" ,lttng-ust)
-         ("mesa" ,mesa)
-         ("openssl" ,openssl)
-         ("vulkan-loader" ,vulkan-loader)
-         ("wayland" ,wayland)
-         ("zlib" ,zlib)))
+       (append
+        `(("bash-minimal" ,bash-minimal)
+          ("alsa-lib" ,alsa-lib)
+          ("dbus" ,dbus)
+          ("elfutils" ,elfutils)
+          ("eudev" ,eudev)
+          ("gcc:lib" ,gcc "lib")
+          ("glib" ,glib)
+          ("glibc" ,glibc)
+          ("icu4c" ,icu4c)
+          ("libdrm" ,libdrm)
+          ("libxcb" ,libxcb)
+          ("libxext" ,libxext)
+          ("libxkbcommon" ,libxkbcommon)
+          ("lttng-ust" ,lttng-ust)
+          ("mesa" ,mesa)
+          ("openssl" ,openssl)
+          ("pulseaudio" ,pulseaudio)
+          ("vulkan-loader" ,vulkan-loader)
+          ("wayland" ,wayland)
+          ("zlib" ,zlib))
+        extra-inputs))
       (properties `((upstream-name . ,app)))
       (home-page home-page)
       (synopsis synopsis)
@@ -488,6 +526,124 @@ osu!lazer, the open-source iteration of the osu! game client.  It plays
 osu! beatmaps with the lazer gameplay ruleset.
 
 This package distributes the upstream AppImage build."))
+
+;;; Ez2Lazer —— osu!lazer 的深度改造分支（Mania/BMS、HUD、判定与分析工具）。
+;;;
+;;; License evidence: upstream LICENCE is MIT, so this prebuilt AppImage is a
+;;; -bin package.  The bundle also carries osu! resources under CC BY-NC 4.0
+;;; and the proprietary BASS audio library.
+;;;
+;;; The AppImage is framework-dependent despite being a Linux "portable"
+;;; release: its apphost requests Microsoft.NETCore.App 10.0.x and otherwise
+;;; fails with "Failed to resolve libhostfxr.so".  Guix/nonguix only ships
+;;; .NET 8, so the private runtime below provides 10.0.15 and the wrapper
+;;; points DOTNET_ROOT at it.  The runtime is installed under lib/ so the
+;;; patchelf phase includes its own directory ($ORIGIN) in every library's
+;;; RUNPATH.
+;;;
+;;; UpdateNix and the Velopack update path cannot write to the store;
+;;; remove the sidecar and set OSU_EXTERNAL_UPDATE_PROVIDER, which upstream's
+;;; Program.cs uses to skip Velopack and select NoActionUpdateManager.
+;;;
+;;; libplutosvgft uses FreeType symbols without declaring a DT_NEEDED entry,
+;;; and .NET's DllImport("asound") bypasses the apphost RUNPATH, so the wrapper
+;;; preloads the bundled FreeType and exposes ALSA/PulseAudio to native loads.
+(define dotnet-runtime-10
+  (package
+    (name "dotnet-runtime-10")
+    (version "10.0.15")
+    (source
+     (origin
+       (method url-fetch/tarbomb)
+       (uri (string-append
+             "https://builds.dotnet.microsoft.com/dotnet/Runtime/"
+             version "/dotnet-runtime-" version "-linux-x64.tar.gz"))
+       (sha256
+        (base32 "05888araby7366j2xk9qhkilkqpgx5fjiggkf599iq08j01gkmkg"))))
+    (build-system binary-build-system)
+    (arguments
+     (list
+      #:unpack-method 'tar
+      #:install-plan #~'(("./" "lib/dotnet-runtime-10/"))
+      #:app-dir "dotnet-runtime-10"
+      #:patchelf-plan #~'(("lib/dotnet-runtime-10"))
+      ;; Keep $ORIGIN so libcoreclr can find the adjacent mscordaccore and
+      ;; trace-provider libraries after patchelf replaces the upstream RPATH.
+      #:preserve-rpath? #t
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'install 'link-lttng-ust
+            (lambda* (#:key inputs #:allow-other-keys)
+              ;; libcoreclrtraceptprovider.so records NEEDED liblttng-ust.so.0,
+              ;; while Guix's lttng-ust only installs the .so.1 soname.
+              (for-each
+               (lambda (provider)
+                 (symlink
+                  (string-append (assoc-ref inputs "lttng-ust")
+                                 "/lib/liblttng-ust.so.1")
+                  (string-append (dirname provider)
+                                 "/liblttng-ust.so.0")))
+               (find-files #$output
+                           "libcoreclrtraceptprovider\\.so$")))))))
+    (inputs
+     `(("gcc:lib" ,gcc "lib")
+       ("icu4c" ,icu4c)
+       ("lttng-ust" ,lttng-ust)
+       ("mit-krb5" ,mit-krb5)
+       ("openssl" ,openssl)
+       ("zlib" ,zlib)))
+    (home-page "https://dotnet.microsoft.com/")
+    (synopsis "Private .NET runtime for Ez2Lazer")
+    (description "The .NET runtime, a cross-platform runtime for managed
+applications.  This private package provides the shared runtime required by
+Ez2Lazer's framework-dependent apphost.")
+    (license license:expat)
+    (supported-systems '("x86_64-linux"))))
+
+(define-public ez2lazer-bin
+  (osu-lazer-appimage-package
+   "ez2lazer-bin" "2026.1115.0-ez2lazer"
+   "0i6iibvw1lkqbx554jd6hilyjj4c4gwaidwi33933xfpcd9sv4cc"
+   #:repo "https://github.com/SK-la/Ez2Lazer"
+   #:tag-prefix ""
+   #:asset "ez2lazer.AppImage"
+   #:binary "Ez2osu!"
+   #:desktop "ez2lazer.desktop"
+   #:app-name "ez2lazer"
+   #:install-upstream-share? #f
+   #:extra-install-plan
+   '(("ez2lazer.png"
+      "share/icons/hicolor/128x128/apps/"))
+   #:extra-inputs
+   `(("dotnet-runtime-10" ,dotnet-runtime-10)
+     ("libdecor" ,libdecor)
+     ("libx11" ,libx11)
+     ("libxcursor" ,libxcursor)
+     ("libxfixes" ,libxfixes)
+     ("libxi" ,libxi)
+     ("libxrandr" ,libxrandr)
+     ("libxscrnsaver" ,libxscrnsaver)
+     ("libxtst" ,libxtst))
+   #:extra-wrapper-args
+   #~(list
+      (list "DOTNET_ROOT" '=
+            (list #$(file-append dotnet-runtime-10
+                                 "/lib/dotnet-runtime-10")))
+      (list "DOTNET_MULTILEVEL_LOOKUP" '= (list "0"))
+      (list "DOTNET_CLI_TELEMETRY_OPTOUT" '= (list "1")))
+   #:home-page "https://github.com/SK-la/Ez2Lazer"
+   #:synopsis "Heavily customized osu!lazer client for Mania and BMS"
+   #:description "Ez2Lazer is a heavily customized branch of osu!lazer focused
+on Mania and BMS workflows.  It adds a configurable HUD, switchable judgement
+systems, and analysis tools.
+
+This package distributes the upstream AppImage build.  The optional
+EzResources pack supplies the Ez Pro skin and HUD textures."
+   #:license
+   (list license:expat
+         (license:nonfree
+          "https://github.com/ppy/osu-resources/blob/master/LICENCE.md")
+         (license:nonfree "https://www.un4seen.com/"))))
 
 ;; inso ships no LICENSE file in its source repository, so by default
 ;; copyright it is nonfree.  Distributed only as a prebuilt Linux archive.
