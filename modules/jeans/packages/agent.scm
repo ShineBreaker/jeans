@@ -187,6 +187,64 @@ release.")
 ;;; electron-updater: no resources/package-type file in this bundle, so
 ;;; the disable-electron-updater phase is unnecessary.
 
+;;; 0.1.143 的 Linux bundle（app.asar 内成对的上游 .deb 字节一致）把
+;;; withAvailabilityPolicyMutation 的 const 声明排在 bootstrap-electron-*.js
+;;; 里使用它的模块之后：模块顶层构造 device-link settings 时触发
+;;; "Cannot access 'withAvailabilityPolicyMutation' before initialization"，
+;;; 主进程启动即死。这里等长移动声明到使用点之前（文件字节数不变，
+;;; asar offset 表无需重算）；该 app 的 asar integrity fuse 已开启，
+;;; header 里每个文件带 SHA256，故同步重算整文件与 4MiB 分块哈希。
+;;; 上游修复后（声明已在使用点之前或锚点消失）脚本自行跳过。
+(define %cindy-bootstrap-tdz-patch
+  (string-append
+   "import sys,json,struct,hashlib\n"
+   "d=bytearray(open(sys.argv[1],'rb').read())\n"
+   "hs=struct.unpack('<I',d[12:16])[0]\n"
+   "h=json.loads(bytes(d[16:16+hs]))\n"
+   "base=(16+hs+7)&~7\n"
+   "def find(n):\n"
+   "    for k,v in n.get('files',{}).items():\n"
+   "        if 'files' in v:\n"
+   "            r=find(v)\n"
+   "            if r: return r\n"
+   "        elif k.startswith('bootstrap-electron-'): return v\n"
+   "    return None\n"
+   "e=find(h)\n"
+   "assert e is not None, 'bootstrap-electron-*.js not found'\n"
+   "D='const{withAvailabilityPolicyLock,rememberAvailabilityShare,"
+   "withAvailabilityPolicyMutation}=createAvailabilityPolicy("
+   "disableShareAvailability);'\n"
+   "U='withAvailabilityPolicyMutation}),settingsStore_desktop='\n"
+   "A='const{readDeviceLinkSettings'\n"
+   "off=int(e['offset']);size=int(e['size']);st=base+off\n"
+   "s=bytes(d[st:st+size]).decode('utf-8','surrogateescape')\n"
+   "if s.count(D)!=1 or U not in s or s.find(D)<s.find(U):\n"
+   "    print('cindy: bootstrap TDZ already fixed, skipping')\n"
+   "    sys.exit(0)\n"
+   "ui=s.find(U);di=s.find(D);ai=s.rfind(A,0,ui)\n"
+   "assert ai>0 and di>ui\n"
+   "ns=s[:ai]+D+s[ai:di]+s[di+len(D):]\n"
+   "assert len(ns)==len(s)\n"
+   "nb=ns.encode('utf-8','surrogateescape')\n"
+   "assert len(nb)==size\n"
+   "it=e.get('integrity')\n"
+   "if it:\n"
+   "    nh=hashlib.sha256(nb).hexdigest()\n"
+   "    nbl=[hashlib.sha256(nb[i:i+4194304]).hexdigest()"
+   " for i in range(0,len(nb),4194304)]\n"
+   "    hdr=bytearray(bytes(d[16:16+hs]))\n"
+   "    assert bytes(hdr).count(it['hash'].encode())==1\n"
+   "    hdr=bytearray(bytes(hdr).replace(it['hash'].encode(),nh.encode()))\n"
+   "    assert len(nbl)==len(it['blocks'])\n"
+   "    for o,n in zip(it['blocks'],nbl):\n"
+   "        assert len(o)==64 and bytes(hdr).count(o.encode())==1\n"
+   "        hdr=bytearray(bytes(hdr).replace(o.encode(),n.encode()))\n"
+   "    d[16:16+hs]=hdr\n"
+   "d[st:st+size]=nb\n"
+   "open(sys.argv[1],'wb').write(d)\n"
+   "print('cindy: moved withAvailabilityPolicyMutation declaration "
+   "before use site')\n"))
+
 (define-public cindy-cn-bin
   (package
     (name "cindy-cn-bin")
@@ -231,6 +289,11 @@ release.")
       #:modules '((guix build utils))
       #:phases
       #~(modify-phases (@ (jeans build electron) %standard-phases)
+          (add-after 'install 'patch-bootstrap-tdz
+            (lambda _
+              (invoke "python3" "-c" #$%cindy-bootstrap-tdz-patch
+                      (string-append #$output
+                                     "/lib/cindy/resources/app.asar"))))
           (add-after 'patchelf 'install-bin
             (lambda _
               (let* ((out #$output)
@@ -238,7 +301,7 @@ release.")
                      (exe (string-append out "/lib/cindy/Cindy")))
                 (mkdir-p bin)
                 (symlink exe (string-append bin "/cindy"))))))))
-    (native-inputs (list binutils tar xz zstd))
+    (native-inputs (list binutils python tar xz zstd))
     (inputs `(("alsa-lib" ,alsa-lib)
               ("at-spi2-core" ,at-spi2-core)
               ("bash-minimal" ,bash-minimal)
