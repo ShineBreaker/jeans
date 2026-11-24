@@ -45,6 +45,7 @@
 
 | Package            | Description                                           |
 | ------------------ | ----------------------------------------------------- |
+| `ardia-bin`        | Chromium browser with an Arc-style sidebar            |
 | `librewolf-nongnu` | LibreWolf with Mozilla language pack support restored |
 | `zen-browser-bin`  | Privacy-focused web browser with a calm interface     |
 

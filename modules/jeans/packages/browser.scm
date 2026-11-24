@@ -13,7 +13,14 @@
   #:use-module (guix gexp)
   #:use-module ((guix licenses) #:prefix license:)
   #:use-module (gnu packages)
+  #:use-module (gnu packages audio)
   #:use-module (gnu packages bash)
+  #:use-module (gnu packages cups)
+  #:use-module (gnu packages gcc)
+  #:use-module (gnu packages glib)
+  #:use-module (gnu packages nss)
+  #:use-module (gnu packages xdisorg)
+  #:use-module (gnu packages xml)
   #:use-module (gnu packages python)
   #:use-module (gnu packages java)
   #:use-module (gnu packages librewolf)
@@ -33,6 +40,7 @@
   #:use-module (gnu packages video)
   #:use-module (gnu packages xorg)
   #:use-module (gnu system shadow)
+  #:use-module (jeans build-system binary)
   #:use-module (guix gexp)
   #:use-module (guix utils))
 
@@ -439,3 +447,103 @@ keeps the language selection interface enabled.")
      "Beautifully designed, privacy-focused, and packed with features.
 We care about your experience, not your data.")
     (license (list license:mpl2.0))))
+
+
+;;; ardia-bin: upstream prebuilt .deb of Ardia, a Chromium browser built from
+;;; Helium's GPL-3.0 patch series.  Ardia's own source files are Apache-2.0;
+;;; the distributed browser is GPL-3.0 (see upstream NOTICE).
+;;;
+;;; The payload is a complete Chromium tree under usr/lib/ardia:
+;;;   - chrome / chrome_crashpad_handler / libEGL / libGLESv2 /
+;;;     libvulkan / libvk_swiftshader: ELF files patched to Guix loaders
+;;;   - chrome-sandbox: the setuid sandbox helper.  Guix cannot install
+;;;     setuid store files; the launcher's user-namespace path is what
+;;;     starts Chromium.  Excluded from patchelf.
+;;;   - libqt5_shim.so / libqt6_shim.so: optional Qt platform-theme shims.
+;;;     They stay in the bundle but need Qt libraries from the host to load.
+;;;   - ardia-ui, locales, paks, extensions and the nested CLI tarball:
+;;;     data files resolved relative to the chrome binary.
+;;;
+;;; ardia-update + linux-update.pem are removed: they install a signed .deb
+;;; through pkexec/polkit, impossible against a read-only store, and Guix owns
+;;; upgrades.  The Ubuntu AppArmor profile and polkit action are not installed
+;;; for the same reason.  The deb postinst's sandbox setup is unnecessary on
+;;; Guix, where user namespaces are available.
+(define-public ardia-bin
+  (package
+    (name "ardia-bin")
+    (version "0.2.48")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://github.com/ardia-browser/ardia/releases/download/v"
+             version "/Ardia-" version "-linux-x64.deb"))
+       (sha256
+        (base32 "0fp2jblzhccb0wa7q6xmwp17zz435ppi79d510nd9npfh5vk3qqn"))))
+    (build-system binary-build-system)
+    (arguments
+     (list
+      #:unpack-method 'deb-xz
+      #:install-plan
+      #~'(("usr/lib/ardia/" "lib/ardia/")
+          ("usr/bin/ardia" "bin/ardia")
+          ("usr/share/applications/ardia.desktop"
+           "share/applications/ardia.desktop")
+          ("usr/share/icons/hicolor/256x256/apps/ardia.png"
+           "share/icons/hicolor/256x256/apps/ardia.png")
+          ("usr/share/doc/ardia/" "share/doc/ardia-bin/"))
+      #:patchelf-plan
+      #~'(("lib/ardia"))
+      #:patchelf-exclude
+      #~'("lib/ardia/chrome-sandbox")
+      #:desktop-files
+      #~'(("share/applications/ardia.desktop" "bin/ardia"))
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'install 'remove-self-updater
+            (lambda _
+              (for-each
+               (lambda (file)
+                 (when (file-exists? file)
+                   (delete-file file)))
+               (list (string-append #$output "/lib/ardia/ardia-update")
+                     (string-append #$output "/lib/ardia/linux-update.pem"))))))))
+    (inputs
+     `(("alsa-lib" ,alsa-lib)
+       ("at-spi2-core" ,at-spi2-core)
+       ("bash-minimal" ,bash-minimal)
+       ("cairo" ,cairo)
+       ("cups" ,cups)
+       ("dbus" ,dbus)
+       ("eudev" ,eudev)
+       ("expat" ,expat)
+       ("gcc:lib" ,gcc "lib")
+       ("glib" ,glib)
+       ("glibc" ,glibc)
+       ("gtk+" ,gtk+)
+       ("libva" ,libva)
+       ("libsecret" ,libsecret)
+       ("libx11" ,libx11)
+       ("libxcb" ,libxcb)
+       ("libxcomposite" ,libxcomposite)
+       ("libxdamage" ,libxdamage)
+       ("libxext" ,libxext)
+       ("libxfixes" ,libxfixes)
+       ("libxkbcommon" ,libxkbcommon)
+       ("libxrandr" ,libxrandr)
+       ("mesa" ,mesa)
+       ("nss" ,nss)
+       ("pango" ,pango)
+       ("pulseaudio" ,pulseaudio)))
+    (supported-systems '("x86_64-linux"))
+    (properties `((upstream-name . "Ardia")))
+    (home-page "https://ardia.dev")
+    (synopsis "Chromium browser with an Arc-style sidebar")
+    (description
+     "Ardia is a Chromium-based web browser built from Helium's patch
+series.  It pairs Arc's sidebar and split-view workflow with Dia's visual
+style, and ships its own UI assets and extension bundle.
+
+This package installs the vendor's prebuilt Linux release.")
+    (license license:gpl3)))
