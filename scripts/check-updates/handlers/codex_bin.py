@@ -7,6 +7,10 @@
 实测），而通用 tag_prefix 分支正是走分页扫描。这里改用单条
 /releases/latest（~400 KB，稳定版指针即 rust-v* 最新），再剥 rust-v
 前缀得到版本号。
+
+下载资产用 codex-package-*（完整本地包布局），不是 codex-*（裸单文件）：
+0.171.0 起 TUI 走 app-server daemon，裸单文件缺 codex-package.json 与
+codex-resources/，启动即报 "this CLI has no complete local package"。
 """
 import re
 from pathlib import Path
@@ -31,7 +35,7 @@ def update_codex_bin(package: dict[str, Any], _config: dict[str, Any], scm_file:
         return None
     url = (
         "https://github.com/openai/codex/releases/download/"
-        f"{tag}/codex-x86_64-unknown-linux-musl.tar.gz"
+        f"{tag}/codex-package-x86_64-unknown-linux-musl.tar.gz"
     )
     new_base32 = with_retry(
         get_base32_from_guix_download, url, max_retries=2, base_delay=5

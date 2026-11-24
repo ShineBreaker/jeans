@@ -347,38 +347,59 @@ control, and a companion system.")
     (license license:asl2.0)
     (supported-systems '("x86_64-linux"))))
 
-;;; codex-bin packages OpenAI's Codex CLI from the prebuilt musl release:
-;;; a single static-pie ELF with no interpreter, so it is installed as-is
-;;; (no patchelf, no wrapper).  Upstream tags the Rust release line as
-;;; "rust-vX.Y.Z" and mixes in -alpha pre-releases, hence the tag prefix.
+;;; codex-bin packages OpenAI's Codex CLI from the prebuilt "codex-package"
+;;; release: the complete local package layout that 0.171.0+ requires to
+;;; provision its app-server daemon -- bin/codex plus codex-code-mode-host,
+;;; codex-exec-server, codex-path/rg and codex-resources/.  The bare
+;;; single-binary tarball (codex-x86_64-unknown-linux-musl.tar.gz) makes the
+;;; TUI exit with "this CLI has no complete local package".  Every ELF is
+;;; static-pie with no interpreter, so it is installed as-is (no patchelf,
+;;; no wrapper).  Upstream tags the Rust release line as "rust-vX.Y.Z" and
+;;; mixes in -alpha pre-releases, hence the tag prefix.
 (define-public codex-bin
   (package
     (name "codex-bin")
-    (version "0.171.0")
+    (version "0.172.0")
     (source
      (origin
        (method url-fetch)
        (uri (string-append
              "https://github.com/openai/codex/releases/download/rust-v"
              version
-             "/codex-x86_64-unknown-linux-musl.tar.gz"))
+             "/codex-package-x86_64-unknown-linux-musl.tar.gz"))
        (sha256
-        (base32 "13ayq5b71ndap8plql3frddzpqyzwkaapy5jwmxmky09g3ja5fh1"))))
+        (base32 "14frl4sfv0jl6rikxl403nindf1wcrzy28h5dlb64zzdcl0b1qv3"))))
     (build-system binary-build-system)
     (arguments
      (list
       #:unpack-method 'gnu-unpack
       #:install-plan
-      #~'(("codex-x86_64-unknown-linux-musl" "bin/codex"))
+      #~'(("bin/" "bin/")
+          ("codex-package.json" "codex-package.json")
+          ("codex-path/" "codex-path/")
+          ("codex-resources/" "codex-resources/"))
       #:patchelf? #f
       #:wrap? #f
       #:modules '((jeans build binary)
                   (guix build utils))
       #:phases
       #~(modify-phases %standard-phases
+          (replace 'unpack
+            ;; 上游 tarball 没有统一顶层目录，gnu unpack 会 chdir 进第一个
+            ;; 子目录 bin/，把 codex-package.json 与 codex-resources/ 留在
+            ;; 上一层。直接 tar 解包，保持顶层布局。
+            (lambda* (#:key source #:allow-other-keys)
+              (invoke "tar" "xvf" source)))
           (add-after 'install 'make-executable
             (lambda _
-              (chmod (string-append #$output "/bin/codex") #o755))))))
+              ;; daemon 安装前会校验这些文件的可执行位。
+              (for-each (lambda (file)
+                          (chmod (string-append #$output "/" file) #o755))
+                        '("bin/codex"
+                          "bin/codex-code-mode-host"
+                          "bin/codex-exec-server"
+                          "codex-path/rg"
+                          "codex-resources/bwrap")))))))
     (properties '((upstream-name . "codex")
                   (release-tag-prefix . "^rust-v")))
     (home-page "https://github.com/openai/codex")
