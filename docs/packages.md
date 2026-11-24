@@ -90,6 +90,7 @@
 | `helix-steel`                | Post-modern modal text editor with an embedded Steel Scheme runtime |
 | `lem-next`                   | Integrated IDE/editor for Common Lisp                               |
 | `lem-next-bin`               | Integrated IDE/editor for Common Lisp (nightly prebuild)            |
+| `openidea-bin`               | IntelliJ IDEA-inspired integrated development environment           |
 | `package-version-server`     | Language server for package.json dependency hover information       |
 | `typescript-language-server` | Language Server Protocol implementation for TypeScript              |
 | `wu-bin`                     | Fast native code editor with built-in coding agents                 |
@@ -191,6 +192,7 @@
 | ---------------------- | --------------------------------------------------------------------------- |
 | `colloid-gtk-theme`    | Colloid GTK theme for Linux                                                 |
 | `colloid-kde-themes`   | Colloid themes for KDE Plasma                                               |
+| `kvantum-qt5`          | SVG-based theme engine for Qt5                                              |
 | `orchis-kde-themes`    | Orchis themes for KDE Plasma                                                |
 | `vimix-gtk-themes`     | Vimix is a flat Material Design theme for GTK 3, GTK 2 and Gnome-Shell etc. |
 | `vimix-kvantum-themes` | Vimix Kvantum themes for KDE Plasma                                         |
@@ -212,6 +214,7 @@
 | `jdtls-bin`                | Java language server                                                     |
 | `kotlin-language-server`   | Kotlin code completion and diagnostics over the Language Server Protocol |
 | `officecli-bin`            | Command-line tool for creating and editing Office documents              |
+| `peazip-bin`               | Cross-platform archive manager                                           |
 | `pnpm-bin`                 | Fast, disk space efficient package manager for Node.js                   |
 | `prettier-bin`             | Opinionated multi-language code formatter                                |
 | `rayburst-bin`             | Full-featured download manager                                           |

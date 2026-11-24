@@ -8,6 +8,7 @@
   #:use-module (guix build-system copy)
   #:use-module (guix build-system meson)
   #:use-module (guix build-system python)
+  #:use-module (guix build-system qt)
   #:use-module (guix gexp)
   #:use-module (guix git-download)
   #:use-module (guix packages)
@@ -28,7 +29,8 @@
   #:use-module (gnu packages gstreamer)
   #:use-module (gnu packages gtk)
   #:use-module (gnu packages qt)
-  #:use-module (gnu packages web))
+  #:use-module (gnu packages web)
+  #:use-module (gnu packages xorg))
 
 ;; (base32 "0000000000000000000000000000000000000000000000000000")
 ; for test.
@@ -145,6 +147,52 @@
                    license:lgpl2.1
                    ; Some icons
                    license:cc-by-sa4.0))))
+
+;; The Qt5 style engine, split out like Arch's kvantum-qt5 package: Guix's
+;; `kvantum' only builds the Qt6 engine.  The theme assets are deliberately
+;; not duplicated here so that this package can coexist with `kvantum' in one
+;; profile; install `kvantum' or a theme package for theme assets and put the
+;; profile's lib/qt5/plugins directory on QT_PLUGIN_PATH.
+(define-public kvantum-qt5
+  (package
+    (name "kvantum-qt5")
+    (version "1.1.9")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/tsujan/Kvantum")
+             (commit (string-append "V" version))))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "1w8m2k7534i04q18rc9zxil0759zzjzqlzryynkw304cbwz1zm62"))
+       (patches (search-patches "jeans/patches/kvantum-qt5-xdg-dirs-support.patch"))))
+    (build-system qt-build-system)
+    (arguments
+     (list
+      #:tests? #f                       ;no tests
+      #:qtbase qtbase-5
+      #:configure-flags #~(list "-DENABLE_QT5=ON")
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'unpack 'chdir
+            (lambda _
+              (chdir "Kvantum")))
+          (add-after 'chdir 'patch-style-dir
+            (lambda _
+              (substitute* "style/CMakeLists.txt"
+                (("\\$\\{KVANTUM_STYLE_DIR\\}")
+                 (string-append #$output "/lib/qt5/plugins/styles"))))))))
+    (inputs (list libx11 qtsvg-5 qtx11extras))
+    (synopsis "SVG-based theme engine for Qt5")
+    (description
+     "Kvantum is an SVG-based theme engine for Qt, tuned to KDE and LXQt, with
+an emphasis on elegance, usability and practicality.  This package provides
+the Qt5 style plugin only; install @code{kvantum} for the theme manager, the
+Qt6 engine and the bundled themes.")
+    (home-page "https://github.com/tsujan/Kvantum")
+    (properties `((release-tag-prefix . "^V")))
+    (license license:gpl3+)))
 
 ;; Only the Kvantum themes are packaged from the Vimix-kde repository: full
 ;; KDE support is not available in Guix, so the remaining components are of

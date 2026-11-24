@@ -79,7 +79,14 @@ deb/AppImage 里常带上游自编译的**非 PIE**辅助二进制（基址 0x40
 - 二进制安装到 `lib/<pkg>/`，然后从 `bin/` 创建符号链接，使 patchelf 能找到同目录的 `.so` 文件。
 - 自动更新 CI（guix refresh 主力 + Python 兜底）会对本次更新的所有包运行构建测试；预编译包同样需要验证解包、patchelf 和 wrapper 阶段。
 
-### systemd 单元与 autostart：先判断有没有消费者，再决定装不装
+### GTK/WebKitGTK 预编译包的运行时环境（TLS 与 schema）
+
+WebKitGTK 应用（Tauri、wry、任何 libwebkit2gtk-4.1 前端）在 Guix 下要额外补两样，缺任一样都是"能开窗但功能静默降级"（openidea-bin 0.1.50 实证）：
+
+- **`GIO_EXTRA_MODULES` 指向 `glib-networking/lib/gio/modules`**：libsoup 的 TLS 不靠 NEEDED，而是经 GIO 模块加载 glib-networking 的 `libgiognutls.so`。Guix 的 libsoup 依赖里有 glib-networking，但它**只有装进 profile 时**才被 glib 包的 native-search-path 收进 `GIO_EXTRA_MODULES`；预编译包从裸环境启动时该变量可能为空，HTTPS 全部失败。对照实验（一条脚本即可判定）：`env GIO_EXTRA_MODULES=<glib-networking>/lib/gio/modules python3 -c 'import gi; gi.require_version("Gio","2.0"); from gi.repository import Gio; b=Gio.TlsBackend.get_default(); print(type(b).__name__, b.supports_tls())'` —— 路径正确时是 `GTlsBackendGnutls True`，缺省是 `GDummyTlsBackend False`。
+- **`XDG_DATA_DIRS` 用 prefix 语义加 `gtk+/share`**：GTK3 从 `share/glib-2.0/schemas/gschemas.compiled` 读 `org.gtk.Settings`；Guix 的 gtk+ 不在 profile 里时系统路径没有它，GTK 只能拿默认值。**必须 prefix 追加、保留原值**（精确替换会让 gdk-pixbuf 的 loader/mime 解析失效，见上文 Tauri 崩溃卡）。
+
+其余保持基座默认：`#:patchelf-plan` 打 interpreter/RPATH、`#:wrap-plan` 注入上述变量、desktop `Exec=` 由 `#:desktop-files` 自动改写。前端资源内嵌在二进制里的 Tauri 包（deb 里没有 `usr/lib/<identifier>`）不需要 resource_dir 布局，也就不必走手写 ld-linux wrapper。
 
 预编译包的上游几乎都按发行版布局发 `share/systemd/user/*.service|*.socket` 和 `etc/xdg/autostart/*.desktop`。Guix 没有 systemd，这些文件装进 `$out` 之后没有任何东西会读它们——不是"装了暂时没用"，而是纯死文件，还会让人误以为功能已经配好（2026-11-10 msime-bin 首版实证：整棵 `usr/share/` 安装把三个用户单元带了进去）。
 
@@ -100,7 +107,6 @@ shepherd 侧的环境时序（2026-11-10 实证，与 `hardware.scm` 注释同�
 - 只依赖 `XDG_RUNTIME_DIR` 的服务（socket provider、音频、网络）**不需要** requirement。
 
 实例对照：`msime-bin`（三个 provider，包内不装 unit，`home-msime-service-type` 提供开关）；`sunshine-bin`（unit 随 AppImage payload 落在 `lib/sunshine/usr/share/sunshine/systemd/user/`，整包安装排不掉，注释声明用 home shepherd）；`opentabletdriver-bin`（`.deb` 里的 otd-daemon unit，`home-opentabletdriver-service-type` + wait-for-display wrapper）。
-
 
 ### Qt 预编译 bundle 缺插件
 
@@ -193,4 +199,3 @@ Tauri 预编译包的两个解析规则（motrix-next-bin 实证，4.0.0 改名 
 - **resource_dir()** = `exe_dir/../lib/<identifier>/`：资源树（配置、数据库、bootstrap 数据）必须装到 `lib/<identifier>/`，缺任一数据文件会在启动时崩溃。
 - **shell-plugin sidecar 按 `exe_dir` + basename 解析**（不在 resource dir）：替换 sidecar（如用独立 Guix 包替换 bundled 引擎）时，新二进制必须放在主 ELF 同目录。注意 `wrap-program` 会把真实二进制改名为 `.<name>-real`，`/proc/self/exe` 随之指向它——sidecar 与 resource 解析都以这个真实路径为基准。
 - **sidecar 的 basename 可能与独立包撞名**：上游 bundled 引擎叫 `aria2-next`，与独立的 `aria2-next-bin` 同 basename。两包同装一个 profile 时 Guix 报 collision warning 并选先到者（实测：`warning: collision encountered` 后 `choosing ...aria2-next-bin-2.8.2/bin/aria2-next`，profile 构建成功，非错误）。**无需为此改包装结构**：sidecar 从包自身 `exe_dir` 解析，不经 profile 的 `bin/`，程序始终用自带引擎（rayburst-bin 4.0.0 实证）。
-

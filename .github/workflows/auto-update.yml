@@ -34,7 +34,7 @@ env:
   # property 剥 ^ 锚点过滤 bun-v* 系列，2026-10-24 实测正常）。
   REFRESH_PACKAGES: >-
     opencode-desktop-bin ardia-bin herdr-bin omo-bin disktree-bin wu-bin
-    magpie-bin codewhale-bin github-copilot dbx-bin
+    magpie-bin codewhale-bin github-copilot dbx-bin openidea-bin
     eask-bin neomacs-bin rayburst-bin cc-switch-bin flea-bin
     git-credential-keepassxc
     font-maple-font-nf-cn font-nerd-font-iosevka
@@ -42,12 +42,13 @@ env:
     ez2lazer-bin
     neomod-bin
     emacs-msgu
-    colloid-gtk-theme vimix-gtk-themes vimix-kvantum-themes
+    colloid-gtk-theme vimix-gtk-themes vimix-kvantum-themes kvantum-qt5
     i915-sriov-linux-module nix-ld opentabletdriver-udev-rules waypaper
     oo7
     waydroid libgbinder libglibutil python-gbinder
     pnpm-bin
     zellij zellij-bin
+    peazip-bin
 
 jobs:
   auto-update:

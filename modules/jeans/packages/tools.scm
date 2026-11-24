@@ -26,6 +26,7 @@
   #:use-module (gnu packages java)
   #:use-module (gnu packages rdesktop)
   #:use-module (gnu packages gtk)      ; gtk+, cairo, gdk-pixbuf
+  #:use-module (gnu packages qt)       ; qtbase
   #:use-module (gnu packages linux)    ; iproute
   #:use-module (gnu packages admin)    ; netcat-openbsd
   #:use-module (gnu packages gnome)    ; libnotify, libsoup
@@ -1632,3 +1633,115 @@ with git and your code.")
      "Zellij is a terminal workspace with batteries included.  This package
 contains upstream's prebuilt static binary for x86_64-linux.")
     (license license:expat)))
+
+
+;; PeaZip 的 Linux portable 构建是一棵可重定位目录树：peazip 与 pea 都按
+;; 自身可执行文件所在位置定位 res/，所以整棵树原样装到 lib/peazip，再由
+;; 手写 thin wrapper 启动。wrap-program 会把真实二进制改名成 .peazip-real，
+;; 破坏这条自定位假设。
+;;
+;; bundle 只带 Lazarus 的 Qt6 绑定（libQt6Pas.so），不带 Qt 本体：qtbase、
+;; libx11 与 gcc:lib 提供运行时库，QT_PLUGIN_PATH 暴露 Qt 的平台插件（bundle
+;; 里没有 plugins/ 树）。res/portable 是上游的便携标记：存在时 PeaZip 把配置
+;; 写在二进制旁边（store 只读），移除后改用 ~/.config/peazip。
+;;
+;; res/bin 是可选压缩后端。64 位动态后端与会话主程序一样 patchelf；ARC/PAQ
+;; 后端（res/bin/arc、res/bin/lpaq、res/bin/paq）只有 32 位构建，在 Guix 的
+;; 64 位 glibc 上无法运行，选中这些格式时会报错。7z、upx 与 SFX stub 是静态
+;; 二进制，无需处理。
+(define-public peazip-bin
+  (package
+    (name "peazip-bin")
+    (version "11.4.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://github.com/peazip/PeaZip/releases/download/" version
+             "/peazip_portable-" version ".LINUX.Qt6.x86_64.tar.gz"))
+       (sha256
+        (base32 "04yz4l61nrr68l0mxhhg4bvparkya8dz1chgkllpq5dvbvz4whfc"))))
+    (build-system binary-build-system)
+    (arguments
+     (list
+      #:unpack-method 'gnu-unpack
+      #:app-dir "peazip"
+      #:install-plan
+      #~'(("peazip" "lib/peazip/")
+          ("pea" "lib/peazip/")
+          ("readme_Linux.txt" "lib/peazip/")
+          ("libQt6Pas.so" "lib/peazip/")
+          ("libQt6Pas.so.6" "lib/peazip/")
+          ("libQt6Pas.so.6.2" "lib/peazip/")
+          ("libQt6Pas.so.6.2.8" "lib/peazip/")
+          ("res/" "lib/peazip/res/")
+          ("res/share/icons/peazip.png"
+           "share/icons/hicolor/256x256/apps/")
+          ("res/share/icons/peazip_add.png"
+           "share/icons/hicolor/256x256/apps/")
+          ("res/share/icons/peazip_extract.png"
+           "share/icons/hicolor/256x256/apps/"))
+      #:patchelf-plan
+      #~'(("lib/peazip/peazip")
+          ("lib/peazip/pea")
+          ("lib/peazip/libQt6Pas.so.6.2.8")
+          ("lib/peazip/res/bin/7z/7zCon.linux.sfx")
+          ("lib/peazip/res/bin/7z/7zalt")
+          ("lib/peazip/res/bin/brotli/brotli")
+          ("lib/peazip/res/bin/quad/bcm")
+          ("lib/peazip/res/bin/zpaq/zpaq")
+          ("lib/peazip/res/bin/zstd/zstd")
+          ("lib/peazip/res/bin/7z/Codecs/Rar.so"))
+      #:modules '((jeans build binary)
+                  (guix build utils)
+                  (ice-9 format))
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'install 'prepare-bundle
+            (lambda _
+              ;; 便携模式下配置会写到二进制旁边（store 只读）；删掉标记后
+              ;; PeaZip 改用 ~/.config/peazip。
+              (delete-file (string-append #$output "/lib/peazip/res/portable"))
+              (let ((bin (string-append #$output "/bin/peazip"))
+                    (real (string-append #$output "/lib/peazip/peazip")))
+                (mkdir-p (dirname bin))
+                (call-with-output-file bin
+                  (lambda (port)
+                    (format port "#!~a/bin/bash~%" #$bash-minimal)
+                    (format port "export QT_PLUGIN_PATH=\"~a/lib/qt6/plugins\
+${QT_PLUGIN_PATH:+:$QT_PLUGIN_PATH}\"~%"
+                            #$(this-package-input "qtbase"))
+                    ;; argv[0] 与 /proc/self/exe 都指向真实二进制，
+                    ;; PeaZip 据此找到同目录的 res/。
+                    (format port "exec -a \"~a\" \"~a\" \"$@\"~%" real real)))
+                (chmod bin #o755))))
+          (add-after 'prepare-bundle 'install-desktop-entry
+            (lambda _
+              (let* ((apps (string-append #$output "/share/applications"))
+                     (desktop (string-append apps "/peazip.desktop"))
+                     (upstream (string-append
+                                #$output
+                                "/lib/peazip/res/share/batch/"
+                                "freedesktop_integration/peazip.desktop")))
+                (mkdir-p apps)
+                (copy-file upstream desktop)
+                ;; 主入口、四个 Action 与 TryExec 上游都是裸 "peazip"，
+                ;; 一次替换全部（"Exec=peazip" 也命中 "TryExec=peazip"）。
+                (substitute* desktop
+                  (("Exec=peazip")
+                   (string-append "Exec=" #$output "/bin/peazip")))))))))
+    (inputs
+     `(("bash-minimal" ,bash-minimal)
+       ("gcc:lib" ,gcc "lib")
+       ("libx11" ,libx11)
+       ("qtbase" ,qtbase)
+       ("zlib" ,zlib)))
+    (properties `((upstream-name . "peazip_portable")))
+    (home-page "https://peazip.github.io/")
+    (synopsis "Cross-platform archive manager")
+    (description
+     "PeaZip is an archive manager supporting over 200 archive formats,
+including 7z, ZIP, RAR, TAR, Brotli, Zstandard and its own PEA format.  This
+package provides the prebuilt Linux Qt6 portable bundle together with its
+command-line front-end (@command{pea}).")
+    (license license:lgpl3)))

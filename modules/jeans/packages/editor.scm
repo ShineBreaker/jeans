@@ -932,3 +932,85 @@ interpreter embedded as its scripting and event engine.")
       (properties
        `((with-latest-git-commit . #t)
          (git-branch . "steel-event-system"))))))
+
+;;; OpenIDEA: IntelliJ IDEA 风格的 IDE（Rust 内核 + Tauri v2/WebKitGTK
+;;; 前端），Apache-2.0。  上游 .deb 的 payload 只有一个 243 MB 的 Tauri
+;;; ELF 加 .desktop 与 hicolor 图标；前端资源内嵌在二进制里，没有
+;;; usr/lib 资源树，因此不涉及 Tauri 的 resource_dir 布局。
+;;
+;;; NEEDED 里的 libwebkit2gtk-4.1 / libjavascriptcoregtk-4.1 由 Guix 的
+;;; webkitgtk-for-gtk3 提供（与 Debian 的 libwebkit2gtk-4.1-0 同一
+;;; ABI），其余是 GTK3 全家。  二进制只用 /proc/self/exe 推算
+;;; resource_dir（无资源可读），patchelf 只改 interpreter/RPATH，
+;;; wrap-program 改文件名同样不影响它。
+;;
+;;; wrapper 补 Guix 下 GTK/WebKit 缺的运行时环境：
+;;;   - XDG_DATA_DIRS 加 gtk+ 的 GSettings schema（org.gtk.Settings）；
+;;;   - GIO_EXTRA_MODULES 加 glib-networking 的 TLS 后端——libsoup 经
+;;;     GIO 模块加载 TLS，不设则 HTTPS 请求失败；
+;;;   - FONTCONFIG_FILE 指向 fontconfig（包名 fontconfig-minimal）的
+;;;     配置，与其它 GTK 包一致；
+;;; gdk-pixbuf 的 loader 走 Guix 补丁识别的 GUIX_GDK_PIXBUF_MODULE_FILES
+;;;（由 profile hook 提供），这里不指向单个包的残缺 cache。
+(define-public openidea-bin
+  (package
+    (name "openidea-bin")
+    (version "0.1.50")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://github.com/l0ng-ai/openidea/releases/download/v"
+             version "/OpenIDEA_" version "_amd64.deb"))
+       (sha256
+        (base32 "1j24spf2kdjkdvzq0br99qqimw4aqvxm5vwnkwagb24vbvvyzini"))))
+    (build-system binary-build-system)
+    (arguments
+     (list
+      #:unpack-method 'deb
+      #:install-plan
+      #~'(("usr/bin/openidea" "bin/openidea")
+          ("usr/share/applications/OpenIDEA.desktop"
+           "share/applications/OpenIDEA.desktop")
+          ("usr/share/icons/" "share/icons/"))
+      ;; RPATH = inputs 与 standard-packages 的 /lib；已用 ld.so --list
+      ;;（env -i，不带 wrapper 环境）确认 NEEDED 全解析。
+      #:patchelf-plan
+      #~'(("bin/openidea"))
+      #:wrap-plan
+      #~'(("bin/openidea"
+           ("XDG_DATA_DIRS" ":" prefix
+            (#$(file-append gtk+ "/share")))
+           ("GIO_EXTRA_MODULES" ":" prefix
+            (#$(file-append glib-networking "/lib/gio/modules")))
+           ("FONTCONFIG_FILE" =
+            (#$(file-append fontconfig "/etc/fonts/fonts.conf")))))
+      #:desktop-files
+      #~'(("share/applications/OpenIDEA.desktop"))))
+    (native-inputs (list binutils))
+    (inputs
+     `(("bash-minimal" ,bash-minimal)
+       ("cairo" ,cairo)
+       ("dbus" ,dbus)
+       ("fontconfig-minimal" ,fontconfig)
+       ("gcc:lib" ,gcc "lib")
+       ("gdk-pixbuf" ,gdk-pixbuf)
+       ("glib" ,glib)
+       ("glib-networking" ,glib-networking)
+       ("glibc" ,glibc)
+       ("gtk+" ,gtk+)
+       ("libsoup" ,libsoup)
+       ("wayland" ,wayland)
+       ("webkitgtk-for-gtk3" ,webkitgtk-for-gtk3)))
+    (properties '((upstream-name . "OpenIDEA")))
+    (home-page "https://github.com/l0ng-ai/openidea")
+    (synopsis "IntelliJ IDEA-inspired integrated development environment")
+    (description
+     "OpenIDEA is an integrated development environment modelled on
+IntelliJ IDEA.  It combines editing with code insight, navigation,
+refactoring, debugging, VCS integration, a terminal, database tools and
+an HTTP client, with keybindings and tool windows familiar to IntelliJ
+users, for JVM and other language projects.  This package installs the
+vendor's prebuilt Linux release.")
+    (license license:asl2.0)
+    (supported-systems '("x86_64-linux"))))
