@@ -214,8 +214,8 @@ the webview (GTK/WebKitGTK) frontend with an ncurses fallback.")
 ;;; e.g. tree-sitter-json and point LD_LIBRARY_PATH at its lib/ to
 ;;; enable syntax highlighting for that language.
 (define-public lem-next
-  (let ((commit "60cb7c379b61d63666c21388261bb04037bd4be6")
-        (revision "19"))
+  (let ((commit "1c1719d1d3ba9537344dd0231f1ff0eba2368e36")
+        (revision "20"))
     (package
       (inherit lem)
       (name "lem-next")
@@ -228,7 +228,7 @@ the webview (GTK/WebKitGTK) frontend with an ncurses fallback.")
                (commit commit)))
          (file-name (git-file-name name version))
          (sha256
-          (base32 "18x4lcdbqvvw84ahgnrsfldyrc34lqj2jvg1b6rsj0750ypzi4yp"))
+          (base32 "1h71b4ndqij56nkmx237hfj2kdp3yqksnmyadd52h64raydx188p"))
          (patches
           (map canonicalize-path
                (search-patches
@@ -656,7 +656,7 @@ other code intelligence for TypeScript and JavaScript files.")
 (define-public zed-bin
   (package
     (name "zed-bin")
-    (version "1.29.3")
+    (version "1.30.2")
     (source
      (origin
        (method url-fetch)
@@ -664,7 +664,7 @@ other code intelligence for TypeScript and JavaScript files.")
              "https://github.com/zed-industries/zed/releases/download/v"
              version "/zed-linux-x86_64.tar.gz"))
        (sha256
-        (base32 "1hbp9w5iiligb6rpksf57g0f4v9scwxjvaha3cfmbx3vm98g7c24"))))
+        (base32 "1px2ril7vgfi9v6rh3xiq9m8x0kfgbfvkafzahr14hskvh46l3i1"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -783,7 +783,7 @@ package provides the prebuilt binary release.")
 (define-public wu-bin
   (package
     (name "wu-bin")
-    (version "1.4.0")
+    (version "1.5.0")
     (source
      (origin
        (method url-fetch)
@@ -791,7 +791,7 @@ package provides the prebuilt binary release.")
              "https://github.com/dstrml/wu/releases/download/v"
              version "/wu-linux-x86_64.tar.gz"))
        (sha256
-        (base32 "1jr6z610lxf9360g68mi6sgrvy9qp81kkzk9d46323x3c59izffm"))))
+        (base32 "05wd410104mjr08m96b1rgnkqk51vgzc985jl6ns6b27f8bgc9i4"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -955,7 +955,7 @@ interpreter embedded as its scripting and event engine.")
 (define-public openidea-bin
   (package
     (name "openidea-bin")
-    (version "0.1.50")
+    (version "0.1.53")
     (source
      (origin
        (method url-fetch)
@@ -963,7 +963,7 @@ interpreter embedded as its scripting and event engine.")
              "https://github.com/l0ng-ai/openidea/releases/download/v"
              version "/OpenIDEA_" version "_amd64.deb"))
        (sha256
-        (base32 "1j24spf2kdjkdvzq0br99qqimw4aqvxm5vwnkwagb24vbvvyzini"))))
+        (base32 "0av8866ggn4chr0aszcl1zwj80n5r8y7hygbs0lkxvmcfjjknfx1"))))
     (build-system binary-build-system)
     (arguments
      (list

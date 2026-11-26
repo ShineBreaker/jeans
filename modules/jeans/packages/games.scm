@@ -1138,8 +1138,8 @@ through its @code{realmc} binding layer.")
 ;;; 版本线由 (git-version base revision commit) 生成，base 停在最后一个
 ;;; release 的版本号上，revision 每次追到新 commit 自增。
 (define-public lzsync
-  (let ((commit "aa633a339b160f1afc2bf5cdc0bff373f73aee4a")
-        (revision "0"))
+  (let ((commit "d6b3b6e9d419928711e5509dfb6316a1c624c1c9")
+        (revision "1"))
     (package
       (name "lzsync")
       (version (git-version "1.1.1" revision commit))
@@ -1151,7 +1151,7 @@ through its @code{realmc} binding layer.")
                (commit commit)))
          (file-name (git-file-name name version))
          (sha256
-          (base32 "0y5yi4wbw2vh1hzds9kr70s43mq9d3l9yswrlvg3syixvn7hvwas"))))
+          (base32 "18kb7ylyd2ggnw78qzavx5a9cldh0m6jrsjsgbfpyp45yn286x7i"))))
       (build-system go-build-system)
       (arguments
        (list
