@@ -918,11 +918,30 @@ coding experience with context awareness.")
 ;;; License note: this release ships under Apache-2.0 (LICENSE at tag
 ;;; v0.7.0 is the full Apache text).  v0.6.1 shipped AGPLv3; upstream
 ;;; relicensed in commit a8734a9 (2026-08-27).
+;;;
+;;; Startup: the daemon compiles every built-in plugin from TypeScript on each
+;;; launch, behind startPaused, and only then starts accepting WebSocket
+;;; connections — the desktop window shows nothing but the logo until that is
+;;; done.  Run from a store path, esbuild's boundary resolve (buildContext
+;;; .resolve) enumerates /gnu/store, tens of thousands of entries, once per
+;;; import: 2-30 s per plugin, ~74 s before the first paint on this bundle.
+;;; The same tree outside the store compiles in 10-300 ms.  The build therefore
+;;; precompiles the built-in plugins (see modules/jeans/packages/paseo):
+;;; it patches app.asar so compileDirectoryPlugin() prefers
+;;; <plugin>/.paseo-precompiled.json for built-in plugins (falling back to
+;;; compiling when version/id do not match), re-packs the archive with
+;;; recomputed offsets and per-file integrity, and fails loudly if the upstream
+;;; anchor disappears.
+
+(define %paseo-precompile-script
+  (local-file (canonicalize-path
+               (search-path %load-path "jeans/packages/paseo/precompile.mjs"))
+              "paseo-precompile.mjs"))
 
 (define-public paseo-bin
   (package
     (name "paseo-bin")
-    (version "0.16.2")
+    (version "0.17.4")
     (source
      (origin
        (method url-fetch)
@@ -930,7 +949,7 @@ coding experience with context awareness.")
              "https://github.com/getpaseo/paseo/releases/download/"
              "v" version "/Paseo-" version "-amd64.deb"))
        (sha256
-        (base32 "10mx40qb2aw742iccpf50wwhabxg5q12qr4clbvizbxg3vw45xb4"))))
+        (base32 "1ygw50fx0fbwbr7a1w4rvl3zc2x4fpv6143yqra6rrmnh2yacbn7"))))
     (build-system electron-build-system)
     (arguments
      (list
@@ -957,6 +976,27 @@ coding experience with context awareness.")
       #:imported-modules '((guix build utils))
       #:phases
       #~(modify-phases (@ (jeans build electron) %standard-phases)
+          (add-after 'patchelf 'precompile-builtin-plugins
+            ;; Run the bundled Electron in node mode (asar-aware fs) against the
+            ;; already-patched tree, so the bundles are byte-identical to what
+            ;; the daemon would compile from this very store path.
+            (lambda _
+              (let* ((app (string-append #$output "/lib/paseo"))
+                     (home (string-append (getcwd) "/precompile-home")))
+                ;; Electron-as-node looks at HOME/XDG_*; builders have no
+                ;; writable home (/homeless-shelter), point them into the build
+                ;; tree instead.
+                (mkdir-p home)
+                (setenv "HOME" home)
+                (setenv "XDG_CACHE_HOME" (string-append home "/.cache"))
+                (setenv "XDG_CONFIG_HOME" (string-append home "/.config"))
+                (setenv "XDG_DATA_HOME" (string-append home "/.local/share"))
+                ;; Only lib/paseo is needed here (bundled libffmpeg.so); the
+                ;; wrapper with the full LD_LIBRARY_PATH does not exist yet.
+                (setenv "LD_LIBRARY_PATH" app)
+                (setenv "ELECTRON_RUN_AS_NODE" "1")
+                (invoke (string-append app "/Paseo.bin")
+                        #$%paseo-precompile-script app))))
           (add-after 'patchelf 'install-bin
             (lambda _
               (let* ((out #$output)

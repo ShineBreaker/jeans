@@ -144,6 +144,21 @@ Guix 的 curl/git/python 编译期**不带默认 CA 路径**，全靠 `SSL_CERT_
 - **patchelf 目标换成新 ELF 名**，并给新脚本打 store shebang（上游脚本带 `#!/bin/sh`）。脚本里的 sandbox 检测依赖宿主的 `readlink`/`unshare`/`stat`/`findmnt`/`grep`，这点和 bundle 的其它脚本一致，不用额外补 PATH。
 - **`wrap-program` 的 `exec -a "${0##*/}"` 会破坏按 `$0` 定位自身的脚本**：脚本用 `readlink -f -- "$0"` 推出 `${launcher}.bin`，而裸 basename 会被 readlink 解析到调用者的 CWD 而非 store。在 `wrap-program`（及 wayland helper）之后 substitute wrapper 换回真实路径，保持在 `exec -a ` 前缀上（helper 的 `^exec -a ` 锚点仍有效）：`(("exec -a \"[^\"]*\" ") (string-append "exec -a \"" #$output "/lib/<pkg>/<launcher>\" "))`——正则用 `[^"]*` 而不是手写 `${0##*/}`，避开 `$`/`{`/`*` 的转义。
 
+### 上游在启动期做重编译时，store 路径本身可以把编译放大 75 倍（Paseo 实证）
+
+症状是「窗口能开、只有 Logo 不动」。Paseo 的 daemon 每次启动都把内置插件从 `.ts` 现编译成 bundle，且 `startPaused` 下要等插件全部就绪才 `beginAcceptingConnections()`：在 store 路径里编译，首屏要 78 s（`websocket-server.js` 的 `verifyWsUpgrade` 一直回 503 `Server not ready`）。
+
+根因不在包装：esbuild 的插件边界校验（`onResolve` 里调 `buildContext.resolve()`）会为每个 import 整目录读一次父目录。同一棵插件树：
+
+- `/gnu/store/<hash>-paseo-bin-*/lib/paseo/resources/builtin-plugins/<id>`：单插件 2–30 s（0.16.2 的 14 个共 74 s；strace 5 s 内 56 755 次 `getdents64(/gnu/store)`）
+- 同样的树复制到 `/tmp`：10–300 ms（`cp -r` 后逐字节相同的树）
+
+修复走「构建期预编译」：打包时用 daemon 自己的 `compileDirectoryPlugin()` 生成 `<插件>/.paseo-precompiled.json`，并给 app.asar 打一条「内置插件优先读预编译产物」的补丁（版本/id 不匹配时回落编译）。改动 asar 内文件会改变后续 offset，必须重排 offset、重算该成员的 SHA256 与 4 MiB 块哈希（空成员是「一个空块」而非零块）；脚本末尾用 header 全量校验全部成员（0.16.2 是 9415 个、0.17.4 是 9538 个），并在同一个入口上二次调用断言命中预编译路径且 bundle 逐字节一致。实测首屏 78 s → 4.5 s（0.16.2），升到 0.17.4 后插件从 14 个增到 17 个、首屏 5.0 s；两版 `guix build --check` 都输出同一 store 路径。
+
+注意三点：预编译必须在 **`#$output`** 上做（构建沙箱里的 `/gnu/store` 只含 inputs，所以只要 1.5 s；同时 bundle 里的 `// 源路径` 注释指向该路径，换目录后 bundle 会不同）；Electron 的 fs shim 会把 `*.asar` 下的任何路径当成员，读写归档本身要先 `process.noAsar = true`；真正运行的是 `Paseo.bin`（不是 `bin/paseo` wrapper），`LD_LIBRARY_PATH` 只需 `lib/paseo`（自带 `libffmpeg.so`），`HOME`/`XDG_*` 要指到构建目录。
+
+实现：`modules/jeans/packages/paseo/precompile.mjs` + `paseo-bin` 的 `precompile-builtin-plugins` phase。
+
 ### Electron 子进程的 env 过滤 ⇒ RUNPATH 必须自足（nss /lib/nss 布局）
 
 Chromium 的 `utilityProcess.fork` 用**过滤后的 env**（仅 HOME/PATH/LANG 等 9 个变量，**不含 LD_LIBRARY_PATH**）重新 exec `process.execPath`。wrapper 的 LD_LIBRARY_PATH 只覆盖 wrapper 直接启动的主进程；这类子进程重新 exec 同一二进制时只认 **RUNPATH**，缺库即 `libnss3.so cannot open`、退出 127（qoder-cn 0.5.6「Qoder Mobile 远程控制连接失败」实证：远程控制进程是 Node utility，fork 即死，主进程与 UI 毫无异常）。
