@@ -89,6 +89,43 @@ satty 211 inputs 实证）。流程不变：`guix import crate --lockfile=<Cargo
 **从源码构建的 path 成员/根包**（satty：213 − 根 satty − path 成员 satty_cli = 211；
 herdr：297 − 根 − ghostty-vt − path-patch portable-pty = 294）。
 
+### 上游 MSRV 比 Guix 的 rust 新一个 stable 时（cargo-hua 实证，2026-11-26）
+
+cargo 系项目的 MSRV 永远钉当前 stable（`Cargo.toml` 里 `rust-version = "1.99"
+# MSRV:1`），而 Guix 的 rust 常落后一个 stable（当时 1.98.1）。差**一个 stable**
+时不要直接归入「跳过该版本」，先试三步：
+
+1. **门禁只是声明，不是能力。** `rust-version` 在依赖解析期拦住构建
+   （`error: rustc 1.98.1 is not supported by the following packages`）。
+   `cargo build --ignore-rust-version` 能过 build 阶段，但 cargo-build-system
+   的 install 阶段硬编码 `cargo install` 参数、插不进这个 flag，所以直接改清单：
+   phases 里对全树 `Cargo.toml`（**含 `guix-vendor/`**，vendored 的同名 crate
+   也带门禁）做 `substitute*` 把 `1.99` 降到 `1.98`。`[workspace.package]` 与
+   各成员 `[package]` 可能各写一份（cargo 的根包是 MSRV:1、workspace 是 MSRV:3），
+   全树扫一遍才不会漏。
+2. **真用到新 stable 的 std 项时才需要移植。** cargo-hua 只命中两处，都是
+   `std::fs::set_times`（自由函数，1.99 才稳定）：`File::set_times`（1.75 稳定）
+   是等价替代，但要先 `OpenOptions::new().write(true).open(p)`，再
+   `.and_then(|f| f.set_times(times))`。语义不变（本来就是 best effort 写 mtime）。
+3. **能用就值。** 单次重建 3 分钟，比等 Guix 升 rust 或维护一个 -bin 双发便宜。
+   差两个以上 stable、或要动 bootstrap 链时仍按原规则跳过。
+
+注释里写清哪条是门禁、哪条是真 API、Guix 的 rust 升到多少之后可以删掉这段；
+否则下次 refresh 升版本时没人知道这两个 phase 是临时脚手架。verify 顺序：先
+`grep -rn rust-version Cargo.toml crates/*/Cargo.toml` 量温差，再构建看是否只剩
+E0658（真 API）而不是 MSRV 门禁。
+
+### 上游把 SQLite 编进主二进制时
+
+cargo-hua 的 fork 把 cargo 的 global cache tracker 换成了 SQLite
+（`src/util/sqlite.rs`、`src/workspace/global_cache_tracker.rs`），所以
+`libsqlite3-sys` 出现在**主二进制的链接行**上，不是测试依赖。判据：链接报
+`ld: cannot find -lsqlite3` 时，看它的 rlib 是否和主 crate 一起被链（不是
+`--package` 之外的测试成员）。处置照前面的 sqlite 条目：加 `sqlite-next`
+（包的 `name` 仍是 `sqlite`，label 用它），运行时证据是
+`$CARGO_HOME/.global-cache` 是 SQLite 3 数据库、`.tables` 里有 `registry_crate`
+等表；别以为只编 `--package <根包>` 就能跳过 SQLite，它就在根包的依赖里。
+
 ### workspace 安装跳过陷阱（has-executable-target? 取 packages[0]）
 
 cargo-build-system 的 install 阶段用 `has-executable-target?` 判断要不要跑
