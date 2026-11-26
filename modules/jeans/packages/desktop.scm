@@ -1041,6 +1041,14 @@ renderer relies on the upstream Chromium binary distribution.")
       #~'(("bin")
           ("lib/x86_64-linux-gnu"))
       #:preserve-rpath? #t
+      ;; 上游的官方开关（apps/desktop/src-tauri/src/update_check.rs 注释 +
+      ;; crates/client-services/src/update_check/background.rs 的
+      ;; background_check_disabled：非空且非 "0" 即生效）：Linux 包里只做
+      ;; 后台检查与桌面通知，不能在应用内安装，升级归包管理器。设了就不再
+      ;; 后台联网，「关于」页的手动检查照常可用。
+      #:wrap-plan
+      #~'(("bin/msime-linux-desktop"
+           ("MSIME_DISABLE_UPDATE_CHECK" = ("1"))))
       #:phases
       #~(modify-phases %standard-phases
           (add-after 'install 'rewrite-absolute-paths

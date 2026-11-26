@@ -62,12 +62,18 @@
 (define (disable-electron-updater-phase application-directory)
   #~(lambda _
       ;; electron-updater treats "package-type" as permission to replace the
-      ;; application with a downloaded .deb.  Guix owns package upgrades.
-      (let ((package-type
-             (string-append #$output "/lib/" #$application-directory
-                            "/resources/package-type")))
-        (when (file-exists? package-type)
-          (delete-file package-type)))))
+      ;; application with a downloaded .deb; without it getAutoUpdater() falls
+      ;; back to AppImageUpdater, which stays inactive when $APPIMAGE is unset.
+      ;; app-update.yml is the provider manifest — dropping it too means no
+      ;; update config ships at all (applies to non-electron-build-system
+      ;; packages; electron-build-system's phase does the same).
+      (let ((resources (string-append #$output "/lib/" #$application-directory
+                                      "/resources")))
+        (for-each (lambda (file)
+                    (let ((path (string-append resources "/" file)))
+                      (when (file-exists? path)
+                        (delete-file path))))
+                  '("package-type" "app-update.yml")))))
 
 (define (prefer-electron-wayland-phase program)
   #~(lambda _

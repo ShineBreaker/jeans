@@ -86,12 +86,20 @@ a non-empty string when #:disable-updater? is true"
              application-directory))
     ;; electron-updater treats "package-type" as permission to replace the
     ;; application with a downloaded .deb.  Guix owns package upgrades.
-    (let ((package-type
-           (string-append (assoc-ref outputs "out") "/lib/"
-                          application-directory
-                          "/resources/package-type")))
-      (when (file-exists? package-type)
-        (delete-file package-type))))
+    ;; Removing it makes getAutoUpdater() fall back to AppImageUpdater, whose
+    ;; isUpdaterActive() returns #f unless $APPIMAGE is set (verified against
+    ;; the electron-updater code shipped in qoder-cn 0.5.20's app.asar), so no
+    ;; check or download happens.  app-update.yml is the provider manifest: no
+    ;; updater is instantiated without package-type, but dropping it too means
+    ;; we ship no update config at all (belt and braces for apps that read it
+    ;; directly instead of going through electron-updater's autoUpdater).
+    (let ((resources (string-append (assoc-ref outputs "out") "/lib/"
+                                    application-directory "/resources")))
+      (for-each (lambda (file)
+                  (let ((path (string-append resources "/" file)))
+                    (when (file-exists? path)
+                      (delete-file path))))
+                '("package-type" "app-update.yml"))))
   #t)
 
 (define* (prefer-electron-wayland-phase

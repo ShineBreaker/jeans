@@ -397,6 +397,25 @@ keeps the language selection interface enabled.")
                                                        "application/pdf"
                                                        "application/json")
                                          #:startup-w-m-class "zen-alpha"))))
+          (add-after 'install-desktop 'install-policies
+            (lambda _
+              ;; Zen 的 tarball 不带 distribution/policies.json，Firefox 的应用内
+              ;; 更新因此是激活的（自带 updater + updater.ini）。DisableAppUpdate
+              ;; 是 Mozilla 官方企业策略键（policy-templates），store 只读下更新
+              ;; 本也装不进去，干脆在策略层关掉检查与下载。
+              (let ((dir (string-append #$output
+                                        "/lib/zen/distribution")))
+                (mkdir-p dir)
+                (call-with-output-file (string-append dir "/policies.json")
+                  (lambda (port)
+                    (display
+                     (string-append
+                      "{\n"
+                      "  \"policies\": {\n"
+                      "    \"DisableAppUpdate\": true\n"
+                      "  }\n"
+                      "}\n")
+                     port))))))
           (add-after 'install-desktop 'install-icons
             (lambda _
               (let* ((out #$output)
