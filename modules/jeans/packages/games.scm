@@ -647,6 +647,19 @@ EzResources pack supplies the Ez Pro skin and HUD textures."
 
 ;; inso ships no LICENSE file in its source repository, so by default
 ;; copyright it is nonfree.  Distributed only as a prebuilt Linux archive.
+;; 上游只在源码仓库里放了 icons/inso.ico（release zip 里没有任何图标），
+;; 而桌面项写的是 Icon=inso，不装图标菜单里就是空白。构建期用 icotool 把
+;; .ico 里的各尺寸 PNG 帧拆到 hicolor。URL 里的版本号随包版本手改：改版本
+;; 时这个 origin 也要一起改（忘了只会留旧图，不会构建失败）。
+(define inso-icon
+  (origin
+    (method url-fetch)
+    (uri (string-append "https://raw.githubusercontent.com/isakvik/inso/v0.3.8"
+                        "/icons/inso.ico"))
+    (file-name "inso.ico")
+    (sha256
+     (base32 "0apgs96wc93xhw0h9kc53z9ixh73ikvpmxbwq4sv5xcsax402dg2"))))
+
 (define-public inso-bin
   (package
     (name "inso-bin")
@@ -688,7 +701,8 @@ EzResources pack supplies the Ez Pro skin and HUD textures."
           ("docs/" "share/inso/docs/"))
       #:modules '((guix build utils)
                   (guix build copy-build-system)
-                  (ice-9 format))
+                  (ice-9 format)
+                  (ice-9 regex))
       #:phases
       #~(modify-phases %standard-phases
           (delete 'install-license-files)
@@ -803,6 +817,23 @@ EzResources pack supplies the Ez Pro skin and HUD textures."
                               (string-append
                                (assoc-ref inputs label) "/lib"))
                             '("gcc:lib" "mesa" "alsa-lib"))))))))
+          (add-after 'install 'install-icons
+            (lambda _
+              (let ((tmp (string-append (getenv "TMPDIR") "/inso-ico")))
+                (mkdir-p tmp)
+                (invoke "icotool" "-x" "-o" tmp #$inso-icon)
+                (for-each
+                 (lambda (file)
+                   (let* ((m (string-match "_([0-9]+)x([0-9]+)x[0-9]+[.]png$"
+                                           (basename file)))
+                          (size (and m (match:substring m 1))))
+                     (when size
+                       (let ((dir (string-append
+                                   #$output "/share/icons/hicolor/"
+                                   size "x" size "/apps")))
+                         (mkdir-p dir)
+                         (copy-file file (string-append dir "/inso.png"))))))
+                 (find-files tmp "\\.png$")))))
           (add-after 'wrap-program 'install-desktop-entry
             (lambda _
               (let ((apps (string-append #$output "/share/applications")))
@@ -818,7 +849,7 @@ EzResources pack supplies the Ez Pro skin and HUD textures."
                     (format port "Terminal=false~%")
                     (format port "Type=Application~%")
                     (format port "Categories=Game;ArcadeGame;~%")))))))))
-    (native-inputs (list unzip patchelf))
+    (native-inputs (list unzip patchelf icoutils))
     (inputs
      `(("bash-minimal" ,bash-minimal)
        ("glibc" ,glibc)
@@ -1181,6 +1212,22 @@ through its @code{realmc} binding layer.")
         #~(modify-phases %standard-phases
             ;; Go 工具链自决 linkage，产物不带 Guix RPATH，跳过该检查。
             (delete 'validate-runpath)
+            ;; 上游把 resources/icon.png 交给 Git LFS，git-fetch 只拿到 130
+            ;; 字节的指针文件；go:embed 与前端 bun build 都会把它当成图片，
+            ;; 结果是空白窗口图标 + 菜单里缺图。docs/design-mockup/icon-master.svg
+            ;; 是同一张图的母版（非 LFS），构建期渲染成 1024px PNG 覆盖。
+            (add-before 'build 'replace-lfs-icon
+              (lambda _
+                (let* ((src (string-append (getenv "GOPATH") "/src/lzsync"))
+                       (svg (string-append src
+                                           "/docs/design-mockup/icon-master.svg"))
+                       (png (string-append src "/resources/icon.png")))
+                  (unless (file-exists? svg)
+                    (error "lzsync: icon-master.svg missing, cannot replace LFS pointer"))
+                  ;; setup-go-environment 复制出来的源文件是只读的，先删再写。
+                  (when (file-exists? png)
+                    (delete-file png))
+                  (invoke "rsvg-convert" "-w" "1024" "-h" "1024" "-o" png svg))))
             (add-before 'build 'prepare-frontend
               (lambda* (#:key inputs #:allow-other-keys)
                 (let* ((gopath (getenv "GOPATH"))
@@ -1292,7 +1339,7 @@ through its @code{realmc} binding layer.")
                                             (list (assoc-ref inputs
                                                              "gtk+")))))))))))
       (native-inputs
-       (list go-1.27 bun-bin))
+       (list go-1.27 bun-bin librsvg))
       (inputs
        (list bash-minimal
              go-github-com-dustin-go-humanize-1.1
