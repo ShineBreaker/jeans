@@ -32,7 +32,8 @@
     "zig-gobject-ghostty",
     "flea",
     "ghostty",
-    "gamescope"
+    "gamescope",
+    "cargo-hua"
   ],
   "skip_files": [
     "rust-crates.scm"
@@ -50,7 +51,8 @@
   "stale_watch": {
     "librewolf-nongnu": "继承 Guix 上游 librewolf 包（inherit 且 source 为 #f），无独立版本/下载源；需手动跟踪 Guix 上游 librewolf 的新版本",
     "python-pywayland": "上游是 PyPI 源（pypi-uri），无 GitHub/GitLab release 可跟；guix refresh 的 pypi updater 会重写 inputs（2026-11-20 实测删掉 wayland/pkg-config 等构建输入），不能加白名单。手动按 PyPI 新版本改 version + base32",
-    "mysql-workbench-community-classic-bin": "8.0 LTS 预编译 .deb 只存在于 cdn.mysql.com/archives 归档目录，无版本清单可查；源码包 mysql-workbench-community-classic 已由 Python updater 跟踪 GitHub tag，手动同步 bin 版本与 hash"
+    "mysql-workbench-community-classic-bin": "8.0 LTS 预编译 .deb 只存在于 cdn.mysql.com/archives 归档目录，无版本清单可查；源码包 mysql-workbench-community-classic 已由 Python updater 跟踪 GitHub tag，手动同步 bin 版本与 hash",
+    "cargo-hua": "上游 cargo 的 MSRV 永远钉当前 stable（0.103.0-1 要 rustc 1.99），而 Guix 的 rust 只有 1.98.1；包定义靠两个 phase（port-to-rust-1.98 / relax-rust-version）把门禁降到 1.98、并把 std::fs::set_times 移植成 File::set_times 才编得过。每个新 release 都可能引入新的 1.99+ API，自动升版本会让构建闸门在无人看管时失败，故 2026-11-26 起有意冻结。人工升版本：重跑 guix import crate --lockfile + merge_crate_inputs.py 重做 rust-crates.scm，先量温差（grep -rn rust-version），再真构建。解除条件：Guix 的 rust ≥ 1.99——那时删掉这两个 phase、把包名加回 auto-update.yml 的 REFRESH_PACKAGES，并从 skip_packages/stale_watch 移除"
   },
   "notes": {
     "check_pre_release": "这个列表中的包会检查包括pre-release在内的所有版本。注意：emacs-ellsp/ellsp-bin 的 accept-pre-releases? property 已写在包定义里供 guix refresh 使用，此处保留给 Python updater 兜底。inso-bin 上游的 release 标记不稳定（v0.3.5 是 prerelease、0.3.7/0.3.8 是 stable），包定义里已带 accept-pre-releases?，此处保留对齐。zcode 在此列表中时会额外扫描 z.ai CDN 的灰度先行版（官网版本列表不展示、先发部分平台，如 3.8.1）。cua-driver-bin 的上游 trycua/cua 是 monorepo，所有 plain SemVer 稳定版（如 cua-driver-rs-v0.23.2）都刻意标成 prerelease 以防仓库级 Latest 指针被单个产品抢走，必须在此列表中才能被识别",
@@ -59,7 +61,7 @@
     "tag_prefix": "当同一个 GitHub repo 有多个 release 系列（如 v* 和 desktop-v*）时，指定每个包跟踪的 tag 前缀。inso-bin 自 0.3.8 起上游 tag 回归小写 v 前缀（0.3.7 曾短暂用大写 \"V0.3.7\"，guix refresh 的 URL 重写模板只认小写 /(v)?<version>/ 路径，大写时直接 no updater），包定义 URI 已固定小写 v、由 guix refresh 主力更新，此处小写 v 供 Python 兜底剥离版本。cua-driver-bin 的上游有 nightly-cua-driver-rs-v*（每日快照）和 cua-driver-rs-v*（plain SemVer 稳定版）两个系列，前缀过滤掉 nightly；guix refresh 的 URL 形状匹配不认该 repo 的 tag/资产命名，包定义里的 upstream-name property 保留但不生效。agenote / emacs-agenote 的 monorepo 组件前缀（agenote-v / agenote-el-v）只写在包定义的 release-tag-prefix property 里，此处不重复配置：本脚本读取该 property 时会剥掉 ^ 锚点。二者不交 CI 的 guix refresh——guix 的 GitHub updater 优先级高于 generic-git 且忽略 release-tag-prefix，会把兄弟组件的 tag 误读成版本（agenote-zcode-v0.1.0 被解析成 zcode-v0.1.0，2026-10-03 实测）。python-gbinder 的上游 gh Releases 全部是空的（无描述/无资产），/releases/latest 404，只能落到 tags 接口的顺序；该接口按字节序返回，upstream/1.1.1（Droidian Debian 线）排在数字 tag 1.3.x 前面，且版本比较是字符串不等即更新，于是误报 upstream/1.1.1 并把不可用的版本写进包定义（2026-10-20 issue #57：guix build 报 invalid character '/' in name）。python-gbinder 放进 skip_packages：该 repo 无任何 release、也没有 default 分支追踪（1.3.1 是 Debian 打包线的分支 tag），tags 接口按字节序把 upstream/* 排在数字 tag 前，单靠 tag_prefix 无法区分；update_versions.py 另加了候选含 \"/\" 即跳过的兜底，防止同类误写",
     "tag_exclude": "与 tag_prefix 互补的黑名单：每个包要跳过的 tag 正则（JSON 里写成 \"\\\\.android$\" 这类）。用于同一 repo 并行发布、但与本包无关的发布线抢到 GitHub Latest 指针的情况——zcode-proxy-bin 的上游 TriDefender/zcode-api 先发桌面线 v4.8.8，随后补发只带 app-debug.apk 的 v4.8.8.android，后者成为 Latest，而桌面资产只存在于 v4.8.8 下，updater 构造出 /download/v4.8.8.android/zcode-proxy-linux-x64 后 404，报「无法计算 hash」（issue #65）。配置后该包改走 release 列表扫描而非 /releases/latest，命中正则的 tag 被跳过",
     "stale_days": "stale_watch 中的包超此天数（默认 14 天）无手动更新时，CI 发提醒 issue。判定方法：更新时的 git diff 若无此包相关改动，视为无手动更新",
-    "stale_watch": "无法自动更新的包名单（原因写进提醒 issue）。stale 提醒只会在 CI 环境触发，且与 14 天周期共同防重。librewolf-nongnu 继承 Guix 上游 librewolf，无独立版本；git-credential-keepassxc 曾冻结（rustc 依赖），2026-11-12 解冻回 REFRESH_PACKAGES。python-pywayland（PyPI 源，guix refresh 会重写 inputs 破坏构建）与 mysql-workbench-community-classic-bin（归档 .deb 无清单）于 2026-11-20 纳入监控；libfprint-next/fprintd-next（GitLab）与 ghostty-bin（conda-forge）同日补了 SPECIAL_UPDATERS 处理器，故不入此列",
+    "stale_watch": "无法自动更新的包名单（原因写进提醒 issue）。stale 提醒只会在 CI 环境触发，且与 14 天周期共同防重。librewolf-nongnu 继承 Guix 上游 librewolf，无独立版本；git-credential-keepassxc 曾冻结（rustc 依赖），2026-11-12 解冻回 REFRESH_PACKAGES。python-pywayland（PyPI 源，guix refresh 会重写 inputs 破坏构建）与 mysql-workbench-community-classic-bin（归档 .deb 无清单）于 2026-11-20 纳入监控；libfprint-next/fprintd-next（GitLab）与 ghostty-bin（conda-forge）同日补了 SPECIAL_UPDATERS 处理器，故不入此列；cargo-hua 于 2026-11-26 因上游 MSRV 1.99 高于 Guix rust 1.98.1 而冻结（详见它的 stale_watch 条目）",
     "示例配置": "在数组中添加或删除包名来自定义行为"
   }
 }

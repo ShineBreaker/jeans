@@ -1745,3 +1745,125 @@ including 7z, ZIP, RAR, TAR, Brotli, Zstandard and its own PEA format.  This
 package provides the prebuilt Linux Qt6 portable bundle together with its
 command-line front-end (@command{pea}).")
     (license license:lgpl3)))
+
+;;; cargo-hua：huacnlee 的 Cargo fork（MIT OR Apache-2.0），把同一个仓库的
+;;; 所有 worktree/clone 编进共享构建目录 ~/.cargo/targets，并按大小上限自己
+;;; 回收；registry 与 git 依赖跨项目只编一次。上游仓库名是 cargo，包名里的
+;;; cargo-hua 是描述性名字（别人的 fork，按 conventions-naming.md 不加 -se）。
+;;;
+;;; 从源码构建，不用 -bin：上游 release 走 all-static（内嵌 OpenSSL/curl/
+;;; libgit2），本包用默认 features，按 Guix 惯例由 pkg-config 链系统库：
+;;;   curl-sys 0.4.90+curl-8.21.0 ↔ curl 8.21.0
+;;;   libgit2-sys 0.18.7+1.9.6     ↔ libgit2 1.9.7
+;;;   libssh2-sys 0.3.4            ↔ libssh2 1.11.1
+;;;   openssl-sys 0.9.117          ↔ openssl 3.5.9（configure 阶段设 OPENSSL_DIR）
+;;;   libz-sys 1.1.29              ↔ zlib 1.3.1
+;;;   libsqlite3-sys 0.38.1        ↔ sqlite-next 3.53.4（变量叫 sqlite-next，
+;;;                                   包的 name 仍是 sqlite，lint 看的是后者）
+;;; cargo-build-system 的 configure 阶段无条件设 LIBGIT2_SYS_USE_PKG_CONFIG /
+;;; LIBSSH2_SYS_USE_PKG_CONFIG / LIBSQLITE3_SYS_USE_PKG_CONFIG，所以这几个系统库
+;;; 必须在 inputs 里，pkg-config 在 native-inputs；缺了 build.rs 直接报 pkg-config
+;;; 找不到。SQLite 不是测试依赖：这个 fork 把 cargo 的 global cache tracker 换
+;;; 成了 SQLite（src/util/sqlite.rs、src/workspace/global_cache_tracker.rs），
+;;; 它链进 cargo 主二进制。
+;;;
+;;; 只编工作区根包（--package cargo）：crates/* 其余成员（cargo-test-support、
+;;; benches 的 criterion/varisat）只在测试与基准里用。上游整套 testsuite 关闭：
+;;; 它要真工具链、git 和网络，单次构建跑不完（上游 CI 另有覆盖）；作为替代，
+;;; install 后跑一次 --version。
+;;;
+;;; 不设 CARGO_FORK_RELEASE：version.rs 用 option_env! 读它，只有发布 CI 才注入；
+;;; 不设时 cargo -V 显示 huacnlee/cargo（无版本号），self_update.rs 的后台自更新
+;;; 也整个不编进去——store 里本来就不能原地升级。
+;;;
+;;; 依赖集由 guix import crate --lockfile 生成（481 个 registry crate，28 个
+;;; 工作区成员已排除），再用 scripts/check-updates/merge_crate_inputs.py 合并，
+;;; 不要手改 rust-crates.scm。
+;;;
+;;; 自动更新有意冻结（2026-11-26）：本包不在 auto-update.yml 的
+;;; REFRESH_PACKAGES 里，并列入 config.json 的 skip_packages / stale_watch。
+;;; 原因就是上面那个 MSRV 差一个 stable——每个新 release 都得人工确认还能不能
+;;; 用 1.98 编，自动升版本只会让构建闸门在无人看管时失败。人工升版本：改
+;;; version + 重算 git hash、重跑 guix import crate --lockfile 与
+;;; merge_crate_inputs.py、真构建一次。Guix 的 rust ≥ 1.99 后删掉上面两个
+;;; phase，把包名加回白名单，并从 config.json 的 skip_packages 与 stale_watch
+;;; 移除。
+(define-public cargo-hua
+  (package
+    (name "cargo-hua")
+    (version "0.103.0-1")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/huacnlee/cargo")
+             (commit (string-append "v" version))))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "0mnljy0qnm265rmyrfy4m3ks79k34vjhvgvsh6262awdwxr9jwpw"))))
+    (build-system cargo-build-system)
+    (arguments
+     (list
+      #:rust rust
+      #:tests? #f
+      #:install-source? #f
+      ;; 工作区根就是 cargo 包本身；显式给安装路径，一是绕开
+      ;; has-executable-target? 只看 packages[0] 的启发式，二是让
+      ;; cargo install 针对根包而不是虚拟清单。
+      #:cargo-install-paths ''(".")
+      ;; 只编根包，不碰测试/基准成员。
+      #:cargo-build-flags ''("--release" "--package" "cargo")
+      #:phases
+      #~(modify-phases %standard-phases
+          ;; cargo master 用的是 Rust 1.99 才稳定的 std::fs::set_times（自由
+          ;; 函数）与 rust-version = "1.99" 门禁，而 Guix 的 rust 是 1.98.1。
+          ;; 这里是两处机械移植，语义不变：改用自 1.75 就稳定的
+          ;; File::set_times（先以写模式打开文件）；MSRV 声明只是门禁，编译期
+          ;; 不检查，整个工作区与 guix-vendor 的 Cargo.toml 一并降到 1.98。
+          ;; Guix 的 rust 升到 1.99 后这段可删。
+          (add-after 'unpack 'port-to-rust-1.98
+            (lambda _
+              (substitute* "crates/cargo-util/src/paths.rs"
+                (("fs::set_times\\(path, times\\)")
+                 (string-append
+                  "fs::OpenOptions::new().write(true).open(path)"
+                  "        .and_then(|file| file.set_times(times))")))
+              (substitute* "src/sources/registry/mod.rs"
+                (((string-append
+                   "fs::set_times\\(&path, fs::FileTimes::new\\(\\)"
+                   "\\.set_modified\\(mtime\\.into\\(\\)\\)\\)"))
+                 (string-append
+                  "OpenOptions::new().write(true).open(&path)"
+                  "            .and_then(|file| file.set_times("
+                  "fs::FileTimes::new().set_modified(mtime.into())))")))))
+          (add-after 'configure 'relax-rust-version
+            (lambda _
+              (for-each (lambda (file)
+                          (substitute* file
+                            (("rust-version = \"1\\.99\"")
+                             "rust-version = \"1.98\"")))
+                        (find-files "." "Cargo\\.toml$"))))
+          (add-after 'install 'smoke-test
+            (lambda* (#:key outputs #:allow-other-keys)
+              (invoke (string-append (assoc-ref outputs "out")
+                                     "/bin/cargo")
+                      "--version"))))))
+    (native-inputs (list pkg-config))
+    (inputs
+     (cons* curl libgit2 libssh2 openssl sqlite-next zlib
+            (cargo-inputs 'cargo-hua
+                          #:module '(jeans packages rust-crates))))
+    (properties `((upstream-name . "cargo")))
+    (home-page "https://huacnlee.github.io/cargo/")
+    (synopsis "Cargo fork with one shared, self-limiting build directory")
+    (description
+     "A Cargo fork for machines full of git worktrees and AI agents: every
+worktree and clone of a repository builds into one shared directory,
+@file{~/.cargo/targets}, which collects itself back under a size limit, and
+registry and git dependencies build once for all projects.  @file{./target}
+and @file{~/.cargo/targets} are fixed, so @option{--target-dir},
+@env{CARGO_TARGET_DIR} and @option{build.build-dir} are ignored with a
+warning.  It runs the @command{rustc} and @command{git} found on @env{PATH}.
+Guix's @code{rust} keeps the stock @command{cargo} in a separate @code{cargo}
+output; this package takes its place and supplies no compiler of its own.")
+    (license (list license:expat license:asl2.0))))

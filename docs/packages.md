@@ -207,6 +207,7 @@
 | `aria2-next-bin`           | Maintained aria2 fork with bug fixes and modernized architecture         |
 | `biome-bin`                | Formatter and linter for JavaScript, TypeScript, CSS and JSON            |
 | `bun-bin`                  | All-in-one JavaScript runtime, package manager and bundler               |
+| `cargo-hua`                | Cargo fork with one shared, self-limiting build directory                |
 | `cc-switch-bin`            | All-in-One assistant for Claude Code, Codex & Gemini CLI                 |
 | `disktree-bin`             | Treemap for finding and removing what fills your disk                    |
 | `gh`                       | GitHub command-line tool                                                 |

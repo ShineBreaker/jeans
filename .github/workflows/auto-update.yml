@@ -32,6 +32,12 @@ env:
   # download/bun-v<version>/ 资产路径（兜底正则只允许一个可选 v），恒报
   # no updater；由 Python updater 兜底（读包定义 release-tag-prefix
   # property 剥 ^ 锚点过滤 bun-v* 系列，2026-10-24 实测正常）。
+  # cargo-hua 不在列：上游 cargo 的 MSRV 钉当前 stable（0.103.0-1 要 rustc
+  # 1.99），Guix 的 rust 只有 1.98.1，包定义靠两个 phase 把门禁降到 1.98 并
+  # 移植 std::fs::set_times 才编得过；每个新 release 都可能引入新的 1.99+
+  # API，自动升版本会让构建闸门在无人看管时失败。2026-11-26 起人工升版本
+  # （同步更新 rust-crates.scm 的 crate 输入集），理由与解除路径写在
+  # config.json 的 stale_watch 条目。
   REFRESH_PACKAGES: >-
     opencode-desktop-bin ardia-bin herdr-bin omo-bin disktree-bin wu-bin
     magpie-bin codewhale-bin github-copilot dbx-bin openidea-bin
