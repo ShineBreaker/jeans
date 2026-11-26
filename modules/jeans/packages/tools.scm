@@ -274,7 +274,7 @@ editor that supports the protocol to provide Java language features.")
 (define-public aria2-next-bin
   (package
     (name "aria2-next-bin")
-    (version "3.1.1")
+    (version "3.1.2")
     (source
      (origin
        (method url-fetch)
@@ -283,7 +283,7 @@ editor that supports the protocol to provide Java language features.")
              "v" version "/aria2-next-" version "-linux-x86_64"))
        (file-name "aria2-next")
        (sha256
-        (base32 "1mi03hlqn2nspf3picy0l3788z1ri5hgxk4s4rg0ia9jkh4lcyq2"))))
+        (base32 "1dwqmfvlanlpwpl3drhs1agyxy8qlwyy1ss8jwdmd8l0ba9k6zkg"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -330,7 +330,7 @@ prebuilt binary release.")
 (define-public aria2-next
   (package
     (name "aria2-next")
-    (version "3.1.1")
+    (version "3.1.2")
     (source
      (origin
        (method git-fetch)
@@ -339,7 +339,7 @@ prebuilt binary release.")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "1kv0lzpi5ijdr5h37rwr1hrcsd5ydmbxlr17k2haqq2wzl8csxar"))
+        (base32 "0bnn49xldmx5z51qgshh0f367dpw4c26ys1ki4san3jms7rv3pf6"))
        (modules '((guix build utils)))
        (snippet
         #~(begin
@@ -571,7 +571,7 @@ companion extension.  This package provides the prebuilt binary release.")
 (define-public cc-switch-bin
   (package
     (name "cc-switch-bin")
-    (version "4.0.37")
+    (version "4.0.42")
     (source
      (origin
        (method url-fetch)
@@ -579,7 +579,7 @@ companion extension.  This package provides the prebuilt binary release.")
              "https://github.com/farion1231/cc-switch/releases/download/"
              "v" version "/CC-Switch-v" version "-Linux-x86_64.deb"))
        (sha256
-        (base32 "02biris1w6cvhv7lf5sa9yhfgcjk322gkhym779sbzmqy7gh9kwi"))))
+        (base32 "0k2j7cgz0rd9mkfdgms6lsbzwpnxvhz544d2qch15x62w6hyzx37"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -722,8 +722,8 @@ enables command-line applications to interact with @code{keepassxc} databases.")
 ;;; @file{/var/lib/apm}.
 
 (define-public amber-pm
-  (let ((commit "de85728c39ad45e632abea9bd47439a8e0ce3e4f")
-        (revision "3"))
+  (let ((commit "ade6a15781afe2d5786795580b1df22d1b8cc4e1")
+        (revision "4"))
     (package
       (name "amber-pm")
       (version (git-version "1.3.2" revision commit))
@@ -735,7 +735,7 @@ enables command-line applications to interact with @code{keepassxc} databases.")
                (commit commit)))
          (file-name (git-file-name name version))
          (sha256
-          (base32 "0x614qi9nhxch51p1dw9n08cwxafcn3v1vz19n435csc0s91id98"))))
+          (base32 "0cf45a713y54avcf6ssja9fi8f544yicisvxc46654q0q0s35n2q"))))
       (build-system gnu-build-system)
       (arguments
        (list
@@ -884,7 +884,7 @@ It requires a writable @file{/var/lib/apm} directory at runtime; run the
 (define-public agenote
   (package
     (name "agenote")
-    (version "0.2.4")
+    (version "0.2.5")
     (source
      (origin
        (method git-fetch)
@@ -893,7 +893,7 @@ It requires a writable @file{/var/lib/apm} directory at runtime; run the
              (commit (string-append "agenote-v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "0m2x2b6sdilijg8d110yf6c80sr5iz0vqx2pgrv4rzs5mwispngr"))))
+        (base32 "03m9wd0pdaw2azsc3d3brkc07v00szkqgn730982sj18pc978a8h"))))
     (build-system pyproject-build-system)
     (arguments
      (list
@@ -1044,7 +1044,7 @@ prebuilt Linux binary.")
 (define-public biome-bin
   (package
     (name "biome-bin")
-    (version "2.6.8")
+    (version "2.6.9")
     (source
      (origin
        (method url-fetch)
@@ -1052,7 +1052,7 @@ prebuilt Linux binary.")
              "https://github.com/biomejs/biome/releases/download/"
              "@biomejs/biome@" version "/biome-linux-x64"))
        (sha256
-        (base32 "1pfm0f9daqh2m108hls1wqsx1rbf141vsn2g2has6vsdcv3bf77w"))))
+        (base32 "0mwaj5bi35smxv9gn64bbp1zk8gb96vi7wmvv78y0ivvn4pf62al"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -1207,7 +1207,7 @@ prebuilt binary.")
 (define-public pnpm-bin
   (package
     (name "pnpm-bin")
-    (version "12.22.0")
+    (version "12.23.0")
     (source
       (origin
         (method url-fetch)
@@ -1215,7 +1215,7 @@ prebuilt binary.")
               "https://github.com/pnpm/pnpm/releases/download/v"
               version "/pnpm-linux-x64.tar.gz"))
         (sha256
-          (base32 "1by7yf1mggadvhax99fvn1s2r4sj84gl1567n3nj27mgj5pikvh7"))))
+          (base32 "1b1nybg1p0kn6jnyf5sgyappp0l2cr542wriwvxw1bf15agy45dm"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -1488,7 +1488,7 @@ prebuilt release binary.")
 (define-public gh
   (package
     (name "gh")
-    (version "2.105.0")
+    (version "2.106.0")
     (source
      (origin
        (method url-fetch)
@@ -1497,7 +1497,7 @@ prebuilt release binary.")
        (uri (string-append "https://github.com/cli/cli/releases/download/v"
                            version "/gh_" version "_linux_amd64.tar.gz"))
        (sha256
-        (base32 "0bzy0w23f9pls924yhpvxdyn9w18nkw79qwnnrvqgi1qnxfsprvr"))))
+        (base32 "0cx0b707jf1vgy7g07s2kzj81r79cbnysd1p9b2i6m32m6gl8xm4"))))
     (build-system copy-build-system)
     (arguments
      '(#:install-plan
@@ -1608,7 +1608,7 @@ with git and your code.")
 (define-public zellij-bin
   (package
     (name "zellij-bin")
-    (version "0.46.0")
+    (version "0.46.1")
     (source
      (origin
        (method url-fetch)
@@ -1616,7 +1616,7 @@ with git and your code.")
              "https://github.com/zellij-org/zellij/releases/download/v"
              version "/zellij-x86_64-unknown-linux-musl.tar.gz"))
        (sha256
-        (base32 "17f7adldcjqrinrg5p3mrc8qiap3xjj0c5f98cj19djpnfg5kvm8"))))
+        (base32 "193zn6hyr729bqqqgq78m8dgfzrzq8an9bnia4xhadn2aw9j2cqn"))))
     (build-system binary-build-system)
     (arguments
      (list

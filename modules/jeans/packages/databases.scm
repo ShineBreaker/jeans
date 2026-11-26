@@ -748,7 +748,7 @@ from the official Ubuntu .deb archives.")
 (define-public mysql-workbench-community-bin
   (package
     (name "mysql-workbench-community-bin")
-    (version "26.10.0")
+    (version "26.10.0.1")
     (source
      (origin
        (method url-fetch)
@@ -756,7 +756,7 @@ from the official Ubuntu .deb archives.")
              "https://cdn.mysql.com/Downloads/MySQLGUITools/mysql-workbench-"
              version "-linux-glibc2.28-x86_64.zip"))
        (sha256
-        (base32 "0a7rfhzvws05brq1pgzic0brk6n7qbl7d6vd09bc0fha6k2440ia"))))
+        (base32 "0jmza1gv54hm43azgazvl3il9zs4g291hphpprssm91qyivdsb71"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -920,7 +920,7 @@ the official archive.")
 (define-public dbx-bin
   (package
     (name "dbx-bin")
-    (version "0.6.72")
+    (version "0.6.75")
     (source
      (origin
        (method url-fetch)
@@ -928,7 +928,7 @@ the official archive.")
              "https://github.com/t8y2/dbx/releases/download/"
              "v" version "/DBX_" version "_amd64.deb"))
        (sha256
-        (base32 "08hmsp4gv0yq8kwfyymcab59g0hmzf69qpk36rz7p60l0x1wjssb"))))
+        (base32 "0r2dfld2grdnz51cqrlsf3y5m17w2sm0gxy0zicbpp2gk8y74lsv"))))
     (build-system binary-build-system)
     (arguments
      (list

@@ -118,7 +118,7 @@
 (define-public codewhale-bin
   (package
     (name "codewhale-bin")
-    (version "0.10.2")
+    (version "0.10.4")
     (source
      (origin
        (method url-fetch)
@@ -126,7 +126,7 @@
              "https://github.com/Hmbown/CodeWhale/releases/download/"
              "v" version "/codewhale-linux-x64.tar.gz"))
        (sha256
-        (base32 "1nbh1x8h501r26j7rmvjg7lw6lsmglgc025q5f99qm25v1qn8rpd"))))
+        (base32 "0dxbm06ikbj7c4xfzsjnh1pb1y0vvi04r0n4ca4vwkxmfki069wv"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -330,7 +330,7 @@ prebuilt binary.")
 (define-public cindy-cn-bin
   (package
     (name "cindy-cn-bin")
-    (version "0.1.143")
+    (version "0.1.148")
     (source
      (origin
        (method url-fetch)
@@ -338,7 +338,7 @@ prebuilt binary.")
              "https://github.com/makecindy/cindy/releases/download/"
              "v" version "/cindy-" version "-linux-x64-cn.deb"))
        (sha256
-        (base32 "04km4j6wg0kv3v17sb9fb5vg52jpph55bxyx928qviv5jc1k7x82"))))
+        (base32 "011y1sh52waid97s8r5v6mm2xvsml38njfb1pbdk46jvsqabz7f1"))))
     (build-system electron-build-system)
     (arguments
      (list
@@ -513,7 +513,7 @@ package installs the upstream prebuilt Linux binary.")
 (define-public github-copilot
   (package
     (name "github-copilot")
-    (version "1.4.3")
+    (version "1.5.0")
     (source
      (origin
        (method url-fetch)
@@ -521,7 +521,7 @@ package installs the upstream prebuilt Linux binary.")
              "https://github.com/github/app/releases/download/"
              "v" version "/GitHub-Copilot-linux-x64.deb"))
        (sha256
-        (base32 "1ps3lblhpaaqcc7jgcj8fiygk3p17snw0h8h46cmn48hx7avz2i8"))))
+        (base32 "1hrjinzkils99fs9b5r5l8p58n2ixhjzw35jinrdg8fy7a05ajs7"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -789,7 +789,7 @@ prebuilt distribution and launches it with the store Node.js runtime.")
 (define-public opencode-desktop-bin
   (package
     (name "opencode-desktop-bin")
-    (version "2.3.2")
+    (version "2.4.2")
     (source
      (origin
        (method url-fetch)
@@ -797,7 +797,7 @@ prebuilt distribution and launches it with the store Node.js runtime.")
              "https://github.com/anomalyco/opencode/releases/download/"
              "v" version "/opencode-desktop-linux-amd64.deb"))
        (sha256
-        (base32 "05vvg2mdz5zkj1h6qbdhljlvmwxyxv8yc63i6vs9i6zxw7i00w7d"))))
+        (base32 "12jxji11rzkipk0fwkzpsxayj3r21wl4dd72zxdk455182491iy9"))))
     (build-system electron-build-system)
     (arguments
      (list
@@ -922,7 +922,7 @@ coding experience with context awareness.")
 (define-public paseo-bin
   (package
     (name "paseo-bin")
-    (version "0.16.2")
+    (version "0.17.4")
     (source
      (origin
        (method url-fetch)
@@ -930,7 +930,7 @@ coding experience with context awareness.")
              "https://github.com/getpaseo/paseo/releases/download/"
              "v" version "/Paseo-" version "-amd64.deb"))
        (sha256
-        (base32 "10mx40qb2aw742iccpf50wwhabxg5q12qr4clbvizbxg3vw45xb4"))))
+        (base32 "1ygw50fx0fbwbr7a1w4rvl3zc2x4fpv6143yqra6rrmnh2yacbn7"))))
     (build-system electron-build-system)
     (arguments
      (list
@@ -1498,7 +1498,7 @@ release and needs the @code{nix-ld} system service to run.")
 (define-public omo-bin
   (package
     (name "omo-bin")
-    (version "5.1.79")
+    (version "5.1.83")
     (source
      (origin
        (method url-fetch)
@@ -1507,7 +1507,7 @@ release and needs the @code{nix-ld} system service to run.")
              "v" version "/omo-linux-x64"))
        (sha256
         (base32
-         "0x2l4b1rbl1wf1gh2bxx8fyh7j2jxkvnvvdwqs79x0ccwv1j9w8v"))))
+         "08szvr9mv9dpml925shj50s45lv9yng82f5411k5fdhvp06ahabm"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -1547,7 +1547,7 @@ run.")
 (define-public cua-driver-bin
   (package
     (name "cua-driver-bin")
-    (version "0.56.4")
+    (version "0.62.1")
     (source
      (origin
        (method url-fetch)
@@ -1556,7 +1556,7 @@ run.")
              "cua-driver-rs-v" version
              "/cua-driver-rs-" version "-linux-x86_64-binary.tar.gz"))
        (sha256
-        (base32 "1gfpxiblgzhrm4q0ga1mmw06zvmcmw4d866if2ng9sn4y82p51xw"))))
+        (base32 "1h1i6q11d36rlmf09ryi004973dhbxlnhgr4jicxksb21y3gj019"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -1678,7 +1678,7 @@ so the bundled self-updater should not be used.")
 (define-public magpie-bin
   (package
     (name "magpie-bin")
-    (version "0.1.4650")
+    (version "0.1.4851")
     (source
      (origin
        (method url-fetch)
@@ -1686,7 +1686,7 @@ so the bundled self-updater should not be used.")
              "https://github.com/yetone/magpie-releases/releases/download/"
              "v" version "/magpie-linux-amd64"))
        (sha256
-        (base32 "0x7nhxm0v0rg7m1kcc1cf0070krp10r77cj6lggs2422wzymxc5s"))))
+        (base32 "06fr5yzwbxr5nagb1vrkj3a2kzmpva6xnjdac6n6c48v995i1clb"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -1834,7 +1834,7 @@ binary release.")
 (define-public workbuddy-cn
   (package
     (name "workbuddy-cn")
-    (version "5.6.2.40046327-c7b525f3")
+    (version "5.11.6.44396970-0f347fd9")
     (source
      (origin
        (method url-fetch)
@@ -1843,7 +1843,7 @@ binary release.")
              "workbuddy/saas/linux-x64-deb/"
              "WorkBuddy-linux-x64-deb-" version ".deb"))
        (sha256
-        (base32 "08vmi4cp17mfn6cxlyj2jn08ss3xhb3n53rd0vaqyx6dq3c9l50j"))))
+        (base32 "1s3d2lx9w490y7dfx958jl2s5jscrfd0prmzp0989g3pwzhybvrf"))))
     (build-system electron-build-system)
     (arguments
      (list
@@ -1958,7 +1958,7 @@ Tencent account.")
 (define-public qoder-cn
   (package
     (name "qoder-cn")
-    (version "0.5.17")
+    (version "0.5.20")
     (source
      (origin
        (method url-fetch)
@@ -1966,7 +1966,7 @@ Tencent account.")
              "https://static.qoder.com.cn/qoder-app/releases/"
              version "/Qoder-CN-linux-amd64.deb"))
        (sha256
-        (base32 "0g0dw2lyln007i1dvhy7dr3n8ay8h0kp6bmpr4f6b3ky0vm6n6h8"))))
+        (base32 "03ssha5ih0dacrqpsjgpprd0nrnk63qg2jc4xzh3m35dnnw3spmc"))))
     (build-system electron-build-system)
     (arguments
      (list
@@ -2081,7 +2081,7 @@ requires a Qoder account.")
 (define-public crommacode
   (package
     (name "crommacode")
-    (version "0.3.38")
+    (version "0.4.13")
     (source
      (origin
        (method url-fetch)
@@ -2089,7 +2089,7 @@ requires a Qoder account.")
              "https://dl.cromma.ai/code/artifacts/" version
              "/CrommaCode-" version "-linux-amd64.deb"))
        (sha256
-        (base32 "1rzp34k7fnjhfjy9x8w3hhpbmn2s0bm1dj77yx8chmccnav83wp3"))))
+        (base32 "024r65r9i8icw4bi592n1c2qnxb8x0dpclkqsh3aidrbzsdl641l"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -2193,7 +2193,7 @@ required for the hosted features.")
 (define-public deepseek-harness-desktop-bin
   (package
     (name "deepseek-harness-desktop-bin")
-    (version "0.33.0")
+    (version "0.34.0")
     (source
      (origin
        (method url-fetch)
@@ -2205,7 +2205,7 @@ required for the hosted features.")
              ;; bordeaux / ci 兜底再 Disarchive，全部 404 后才报失败。
              version ".deb"))
        (sha256
-        (base32 "0zcc8nnq2q590nvarr5dwcgrspklvlnzp6i97jsqjhpx7zsijvyq"))))
+        (base32 "1icqig1sm5sp7fg76hvhznlpy3615rlv0djbjn9ha5kklrl2mpb0"))))
     (build-system electron-build-system)
     (arguments
      (list

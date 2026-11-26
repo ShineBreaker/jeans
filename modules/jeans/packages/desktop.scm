@@ -124,7 +124,7 @@ and Xorg.")
 (define-public ai-usagebar-bin
   (package
     (name "ai-usagebar-bin")
-    (version "1.52.3")
+    (version "1.55.0")
     (source
      (origin
        (method url-fetch)
@@ -132,7 +132,7 @@ and Xorg.")
              "https://github.com/akitaonrails/ai-usagebar/releases/download/"
              "v" version "/ai-usagebar-linux-x86_64.tar.gz"))
        (sha256
-        (base32 "10mnbnmpbga1yhya66q9lxv15nmwldxw24655i13v8ms7hv28sxl"))))
+        (base32 "0k98lhn049zd3nfcswx2jp2f6r035mr0hz8mcz63kj9v5nva8ikp"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -423,7 +423,7 @@ from source.")
 (define-public waywallen-bin
   (package
     (name "waywallen-bin")
-    (version "0.6.1")
+    (version "0.6.2")
     (source
      (origin
        (method url-fetch)
@@ -432,7 +432,7 @@ from source.")
              version
              "/waywallen-" version "-x86_64.AppImage"))
        (sha256
-        (base32 "0bg6fv8phwxii9dhdidizssxcr6qpkhb1n9szj8i5vndxb3mh76x"))))
+        (base32 "15rfpnziqnyfik79apr6mf880h83zil9skq977z67423f4csyz9f"))))
     (build-system binary-build-system)
     (arguments
      (list
