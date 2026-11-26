@@ -1544,7 +1544,7 @@ with git and your code.")
 (define-public zellij
   (package
     (name "zellij")
-    (version "0.46.0")
+    (version "0.46.1")
     (source
      (origin
        (method git-fetch)
@@ -1553,7 +1553,7 @@ with git and your code.")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "08zsfnmzyzs5ixyrq8g3b2f6hm4998b5k9s9mmiah7d35rc8v516"))
+        (base32 "13rwj3xvi0a2kiw03wirbspyh3lw671266h0mmja4qq33sizgcdh"))
        (modules '((guix build utils)))
        (snippet '(begin
                    ;; Remove vendored features from all Cargo.toml files

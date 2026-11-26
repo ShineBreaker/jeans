@@ -202,7 +202,10 @@ compressed archives.")
 (define-public wuffs
   (package
     (name "wuffs")
-    (version "0.4.0-alpha.12")
+    ;; 聚合包没有自己的源，版本跟 wuffs-compiler/wuffs-stdlib 走（三者版本
+    ;; 一致）；写死字面量的话自动更新只动前两个，聚合包的版本号会一直停在
+    ;; 旧值。
+    (version (package-version wuffs-compiler))
     (source #f)
     (outputs '("out"                    ;C library and docs
                "bin"))                  ;wuffs compiler

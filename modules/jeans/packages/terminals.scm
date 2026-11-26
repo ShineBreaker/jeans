@@ -129,7 +129,12 @@ Windows Terminal, Visual Studio, Alacritty, Vim, and more.")
   (package
     (inherit imgui)
     (name "imgui-docking")
-    (version (package-version imgui))
+    ;; 版本跟踪上游的 ``v<version>-docking`` tag，由
+    ;; scripts/check-updates/handlers/imgui_docking.py 单独扫 tag 列表更新：
+    ;; guix refresh 的 GitHub updater 只认普通 tag，会把 docking 变体改写成
+    ;; 不存在的 tag（v1.93.1-docking 上游就没发）。不能写
+    ;; (package-version imgui)——docking 线与普通线的 release 不同步。
+    (version "1.93.0")
     (source
      (origin
        (inherit (package-source imgui))
@@ -137,11 +142,10 @@ Windows Terminal, Visual Studio, Alacritty, Vim, and more.")
               (url "https://github.com/ocornut/imgui")
               (commit (string-append "v" version "-docking"))))
        (file-name (git-file-name "imgui-docking" version))
-       ;; Parent hash is for v1.92.9b, not v1.92.9b-docking.  This is the
-       ;; fixed-output hash Guix recorded for that tag after the inherited
-       ;; font-deletion snippet.
+       ;; 这个 hash 是 v<version>-docking 的，不是父包 v<version> 的；两
+       ;; tag 指向不同提交。
        (sha256
-        (base32 "1wpa8r1cd1d92y9a4rizp0clncr4ivigjk919kvhwp9f2qpxcj9y"))))
+        (base32 "19s380j553mls9y803l9lh20s9ijjq27ld0mhs2z82045sbg881l"))))
     (home-page "https://github.com/ocornut/imgui/wiki/docking")
     (synopsis "Immediate-mode C++ GUI library with docking with minimal dependencies")
     (description "@code{dear imgui} (also know as ImGui) is a graphical user

@@ -1310,7 +1310,7 @@ configure.  This package provides the prebuilt desktop release.")
 (define-public zcode
   (package
     (name "zcode")
-    (version "3.19.1")
+    (version "4.0.0")
     (source
      (origin
        (method url-fetch)
@@ -1318,7 +1318,7 @@ configure.  This package provides the prebuilt desktop release.")
              "https://cdn-zcode.z.ai/zcode/electron/releases/"
              version "/linux-x64/ZCode-" version "-linux-x64.deb"))
        (sha256
-        (base32 "1xka8pfvldc8x01rd7nfpajr05m1axxabpa85npigi7d0bkvvb7b"))))
+        (base32 "0si5md9prs5di1yfgfyxckniq47ls04aw9b52zij7yix1vm0wbs0"))))
     (build-system electron-build-system)
     (arguments
      (list
@@ -1383,23 +1383,34 @@ configure.  This package provides the prebuilt desktop release.")
           ;; autolaunch（"Using X11 for dbus-daemon autolaunch was disabled at
           ;; compile time"），表现为所有 oauth/credential RPC 报
           ;; CREDENTIAL_SECURE_STORAGE_UNAVAILABLE。wrapper 里 export 无效
-          ;; （白名单会丢掉），所以必须让 fork 处展开 process.env。
-          ;; 替换保持字节数相同，asar 的 offset 表无需重算。
+          ;; （白名单会丢掉），所以必须让 fork 处展开 process.env：把锚点参数
+          ;; （<var>.hostProcessLocalEnv）原位换成等长的 process.env，an()
+          ;; 本身是 `{...e, ...yL()}`，传完整环境同样成立。
+          ;; 替换保持字节数相同，asar 的 offset 表无需重算；锚点用正则匹配
+          ;; minified 参数名与后随的 "()" 函数名都会随每个版本变，写死字面
+          ;; 锚点每次升级都断（3.18.2–4.0.0 三次实证）。
           (add-after 'install-icons 'patch-host-process-env
             (lambda _
               (invoke "python3" "-c"
                       (string-append
-                       "import sys,base64\n"
+                       "import re,sys\n"
                        "p=sys.argv[1]\n"
-                       "old=base64.b64decode("
-                       "\"ey4uLmFuKG8uaG9zdFByb2Nlc3NMb2NhbEVudiksLi4uQkkoKSxaQ09ERV9QUk9DRVNTX0xBQkVMOnQs\")\n"
-                       "new=base64.b64decode("
-                       "\"ey4uLmFuKHdyICAgICksLi4ucHJvY2Vzcy5lbnYsLi4uQkkoKSxaQ09ERV9QUk9DRVNTX0xBQkVMOnQs\")\n"
-                       "d=bytearray(open(p,'rb').read())\n"
-                       "n=d.count(old)\n"
-                       "assert n==1, 'unexpected host-env anchor count: %d' % n\n"
-                       "i=d.find(old)\n"
-                       "d[i:i+len(old)]=new\n"
+                       "d=open(p,'rb').read()\n"
+                       "pat=re.compile(\n"
+                       "    rb'\\.\\.\\.([A-Za-z_$][\\w$]*)'\n"
+                       "    rb'\\(([A-Za-z_$][\\w$]*)'\n"
+                       "    rb'\\.hostProcessLocalEnv\\)'\n"
+                       "    rb'(?=,\\.\\.\\.)')\n"
+                       "m=list(pat.finditer(d))\n"
+                       "assert len(m)==1, ('unexpected anchor count:'\n"
+                       "                   ' %d' % len(m))\n"
+                       "m=m[0]\n"
+                       "inner=m.group(2)+b'.hostProcessLocalEnv'\n"
+                       "repl=b'process.env'\n"
+                       "pad=len(inner)-len(repl)\n"
+                       "assert pad>=0, 'anchor too short to pad'\n"
+                       "i=m.start(2)\n"
+                       "d=d[:i]+repl+b' '*pad+d[i+len(inner):]\n"
                        "open(p,'wb').write(d)\n")
                       (string-append #$output
                                      "/lib/zcode/resources/app.asar")))))))

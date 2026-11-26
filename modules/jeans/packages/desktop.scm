@@ -171,7 +171,7 @@ release.")
 (define-public ai-usagebar
   (package
     (name "ai-usagebar")
-    (version "1.52.3")
+    (version "1.55.1")
     (source
      (origin
        (method git-fetch)
@@ -180,14 +180,15 @@ release.")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "177n4vsrmya985x7fnyfiqv88qn53nydj1w3711d44sb62lgmc8x"))))
+        (base32 "0ydwwpc294jhmvvr06n6psdkw4d2yn11yplz2xcqh7fjikkvbm1c"))))
     (build-system cargo-build-system)
     (arguments
      (list #:install-source? #f
            #:tests? #f))
     ;; rusqlite 链接系统 sqlite3（-lsqlite3），非 bundled feature。
-    ;; 用 sqlite-next（3.53）而非 sqlite（3.39）：rusqlite 0.39 引用
-    ;; sqlite3_set_clientdata，该 API 自 SQLite 3.44 才引入。
+    ;; 用 sqlite-next（3.53）而非 sqlite（3.39）：libsqlite3-sys 引用
+    ;; sqlite3_set_clientdata，该 API 自 SQLite 3.44 才引入（rusqlite
+    ;; 0.39 起；0.43 同样适用）。
     (inputs (cons sqlite-next
                   (cargo-inputs 'ai-usagebar #:module '(jeans packages rust-crates))))
     (home-page "https://github.com/akitaonrails/ai-usagebar")
@@ -316,7 +317,7 @@ prebuilt upstream binary release.")
 (define-public satty
   (package
     (name "satty")
-    (version "0.22.0")
+    (version "0.23.0")
     (source
      (origin
        (method git-fetch)
@@ -325,7 +326,7 @@ prebuilt upstream binary release.")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "05j3vdvdwwdmzf0ky52kliy7di0klkj4jdbbn4v8qyjaa1k7i8pg"))))
+        (base32 "0kk8h92223dx27yznnipckqylyirfr0chy9kgcfj3l044carp0ad"))))
     (build-system cargo-build-system)
     (arguments
      (list #:install-source? #f
@@ -629,25 +630,29 @@ desktop through a Wayland layer shell and a QtQuick interface.")
 (define-public open-wallpaper-engine-bin
   (package
     (name "open-wallpaper-engine-bin")
-    (version "0.3.4")
+    (version "0.4.1")
     (source
      (origin
        (method url-fetch)
+       ;; 0.4.0 起上游把资产名从 org.waywallen.open-wallpaper-engine-<ver>
+       ;; 改成 open-wallpaper-engine-<ver>，upstream-name 同步改；否则
+       ;; updater 拼出的旧 URL 404（issue #105 的「无法计算 hash」）。
        (uri (string-append
              "https://github.com/waywallen/open-wallpaper-engine/releases/download/v"
              version
-             "/org.waywallen.open-wallpaper-engine-" version
+             "/open-wallpaper-engine-" version
              "-linux-x86_64.zip"))
        (sha256
-        (base32 "1qks136yjrlg4v583ww9z3qdk7l05nirkjj43fda4b668xqi1nwl"))))
+        (base32 "1qxw79fql62457c9c02xbw6xlpv3cps0h6vybnk1mwlw7wigxbbl"))))
     (build-system binary-build-system)
     (arguments
      (list
       ;; zstd 压缩的 zip（PK 6.3），系统 unzip 读不了，走 bsdtar。
       #:unpack-method 'bsdtar
+      ;; 0.4.0 起压缩包布局改了：顶层 lib/ 取消，两个渲染器与 CEF 全在
+      ;; bin/ 下（bin/owe-scene、bin/weweb/owe-web），其余文件位置不变。
       #:install-plan
       #~'(("bin" "share/waywallen/plugins/org.waywallen.open-wallpaper-engine/bin")
-          ("lib" "share/waywallen/plugins/org.waywallen.open-wallpaper-engine/lib")
           ("wallpaper_engine"
            "share/waywallen/plugins/org.waywallen.open-wallpaper-engine/wallpaper_engine")
           ("i18n" "share/waywallen/plugins/org.waywallen.open-wallpaper-engine/i18n")
@@ -685,10 +690,10 @@ desktop through a Wayland layer shell and a QtQuick interface.")
                (lambda (f) (chmod (string-append #$output "/" f) #o755))
                (list (string-append "share/waywallen/plugins/"
                                     "org.waywallen.open-wallpaper-engine/bin/"
-                                    "waywallen-wescene-renderer")
+                                    "owe-scene")
                      (string-append "share/waywallen/plugins/"
-                                    "org.waywallen.open-wallpaper-engine/lib/weweb/"
-                                    "waywallen-weweb-renderer"))))))))
+                                    "org.waywallen.open-wallpaper-engine/bin/weweb/"
+                                    "owe-web"))))))))
     (native-inputs (list libarchive))
     ;; The plugin bundles CEF (Chromium) and the scene/web renderer binaries;
     ;; these inputs cover only the libraries those binaries expect from the
@@ -729,10 +734,10 @@ desktop through a Wayland layer shell and a QtQuick interface.")
        ("pango" ,pango)
        ("eudev" ,eudev)
        ("alsa-lib" ,alsa-lib)))
-    ;; Release assets are org.waywallen.open-wallpaper-engine-<ver>-linux-*.zip;
+    ;; Release assets are open-wallpaper-engine-<ver>-linux-*.zip;
     ;; upstream-name is the filename prefix before the version, tags use v*.
     (properties
-     `((upstream-name . "org.waywallen.open-wallpaper-engine")
+     `((upstream-name . "open-wallpaper-engine")
        (release-tag-prefix . "^v")))
     (home-page "https://github.com/waywallen/open-wallpaper-engine")
     (synopsis "Wallpaper Engine plugin for the Waywallen wallpaper daemon")
@@ -1509,7 +1514,7 @@ and @code{org.freedesktop.FileManager1}) are installed under
 (define-public oo7
   (package
     (name "oo7")
-    (version "0.7.2")
+    (version "0.7.3")
     (source
      (origin
        (method git-fetch)
@@ -1518,7 +1523,7 @@ and @code{org.freedesktop.FileManager1}) are installed under
              (commit version)))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "09d5srwai7nah71sihqmrypwxc2mcfpm3rsalfvshi40si8ka0ab"))))
+        (base32 "0r74b91jg75byvfm5a20zqspv86c48kyn8gvpjangzpy3x3w7rpl"))))
     (build-system cargo-build-system)
     (arguments
      (list

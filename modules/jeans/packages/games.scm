@@ -1133,26 +1133,25 @@ database with a lightweight, embeddable core.  LZSync loads it at run time
 through its @code{realmc} binding layer.")
     (license license:asl2.0)))
 
-;;; LZSync 上游 release 线落后于 main：v1.1.1（2026-11-08）之后 main 上已有
-;;; 未打 tag 的 deploy 修复与 repair_beatmap 新功能，故改为追踪 main HEAD。
-;;; 版本线由 (git-version base revision commit) 生成，base 停在最后一个
-;;; release 的版本号上，revision 每次追到新 commit 自增。
+;;; LZSync 上游有稳定的 v* release 线（v1.0.0/v1.1.0/v1.1.1/v1.1.2），按 tag 跟踪
+;;; 交给 guix refresh + REFRESH_PACKAGES 自动更新；v1.1.2（2026-11-21）的 tag
+;;; commit 就是之前为追 main 上 deploy 修复而钉的 d6b3b6e，内容一致。若将来又有
+;;; 未打 tag 的 main-only 修复，改成 (git-version base revision commit) 结构
+;;; 并配合脚本的 let-绑定 commit 追踪。
 (define-public lzsync
-  (let ((commit "d6b3b6e9d419928711e5509dfb6316a1c624c1c9")
-        (revision "1"))
-    (package
-      (name "lzsync")
-      (version (git-version "1.1.1" revision commit))
-      (source
-       (origin
-         (method git-fetch)
-         (uri (git-reference
-               (url "https://github.com/ShineBreaker/LZSync")
-               (commit commit)))
-         (file-name (git-file-name name version))
-         (sha256
-          (base32 "18kb7ylyd2ggnw78qzavx5a9cldh0m6jrsjsgbfpyp45yn286x7i"))))
-      (build-system go-build-system)
+  (package
+    (name "lzsync")
+    (version "1.2.0")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/ShineBreaker/LZSync")
+             (commit (string-append "v" version))))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "1zxvvqgc7v75xjlk9dr29n4qnfggqpyxszmsskfb1pxlm5y3x5v4"))))
+    (build-system go-build-system)
       (arguments
        (list
         ;; 上游 module 名是 lzsync，内部 import 全部写 "lzsync/internal/..."，
@@ -1327,13 +1326,9 @@ every client, storing each file once in a content-addressed store that the
 clients reference through hard or symbolic links.  Before every write it
 checks that the game is closed and keeps a timestamped backup of the
 client's database.")
-      ;; 上游无稳定 tag 线可跟，改由 with-latest-git-commit 触发 commit 追踪；
-      ;; Guix 侧的 latest-git-commit updater 尚未实现（bug#53144），实际由
-      ;; scripts/check-updates/update_versions.py 的 let-git-version 分支负责
-      ;; 解析 let 绑定、追踪 main HEAD、自增 revision 并重算 hash。
-      (properties `((with-latest-git-commit . #t)))
+      ;; 上游有稳定 tag 线，自动更新交给 guix refresh（REFRESH_PACKAGES）。
       (license license:expat)
-      (supported-systems '("x86_64-linux")))))
+      (supported-systems '("x86_64-linux"))))
 
 ;;; gamescope 依赖若干上游「不稳定分支」的库，必须用钉住的 commit，否则
 ;;; 编不过或行为不对（见 gamescope 上游 commit 7741cd5 的说明）。这里沿用
