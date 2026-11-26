@@ -159,6 +159,88 @@ release.")
     (license license:expat)
     (supported-systems '("x86_64-linux"))))
 
+;;; Pi is an MIT-licensed, Bun-compiled coding-agent CLI.  The Linux release
+;;; keeps the executable and its themes, WASM asset, export templates and
+;;; native X11 helper in one directory.  Bun compiled executables are
+;;; self-locating, so keep that layout and the real pi filename intact.
+(define-public pi-bin
+  (package
+    (name "pi-bin")
+    (version "1.6.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://github.com/earendil-works/pi/releases/download/v"
+             version "/pi-linux-x64.tar.gz"))
+       (sha256
+        (base32 "0s3v6p48yqfw9az4hxxzsma3pj3k9lqsv36sq1jy24mmbrqh0zrw"))))
+    (build-system binary-build-system)
+    (arguments
+     (list
+      #:unpack-method 'gnu-unpack
+      #:install-plan #~'(("./" "libexec/pi/"))
+      #:patchelf? #f
+      #:wrap? #f
+      #:modules '((jeans build binary)
+                  (guix build utils))
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'install 'install-launcher
+            (lambda* (#:key inputs #:allow-other-keys)
+              (let* ((out #$output)
+                     (bin (string-append out "/bin"))
+                     (executable (string-append out "/libexec/pi/pi"))
+                     (ld-so (string-append (assoc-ref inputs "glibc")
+                                           #$(glibc-dynamic-linker)))
+                     (library-path
+                      (string-join
+                       (map (lambda (label)
+                              (string-append (assoc-ref inputs label) "/lib"))
+                            '("glibc" "gcc:lib" "libxcb" "libxau"
+                              "libxdmcp"))
+                       ":"))
+                     (wrapper (string-append bin "/pi")))
+                (mkdir-p bin)
+                (call-with-output-file wrapper
+                  (lambda (port)
+                    (format port "#!~a/bin/bash~%"
+                            (assoc-ref inputs "bash-minimal"))
+                    (format port "if [ -z \"$NIX_LD\" ]; then export NIX_LD=\"~a\"; fi~%"
+                            ld-so)
+                    (format port
+                            (string-append
+                             "if [ -n \"$NIX_LD_LIBRARY_PATH\" ]; then~%"
+                             "  export NIX_LD_LIBRARY_PATH=\"~a:$NIX_LD_LIBRARY_PATH\"~%"
+                             "else~%  export NIX_LD_LIBRARY_PATH=\"~a\"~%fi~%")
+                            library-path library-path)
+                    (format port
+                            (string-append
+                             "if [ -n \"$LD_LIBRARY_PATH\" ]; then~%"
+                             "  export LD_LIBRARY_PATH=\"~a:$LD_LIBRARY_PATH\"~%"
+                             "else~%  export LD_LIBRARY_PATH=\"~a\"~%fi~%")
+                            library-path library-path)
+                    (format port "exec ~a \"$@\"~%" executable)))
+                (chmod wrapper #o755)))))))
+    (inputs
+     `(("bash-minimal" ,bash-minimal)
+       ("gcc:lib" ,gcc "lib")
+       ("glibc" ,glibc)
+       ("libxcb" ,libxcb)
+       ("libxau" ,libxau)
+       ("libxdmcp" ,libxdmcp)))
+    (properties `((upstream-name . "pi")))
+    (home-page "https://pi.dev")
+    (synopsis "Minimal, extensible agent harness for the terminal")
+    (description
+     "Pi is a minimal, extensible agent harness for the terminal.  It can be
+customized with extensions, skills, prompt templates and themes, and supports
+interactive, print, JSON and RPC modes.  This package provides the upstream
+prebuilt Linux release.  On Guix System, enable the nix-ld service to run this
+prebuilt binary.")
+    (license license:expat)
+    (supported-systems '("x86_64-linux"))))
+
 ;;; Cindy: open-source AI agent desktop client (Electron, Apache-2.0).
 ;;;
 ;;; The upstream .deb (data.tar.zst, unlike the xz used by opencode/paseo)

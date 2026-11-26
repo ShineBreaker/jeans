@@ -40,7 +40,7 @@ env:
   # config.json 的 stale_watch 条目。
   REFRESH_PACKAGES: >-
     opencode-desktop-bin ardia-bin herdr-bin omo-bin disktree-bin wu-bin
-    magpie-bin codewhale-bin github-copilot dbx-bin openidea-bin
+    magpie-bin codewhale-bin pi-bin github-copilot dbx-bin openidea-bin
     eask-bin neomacs-bin rayburst-bin cc-switch-bin flea-bin
     git-credential-keepassxc
     font-maple-font-nf-cn font-nerd-font-iosevka

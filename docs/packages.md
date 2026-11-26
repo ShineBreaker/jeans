@@ -24,6 +24,7 @@
 | `omo-bin`                      | AI coding agent CLI with memory system and extensions          |
 | `opencode-desktop-bin`         | AI coding agent desktop application                            |
 | `paseo-bin`                    | Self-hosted desktop client for orchestrating coding agents     |
+| `pi-bin`                       | Minimal, extensible agent harness for the terminal             |
 | `qoder-cn`                     | Agent workbench for human and AI software teams                |
 | `thinkrail-bin`                | JetBrains' lightweight AI coding IDE with the pi agent         |
 | `workbuddy-cn`                 | AI agent desktop workspace from Tencent                        |
