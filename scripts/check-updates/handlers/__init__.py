@@ -11,6 +11,7 @@ from handlers.crommacode import update_crommacode
 from handlers.font_misans import update_font_misans
 from handlers.gh import update_gh
 from handlers.gitlab_tags import update_gitlab_package
+from handlers.imgui_docking import update_imgui_docking
 from handlers.jdtls_bin import update_jdtls_bin
 from handlers.lem_next_bin import update_lem_next_bin
 from handlers.mysql_workbench_bin import update_mysql_workbench_bin
@@ -37,4 +38,5 @@ SPECIAL_UPDATERS: Dict[str, Callable[[Dict[str, Any], Dict[str, Any], Path], Opt
     "libfprint-next": update_gitlab_package,
     "fprintd-next": update_gitlab_package,
     "ghostty-bin": update_conda_bin,
+    "imgui-docking": update_imgui_docking,
 }

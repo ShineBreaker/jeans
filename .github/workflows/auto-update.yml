@@ -54,6 +54,7 @@ env:
     waydroid libgbinder libglibutil python-gbinder
     pnpm-bin
     zellij zellij-bin
+    lzsync
     peazip-bin
 
 jobs:
