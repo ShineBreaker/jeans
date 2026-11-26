@@ -30,7 +30,7 @@
 
 - type：`feat`（新包/新功能）、`fix`、`update`（版本/依赖升级）、`refactor`、`docs`、`chore`；旧大写前缀映射 `FIX:→fix`、`ADD:`/`FEATURE:→feat`、`UPDATE:→update`、`MIGRATE:→refactor`、`DOC:→docs`。
 - scope：文件类或模块（如 `docs/packages.md`、`modules/jeans/packages/ghostel.scm`）；description 祈使句、小写、无句号。
-- body 按需取五段：`问题：`/`根因：`/`修复：`/`验证：`/`附注：`；footer：`Refs #N` / `Closes #N` / `BREAKING CHANGE:`。
+- body 只写一句话「为什么改」，不铺陈过程（全局 `commit-msg` hook 限整条消息 ≤100 字符，模板见 `~/.config/git/gitmessage`）；要引用 issue 时用 `Refs #N` / `Closes #N`。
 - 多行 body 用 heredoc 走 `git commit -F`（中文标点会踩 `git commit -m` 的 shell 转义）；不加 `Generated with Crush` trailer（本仓库非 Crush 管理）；作者只有 `ShineBreaker`（本地）与 `jeans workflow bot`（CI），`git config user.{name,email}` 已配好不要动。
 - 自动更新 CI 自己发 `feat(packages): auto package update YYYY-MM-DD`，`git log` 里见到这条是 CI 的改动，不是你写的。
 
