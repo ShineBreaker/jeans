@@ -43,6 +43,7 @@
   #:use-module (gnu packages xml)          ; expat
   #:use-module (gnu packages xorg)         ; libx11, libxcb, libxcomposite, ...
   #:use-module (guix build-system copy)    ; opencode-bin
+  #:use-module (guix build-system go)      ; cindy-browser-native
   #:use-module (guix build-system gnu)     ; the rest
   #:use-module (guix download)
   #:use-module (guix gexp)
@@ -247,6 +248,67 @@ prebuilt binary.")
     (license license:expat)
     (supported-systems '("x86_64-linux"))))
 
+;;; Cindy Chrome（my-browser 插件）的 native messaging host。
+;;;
+;;; 扩展在 Chrome 里调 chrome.runtime.sendNativeMessage 起这个 host：host 先
+;;; 校验「调用方是不是可信浏览器」，再把连接令牌 POST 给 Cindy 本地桥，完成
+;;; 自动配对。上游只认 /opt/google/chrome/chrome、/usr/lib/chromium/chromium
+;;; 这类发行版路径（直接读 /proc/<ppid>/exe），Guix 的 store 路径一律判
+;;; BROWSER_CALLER_UNVERIFIED，扩展就永远停在「等待配对」。
+;;;
+;;; 源码逐字取自上游 0.4.95（cindy-official-plugins/my-browser/native-host，
+;;; Apache-2.0，只有 main.go + parent_linux.go + go.mod）；补丁见
+;;; jeans/patches/cindy-browser-native-guix-browsers.patch。上游改协议时 diff
+;;; 这三份文件即可，别在此处另写实现。
+;;;
+;;; 目录路径由 go.mod 定位：search-path 只认普通文件，对目录返回 #f；而
+;;; -L modules 下 current-source-directory 也是 #f。
+(define %cindy-native-host-directory
+  (dirname (canonicalize-path
+            (search-path %load-path
+                         "jeans/packages/cindy/native-host/go.mod"))))
+
+(define %cindy-browser-native-source
+  (local-file %cindy-native-host-directory
+              "cindy-browser-native-0.4.95"
+              #:recursive? #t))
+
+(define %cindy-browser-native-patch
+  (local-file (canonicalize-path
+               (search-path
+                %load-path
+                "jeans/patches/cindy-browser-native-guix-browsers.patch"))))
+
+(define-public cindy-browser-native
+  (package
+    (name "cindy-browser-native")
+    (version "0.4.95")
+    (source %cindy-browser-native-source)
+    (build-system go-build-system)
+    (arguments
+     (list #:import-path "cindy-browser-native"
+           #:install-source? #f
+           #:tests? #f
+           ;; go-build-system 的 lower 不接 #:patches，只能在 unpack 后自己打。
+           #:phases
+           #~(modify-phases %standard-phases
+               (add-after 'unpack 'patch-guix-browsers
+                 (lambda* (#:key import-path #:allow-other-keys)
+                   (with-directory-excursion
+                       (string-append (getenv "GOPATH") "/src/" import-path)
+                     (invoke "patch" "--batch" "-p1" "-i"
+                             #$%cindy-browser-native-patch)))))))
+    (home-page "https://github.com/makecindy/cindy-official-plugins")
+    (synopsis "Native messaging host for the Cindy Chrome extension")
+    (description
+     "This package provides the native messaging host that the Cindy Chrome
+browser extension uses to bind to the Cindy desktop application.  The
+upstream host only trusts browsers installed under /opt and /usr/lib; this
+build also accepts a browser packaged in the store, which is how Guix
+installs Chromium and friends.")
+    (license license:asl2.0)
+    (supported-systems '("x86_64-linux" "aarch64-linux"))))
+
 ;;; Cindy: open-source AI agent desktop client (Electron, Apache-2.0).
 ;;;
 ;;; The upstream .deb (data.tar.zst, unlike the xz used by opencode/paseo)
@@ -274,6 +336,20 @@ prebuilt binary.")
 ;;; Electron spawns them via ELECTRON_RUN_AS_NODE, so no Node.js input.
 ;;; electron-updater: no resources/package-type file in this bundle, so
 ;;; the disable-electron-updater phase is unnecessary.
+;;;
+;;; Linux 分支的系统工具与浏览器探测全部写死成 /usr/bin/... 绝对路径（
+;;; google-chrome、chromium、loginctl、wl-paste、python3、grim、xdotool、
+;;; tar、hyprctl …），Guix System 只有 /usr/bin/env，于是浏览器自动化报
+;;; 「未检测到本机浏览器」，锁屏、远程桌面凭据/输入 sidecar、本地模型
+;;; 解包也一并静默降级。同一批代码还假设 POSIX 标配的 /bin/bash、/bin/zsh、
+;;; /bin/ps、/bin/true（Guix 只有 /bin/sh），那些是 spawn/execFile 的目标，
+;;; 落空即 ENOENT——强制退出、脚本导入、用户级工具安装、进程身份探测
+;;; 全在里面。patch-guix-bin-paths 阶段（见 jeans/build/asar-guix-paths.py
+;;; 的 cindy 表）注入 gxResolveBin() 把命中字面量改走
+;;; /run/current-system/profile/bin → ~/.guix-home/profile/bin → $PATH；该
+;;; 阶段整包重打包，必须排在 patch-bootstrap-tdz 之后。
+;;; resources/ 下不在 asar 里的 pi-manager.mjs 另有固定 PATH，由
+;;; patch-resource-paths 就地替换。
 
 ;;; 0.1.143 的 Linux bundle（app.asar 内成对的上游 .deb 字节一致）把
 ;;; withAvailabilityPolicyMutation 的 const 声明排在 bootstrap-electron-*.js
@@ -333,6 +409,14 @@ prebuilt binary.")
    "print('cindy: moved withAvailabilityPolicyMutation declaration "
    "before use site')\n"))
 
+;;; 预编译 Electron 应用共用：把 bundle 里写死的系统路径改走 Guix profile
+;;; （详见 jeans/build/asar-guix-paths.py 与它在 SPECS 里的 per-app 锚点表）。
+;;; 目前用它的是 cindy-cn-bin、qoder-cn、zcode；新包只需加一条 SPECS。
+(define %asar-guix-paths-script
+  (local-file (canonicalize-path
+               (search-path %load-path "jeans/build/asar-guix-paths.py"))
+              "asar-guix-paths.py"))
+
 (define-public cindy-cn-bin
   (package
     (name "cindy-cn-bin")
@@ -377,9 +461,41 @@ prebuilt binary.")
       #:modules '((guix build utils))
       #:phases
       #~(modify-phases (@ (jeans build electron) %standard-phases)
+          (add-after 'install 'install-native-host
+            (lambda _
+              ;; Cindy 把 host 复制到 ~/.local/share/Cindy/browser-native/ 再写
+              ;; NativeMessagingHosts 清单；补丁后的 JS 优先读这里
+              ;; （lib/cindy/native-host/），读不到才回落到插件自带的那份。
+              (let* ((out #$output)
+                     (dir (string-append out "/lib/cindy/native-host"))
+                     (dst (string-append dir "/cindy-browser-native"))
+                     (src (string-append #$(this-package-input
+                                           "cindy-browser-native")
+                                         "/bin/cindy-browser-native")))
+                (mkdir-p dir)
+                (copy-file src dst)
+                (chmod dst #o755))))
+          (add-after 'install 'patch-resource-paths
+            (lambda _
+              ;; pi-manager 用固定 PATH 起 `bash -c`。Node 是用子进程 env 里的
+              ;; PATH 去 execvp 的，Guix 下 /usr/bin:/bin:/usr/local/bin 里没有
+              ;; bash，spawn 直接 ENOENT，pi 会话根本起不来。
+              (substitute*
+                  (string-append #$output
+                                 "/lib/cindy/resources/pi-manager/pi-manager.mjs")
+                (("PATH: \"/usr/bin:/bin:/usr/local/bin\",")
+                 "PATH: (process.env.PATH || \"\") + \":/usr/bin:/bin:/usr/local/bin\","))))
           (add-after 'install 'patch-bootstrap-tdz
             (lambda _
               (invoke "python3" "-c" #$%cindy-bootstrap-tdz-patch
+                      (string-append #$output
+                                     "/lib/cindy/resources/app.asar"))))
+          ;; 必须在 patch-bootstrap-tdz 之后：那个脚本做定长替换并重算受影响
+          ;; 成员的哈希，本阶段整包重打包（offset 与全部 integrity 重排），
+          ;; 顺序反过来会把前者的成果算进旧偏移。
+          (add-after 'patch-bootstrap-tdz 'patch-guix-bin-paths
+            (lambda _
+              (invoke "python3" #$%asar-guix-paths-script "cindy"
                       (string-append #$output
                                      "/lib/cindy/resources/app.asar"))))
           (add-after 'patchelf 'install-bin
@@ -393,6 +509,7 @@ prebuilt binary.")
     (inputs `(("alsa-lib" ,alsa-lib)
               ("at-spi2-core" ,at-spi2-core)
               ("bash-minimal" ,bash-minimal)
+              ("cindy-browser-native" ,cindy-browser-native)
               ("nss-certs" ,nss-certs)
               ("cairo" ,cairo)
               ("cups" ,cups)
@@ -959,6 +1076,10 @@ coding experience with context awareness.")
     (build-system electron-build-system)
     (arguments
      (list
+      ;; 不套 asar-guix-paths：扫过 0.17.4 的 app.asar，Linux 可达的写死路径
+      ;; 只有 /usr/bin/which（外面套了 existsSync 守卫，且有库兜底）与
+      ;; /bin/bash（userInfo().shell 缺失时的兜底，正常用户走 SHELL），
+      ;; 其余是 macOS 的 scutil/plutil/open。为诊断文案重建一次不值得。
       #:program "paseo"
       #:app-dir "lib/paseo"
       #:application-directory "paseo"
@@ -1349,6 +1470,14 @@ configure.  This package provides the prebuilt desktop release.")
       #:imported-modules '((guix build utils))
       #:phases
       #~(modify-phases (@ (jeans build electron) %standard-phases)
+          (add-after 'install 'patch-guix-bin-paths
+            ;; Linux 分支的 login-env 默认 PATH 是发行版布局（/usr/sbin:
+            ;; /usr/local/bin:…），登录 shell 捕获出来等于空环境。换成
+            ;; gxProfilePath()（SPECS 里 zcode 那张表）。
+            (lambda _
+              (invoke "python3" #$%asar-guix-paths-script "zcode"
+                      (string-append #$output
+                                     "/lib/zcode/resources/app.asar"))))
           (add-after 'patchelf 'install-bin
             (lambda _
               (let* ((out #$output)
@@ -2056,13 +2185,22 @@ Tencent account.")
       #:modules '((guix build utils))
       #:phases
       #~(modify-phases (@ (jeans build electron) %standard-phases)
+          (add-after 'install 'patch-guix-bin-paths
+            ;; 重启脚本的 /bin/bash、ELECTRON_RUN_AS_NODE 包装的 /usr/bin/env、
+            ;; 杀 esa-agent 的 /usr/bin/pkill，以及 which/lsof/nvidia-smi/lspci
+            ;; 的绝对路径（SPECS 里 qoder-cn 那张表）。
+            (lambda _
+              (invoke "python3" #$%asar-guix-paths-script "qoder-cn"
+                      (string-append #$output
+                                     "/lib/qoder-cn/resources/app.asar"))))
           (add-after 'patchelf 'install-bin
             (lambda _
               (let* ((out #$output)
                      (bin (string-append out "/bin")))
                 (mkdir-p bin)
                 (symlink (string-append out "/lib/qoder-cn/qoder-cn")
-                         (string-append bin "/qoder-cn"))))))))    (native-inputs (list binutils tar xz))
+                         (string-append bin "/qoder-cn"))))))))
+    (native-inputs (list binutils python tar xz))
     (inputs `(("alsa-lib" ,alsa-lib)
               ("at-spi2-core" ,at-spi2-core)
               ("bash-minimal" ,bash-minimal)

@@ -1,0 +1,63 @@
+Accept a browser that lives in /gnu/store as the native-messaging parent.
+
+The upstream native host only trusts a handful of distribution paths
+(/opt/google/chrome/chrome, /usr/lib/chromium/chromium, ...), read straight
+from /proc/<ppid>/exe.  On Guix the browser is a store symlink reached through
+~/.guix-home/profile/bin or /run/current-system/profile/bin, so every binding
+attempt is rejected with BROWSER_CALLER_UNVERIFIED and the browser extension
+waits for a pairing that never arrives.
+
+Resolve the executable first, then accept a known browser basename inside
+/gnu/store.  The ownership walk still runs, but stops at the store item root:
+/gnu/store itself is root:guixbuild 1775 by design, so walking up to / would
+reject every store path.  Store items are immutable, so the trust boundary is
+the item, not the store directory.
+
+--- a/parent_linux.go
++++ b/parent_linux.go
+@@ -5,6 +5,7 @@
+ 	"fmt"
+ 	"os"
+ 	"path/filepath"
++	"strings"
+ 	"syscall"
+ )
+ 
+@@ -13,8 +14,27 @@
+ 	if err != nil {
+ 		return err
+ 	}
++	// Guix: the browser is reached through a profile symlink; resolve the chain
++	// so the name and ownership checks below see the immutable store path.
++	resolved, err := filepath.EvalSymlinks(exe)
++	if err != nil {
++		return err
++	}
++	exe = resolved
+ 	allowed := map[string]bool{"/opt/google/chrome/chrome": true, "/opt/google/chrome-for-testing/chrome": true, "/usr/lib/chromium/chromium": true, "/usr/lib/chromium-browser/chromium-browser": true, "/opt/microsoft/msedge/msedge": true, "/opt/brave.com/brave/brave": true}
+-	if !allowed[exe] {
++	storeBrowsers := map[string]bool{"google-chrome": true, "google-chrome-stable": true, "chrome": true, "chromium": true, "chromium-browser": true, "brave": true, "brave-browser": true, "microsoft-edge": true, "microsoft-edge-stable": true}
++	// Where the ownership walk stops: the store item, not /gnu/store.
++	root := "/"
++	if strings.HasPrefix(exe, "/gnu/store/") {
++		if !storeBrowsers[filepath.Base(exe)] {
++			return errors.New("browser")
++		}
++		item := strings.TrimPrefix(exe, "/gnu/store/")
++		if i := strings.Index(item, "/"); i >= 0 {
++			item = item[:i]
++		}
++		root = filepath.Join("/gnu/store", item)
++	} else if !allowed[exe] {
+ 		return errors.New("browser")
+ 	}
+ 	// Executable and ancestors must be root-owned and not writable by other users.
+@@ -27,7 +47,7 @@
+ 		if !ok || st.Uid != 0 || s.Mode().Perm()&0022 != 0 {
+ 			return errors.New("ownership")
+ 		}
+-		if p == "/" {
++		if p == root || p == "/" {
+ 			break
+ 		}
+ 	}

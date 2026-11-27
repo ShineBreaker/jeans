@@ -11,6 +11,7 @@
 
 | Package                        | Description                                                    |
 | ------------------------------ | -------------------------------------------------------------- |
+| `cindy-browser-native`         | Native messaging host for the Cindy Chrome extension           |
 | `cindy-cn-bin`                 | Open-source AI agent desktop client                            |
 | `codewhale-bin`                | Multi-provider AI coding agent for the terminal                |
 | `codex-bin`                    | OpenAI's coding agent that runs in the terminal                |
