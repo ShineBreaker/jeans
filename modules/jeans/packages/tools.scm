@@ -1780,14 +1780,15 @@ command-line front-end (@command{pea}).")
 ;;; 工作区成员已排除），再用 scripts/check-updates/merge_crate_inputs.py 合并，
 ;;; 不要手改 rust-crates.scm。
 ;;;
-;;; 自动更新有意冻结（2026-11-26）：本包不在 auto-update.yml 的
-;;; REFRESH_PACKAGES 里，并列入 config.json 的 skip_packages / stale_watch。
+;;; 自动更新有意冻结（2026-11-26）：本包列在 config.json 的 refresh_exclude
+;;; 与 skip_packages / stale_watch 三处（CI 的 refresh 从 2026-11-28 起默认
+;;; 覆盖全通道，排除必须显式登记）。
 ;;; 原因就是上面那个 MSRV 差一个 stable——每个新 release 都得人工确认还能不能
 ;;; 用 1.98 编，自动升版本只会让构建闸门在无人看管时失败。人工升版本：改
 ;;; version + 重算 git hash、重跑 guix import crate --lockfile 与
 ;;; merge_crate_inputs.py、真构建一次。Guix 的 rust ≥ 1.99 后删掉上面两个
-;;; phase，把包名加回白名单，并从 config.json 的 skip_packages 与 stale_watch
-;;; 移除。
+;;; phase，再从 config.json 的 refresh_exclude / skip_packages / stale_watch
+;;; 三处移除。
 (define-public cargo-hua
   (package
     (name "cargo-hua")

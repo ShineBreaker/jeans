@@ -1,13 +1,13 @@
 ---
 name: auto-update
-description: "Use when checking a channel package's latest upstream version, a release was missed (package never moves / CI produced no commit), deciding how a package stays current (refresh 白名单、properties、skip/stale_watch/config.json), triaging CI failures or cron issues, or touching scripts/check-updates/ 与 .github/workflows/auto-update.yml。Not for writing package definitions — that's pack-guix."
+description: "Use when checking a channel package's latest upstream version, a release was missed (package never moves / CI produced no commit), deciding how a package stays current (refresh 黑名单与守卫、properties、skip/stale_watch/config.json), triaging CI failures or cron issues, or touching scripts/check-updates/ 与 .github/workflows/auto-update.yml。Not for writing package definitions — that's pack-guix."
 ---
 
 # Auto-Update
 
 回答两个问题：**这个包现在该是哪个版本？** **改完怎么验证它下一次会被自动更新？** 结论带证据（dry-run 输出、`report.json`、真实构建退出码），不用"看起来没问题"代替验证。
 
-完成标准：给出目标版本及其发现依据（release 资产 / tag / commit / 特殊源信号）；哈希来自 `guix download` 或 `guix hash -rx`；改过的包真实构建退出码 0；包已确认落在 refresh 白名单或兜底层；state 文件与提交状态说清；确实无法自动更新的包说明了原因落点。
+完成标准：给出目标版本及其发现依据（release 资产 / tag / commit / 特殊源信号）；哈希来自 `guix download` 或 `guix hash -rx`；改过的包真实构建退出码 0；包已确认落在 refresh 覆盖范围内（默认全通道；被 `refresh_exclude` 排除时写明理由）；state 文件与提交状态说清；确实无法自动更新的包说明了原因落点。
 
 ## 两层
 
@@ -15,13 +15,29 @@ description: "Use when checking a channel package's latest upstream version, a r
 
 **Python 兜底**：非 GitHub 源（zcode 的 z.ai CDN、amber-pm 的 gitee、font-misans 的 ETag）、refresh 报 `no updater` 的边缘 case（reasonix-studio-bin、cua-driver-bin）、以及 stale 监控。逐包处理器与通用逻辑见 `references/updater-internals.md`；`config.json` 每个键的语义写在它自己的 `notes` 字段里。
 
-## 白名单
+## 黑名单 + 守卫（2026-11-28 起，取代原 REFRESH_PACKAGES 白名单）
 
-CI 的 refresh 步骤在 `.github/workflows/auto-update.yml` 里**逐个列出包名**——那是白名单，不是全模块扫描。所以：
+CI 现在对**全通道每个包**跑 `guix refresh`——默认全收，只有 `config.json` 的 `refresh_exclude`（`包名 -> 理由`，每条必填）才跳过。换掉白名单的理由是失效方向：白名单漏登记新包时**不报错**，那个包从此静默不再更新；黑名单最坏也只是多跑几个本来就没有 updater 的包。
 
-- 新包要自动更新：设好 properties，再把包名加进那份列表，然后跑下面的 dry-run 验证。
-- 包改名：同一次改动里更新那份列表，否则新名静默收不到更新，且不报错。
-- 刻意留在兜底层或排除在 refresh 之外的：`librewolf-nongnu`（inherit 上游）、`git-credential-keepassxc`（有意冻结，理由在 `config.json` 的 `stale_watch`）、zen-browser-bin、ellsp-bin / emacs-ellsp、agenote / emacs-agenote（各自理由写在工作流里那段注释）。
+两段式，安全靠守卫：
+
+1. `scripts/check-updates/refresh_all.py --plan` 先跑**不带 `-u`** 的 dry-run（`guix refresh` 默认只报告不改写），解析 `would be upgraded from OLD to NEW`，过守卫：
+   - **G1** 新版本不以数字开头（兄弟组件 tag、`upstream/1.1.1` 被误读成版本）
+   - **G2** 旧版是正式版、新版带 pre-release 标记（`rc`/`alpha`/`beta`/`pre`/`nightly`/`dev`/`unstable`…）
+   - **G3** 数字段降级，或数字段缩成旧版前缀（`1.24.3b` → `1.24b`）
+   - **G4** 版本没变
+
+   只有放行的包写进 `/tmp/refresh-accepted.txt`，判定明细进 `/tmp/refresh-plan.json`。
+2. `--apply` 只对那份名单跑 `guix refresh -u`，随后照旧逐个 `guix build` 过构建闸门。
+
+分块与重试在脚本里：一次调用覆盖 100+ 包时，任意一个上游 TLS 抖动都会抛 `gnutls-error` 打断整轮（2026-11-28 本机实测死在 zellij-bin），所以按 `--chunk`（默认 8）分批，块失败先重试整块、再逐包重跑，彻底失败的包记进报告交给 Python 兜底。另有 `--timeout`（单次调用，默认 300s）与 `--deadline`（整轮墙钟，默认 2400s）：某个上游卡住时（conda-forge 的 `ghostty-bin` 实测 60s 不返回）只损失一个包，不会把整个 CI 拖死。
+
+日常结论：
+
+- **新包什么都不用登记**，properties 写对就自动进 refresh 覆盖。`scripts/check-updates/tests/test_refresh_all.py` 是黑名单/守卫的回归测试（CI 每轮先跑）。
+- **要排除**：写进 `config.json` 的 `refresh_exclude` 并给理由——只写两种包：refresh 写出的版本**必然不可用**（冻结包），或 refresh **根本不识别**（CDN 清单、gitee、无 release、monorepo 命名）。
+- **不要**把“refresh 会挑错版本”的包塞进黑名单——那类由 G1–G3 兜住（`eta-host-bin` 0.4.0→0.5.0-rc.15、`zen-browser-bin` 1.24.3b→1.24b 就是被守卫拦下的实测样本）。守卫漏掉的错误升级仍由构建闸门兜底。
+- **包改名**：若旧名在 `refresh_exclude` 里，同步改名；其余位置（docs、properties）照旧。
 
 ## 本地跑 refresh
 
@@ -29,7 +45,7 @@ CI 的 refresh 步骤在 `.github/workflows/auto-update.yml` 里**逐个列出�
 
 ```bash
 GUIX_GITHUB_TOKEN="$(gh auth token)" guix refresh -L "$PWD/modules" -L /tmp/nonguix <package>
-# "已是最新" / "would be upgraded" → 白名单与 properties 都生效
+# "已是最新" / "would be upgraded" → properties 生效
 # "no updater"                → 先查 upstream-name 是否等于资产文件名前缀，
 #                                再查 conventions-refresh.md 的静默盲区清单
 ```
@@ -62,19 +78,19 @@ blue upgrade   # = guix shell --manifest=scripts/check-updates/manifest.scm \
 
 `guix build` 成功后还有第二道：ELF NEEDED 解析检查。预编译包的依赖清单随上游构建漂移——magpie-bin 0.1.1167 上游新增了 `libfontconfig.so.1` 直接依赖，hash 正确、构建通过，但启动即被加载器拒绝。闸门对产物里每个带 `PT_INTERP` 的 ELF 跑 `ld.so --list`：patchelf 过的二进制用自身 interpreter + RUNPATH 解析；ld-linux wrapper 包从脚本提取 store ld.so 与 `--library-path` 目录；`LD_LIBRARY_PATH` 型 env wrapper（electron/Tauri）的导出目录并入候选。直接 NEEDED 缺失（stderr `error while loading shared libraries`）与传递缺失（stdout `=> not found`）均判构建失败；无可用 ld.so 的自定位/nix-ld 包记 `skipped` 放行并在报告中留痕。此检查只覆盖静态 NEEDED——dlopen/FFI 依赖仍需真实运行验证，见 pack-guix 的 runtime verification。
 
-## 冻结与解冻（skip_packages / stale_watch / REFRESH_PACKAGES 三处联动）
+## 冻结与解冻（skip_packages / stale_watch / refresh_exclude 三处联动）
 
-有意冻结的包同时落在三处：`skip_packages`（兜底脚本跳过）、`stale_watch`（超 stale_days 无人工更新则 CI 开提醒 issue）、被排除在 workflow 的 `REFRESH_PACKAGES` 外（行内注释写明原因）。`stale_watch` 的 `notes` 要记：障碍是什么、解除条件、解除路径。
+有意冻结的包同时落在三处：`skip_packages`（兜底脚本跳过）、`stale_watch`（超 stale_days 无人工更新则 CI 开提醒 issue）、`refresh_exclude`（refresh 不碰它，理由必填）。缺任何一处都会出现“另一层把它拉起来”的反复。`stale_watch` 的 `notes` 要记：障碍是什么、解除条件、解除路径。
 
 解冻时四处一起动（git-credential-keepassxc 2026-11-12 实证）：
 
 1. **先确认障碍已解除**。MSRV 型障碍查 Cargo.lock 里锁定版本的 `rust_version`：`curl https://index.crates.io/<name>/<name> | grep '"vers":"<锁定版本>"'` 比 crates.io API 的 max_stable_version 可靠（API 的 rust_version 字段常为 null）。
 2. **升版本 + 重钉 hash**；cargo 包还要 `guix import crate --lockfile=<新锁文件> <pkg>` → `merge_crate_inputs.py` 重做 rust-crates.scm 输入（**绝不手改**），再真构建验证。
 3. `config.json`：从 `skip_packages` 与 `stale_watch` 移除；`notes` 改写成解冻事实（日期+解除依据），别留旧障碍描述误导后人。
-4. `auto-update.yml`：包名加回 `REFRESH_PACKAGES`，注释更新为"已解冻"而非静默删除——下次有人搜包名能看到完整历史。
+4. `config.json` 的 `refresh_exclude`：删掉该包条目（守卫重新接管它的错误升级判定）。删除时在 commit message 或 `stale_watch` 里留一句“已解冻”，别静默删除——下次有人搜包名能看到完整历史。
 5. `stale-state.json`：删掉该包条目；仍在 `stale_watch` 的包若刚人工核对过，顺手 bump `last_checked` 避免当期重开提醒 issue。
 
-解冻后跑一次 `guix refresh -L "$PWD/modules" <pkg>` 确认「已是最新」= 白名单与 properties 接管成功，才收工。
+解冻后跑一次 `guix refresh -L "$PWD/modules" <pkg>` 确认「已是最新」= refresh 覆盖与 properties 接管成功；再跑一次 `python3 scripts/check-updates/refresh_all.py --plan --packages <(printf "%s\n" <pkg>) --accepted /tmp/a.txt --load-path "$PWD/modules"` 确认守卫不会误拦它，才收工。
 
 ## Hard guards
 

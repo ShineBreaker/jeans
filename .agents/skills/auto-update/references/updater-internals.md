@@ -78,9 +78,9 @@ NAR 序列化 + Guix base32 编码是纯 Python（`common/hashing.py:compute_nar
 | 信号 | 根因 | 处置 |
 | --- | --- | --- |
 | refresh 报 `no updater`，退出码却是 0 | `-L` 用了相对路径，定位不到包定义，静默跳过 | 换绝对路径重跑（2026-09-27 前的 CI 全程如此） |
-| 版本被改小、反复降级 | `guix refresh` 的 `version>` 排序把字母后缀段排在数字段之后 | 把该包移出 refresh 白名单，交兜底层或人工 |
+| 版本被改小、反复降级 | `guix refresh` 的 `version>` 排序把字母后缀段排在数字段之后 | 守卫 G3 会在写盘前拦下（数字段降级/缩短）；确实需要长期绕开时写进 `config.json` 的 `refresh_exclude` |
 | pre-release 被降级回 stable | refresh 只认 stable release，而 `check_pre_release` 里的包上游只发 pre-release | 留在兜底层，并加进 `config.json` 的 `check_pre_release` |
-| monorepo 组件 tag 被读成别的组件版本 | GitHub updater 优先级高于 generic-git，且忽略 `release-tag-prefix` | 移出 refresh 白名单；`release-tag-prefix` property 保留但不生效（agenote / emacs-agenote 2026-10-03 实证） |
+| monorepo 组件 tag 被读成别的组件版本 | GitHub updater 优先级高于 generic-git，且忽略 `release-tag-prefix` | 守卫 G1 会在写盘前拦下（新版本不以数字开头）；`release-tag-prefix` property 保留、由 Python 兜底生效（agenote / emacs-agenote 2026-10-03 实证） |
 | `upstream-name` 写了仍 `no updater` | 它必须等于 release 资产文件名的前缀，不是仓库名加 `-bin` | 核对 `curl -s https://api.github.com/repos/<repo>/releases/latest` 里的资产文件名 |
 | 构建测试失败 | 闭源 / 预编译包 / ABI 漂移需要额外适配 | 不要按包名后缀跳过它们；看 issue 里的失败包逐个处理 |
 | updater 整个 sweep 崩在 `AttributeError`/`Traceback` | version 非字面量包（`(package-version imgui)`）让 `compare_versions` 对 None 调 `lstrip` | `discover_release_update` 已有早退 guard（2026-11-12）；同类包直接进 `skip_packages` 更省 API 调用 |

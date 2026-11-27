@@ -23,9 +23,11 @@
   #:use-module (gnu packages gcc)          ; gcc "lib"
   #:use-module (gnu packages gl)           ; mesa
   #:use-module (gnu packages glib)         ; glib, dbus
-  #:use-module (gnu packages gnome)        ; libsoup, gnome-keyring, libsecret
+  #:use-module (gnu packages gnome)        ; libsoup, glib-networking, gnome-keyring,
+                                           ; libsecret
   #:use-module (gnu packages golang)       ; go
-  #:use-module (gnu packages gtk)          ; gtk+, cairo, gdk-pixbuf, at-spi2-core
+  #:use-module (gnu packages gtk)          ; gtk, gtk+, cairo, pango, harfbuzz,
+                                           ; graphene, gdk-pixbuf, at-spi2-core
   #:use-module (gnu packages image)        ; libjpeg-turbo, libpng
   #:use-module (gnu packages linux)        ; eudev
   #:use-module (gnu packages nss)          ; nss, nss-certs
@@ -38,7 +40,7 @@
   #:use-module (gnu packages version-control) ; git
   #:use-module (gnu packages vulkan)       ; vulkan-loader
   #:use-module (gnu packages web)          ; json-c
-  #:use-module (gnu packages webkit)       ; webkitgtk-for-gtk3
+  #:use-module (gnu packages webkit)       ; webkitgtk, webkitgtk-for-gtk3
   #:use-module (gnu packages xdisorg)      ; libxkbcommon
   #:use-module (gnu packages xml)          ; expat
   #:use-module (gnu packages xorg)         ; libx11, libxcb, libxcomposite, ...
@@ -2474,5 +2476,260 @@ plugin wizard and keeps profiles, sessions and credentials in the
 @file{\\$DSH_HOME} directory shared with the command-line install.  This
 package installs the vendor's prebuilt Linux release; the Harness core
 distribution itself is downloaded on first launch.")
+    (license license:expat)
+    (supported-systems '("x86_64-linux"))))
+
+;;; Eta Host：Eta 的常驻宿主（MIT，0xfe-project/eta）。桌面端与移动端都只是
+;;; 客户端——agent loop、会话、插件与代码工作区都在宿主里跑，宿主对外提供
+;;; Web UI（默认 http://127.0.0.1:8787）与客户端协议，可以装在笔记本、服务器
+;;; 或容器里，多台设备连同一个宿主。
+;;;
+;;; 这是仓库的另一条发布线：`v*` 稳定 tag（asset eta-host-linux-x64，文件名不带
+;;; 版本号，SHA256SUMS 与 eta-host.json 同发），与桌面线 `desktop-v*` 完全独立，
+;;; GitHub 的 Latest 指针指的始终是这条。tag 是普通 v<version>、资产名以
+;;; upstream-name 开头，本来最适合交给 guix refresh，但实测它报「would be
+;;; upgraded from 0.4.0 to 0.5.0-rc.15」：该 repo 最近 30 条 release 全是
+;;; pre-release（桌面线 rc 一天数发），guix github updater 过滤 pre-release 后
+;;; 列表为空，于是回退成 keep everything（2026-11-28 实测）。CI 的 refresh 守卫
+;;; （G2：正式版被推到 pre-release）会在写盘前拦下这条，实际更新由 Python
+;;; updater 接管（config.json 的 tag_prefix "v" 走列表扫描并跳过 pre-release；
+;;; /releases/latest 本身也恒指宿主稳定线）。
+;;;
+;;; 单文件是 `bun build --compile` 产物（readelf -S 有 .bun 段）。实测
+;;; patchelf --set-interpreter/--set-rpath 之后启动即 SIGSEGV（`--version` 都过
+;;; 不去），未打补丁的同一文件在 nix-ld 下正常输出
+;;; {"version":"0.4.0","commit":...,"minDesktop":"0.1.0"}。故原样装进 bin/、不
+;;; patch 不 wrap，运行依赖系统级 nix-ld-service-type；它只 NEED
+;;; libc/ld-linux/libpthread/libdl/libm，服务默认库表已覆盖。
+;;;
+;;; 首次运行会在 ~/.eta/ 建库（eta.sqlite、secret.key、running-host.json、
+;;; agents/、artifacts/、unpacked/ 等）；没有 systemd 的系统按上游 INSTALL.md
+;;; 的「Quick trial」直接跑二进制，或交给 home shepherd 管理。
+(define-public eta-host-bin
+  (package
+    (name "eta-host-bin")
+    (version "0.4.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://github.com/0xfe-project/eta/releases/download/"
+             "v" version "/eta-host-linux-x64"))
+       (sha256
+        (base32 "18dksar9gx0szw9whny82rn1jq7ils7qxa3v621kdqa20d8lzshs"))))
+    (build-system binary-build-system)
+    (arguments
+     (list
+      #:unpack-method 'file
+      #:install-plan #~'(("eta-host-linux-x64" "bin/eta-host"))
+      ;; bun --compile 自定位单文件：不碰 ELF，走系统 nix-ld。
+      #:patchelf? #f
+      #:wrap? #f))
+    (properties `((upstream-name . "eta-host")))
+    (home-page "https://eta.0xfe.tech")
+    (synopsis "Always-on host for the Eta multi-agent workspace")
+    (description
+     "Eta Host is the server side of Eta: it runs the agent loop, keeps
+sessions and plugins, and serves the Eta Web UI on
+@code{http://127.0.0.1:8787} for desktop, mobile and browser clients.  This
+package installs the prebuilt @code{linux-x64} release and needs the
+@code{nix-ld} system service to run.")
+    (license license:expat)
+    (supported-systems '("x86_64-linux"))))
+
+;;; Eta Desktop：Eta 的原生桌面客户端。Eta 本体（MIT，0xfe-project/eta）是
+;;; 多 agent 工作台——Claude Code、Codex、Antigravity、OpenCode、Pi、任意 ACP
+;;; agent 与 Eta 自带 runtime 共用一间群聊，底下是 git worktree 任务板、依赖
+;;; 计划、自主 Captain 和远程 worker 机器。客户端用 longbridge/nsh（Native
+;;; Shell：Rust + GTK4 + WebKitGTK 6.0）打包，不是 Electron，也不是 Tauri。
+;;;
+;;; 同一仓库并发两条发布线（README「Install」与 release-desktop.yml 都写明）：
+;;; 宿主线 `v*`（eta-host-linux-x64，稳定版，GitHub 的 Latest 指针始终指向
+;;; 它）与桌面线 `desktop-v*`（一律标 pre-release——正是为了不抢 Latest）。
+;;; 本包只取桌面线。带 -bin 是因为分发上游预编译产物：源码是 bun + nsh 的
+;;; monorepo，构建要先有 nsh 工具链，不在 Guix 里重建。
+;;;
+;;; 资产有两个同内容的名字：eta-desktop-linux-x64.tar.gz 与
+;;; Eta-<version>-linux-x86_64.tar.gz（解包树相同）。这里取不带版本号的那个：
+;;; Python 兜底 updater 按包定义里显式的 "desktop-v" 段 + version 变量重建
+;;; URL，资产名里再嵌一遍版本号只是多一处要同步的地方。guix refresh 用不了
+;;; 这条线：github updater 的 URL 形状匹配只认 /download/(v)?<version>/…，
+;;; 而这里的 tag 是 desktop-v<version>（同 bun-bin 的 download/bun-v 盲区），
+;;; 实测报 no updater，故由 Python updater + config.json 的
+;;; check_pre_release 接管（整条桌面线都是 pre-release）。
+;;;
+;;; 布局是 nsh 的 app 目录，不能打散：
+;;;   Eta/Eta                     nsh shell 本体（Rust，链 GTK4 + WebKitGTK 6.0）
+;;;   Eta/nsh/bundle.nshc         编译好的前端 bundle
+;;;   Eta/nsh/{app,capabilities}.json、nsh/assets/
+;;;   Eta/nsh/eta-bootstrap       宿主安装器（bun --compile 单文件，见下）
+;;; shell 按自身可执行文件所在目录找 nsh/，所以整棵树原样装进
+;;; lib/dev.eta.client/。这正是上游 Flatpak 的布局（/app/lib/dev.eta.client/，
+;;; release-desktop.yml 里逐项断言），bin/Eta 则只是下面的启动脚本。
+;;;
+;;; 两个 ELF 分两种待遇：
+;;; - Eta 是普通动态 ELF，走 #:patchelf-plan。0.1.0 的 NEEDED（rc.22 实测同一
+;;;   集合；升级时用 `patchelf --print-needed` 重查，WebKitGTK 会增减条目）：libharfbuzz、
+;;;   libfontconfig、libpango{ft2,cairo}、libgobject/glib、libcairo、
+;;;   libwebkitgtk-6.0、libgtk-4、libgraphene、libsoup-3.0、libgio、
+;;;   libjavascriptcoregtk-6.0，加 libgcc_s/libm/libc。
+;;; - nsh/eta-bootstrap 是 bun --compile 自定位单文件：patchelf 0.18 在它上面
+;;;   直接 abort（`patchelf.cc:529 shiftFile: Assertion 'splitIndex == -1'
+;;;   failed`），改 ELF 布局也会破坏它按 /proc/self/exe 找尾部载荷的假设
+;;;   （conventions-prebuilt.md「自定位二进制」）。故原样安装、不 patch；
+;;;   它只 NEED libc/ld/pthread/dl/m，运行时走系统级
+;;;   nix-ld-service-type（服务默认库表已覆盖这几个）。
+;;;
+;;; 宿主不靠 app 现场下载：eta-host-bin 是本包的 input，启动脚本把它的 bin/
+;;; 前置进 PATH。nsh 的宿主解析顺序是
+;;;   $XDG_DATA_HOME/eta/host/eta-host -> ~/.eta/desktop/host/eta-host ->
+;;;   PATH 上的 eta-host -> 都没有才从 GitHub 下 398 MB（scripts/nsh-host-bootstrap.ts）。
+;;; 走下载那条路还要过 minDesktop 门：桌面线在 rc 阶段整体是 pre-release，semver
+;;; 排序小于 0.1.0，而每个宿主 release 的 eta-host.json 都写 minDesktop 0.1.0，
+;;; 所以 rc 客户端实测直接报
+;;;   "has no host release this app 0.1.0-rc.20 can run: 0.4.0 needs the app 0.1.0"。
+;;; 0.1.0 正式版发布后这道门自然放行，但 PATH 命中的宿主本来就不经过它。
+;;; PATH 命中的宿主不经过那道过滤（gate 只在 downloadHost 里），所以
+;;; 「Run on this computer」用我们打的宿主，既不用联网下 398 MB，也不会被那条
+;;; 版本门挡住。宿主本身同样是 bun --compile 产物，同样需要 nix-ld。
+;;;
+;;; nsh 自带的 in-app updater（nsh/assets/nsh-updater.json）在 install 阶段删
+;;; 掉：它下载整包 tar.gz 后替换 app 目录，而 store 只读，留下只会让设置页
+;;; 显示一个永远失败的更新按钮。版本由 channel 管理（同 Electron 包删
+;;; electron-updater 清单的处理）。
+;;;
+;;; 运行时环境（缺了是"能开窗但功能静默降级"）：XDG_DATA_DIRS 必须按 prefix
+;;; 语义带上 gtk/webkitgtk 的 share（GTK4 的 gschemas、WebKitGTK 的 inspector
+;;; 资源），GIO_EXTRA_MODULES 要含 glib-networking 的 gio 模块（libsoup 的
+;;; TLS 走 GIO 模块，NEEDED 里看不到），gdk-pixbuf 通过
+;;; GUIX_GDK_PIXBUF_MODULE_FILES 补 loader cache（不要设单数
+;;; GDK_PIXBUF_MODULE_FILE）。FONTCONFIG_FILE 只在会话没给值时兜底。
+;;;
+;;; 许可证证据：仓库根 LICENSE 为 MIT（GitHub API 亦报 MIT）。发布证据：
+;;; tag 形如 desktop-v<version>（rc 阶段一律 pre-release，0.1.0 起转正），资产
+;;; eta-desktop-linux-x64.tar.gz（84 MiB）。
+(define-public eta-desktop-bin
+  (package
+    (name "eta-desktop-bin")
+    (version "0.1.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://github.com/0xfe-project/eta/releases/download/"
+             "desktop-v" version "/eta-desktop-linux-x64.tar.gz"))
+       (sha256
+        (base32 "1i7f4gi5yqkd36npxdj0zzlsywyxwbwffl24294jc82fh3m3cgvv"))))
+    (build-system binary-build-system)
+    (arguments
+     (list
+      #:unpack-method 'tar
+      #:app-dir "dev.eta.client"
+      #:install-plan
+      ;; gnu unpack 会剥掉唯一的顶层目录（Eta/），所以这里的路径相对解包根目录。
+      #~'(;; 上游布局：shell 与 nsh/ 必须相邻（shell 按自身 exe 位置找 nsh/）。
+          ("Eta" "lib/dev.eta.client/Eta")
+          ("nsh/" "lib/dev.eta.client/nsh/")
+          ("dev.eta.client.desktop"
+           "share/applications/dev.eta.client.desktop")
+          ("dev.eta.client.metainfo.xml"
+           "share/metainfo/dev.eta.client.metainfo.xml")
+          ("dev.eta.client.png"
+           "share/icons/hicolor/256x256/apps/dev.eta.client.png"))
+      ;; 只打 shell 本体；nsh/eta-bootstrap 保持原样（见包前注释）。
+      #:patchelf-plan #~'("lib/dev.eta.client/Eta")
+      ;; bin/Eta 是手写启动脚本，不能再让 wrap-program 把它改名成 .Eta-real。
+      #:wrap? #f
+      #:desktop-files
+      #~'(("share/applications/dev.eta.client.desktop" "bin/Eta"))
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'install 'install-launcher
+            (lambda* (#:key inputs #:allow-other-keys)
+              (let* ((out #$output)
+                     (app (string-append out "/lib/dev.eta.client"))
+                     (sh (assoc-ref inputs "bash-minimal"))
+                     (eta-host (assoc-ref inputs "eta-host-bin"))
+                     (gtk (assoc-ref inputs "gtk"))
+                     (webkitgtk (assoc-ref inputs "webkitgtk"))
+                     (glib (assoc-ref inputs "glib"))
+                     (glib-networking (assoc-ref inputs "glib-networking"))
+                     (gdk-pixbuf (assoc-ref inputs "gdk-pixbuf"))
+                     ;; 两串多目录的值先在宿主侧拼好，免得脚本源码行超长。
+                     (pixbuf-cache
+                      (string-append
+                       gdk-pixbuf
+                       "/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache"))
+                     (typelib-path
+                      (string-append glib "/lib/girepository-1.0:"
+                                     gtk "/lib/girepository-1.0:"
+                                     webkitgtk "/lib/girepository-1.0"))
+                     (fontconfig (assoc-ref inputs "fontconfig-minimal")))
+                ;; nsh 的 in-app updater 换不了只读 store 里的 app 目录。
+                (delete-file (string-append app "/nsh/assets/nsh-updater.json"))
+                (mkdir-p (string-append out "/bin"))
+                ;; 整段脚本在宿主侧拼好再落盘：单条 format 串里塞不下这些
+                ;; 变量名（会被 formatting checker 判行过长），也容易把
+                ;; export 写到 exec 之后去。
+                (let ((launcher
+                       (string-append
+                        "#!" sh "/bin/sh\n"
+                        "# The nsh shell finds its nsh/ directory next to its own\n"
+                        "# executable, so exec the real binary by its store path\n"
+                        "# instead of letting wrap-program rename it.\n"
+                        "# eta-host sits ahead of PATH: nsh looks its host up on\n"
+                        "# PATH before it downloads one, so choosing this computer\n"
+                        "# uses the packaged host instead of fetching 398 MB.\n"
+                        "export PATH=\"" eta-host "/bin${PATH:+:$PATH}\"\n"
+                        "export FONTCONFIG_FILE=\"${FONTCONFIG_FILE:-"
+                        fontconfig "/etc/fonts/fonts.conf}\"\n"
+                        "export XDG_DATA_DIRS=\"" out "/share:" gtk
+                        "/share:" webkitgtk
+                        "/share${XDG_DATA_DIRS:+:$XDG_DATA_DIRS}\"\n"
+                        "export GIO_EXTRA_MODULES=\"" glib-networking
+                        "/lib/gio/modules${GIO_EXTRA_MODULES:+:"
+                        "$GIO_EXTRA_MODULES}\"\n"
+                        "export GUIX_GDK_PIXBUF_MODULE_FILES=\""
+                        pixbuf-cache
+                        "${GUIX_GDK_PIXBUF_MODULE_FILES:+:"
+                        "$GUIX_GDK_PIXBUF_MODULE_FILES}\"\n"
+                        "export GI_TYPELIB_PATH=\"" typelib-path
+                        "${GI_TYPELIB_PATH:+:$GI_TYPELIB_PATH}\"\n"
+                        "exec " app "/Eta \"$@\"\n")))
+                  (call-with-output-file (string-append out "/bin/Eta")
+                    (lambda (port)
+                      (display launcher port)))
+                  (chmod (string-append out "/bin/Eta") #o755))
+                (chmod (string-append out "/bin/Eta") #o755)))))))
+    (inputs `(("bash-minimal" ,bash-minimal)
+              ("cairo" ,cairo)
+              ;; 本机宿主：nsh 在 PATH 上找不到 eta-host 才会联网下载（见包前注释）。
+              ("eta-host-bin" ,eta-host-bin)
+              ("fontconfig-minimal" ,fontconfig)
+              ("gcc:lib" ,gcc "lib")
+              ("gdk-pixbuf" ,gdk-pixbuf)
+              ("glib" ,glib)
+              ("glib-networking" ,glib-networking)
+              ("glibc" ,glibc)
+              ("graphene" ,graphene)
+              ("gtk" ,gtk)
+              ("harfbuzz" ,harfbuzz)
+              ("libsoup" ,libsoup)
+              ("pango" ,pango)
+              ("webkitgtk" ,webkitgtk)))
+    (properties `((upstream-name . "eta-desktop")
+                  (release-tag-prefix . "^desktop-v")
+                  (accept-pre-releases? . #t)))
+    (home-page "https://eta.0xfe.tech")
+    (synopsis "Native desktop client for the Eta multi-agent workspace")
+    (description
+     "Eta is a multi-agent workspace: Claude Code, Codex, Antigravity,
+OpenCode, Pi and any ACP agent share one group chat on top of a
+@command{git worktree} task board with dependency plans, an autonomous
+Captain and remote worker machines.  This package installs the prebuilt
+@code{linux-x64} desktop client together with the @command{eta-host} it
+runs on this computer (from @code{eta-host-bin}), so the first start does
+not download a host; a host elsewhere is reached by connecting to it.
+Running a host on this computer needs the @code{nix-ld} system service.")
     (license license:expat)
     (supported-systems '("x86_64-linux"))))

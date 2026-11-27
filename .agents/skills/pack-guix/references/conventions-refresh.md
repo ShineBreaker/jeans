@@ -95,13 +95,15 @@ github updater 还有几个静默盲区（不报错、就是不识别），命�
 - **只发 prerelease 的 repo**：`/releases/latest` 恒 404（inso-bin），必须进 `check_pre_release` 列表才有版本可查；即使 guix refresh 侧能识别， prerelease-only 的上游也常需要 Python 侧配合。
 - **tag 带产品前缀 + 资产名带平台后缀**：`updated-url` 对 `/releases/download/` 只认 `v<ver>/<name>-<ver><ext>`、`<ver>/<repo>-<ver><ext>` 等固定形状；cua 的 `cua-driver-rs-v0.23.2/cua-driver-rs-0.23.2-linux-x86_64-binary.tar.gz`（monorepo 多产品）所有形状都不匹配，设了 `upstream-name` 也报 no updater（cua-driver-bin，2026-09-02）。
 - **monorepo 把 stable 刻意标成 prerelease**：cua 上游用 GitHub 的 prerelease 标签防止仓库级 Latest 指针被单个产品抢走，plain SemVer 稳定版（`cua-driver-rs-v0.23.2`）全是 prerelease——除了 `tag_prefix` 过滤 nightly 系列，还必须进 `check_pre_release` 放行（cua-driver-bin，2026-09-02）。
+- **首页 30 条 release 全是 prerelease 时，updater 退化成「什么都收」**：`import-release` 的过滤是 `(match (remove pre-release? json) (() json) (releases releases))`——过滤后为空就保留全部。monorepo 一天连发多个 rc（桌面线 + 宿主线交替），第一页刚好全是 prerelease 时，稳定包会被「升级」到 rc：`eta-host-bin` 0.4.0 被报成 `v0.5.0-rc.15`（2026-11-28 实测；CI 的守卫 G2 在写盘前拦下这类升级，长期仍由 Python 兜底 + `tag_prefix "v"` 负责）。判断方法：`gh release list -L 30` 看第一页有没有稳定版；没有就当成盲区。
+- **产品前缀 tag + 无版本号资产名**：`desktop-v<version>/eta-desktop-linux-x64.tar.gz`，兜底正则要求 `/download/(v)?<version>/`，产品前缀直接不匹配（`eta-desktop-bin` 2026-11-28 实测 no updater；同 bun-bin 的 `bun-v` 形状）。
 
 ### 上游改名（包名跟随上游时）
 
 上游把项目整体改名（repo、release 资产名、二进制名、desktop/图标全变）时，Guix 包名跟随新名，且以下位置必须一起改——漏一处是「静默不再更新」而不是报错：
 
 1. 包定义：`define-public` / `name` / URL（新 repo）/ 资产文件名 / `upstream-name` property。
-2. `.github/workflows/auto-update.yml` 里 `guix refresh -u` 的显式包列表：refresh 按**包名**取包（该列表是白名单，不是全模块），旧名报「找不到包」被日志淹没，新名完全收不到自动更新。
+2. `scripts/check-updates/config.json` 的 `refresh_exclude`：该表按**包名**匹配，旧名留着不会报错（成为一条永不命中的死条目），改名后新名若需要排除就得补上；包名对应的 properties（`upstream-name`）与 docs 同样要改。
 3. `docs/packages.md`（`blue gen-docs` 重新生成）与 AGENTS.md 的包清单。
 4. 同文件内其他包注释对该包的交叉引用（`aria2-next-bin` 的注释曾描述它为 motrix 供引擎）。
 

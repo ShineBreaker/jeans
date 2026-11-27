@@ -176,7 +176,7 @@ synopsis,gnu-description <package-name>
    - **上游无 tag 的 git-fetch 包**：用 `let`+`git-version` 结构 + `(with-latest-git-commit . #t)`。
    - 仅 guix refresh 力不能及的包（非 GitHub 源、npm scoped tag 等）才在 config.json 配 tag_prefix。
 3. 用 dry-run 验证 guix refresh 能识别新包：`GUIX_GITHUB_TOKEN="$(gh auth token)" guix refresh -L "$PWD/modules" -L /tmp/nonguix <package>`，确认输出"已是最新"或"would be upgraded"而非"no updater"。**`-L` 必须是绝对路径**——相对路径下 refresh 定位不到包定义，静默零改写还退出 0。
-   properties 写对了还不够：CI 的 refresh 步骤是**硬编码包名白名单**，新包还要加进 `.github/workflows/auto-update.yml` 里那份列表，否则永远收不到更新且不报错——规则见 `../auto-update/SKILL.md`「白名单」。
+   properties 写对了就够了：CI 的 refresh 步骤从 2026-11-28 起是**全通道黑名单**（`config.json` 的 `refresh_exclude` 才跳过），新包无需登记；写错方向时先跑 `scripts/check-updates/refresh_all.py --plan` 看守卫是否拦下（见 `../auto-update/SKILL.md`「黑名单 + 守卫」）。
 4. 运行 blue gen-docs 更新 docs/packages.md，确认旧名、别名和 docs 没有漂移。
 5. 检查 git status --short、git diff --check 和所有测试输出。
 6. 汇报修改、验证、网络限制和未完成项；除非用户明确要求，不执行 git commit。
@@ -213,7 +213,7 @@ synopsis,gnu-description <package-name>
 - lint 修复配方与 auto-fix 模板：references/lint-recipes.md
 - langpack / theme 资源合并模式：references/langpack-resource-merge-pattern.md
 - 通用 Guix 打包参考（包结构、构建系统、输入类型、阶段修改、最佳实践）：references/guix-reference.md
-- 自动更新层（refresh 白名单、Python 兜底、CI、state 文件）：../auto-update/SKILL.md
+- 自动更新层（refresh 黑名单与守卫、Python 兜底、CI、state 文件）：../auto-update/SKILL.md
 - Guix package templates：references/package-template.scm
 - Single-run test：references/test-template.sh
 - Watch test：references/watch-test-template.sh

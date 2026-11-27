@@ -21,41 +21,13 @@ permissions:
 env:
   FORGEJO_SERVER_URL: https://codeberg.org
   FORGEJO_REPOSITORY: BrokenShine/jeans
-  # 交给 guix refresh 的包白名单（空格分隔）。refresh 步骤与构建失败后的
-  # Recover 步骤（剔除失败包重放）共用，必须保持单一来源。
-  # scrcpy 不在列：它和 prebuilt 的 scrcpy-server 一起发版，而 guix
-  # refresh 只替换 package 自身 source 的 hash，无法同时更新 server 的
-  # hash；交给 refresh 会得到 client/server 版本不一致的包定义。三者
-  # （version、source hash、server hash）由人工同步，位置见
-  # modules/jeans/packages/android.scm 里 scrcpy 上方注释。
-  # bun-bin 不在列：guix github updater 的 URL 形状匹配不认
-  # download/bun-v<version>/ 资产路径（兜底正则只允许一个可选 v），恒报
-  # no updater；由 Python updater 兜底（读包定义 release-tag-prefix
-  # property 剥 ^ 锚点过滤 bun-v* 系列，2026-10-24 实测正常）。
-  # cargo-hua 不在列：上游 cargo 的 MSRV 钉当前 stable（0.103.0-1 要 rustc
-  # 1.99），Guix 的 rust 只有 1.98.1，包定义靠两个 phase 把门禁降到 1.98 并
-  # 移植 std::fs::set_times 才编得过；每个新 release 都可能引入新的 1.99+
-  # API，自动升版本会让构建闸门在无人看管时失败。2026-11-26 起人工升版本
-  # （同步更新 rust-crates.scm 的 crate 输入集），理由与解除路径写在
-  # config.json 的 stale_watch 条目。
-  REFRESH_PACKAGES: >-
-    opencode-desktop-bin ardia-bin herdr-bin omo-bin disktree-bin wu-bin
-    magpie-bin codewhale-bin pi-bin github-copilot dbx-bin openidea-bin
-    eask-bin neomacs-bin rayburst-bin cc-switch-bin flea-bin
-    git-credential-keepassxc
-    font-maple-font-nf-cn font-nerd-font-iosevka
-    lr2oraja-endlessdream-bin osu-lazer-bin inso-bin g0v0-bin deltalazer-bin
-    ez2lazer-bin
-    neomod-bin
-    emacs-msgu
-    colloid-gtk-theme vimix-gtk-themes vimix-kvantum-themes kvantum-qt5
-    i915-sriov-linux-module nix-ld opentabletdriver-udev-rules waypaper
-    oo7
-    waydroid libgbinder libglibutil python-gbinder
-    pnpm-bin
-    zellij zellij-bin
-    lzsync
-    peazip-bin
+  # guix refresh 从 2026-11-28 起改跑**全通道黑名单**：默认每个包都试，
+  # 只有 scripts/check-updates/config.json 的 refresh_exclude（每条带理由）
+  # 才跳过。白名单那种"逐个列出包名"的写法已删除——它的失效方式是静默的：
+  # 新包忘了登记就永远收不到 refresh 更新且不报错。
+  # 安全闸在 scripts/check-updates/refresh_all.py 的守卫（先 dry-run 后写盘，
+  # G1 版本不以数字开头 / G2 正式版被推到 pre-release / G3 降级 / G4 未变），
+  # 再加构建闸门逐个 guix build。
 
 jobs:
   auto-update:
@@ -93,6 +65,10 @@ jobs:
       - name: Test updater release candidate guard
         shell: bash
         run: python3 scripts/check-updates/tests/test_release_candidate.py
+
+      - name: Test refresh blacklist driver
+        shell: bash
+        run: python3 scripts/check-updates/tests/test_refresh_all.py
 
       - name: Test updater package-failure exit code
         shell: bash
@@ -233,12 +209,62 @@ jobs:
             https://gitlab.com/nonguix/nonguix.git \
             /tmp/nonguix
 
-      # ── guix refresh（主力 updater）：改写 GitHub release 包 + git-fetch 包 ──
-      # guix refresh 作为主力 updater 接管 GitHub release 包（需 upstream-name
-      # property）和 git-fetch 有 tag 包。Python updater 随后只处理 guix 力所
-      # 不及的少数派（zcode CDN、kimi-code npm tag、cua-driver-bin 等）。
-      # GUIX_GITHUB_TOKEN 是 guix refresh 读 GitHub API 的专属环境变量名
+      # ── guix refresh（黑名单 + 守卫）：默认跑全通道 ─────────────────
+      # 先枚举本通道的包（定义位置落在 modules/ 下），再用 refresh_all.py
+      # 分块跑 dry-run（guix refresh 默认只报告不改写）、过守卫、只对放行的
+      # 包执行 -u。刷新失败/被守卫拦下的包仍由 Python 兜底 updater 处理，
+      # 它本来就是全量黑名单模型。
+      # GUIX_GITHUB_TOKEN 是 guix refresh 读 GitHub API 的专属变量名
       # （不是 GITHUB_TOKEN），必须单独映射。
+
+      - name: List channel packages for refresh
+        if: inputs.test_packages == ''
+        shell: bash
+        run: |
+          set -uo pipefail
+          if [ -f /var/guix/current/etc/profile ]; then
+            . /var/guix/current/etc/profile
+          fi
+          if [ -f "$HOME/.config/guix/current/etc/profile" ]; then
+            . "$HOME/.config/guix/current/etc/profile"
+          fi
+          # 只取定义位置在本仓库 modules/ 下的包；rust-crates 的 crate-source
+          # 不是 package，自然不会出现在 -A 里。
+          guix package -L modules -L /tmp/nonguix -A 2>/dev/null \
+            | awk -F'\t' '$4 ~ /(^|\/)modules\/jeans\// {print $1}' \
+            | sort -u > /tmp/channel-packages.txt
+          count=$(wc -l < /tmp/channel-packages.txt)
+          echo "通道包数：$count"
+          # 枚举失败（模块加载报错、-L 写错）会让后面的 refresh 静默空跑，
+          # 这里直接拦住：正常情况下本通道有 140+ 个包。
+          if [ "$count" -lt 100 ]; then
+            echo "::error::通道包枚举异常（$count 个），检查 -L 与模块加载"
+            exit 1
+          fi
+
+      - name: Plan guix refresh (blacklist + guard)
+        id: refresh-plan
+        if: inputs.test_packages == ''
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GUIX_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -uo pipefail
+          if [ -f /var/guix/current/etc/profile ]; then
+            . /var/guix/current/etc/profile
+          fi
+          if [ -f "$HOME/.config/guix/current/etc/profile" ]; then
+            . "$HOME/.config/guix/current/etc/profile"
+          fi
+          python3 scripts/check-updates/refresh_all.py --plan \
+            --load-path "$GITHUB_WORKSPACE/modules" \
+            --load-path /tmp/nonguix \
+            --packages /tmp/channel-packages.txt \
+            --accepted /tmp/refresh-accepted.txt \
+            --report /tmp/refresh-plan.json
+          echo "--- 守卫放行的包 ---"
+          cat /tmp/refresh-accepted.txt
 
       - name: Run guix refresh
         id: refresh
@@ -255,54 +281,17 @@ jobs:
           if [ -f "$HOME/.config/guix/current/etc/profile" ]; then
             . "$HOME/.config/guix/current/etc/profile"
           fi
-
-          echo "=== guix refresh: GitHub release + git-fetch 包 ==="
-          # -L 必须是绝对路径：refresh -u 通过 package-field-location 定位并改写
-          # 包源文件，相对 load path 下该定位静默失败（报「源中无 version 字段；
-          # 跳过」且退出码 0），所有包零改写。2026-09-27 前的 CI 即处于此状态
-          # ——dry-run 不经过改写代码所以从不暴露，历来 auto-update 提交实际
-          # 全是 Python updater 的产物。
-          # 显式列出归 refresh 管的包（不用 -s module:jeans，避免误伤
-          # librewolf-nongnu 等 inherit 包，也避免模块加载敏感问题）。
-          # 不交给 refresh 的包：zcode（z.ai CDN 官网 JS 版本列表）、
-          # font-misans（zip 无版本号，ETag 信号）、amber-pm（gitee 追踪
-          # master）、jdtls-bin（Eclipse 目录页 + 日期戳）、
-          # librewolf-nongnu（inherit）、cua-driver-bin（tag/资产命名
-          # refresh 不识别）——这些交给 Python updater 的特殊源处理器。
-          # zen-browser-bin 不交 refresh：Guix version> 把字母后缀段排在
-          # 数字段之后（1.22b > 1.22.3b），refresh 每次都会把版本降回 1.22b。
-          # ellsp-bin / emacs-ellsp 不交 refresh：0.2.0 是 pre-release，
-          # 只有 Python updater（config.json check_pre_release）会考虑它，
-          # refresh 只认 stable release，会反复降级回 0.1.0（2026-10-01
-          # 本地更新流程实证，二者均已回滚）。
-          # git-credential-keepassxc 曾冻结在 0.14.2 不交 refresh：0.14.3 的
-          # sysinfo-0.39.1 需要 rustc >= 1.95；Guix rust 已到 1.98.1，
-          # 2026-11-12 解冻并升 0.14.4，恢复进白名单（与 nix-ld 同样承担
-          # cargo inputs 滞后、由 build-test 闸门兜底的已知风险）。
-          # agenote / emacs-agenote 不交 refresh：上游合仓为 monorepo 后按
-          # <component>-v<version> 逐组件发 tag，而 guix 的 GitHub updater
-          # 优先级高于 generic-git 且忽略 release-tag-prefix，会把兄弟组件
-          # 的 tag 误读成版本（agenote-zcode-v0.1.0 被解析成 zcode-v0.1.0，
-          # 2026-10-03 实测）。二者交给 Python updater：由其读取包定义的
-          # release-tag-prefix property（剥 ^ 锚点）过滤 agenote-v* /
-          # agenote-el-v* 系列。
-          # nosdshell 系列已迁入 nosd-pkgs channel（2026-11-15 起不再由
-          # 本仓分发）。此处留存历史教训：version 与 source 均为模块级共享
-          # 变量的包（%<pkg>-version / %<pkg>-source）包定义里没有可改写的
-          # 字面 version/hash，refresh 报新版本后文件原样不动——交给
-          # Python updater 的共享变量源路径处理，它同 key 去重一次改写全组。
-          # emacs-ghostel 不交 refresh：0.60.0 的 build.zig 用 comptime 硬
-          # 检查要求恰好 zig 0.17.0，并已改用 std.Io.Threaded /
-          # std.lang.Optimize 等 0.17 API；Guix 最高只有 zig-0.16.0（zig
-          # 官方最新稳定 0.15.2，0.16 已是开发快照），刷新到 0.60.0 必然
-          # 构建失败（issue #66）。0.59.0 保持不动，等 Guix 打包 zig-0.17
-          # 后再把本条目和 config.json skip_packages 里的冻结一起解除。
-          # 白名单本体在 job env 的 REFRESH_PACKAGES（与 Recover 步骤共用）。
-          guix refresh -L "$GITHUB_WORKSPACE/modules" -L /tmp/nonguix -u \
-            $REFRESH_PACKAGES \
+          echo "=== guix refresh: 守卫放行的包 ==="
+          # -L 必须是绝对路径：refresh -u 靠 package-field-location 定位并改写
+          # 包源文件，相对 load path 下静默零改写还退出 0（2026-09-27 前的 CI
+          # 就处在这个状态）。分块与重试都在脚本里（单个上游 TLS 抖动会打断
+          # 整轮 guix refresh，本机 2026-11-28 实测死在 zellij-bin）。
+          python3 scripts/check-updates/refresh_all.py --apply \
+            --load-path "$GITHUB_WORKSPACE/modules" \
+            --load-path /tmp/nonguix \
+            --accepted /tmp/refresh-accepted.txt \
             2>&1 | tee /tmp/refresh.log
-          # guix refresh 对"无更新"返回 0，对个别包失败不阻塞整体；
-          # 不用 set -e，让后续步骤继续。
+          echo "apply 结束（失败包已记录，交由 Python 兜底与构建闸门）"
 
       - name: Record refresh-changed packages
         if: inputs.test_packages == ''
@@ -459,16 +448,13 @@ jobs:
           echo "剔除失败包: $failed_list"
           echo "重放成功包: ${ok_list//,/ }"
 
-          # refresh 管的包走白名单交集；其余全部交给 Python updater 的
-          # --only（refresh 已更新到最新的包，updater 通用检查自然 no-op）。
-          keep=""
-          for p in $REFRESH_PACKAGES; do
-            case ",$ok_list," in *",$p,"*) keep="$keep $p" ;; esac
-          done
-          if [ -n "$keep" ]; then
-            echo "guix refresh 重放:$keep"
-            guix refresh -L "$GITHUB_WORKSPACE/modules" -L /tmp/nonguix -u $keep
-          fi
+          # 回滚后重放：refresh 名单里构建成功的包走 apply（--only 取交集），
+          # 其余交给 Python updater 的 --only（已到最新的包自然 no-op）。
+          python3 scripts/check-updates/refresh_all.py --apply \
+            --load-path "$GITHUB_WORKSPACE/modules" \
+            --load-path /tmp/nonguix \
+            --accepted /tmp/refresh-accepted.txt \
+            --only "$ok_list" || true
 
           rc=0
           env CI=true GITHUB_TOKEN="$GITHUB_TOKEN" \

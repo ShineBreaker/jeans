@@ -18,6 +18,8 @@
 | `crommacode`                   | Terminal that turns coding-agent work into a watchable game    |
 | `cua-driver-bin`               | Cross-platform computer-use automation driver                  |
 | `deepseek-harness-desktop-bin` | Desktop application for DeepSeek Harness                       |
+| `eta-desktop-bin`              | Native desktop client for the Eta multi-agent workspace        |
+| `eta-host-bin`                 | Always-on host for the Eta multi-agent workspace               |
 | `github-copilot`               | Agent-native GitHub Copilot desktop application                |
 | `herdr-bin`                    | Terminal workspace manager for AI coding agents                |
 | `magpie-bin`                   | Menu-bar hub that routes AI coding agents to any model         |

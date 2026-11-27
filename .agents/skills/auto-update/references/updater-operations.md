@@ -67,7 +67,7 @@ deps/ghostty/src/build/zig.zig:13:9: error: Your Zig version v0.16.0 does not me
 
 3. ⚠️ **降级 zig 到 0.15**：ghostel 0.46.0 的 `build.zig` 有 `comptime` 检查，强制要求 zig-0.16，无法降级。
 
-**2026-10-31 新一轮（zig 0.17，issue #66）**：ghostel 0.60.0 把 `required_zig` 提到 `0.17.0`，并已改用 `std.Io.Threaded` / `std.lang.Optimize` 等 0.17 API——不只是 comptime 检查，0.16 下连编译都不可能。Guix 最高只有 `zig-0.16.0`（zig 官方最新稳定是 0.15.2，0.16 已是开发快照），所以 **0.60.0 在当前 Guix 上无解**。处置：0.59.0 保持不动，`emacs-ghostel` 同时从 CI 的 `REFRESH_PACKAGES` 和 `config.json` 的 `skip_packages` 移除/冻结（只改一处会被另一层重新拉起来），解除条件 = Guix 打包 zig-0.17 **且** 重新核对 `build.zig.zon` 里 vendored ghostty 的 pin 与 uucode pin。0.59.0 在 zig-0.16 下实测可构建（`guix build -L modules emacs-ghostel` 退出 0）。
+**2026-10-31 新一轮（zig 0.17，issue #66）**：ghostel 0.60.0 把 `required_zig` 提到 `0.17.0`，并已改用 `std.Io.Threaded` / `std.lang.Optimize` 等 0.17 API——不只是 comptime 检查，0.16 下连编译都不可能。Guix 最高只有 `zig-0.16.0`（zig 官方最新稳定是 0.15.2，0.16 已是开发快照），所以 **0.60.0 在当前 Guix 上无解**。处置：0.59.0 保持不动，`emacs-ghostel` 同时进 `config.json` 的 `refresh_exclude` 与 `skip_packages`（只改一处会被另一层重新拉起来），解除条件 = Guix 打包 zig-0.17 **且** 重新核对 `build.zig.zon` 里 vendored ghostty 的 pin 与 uucode pin。0.59.0 在 zig-0.16 下实测可构建（`guix build -L modules emacs-ghostel` 退出 0）。
 
 **Cron 行为**：遇到此类连锁依赖失败，**立即 revert**，不要尝试在 cron 里修复。将失败原因写入报告，留给用户决定是否手动介入。
 

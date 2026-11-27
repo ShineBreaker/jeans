@@ -4,7 +4,8 @@
     "ellsp-bin",
     "inso-bin",
     "zcode",
-    "cua-driver-bin"
+    "cua-driver-bin",
+    "eta-desktop-bin"
   ],
   "skip_packages": [
     "webview",
@@ -42,10 +43,48 @@
     "inso-bin": "v",
     "cua-driver-bin": "cua-driver-rs-v",
     "officecli-bin": "v",
-    "biome-bin": "@biomejs/biome@"
+    "biome-bin": "@biomejs/biome@",
+    "eta-host-bin": "v"
   },
   "tag_exclude": {
     "zcode-proxy-bin": "\\.android$"
+  },
+  "refresh_exclude": {
+    "cargo-hua": "上游 cargo 的 MSRV 钉当前 stable（要 rustc 1.99），Guix rust 只有 1.98.1，refresh 升版本必然构建失败；人工升版本，详见 stale_watch",
+    "emacs-ghostel": "0.60.0 起 build.zig comptime 硬检查要求恰好 zig 0.17.0，Guix 最高 zig-0.16.0；刷新必然失败",
+    "flea": "源码包：0.4.3 起 rust-version 1.99，Guix rust 1.98.1；冻结在 0.4.2（flea-bin 是预编译包，不受影响）",
+    "ghostty": "上游 main 要求 minimum_zig_version 0.17 且已用 0.17 API，Guix 最高 zig-0.16.0；冻结在 zig-0.16 可用 commit",
+    "gamescope": "定义里 pin 了 libliftoff/reshade/vkroots/wlroots 四个上游分支 commit，refresh 升 version 不会同步这些 pin，产物编不过",
+    "imgui-docking-1.92.5": "钉死旧版本的兼容包（hidden，给 ghostty 用）；变量名带版本后缀的包一律不跟 latest",
+    "satty-bin": "0.21+ 的预编译二进制要求 GLIBC_2.43，Guix glibc 2.41 运行即报错；冻结在 0.20.1",
+    "scrcpy": "client 与预编译 scrcpy-server 同版本发版，refresh 只换包自身 source hash，会造成 client/server 版本不一致；三处（version、source hash、server hash）人工同步",
+    "webview": "lem-next 的 qlfile.lock pin 集之一，必须与 lem-next 的 pin 同步更新，禁止独立自动更新",
+    "sbcl-webview": "lem-next 的 qlfile.lock pin 集之一（与 webview 共用 pin commit），禁止独立自动更新",
+    "sbcl-tree-sitter-cl": "lem-next 的 qlfile.lock pin 集之一，禁止独立自动更新",
+    "sbcl-frugal-uuid": "lem-next 的 qlfile.lock pin 集之一，禁止独立自动更新",
+    "sbcl-jsonrpc-lem": "lem-next 的 qlfile.lock pin 集之一，禁止独立自动更新",
+    "sbcl-micros-lem": "lem-next 的 qlfile.lock pin 集之一，禁止独立自动更新",
+    "librewolf-nongnu": "inherit 上游 Guix 的 librewolf，包定义里没有可改写的 literal version/URI，refresh 定位不到字段",
+    "zig-aro": "冻结在 zig 0.16 兼容的 commit：追 master 会升到只支持 zig 0.17 的提交，Guix 最高 zig-0.16.0（issue #96）",
+    "zig-uucode": "冻结在 zig 0.16 兼容的 commit：追 master 会升到只支持 zig 0.17 的提交，Guix 最高 zig-0.16.0（issue #96）",
+    "zig-zigimg": "冻结在 zig 0.16 兼容的 commit：追 master 会升到只支持 zig 0.17 的提交，Guix 最高 zig-0.16.0（issue #96）",
+    "zig-libxev": "冻结在 zig 0.16 兼容的 commit：追 master 会升到只支持 zig 0.17 的提交，Guix 最高 zig-0.16.0（issue #96）",
+    "zig-libvaxis": "冻结在 zig 0.16 兼容的 commit：追 master 会升到只支持 zig 0.17 的提交，Guix 最高 zig-0.16.0（issue #96）",
+    "zig-zf": "冻结在 zig 0.16 兼容的 commit：追 master 会升到只支持 zig 0.17 的提交，Guix 最高 zig-0.16.0（issue #96）",
+    "zig-z2d": "冻结在 zig 0.16 兼容的 commit：追 master 会升到只支持 zig 0.17 的提交，Guix 最高 zig-0.16.0（issue #96）",
+    "zig-xml": "冻结在 zig 0.16 兼容的 commit：追 master 会升到只支持 zig 0.17 的提交，Guix 最高 zig-0.16.0（issue #96）",
+    "zig-translate-c": "冻结在 zig 0.16 兼容的 commit：追 master 会升到只支持 zig 0.17 的提交，Guix 最高 zig-0.16.0（issue #96）",
+    "zig-gobject-ghostty": "冻结在 zig 0.16 兼容的 commit：追 master 会升到只支持 zig 0.17 的提交，Guix 最高 zig-0.16.0（issue #96）",
+    "zcode": "z.ai CDN 上由官网 JS 版本列表发信号，guix refresh 恒报「未能确定可用版本」；由 SPECIAL_UPDATERS 的 zcode 处理器负责",
+    "font-misans": "zip 资产名不含版本号，版本信号是 ETag/Last-Modified；refresh 无 updater",
+    "amber-pm": "gitee 源，追踪 master 分支而非 tag；refresh 无 updater",
+    "jdtls-bin": "版本号来自 Eclipse 下载目录页 + 日期戳；refresh 无 updater",
+    "ghostty-bin": "conda-forge（anaconda.org）源，guix refresh 会挂在网络上且报不出可用版本；由 SPECIAL_UPDATERS 的 conda 处理器负责（2026-11-28 实测单包 refresh 60s 不返回）",
+    "cua-driver-bin": "monorepo 多产品的 tag/资产命名 refresh 不认（cua-driver-rs-v* + 平台后缀），且稳定版全标 prerelease；由 Python 兜底",
+    "workbuddy-cn": "腾讯 CDN 的 version.json 清单 + 同版本重钉 hash；refresh 无 updater",
+    "qoder-cn": "阿里 OSS 上的 electron-builder generic 清单，latest/ 目录会被原地覆盖；refresh 无 updater",
+    "mysql-workbench-community-classic-bin": "预编译 .deb 只存在于 CDN 归档目录，无版本清单可查；refresh 无 updater",
+    "python-gbinder": "上游无 release，tags 接口按字节序把 upstream/1.1.1 排前面；Python 兜底已跳过，版本人工跟分支"
   },
   "stale_days": 14,
   "stale_watch": {
@@ -54,11 +93,12 @@
     "cargo-hua": "上游 cargo 的 MSRV 永远钉当前 stable（0.103.0-1 要 rustc 1.99），而 Guix 的 rust 只有 1.98.1；包定义靠两个 phase（port-to-rust-1.98 / relax-rust-version）把门禁降到 1.98、并把 std::fs::set_times 移植成 File::set_times 才编得过。每个新 release 都可能引入新的 1.99+ API，自动升版本会让构建闸门在无人看管时失败，故 2026-11-26 起有意冻结。人工升版本：重跑 guix import crate --lockfile + merge_crate_inputs.py 重做 rust-crates.scm，先量温差（grep -rn rust-version），再真构建。解除条件：Guix 的 rust ≥ 1.99——那时删掉这两个 phase、把包名加回 auto-update.yml 的 REFRESH_PACKAGES，并从 skip_packages/stale_watch 移除"
   },
   "notes": {
-    "check_pre_release": "这个列表中的包会检查包括pre-release在内的所有版本。注意：emacs-ellsp/ellsp-bin 的 accept-pre-releases? property 已写在包定义里供 guix refresh 使用，此处保留给 Python updater 兜底。inso-bin 上游的 release 标记不稳定（v0.3.5 是 prerelease、0.3.7/0.3.8 是 stable），包定义里已带 accept-pre-releases?，此处保留对齐。zcode 在此列表中时会额外扫描 z.ai CDN 的灰度先行版（官网版本列表不展示、先发部分平台，如 3.8.1）。cua-driver-bin 的上游 trycua/cua 是 monorepo，所有 plain SemVer 稳定版（如 cua-driver-rs-v0.23.2）都刻意标成 prerelease 以防仓库级 Latest 指针被单个产品抢走，必须在此列表中才能被识别",
+    "check_pre_release": "这个列表中的包会检查包括pre-release在内的所有版本。注意：emacs-ellsp/ellsp-bin 的 accept-pre-releases? property 已写在包定义里供 guix refresh 使用，此处保留给 Python updater 兜底。inso-bin 上游的 release 标记不稳定（v0.3.5 是 prerelease、0.3.7/0.3.8 是 stable），包定义里已带 accept-pre-releases?，此处保留对齐。zcode 在此列表中时会额外扫描 z.ai CDN 的灰度先行版（官网版本列表不展示、先发部分平台，如 3.8.1）。cua-driver-bin 的上游 trycua/cua 是 monorepo，所有 plain SemVer 稳定版（如 cua-driver-rs-v0.23.2）都刻意标成 prerelease 以防仓库级 Latest 指针被单个产品抢走，必须在此列表中才能被识别。eta-desktop-bin 的桌面线（desktop-v*）整条都是 pre-release（上游刻意 --latest=false，让仓库 Latest 指针始终留在宿主线），且 guix refresh 的 URL 形状不认 desktop-v<version>/<无版本号资产名>（实测报 no updater），故这条线整个交给本脚本",
     "skip_packages": "这个列表中的包会被跳过更新检查。python-gbinder：上游无 release、1.3.1 是 Debian 打包线分支上的 tag，tags 接口按字节序把 upstream/1.1.1 排在前面，Python updater 会误报（issue #57），版本由人工跟分支维护。git-credential-keepassxc 已解冻（2026-11-12）：Guix rust 升至 1.98.1 后 sysinfo-0.39.x 的 MSRV 1.95 不再是障碍，0.14.4 已用 merge_crate_inputs.py 重做依赖合并并恢复 REFRESH_PACKAGES。webview / sbcl-webview / sbcl-tree-sitter-cl / sbcl-frugal-uuid / sbcl-jsonrpc-lem / sbcl-micros-lem 是 lem-next 的 qlfile.lock pin 集（webview 与 sbcl-webview 共用 lem-project/webview 的 pin commit，tree-sitter-cl 同理），必须与 lem-next 的 pin 同步更新，禁止独立自动更新。osu-lazer-bin / g0v0-bin / deltalazer-bin 由 games.scm 的 osu-lazer-appimage-package 模板函数生成，包定义里没有字面的 version/URI 字段，Python 解析器读不到（每轮打印「无法提取 URI」），更新全部由 CI 的 guix refresh 白名单负责（其 prerelease 过滤已实测正确跟踪 lazer/g0v0 稳定线）。emacs-ghostel：0.60.0 起 build.zig 里的 comptime 硬检查要求恰好 zig 0.17.0（并已改用 std.Io.Threaded / std.lang.Optimize 等 0.17 API），而 Guix 最高只有 zig-0.16.0（zig 官方最新稳定 0.15.2，0.16 是开发快照），0.60.0 在当前 Guix 上无解；0.59.0 实测可构建（2026-10-31）。恢复前先确认 Guix 已打包对应 zig 版本，并同步恢复 .github/workflows/auto-update.yml 的 REFRESH_PACKAGES 条目。satty-bin 有意冻结在 0.20.1：上游自 0.21 起改用带 glibc 2.43 的构建环境，其预编译二进制的 GLIBC_2.43 verneed 超过 Guix 的 glibc 2.41，运行即报 version GLIBC_2.43 not found，0.21+ 在当前 Guix 上无解；0.20.1 最高只需 GLIBC_2.39，实测可运行。本包亦不在 .github/workflows/auto-update.yml 的 REFRESH_PACKAGES 白名单（不进 guix refresh）。待 Guix glibc 升到 ≥ 2.43 后移除此条并补回 REFRESH_PACKAGES 条目。imgui-docking-1.92.5 是钉死旧版本的兼容包（hidden-package，给依赖 1.92.5 API 的 ghostty 用），updater 曾把它\"更新\"成 1.93.0 破坏钉版语义（2026-11-12）；变量名带版本后缀的包一律不应跟踪 latest。zig 系（zig-aro / zig-uucode / zig-zigimg / zig-libxev / zig-libvaxis / zig-zf / zig-z2d / zig-xml / zig-translate-c / zig-gobject-ghostty）冻结在 zig 0.16 兼容的 commit：追踪各自 master 会升到只支持 zig 0.17 的提交（zig-libxev 目标 commit 451a2bc 的提交信息直接写着「update to Zig 0.17」），issue #96 实测 7 个包在 zig-0.16.0 下编译失败，而 Guix 最高只有 zig-0.16.0。zig-gobject-ghostty 另有一层原因：它是 hidden-package，guix build 按名解析不到，自动更新只会制造「unknown package」噪音，其版本手工随 ghostty 同步。待 Guix 打包 zig-0.17 后一并解除。flea（源码包）：上游 0.4.3 起 rust-toolchain.toml 钉 channel 1.100、Cargo.toml rust-version 1.99，而 Guix 最高 rust 1.98.1 且 1.99/1.100 尚未上游发布，CI 构建恒报「rustc 1.98.1 is not supported」（issue #100）；冻结在 0.4.2，待 Guix rust ≥1.99 后解除。flea-bin 是预编译二进制不受影响。ghostty：上游 main 已要求 minimum_zig_version 0.17（zig 0.17 尚未发布且上游代码已用 std.Io.Threaded 等 0.17 API），且 graphics_image.zig 的临时目录逻辑已重构为 builtin_temp_dirs + SkipZigTest 自跳过，本通道的 ghostty-fix-tests-from-tmp.patch 只在 75166e9 这类旧 commit 上需要且能打上；zig-build-system 的 unpack-dependencies 对新版 build.zig.zon（zig fetch --save 改写）也不兼容，实测 5ebe501 构建在 unpack-dependencies 即失败。冻结在 75166e9 + patch 组合，待 Guix 打包 zig ≥0.17 且 build-system 适配新 zon 格式后解除。 gamescope 也在此列：它的定义 pin 了 4 个上游不稳定分支依赖（libliftoff/reshade/vkroots/wlroots 的特定 commit），guix refresh 升级 version 时不会同步这些 pin，自动升级会产出编不过的定义；版本更新需人工改 version、主 source hash 与 4 个 origin 的 commit/hash（参照上游 bug#70493 v2 的 gitlink 来源）。",
     "skip_files": "这个列表中的文件不会被检查或更新。rust-crates.scm 只含 crate-source origin，由 blue import-crate / guix import crate --lockfile 管理，禁止手动编辑",
-    "tag_prefix": "当同一个 GitHub repo 有多个 release 系列（如 v* 和 desktop-v*）时，指定每个包跟踪的 tag 前缀。inso-bin 自 0.3.8 起上游 tag 回归小写 v 前缀（0.3.7 曾短暂用大写 \"V0.3.7\"，guix refresh 的 URL 重写模板只认小写 /(v)?<version>/ 路径，大写时直接 no updater），包定义 URI 已固定小写 v、由 guix refresh 主力更新，此处小写 v 供 Python 兜底剥离版本。cua-driver-bin 的上游有 nightly-cua-driver-rs-v*（每日快照）和 cua-driver-rs-v*（plain SemVer 稳定版）两个系列，前缀过滤掉 nightly；guix refresh 的 URL 形状匹配不认该 repo 的 tag/资产命名，包定义里的 upstream-name property 保留但不生效。agenote / emacs-agenote 的 monorepo 组件前缀（agenote-v / agenote-el-v）只写在包定义的 release-tag-prefix property 里，此处不重复配置：本脚本读取该 property 时会剥掉 ^ 锚点。二者不交 CI 的 guix refresh——guix 的 GitHub updater 优先级高于 generic-git 且忽略 release-tag-prefix，会把兄弟组件的 tag 误读成版本（agenote-zcode-v0.1.0 被解析成 zcode-v0.1.0，2026-10-03 实测）。python-gbinder 的上游 gh Releases 全部是空的（无描述/无资产），/releases/latest 404，只能落到 tags 接口的顺序；该接口按字节序返回，upstream/1.1.1（Droidian Debian 线）排在数字 tag 1.3.x 前面，且版本比较是字符串不等即更新，于是误报 upstream/1.1.1 并把不可用的版本写进包定义（2026-10-20 issue #57：guix build 报 invalid character '/' in name）。python-gbinder 放进 skip_packages：该 repo 无任何 release、也没有 default 分支追踪（1.3.1 是 Debian 打包线的分支 tag），tags 接口按字节序把 upstream/* 排在数字 tag 前，单靠 tag_prefix 无法区分；update_versions.py 另加了候选含 \"/\" 即跳过的兜底，防止同类误写",
+    "tag_prefix": "当同一个 GitHub repo 有多个 release 系列（如 v* 和 desktop-v*）时，指定每个包跟踪的 tag 前缀。inso-bin 自 0.3.8 起上游 tag 回归小写 v 前缀（0.3.7 曾短暂用大写 \"V0.3.7\"，guix refresh 的 URL 重写模板只认小写 /(v)?<version>/ 路径，大写时直接 no updater），包定义 URI 已固定小写 v、由 guix refresh 主力更新，此处小写 v 供 Python 兜底剥离版本。cua-driver-bin 的上游有 nightly-cua-driver-rs-v*（每日快照）和 cua-driver-rs-v*（plain SemVer 稳定版）两个系列，前缀过滤掉 nightly；guix refresh 的 URL 形状匹配不认该 repo 的 tag/资产命名，包定义里的 upstream-name property 保留但不生效。agenote / emacs-agenote 的 monorepo 组件前缀（agenote-v / agenote-el-v）只写在包定义的 release-tag-prefix property 里，此处不重复配置：本脚本读取该 property 时会剥掉 ^ 锚点。二者不交 CI 的 guix refresh——guix 的 GitHub updater 优先级高于 generic-git 且忽略 release-tag-prefix，会把兄弟组件的 tag 误读成版本（agenote-zcode-v0.1.0 被解析成 zcode-v0.1.0，2026-10-03 实测）。python-gbinder 的上游 gh Releases 全部是空的（无描述/无资产），/releases/latest 404，只能落到 tags 接口的顺序；该接口按字节序返回，upstream/1.1.1（Droidian Debian 线）排在数字 tag 1.3.x 前面，且版本比较是字符串不等即更新，于是误报 upstream/1.1.1 并把不可用的版本写进包定义（2026-10-20 issue #57：guix build 报 invalid character '/' in name）。python-gbinder 放进 skip_packages：该 repo 无任何 release、也没有 default 分支追踪（1.3.1 是 Debian 打包线的分支 tag），tags 接口按字节序把 upstream/* 排在数字 tag 前，单靠 tag_prefix 无法区分；update_versions.py 另加了候选含 \"/\" 即跳过的兜底，防止同类误写。eta-host-bin 的宿主线 tag 是普通 v<version>，本该由 guix refresh 主力更新，但实测它会把 v0.5.0-rc.15 当成最新：该 repo 最近 30 条 release 全是 pre-release，github updater 的 remove pre-release 过滤后为空即回退成「keep everything」（2026-11-28 实测），于是 rc 被当稳定版；故宿主线也归本脚本，靠这里的前缀 \"v\" 走列表扫描、跳过 pre-release，并与 desktop-v* 系列分开",
     "tag_exclude": "与 tag_prefix 互补的黑名单：每个包要跳过的 tag 正则（JSON 里写成 \"\\\\.android$\" 这类）。用于同一 repo 并行发布、但与本包无关的发布线抢到 GitHub Latest 指针的情况——zcode-proxy-bin 的上游 TriDefender/zcode-api 先发桌面线 v4.8.8，随后补发只带 app-debug.apk 的 v4.8.8.android，后者成为 Latest，而桌面资产只存在于 v4.8.8 下，updater 构造出 /download/v4.8.8.android/zcode-proxy-linux-x64 后 404，报「无法计算 hash」（issue #65）。配置后该包改走 release 列表扫描而非 /releases/latest，命中正则的 tag 被跳过",
+    "refresh_exclude": "refresh_exclude：guix refresh 的**黑名单**（2026-11-28 由白名单 REFRESH_PACKAGES 改成黑名单）。语义：默认对全通道每个包跑 refresh，只有这里列出的包不喂给它——要么 refresh 写出的版本必然不可用（冻结包：MSRV/zig/glibc 墙、pin 集、钉版兼容包、多字段需同步的 scrcpy），要么 refresh 根本不识别（CDN 清单、gitee、无 release、monorepo 命名），这些由 Python 兜底或人工维护。**不要把「refresh 会挑错版本」的包放这里**：那类由 CI 的守卫规则兜住（G1 版本不以数字开头、G2 正式版被推到 pre-release、G3 降级/数字段缩短、G4 未变），守卫在写盘前的 dry-run 阶段就拦下（eta-host-bin 的 0.4.0→0.5.0-rc.15、zen-browser-bin 的 1.24.3b→1.24b 均由此拦下）。新增排除必须写理由；冻结包还要同时进 skip_packages 与 stale_watch，解冻时三处一起删。",
     "stale_days": "stale_watch 中的包超此天数（默认 14 天）无手动更新时，CI 发提醒 issue。判定方法：更新时的 git diff 若无此包相关改动，视为无手动更新",
     "stale_watch": "无法自动更新的包名单（原因写进提醒 issue）。stale 提醒只会在 CI 环境触发，且与 14 天周期共同防重。librewolf-nongnu 于 2026-11-26 移出 stale_watch：它继承 Guix 上游 librewolf（inherit 且 source 为 #f），包定义里没有可 bump 的 version/hash，提醒恒为假阳性（issue #104），真正破包会由构建闸门报出；git-credential-keepassxc 曾冻结（rustc 依赖），2026-11-12 解冻回 REFRESH_PACKAGES。python-pywayland（PyPI 源，guix refresh 会重写 inputs 破坏构建）与 mysql-workbench-community-classic-bin（归档 .deb 无清单）于 2026-11-20 纳入监控；libfprint-next/fprintd-next（GitLab）与 ghostty-bin（conda-forge）同日补了 SPECIAL_UPDATERS 处理器，故不入此列；cargo-hua 于 2026-11-26 因上游 MSRV 1.99 高于 Guix rust 1.98.1 而冻结（详见它的 stale_watch 条目）",
     "示例配置": "在数组中添加或删除包名来自定义行为"

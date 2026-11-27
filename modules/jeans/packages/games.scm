@@ -1165,7 +1165,7 @@ through its @code{realmc} binding layer.")
     (license license:asl2.0)))
 
 ;;; LZSync 上游有稳定的 v* release 线（v1.0.0/v1.1.0/v1.1.1/v1.1.2），按 tag 跟踪
-;;; 交给 guix refresh + REFRESH_PACKAGES 自动更新；v1.1.2（2026-11-21）的 tag
+;;; 交给 guix refresh 自动更新（黑名单模型，默认覆盖全通道，无需登记）；v1.1.2（2026-11-21）的 tag
 ;;; commit 就是之前为追 main 上 deploy 修复而钉的 d6b3b6e，内容一致。若将来又有
 ;;; 未打 tag 的 main-only 修复，改成 (git-version base revision commit) 结构
 ;;; 并配合脚本的 let-绑定 commit 追踪。
@@ -1373,7 +1373,7 @@ every client, storing each file once in a content-addressed store that the
 clients reference through hard or symbolic links.  Before every write it
 checks that the game is closed and keeps a timestamped backup of the
 client's database.")
-      ;; 上游有稳定 tag 线，自动更新交给 guix refresh（REFRESH_PACKAGES）。
+      ;; 上游有稳定 tag 线，自动更新交给 guix refresh（默认覆盖全通道）。
       (license license:expat)
       (supported-systems '("x86_64-linux"))))
 
