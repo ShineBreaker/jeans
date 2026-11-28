@@ -2593,6 +2593,21 @@ package installs the prebuilt @code{linux-x64} release and needs the
 ;;; 「Run on this computer」用我们打的宿主，既不用联网下 398 MB，也不会被那条
 ;;; 版本门挡住。宿主本身同样是 bun --compile 产物，同样需要 nix-ld。
 ;;;
+;;; nsh 启动时会给 `eta://` 写自己的菜单项
+;;; （$XDG_DATA_HOME/applications/dev.eta.client.desktop，X-NSH-Generated=true）：
+;;; Exec 取 current_exe —— 也就是 lib/dev.eta.client/Eta 这个真实二进制，而不是
+;;; 本包的 bin/Eta 启动脚本；Icon 取 <exe 目录>/<app-id>.png。后者本包装好了，
+;;; 前者意味着从菜单/坞启动时拿不到 wrapper 注入的 PATH，nsh 的 host-bootstrap
+;;; 找不到 eta-host 就会去下载 398 MB（实测写
+;;; ~/.eta/desktop/host/eta-host.<pid>.download）。所以 bin/Eta 在 exec 之前先做
+;;; 一次幂等维护：把宿主链到上游「已安装宿主」的位置
+;;; $XDG_DATA_HOME/eta/host/eta-host —— 那是 host-bootstrap 候选链的第一项，此
+;;; 后任何启动方式（包括 nsh 自己注册的菜单项）都直接用仓库版本，不联网。目标
+;;; 优先取进来时 PATH 里的 eta-host（用户 profile 里装的会随 reconfigure 更新，
+;;; 软链因此跨升级不悬空），否则用本包捆绑的那份；用户自己装的宿主是真实文件，
+;;; 不动。剩下的边角只有「第一次打开就绕过了启动脚本」（例如手动跑
+;;; lib/dev.eta.client/Eta）：那一次仍会走下载，之后再经启动脚本即回正。
+;;;
 ;;; nsh 自带的 in-app updater（nsh/assets/nsh-updater.json）在 install 阶段删
 ;;; 掉：它下载整包 tar.gz 后替换 app 目录，而 store 只读，留下只会让设置页
 ;;; 显示一个永远失败的更新按钮。版本由 channel 管理（同 Electron 包删
@@ -2630,6 +2645,10 @@ package installs the prebuilt @code{linux-x64} release and needs the
       #~'(;; 上游布局：shell 与 nsh/ 必须相邻（shell 按自身 exe 位置找 nsh/）。
           ("Eta" "lib/dev.eta.client/Eta")
           ("nsh/" "lib/dev.eta.client/nsh/")
+          ;; nsh 给 eta:// 自己注册菜单项时，图标取 <exe 目录>/<app-id>.png
+          ;; （nsh-platform-linux/src/links.rs），所以图标也要放在 shell 旁边，
+          ;; 否则它写出的菜单项没有 Icon=（坞/任务栏显示空白）。
+          ("dev.eta.client.png" "lib/dev.eta.client/dev.eta.client.png")
           ("dev.eta.client.desktop"
            "share/applications/dev.eta.client.desktop")
           ("dev.eta.client.metainfo.xml"
@@ -2664,7 +2683,14 @@ package installs the prebuilt @code{linux-x64} release and needs the
                       (string-append glib "/lib/girepository-1.0:"
                                      gtk "/lib/girepository-1.0:"
                                      webkitgtk "/lib/girepository-1.0"))
-                     (fontconfig (assoc-ref inputs "fontconfig-minimal")))
+                     (fontconfig (assoc-ref inputs "fontconfig-minimal"))
+                     ;; 基础工具用绝对路径：裸会话的 PATH 可能没有 coreutils
+                     ;; （实测 PATH=/usr/bin:/bin 时 mkdir 直接不存在）。
+                     (coreutils (assoc-ref inputs "coreutils-minimal"))
+                     (bin-mkdir (string-append coreutils "/bin/mkdir"))
+                     (bin-rm (string-append coreutils "/bin/rm"))
+                     (bin-ln (string-append coreutils "/bin/ln"))
+                     (bin-readlink (string-append coreutils "/bin/readlink")))
                 ;; nsh 的 in-app updater 换不了只读 store 里的 app 目录。
                 (delete-file (string-append app "/nsh/assets/nsh-updater.json"))
                 (mkdir-p (string-append out "/bin"))
@@ -2680,6 +2706,17 @@ package installs the prebuilt @code{linux-x64} release and needs the
                         "# eta-host sits ahead of PATH: nsh looks its host up on\n"
                         "# PATH before it downloads one, so choosing this computer\n"
                         "# uses the packaged host instead of fetching 398 MB.\n"
+                        ;; 目标优先取“进来时 PATH 里的 eta-host”（用户 profile 里
+                        ;; 装的会随 reconfigure 更新，软链因此跨升级不悬空），否则
+                        ;; 用本包捆绑的那份。
+                        "host=" eta-host "/bin/eta-host\n"
+                        "oldifs=$IFS; IFS=:\n"
+                        "for d in ${PATH:-}; do\n"
+                        "  if [ -n \"$d\" ] && [ -x \"$d/eta-host\" ]; then\n"
+                        "    host=\"$d/eta-host\"; break\n"
+                        "  fi\n"
+                        "done\n"
+                        "IFS=$oldifs\n"
                         "export PATH=\"" eta-host "/bin${PATH:+:$PATH}\"\n"
                         "export FONTCONFIG_FILE=\"${FONTCONFIG_FILE:-"
                         fontconfig "/etc/fonts/fonts.conf}\"\n"
@@ -2695,14 +2732,34 @@ package installs the prebuilt @code{linux-x64} release and needs the
                         "$GUIX_GDK_PIXBUF_MODULE_FILES}\"\n"
                         "export GI_TYPELIB_PATH=\"" typelib-path
                         "${GI_TYPELIB_PATH:+:$GI_TYPELIB_PATH}\"\n"
+                        ;; nsh 给 eta:// 注册的菜单项 Exec 取真实二进制，从菜单
+                        ;; 启动时没有本脚本注入的 PATH（见包前注释）。把宿主放到
+                        ;; host-bootstrap 候选链第一项——上游 INSTALL.md Path C 的
+                        ;; “宿主装在系统上”位置——那条路也能直接用仓库版本，不会
+                        ;; 去下载 398 MB。每次启动幂等刷新；用户自己装的宿主是真
+                        ;; 实文件，不动它。
+                        "data=\"${XDG_DATA_HOME:-$HOME/.local/share}\"\n"
+                        "hostdir=\"$data/eta/host\"\n"
+                        "hostlink=\"$hostdir/eta-host\"\n"
+                        ;; 基础工具走 store 绝对路径，不依赖会话 PATH
+                        bin-mkdir " -p \"$hostdir\" 2>/dev/null || true\n"
+                        "if [ ! -e \"$hostlink\" ] || [ -L \"$hostlink\" ]; then\n"
+                        "  if [ \"$(" bin-readlink
+                        " \"$hostlink\" 2>/dev/null)\" != \"$host\" ]; then\n"
+                        "    " bin-rm " -f \"$hostlink\" 2>/dev/null\n"
+                        "    " bin-ln
+                        " -s \"$host\" \"$hostlink\" 2>/dev/null || true\n"
+                        "  fi\n"
+                        "fi\n"
                         "exec " app "/Eta \"$@\"\n")))
                   (call-with-output-file (string-append out "/bin/Eta")
                     (lambda (port)
                       (display launcher port)))
-                  (chmod (string-append out "/bin/Eta") #o755))
-                (chmod (string-append out "/bin/Eta") #o755)))))))
+                  (chmod (string-append out "/bin/Eta") #o755))))))))
     (inputs `(("bash-minimal" ,bash-minimal)
               ("cairo" ,cairo)
+              ;; 启动脚本用它的 mkdir/rm/ln/readlink 绝对路径（裸会话 PATH 可能没有）。
+              ("coreutils-minimal" ,coreutils-minimal)
               ;; 本机宿主：nsh 在 PATH 上找不到 eta-host 才会联网下载（见包前注释）。
               ("eta-host-bin" ,eta-host-bin)
               ("fontconfig-minimal" ,fontconfig)
@@ -2730,6 +2787,8 @@ Captain and remote worker machines.  This package installs the prebuilt
 @code{linux-x64} desktop client together with the @command{eta-host} it
 runs on this computer (from @code{eta-host-bin}), so the first start does
 not download a host; a host elsewhere is reached by connecting to it.
-Running a host on this computer needs the @code{nix-ld} system service.")
+Its launcher keeps that host where the client treats a host as installed,
+so starting the app from the menu does not download one either; running a
+host on this computer needs the @code{nix-ld} system service.")
     (license license:expat)
     (supported-systems '("x86_64-linux"))))
