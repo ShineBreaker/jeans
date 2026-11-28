@@ -2278,7 +2278,7 @@ requires a Qoder account.")
 (define-public crommacode
   (package
     (name "crommacode")
-    (version "0.4.13")
+    (version "1.0.4")
     (source
      (origin
        (method url-fetch)
@@ -2286,7 +2286,7 @@ requires a Qoder account.")
              "https://dl.cromma.ai/code/artifacts/" version
              "/CrommaCode-" version "-linux-amd64.deb"))
        (sha256
-        (base32 "024r65r9i8icw4bi592n1c2qnxb8x0dpclkqsh3aidrbzsdl641l"))))
+        (base32 "0pqlja3xn6rh6dlnh5g9d3hfys4rj9wgps74zvhrpxxr2p2ks1i8"))))
     (build-system binary-build-system)
     (arguments
      (list
