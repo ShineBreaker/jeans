@@ -52,6 +52,7 @@
   #:use-module (guix packages)
   #:use-module (jeans build-system binary)
   #:use-module (jeans build-system electron)
+  #:use-module (jeans telemetry)
   #:use-module ((guix licenses)
                 #:prefix license:)
   #:use-module ((nonguix licenses)
@@ -708,6 +709,11 @@ package installs the upstream prebuilt Linux binary.")
                     (display
                      (string-append
                       "#!" sh "/bin/sh\n"
+                      ;; 遥测默认关闭。github-copilot 二进制里 impeccable
+                      ;; 分析库直接判 `IMPECCABLE_NO_TELEMETRY || DO_NOT_TRACK'，
+                      ;; 因此通用表里的 DO_NOT_TRACK 就够；变量表见
+                      ;; (jeans telemetry)，与其他包 wrapper 同源。
+                      #$(telemetry-off-shell-snippet)
                       "export FONTCONFIG_FILE=" fontconf
                       "/etc/fonts/fonts.conf\n"
                       ;; Use prefix (not =) so the system XDG_DATA_DIRS
@@ -1403,7 +1409,13 @@ telemetry or forced log-ins.")
                     (,(string-append (assoc-ref inputs "glib")
                                      "/lib/gio/modules")))
                   `("FONTCONFIG_FILE" =
-                    (,(string-append fontconfig "/etc/fonts/fonts.conf"))))))))))
+                    (,(string-append fontconfig "/etc/fonts/fonts.conf"))))
+                ;; 遥测默认关闭：wrap-program 生成的 wrapper 末尾是
+                ;; `exec -a "$0" …'，把通用 export 块插在它前面（变量表见
+                ;; (jeans telemetry)，与 binary/electron build-system 同源）。
+                (substitute* (string-append out "/bin/thinkrail")
+                  (("^exec ") (string-append #$(telemetry-off-shell-snippet)
+                                              "exec ")))))))))
     (native-inputs (list patchelf tar zstd))
     (inputs `(("bash-minimal" ,bash-minimal)
               ("cairo" ,cairo)

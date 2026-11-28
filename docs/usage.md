@@ -25,6 +25,7 @@ This document provides installation instructions and complete service usage guid
   - [Sunshine Stream Host](#sunshine-stream-host)
   - [nosDshell](#nosdshell)
   - [MSIME Providers](#msime-providers)
+- [Telemetry](#telemetry)
 
 ---
 
@@ -445,3 +446,59 @@ On standard distributions, these are started via systemd user socket activation.
 #### Notes
 
 - The input method frontends (IBus engine or Fcitx5 addon) are loaded directly by IBus or Fcitx5 and do not require separate Shepherd service definitions.
+
+---
+
+## Telemetry
+
+Packages built with `jeans-binary` / `jeans-electron` ship with telemetry off by default: the generated wrappers in `bin/` export a standard opt-out set before `exec`, and the session-wide `home-telemetry-service-type` covers everything a wrapper cannot reach.
+
+### Default Variables
+
+| Variable                      | What it turns off                                                  |
+| ----------------------------- | ------------------------------------------------------------------ |
+| `DO_NOT_TRACK`                | The cross-vendor [Do Not Track](https://consoledonottrack.com) flag honored by most analytics libraries |
+| `DISABLE_TELEMETRY`           | The common opt-out of Claude Code–derived CLIs (omo-bin, workbuddy-cn, …) |
+| `DISABLE_ERROR_REPORTING`     | Claude Code–derived error reporting                                |
+| `OTEL_SDK_DISABLED`           | OpenTelemetry SDKs bundled into AI IDEs (zcode, qoder-cn, deepseek-harness-desktop-bin, …) |
+| `NEXT_TELEMETRY_DISABLED`     | Next.js built-in telemetry                                         |
+| `DOTNET_CLI_TELEMETRY_OPTOUT` | .NET SDK/tool telemetry                                            |
+
+The values are written as `export VAR="${VAR:-default}"`, so exporting your own value before launching a program wins; setting `OTEL_SDK_DISABLED=false`, for example, keeps your own OTLP exporter working.
+
+### Session-Wide Opt-Out
+
+Some packages cannot be wrapped (self-locating binaries such as `codex-bin`, `omo-bin`, `herdr-bin`, `fresh-editor-bin`, or source builds such as `gh`, `zellij`). Enable the Home service to put the same variables into your login environment:
+
+```scheme
+(use-modules (gnu home)
+             (gnu services)
+             (jeans home services telemetry))
+
+(home-environment
+  (services
+   (list (service home-telemetry-service-type))))
+```
+
+Override a single switch, or drop the whole layer:
+
+```scheme
+(service home-telemetry-service-type
+         (home-telemetry-configuration
+          (variables '(("OTEL_SDK_DISABLED" . "false")))))
+
+(service home-telemetry-service-type
+         (home-telemetry-configuration (opt-out? #f)))
+```
+
+### Per-Application Switches
+
+A few applications only read configuration files or command-line flags, so they are handled at the package or user level instead:
+
+| Package             | How telemetry is off                                                                                          |
+| ------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `zen-browser-bin`   | `distribution/policies.json` ships `DisableTelemetry` and `DisableFirefoxStudies` (Mozilla enterprise policy) |
+| `librewolf-nongnu`  | Telemetry already disabled by LibreWolf's own hardening                                                       |
+| `zed-bin`, `wu-bin` | Set `telemetry.diagnostics` and `telemetry.metrics` to `false` in the editor's `settings.json`                 |
+| `fresh-editor-bin`  | Launch with `--no-upgrade-check`, or set the update check to off in its config                                 |
+| `jdtls-bin`         | Telemetry is opt-in: it stays off unless the editor client sends `java.telemetry.enabled`                     |

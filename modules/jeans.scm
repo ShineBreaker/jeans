@@ -10,6 +10,7 @@
              (define %public-modules
                 '((gnu)
                   (guix utils)
+                  (jeans telemetry)
                   (jeans packages agent)
                   (jeans packages android)
                   (jeans packages browser)
@@ -35,6 +36,7 @@
                   (jeans home services desktop)
                   (jeans home services emacs-xyz)
                   (jeans home services hardware)
+                  (jeans home services telemetry)
                   (jeans home services tools)
                   (jeans services android)
                   (jeans services hardware)

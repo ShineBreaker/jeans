@@ -25,6 +25,7 @@
   - [Sunshine 串流服务端](#sunshine-串流服务端)
   - [nosDshell](#nosdshell)
   - [水杉输入法辅助服务](#水杉输入法辅助服务)
+- [遥测默认关闭](#遥测默认关闭)
 
 ---
 
@@ -445,3 +446,59 @@ waydroid session start
 #### 注意事项
 
 - IBus 引擎或 Fcitx5 插件等输入法前端宿主由各自框架自行加载，无需在 Shepherd 中另建服务；本服务仅负责其后台网络与辅助数据提供进程。
+
+---
+
+## 遥测默认关闭
+
+本通道里用 `jeans-binary` / `jeans-electron` 构建的包默认关掉遥测：生成的 `bin/` wrapper 在 `exec` 之前导出下面这组开关；wrapper 覆盖不到的场合由会话级的 `home-telemetry-service-type` 负责。
+
+### 默认变量
+
+| 变量                          | 关掉的东西                                                                |
+| ----------------------------- | ------------------------------------------------------------------------- |
+| `DO_NOT_TRACK`                | 跨厂商的 [Do Not Track](https://consoledonottrack.com) 标准，多数分析库都认 |
+| `DISABLE_TELEMETRY`           | Claude Code 衍生 CLI 的通用开关（omo-bin、workbuddy-cn 等）                |
+| `DISABLE_ERROR_REPORTING`     | Claude Code 衍生的错误上报                                                 |
+| `OTEL_SDK_DISABLED`           | AI IDE 内嵌的 OpenTelemetry SDK（zcode、qoder-cn、deepseek-harness-desktop-bin 等） |
+| `NEXT_TELEMETRY_DISABLED`     | Next.js 内建遥测                                                           |
+| `DOTNET_CLI_TELEMETRY_OPTOUT` | .NET SDK / 工具遥测                                                        |
+
+写法是 `export VAR="${VAR:-default}"`：启动程序前自己 export 的值优先。比如要让自己的 OTLP exporter 继续工作，设 `OTEL_SDK_DISABLED=false` 即可。
+
+### 会话级关闭
+
+有些包没法 wrap——自定位二进制（`codex-bin`、`omo-bin`、`herdr-bin`、`fresh-editor-bin`）和源码构建的包（`gh`、`zellij`）。开启下面这个用户服务，同一组变量会进入登录环境，这些程序也一并默认关闭：
+
+```scheme
+(use-modules (gnu home)
+             (gnu services)
+             (jeans home services telemetry))
+
+(home-environment
+  (services
+   (list (service home-telemetry-service-type))))
+```
+
+单项覆盖或整层关掉：
+
+```scheme
+(service home-telemetry-service-type
+         (home-telemetry-configuration
+          (variables '(("OTEL_SDK_DISABLED" . "false")))))
+
+(service home-telemetry-service-type
+         (home-telemetry-configuration (opt-out? #f)))
+```
+
+### 各软件自己的开关
+
+有几个软件只认配置文件或命令行开关，因此在包内或用户侧单独处理：
+
+| 包                  | 遥测怎么关                                                                       |
+| ------------------- | -------------------------------------------------------------------------------- |
+| `zen-browser-bin`   | 包内 `distribution/policies.json` 写入 `DisableTelemetry` 与 `DisableFirefoxStudies`（Mozilla 企业策略） |
+| `librewolf-nongnu`  | LibreWolf 自身硬化已关掉遥测                                                     |
+| `zed-bin`、`wu-bin` | 在编辑器 `settings.json` 里把 `telemetry.diagnostics`、`telemetry.metrics` 置 `false` |
+| `fresh-editor-bin`  | 用 `--no-upgrade-check` 启动，或在配置里关掉更新检查                             |
+| `jdtls-bin`         | 遥测是 opt-in：编辑器不发送 `java.telemetry.enabled` 时保持关闭                  |

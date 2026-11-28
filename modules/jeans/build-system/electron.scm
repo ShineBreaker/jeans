@@ -24,7 +24,8 @@
 ;;;
 ;;; 默认 phases 实测顺序：install → disable-electron-updater → patchelf → wrap
 ;;; → wrap-electron → prefer-wayland → prefer-wayland-hint → ensure-secret-service
-;;; → desktop-files。
+;;; → telemetry-opt-out → desktop-files。最后一项遥测注入来自基座
+;;; （(jeans build telemetry)），排在所有 wrapper 改写之后。
 ;;;
 ;;; 与基座的分工：Electron 专属五个关键字（#:disable-updater?
 ;;; #:application-directory #:wayland? #:program #:app-dir）的值随 builder

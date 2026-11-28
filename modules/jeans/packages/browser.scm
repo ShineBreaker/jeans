@@ -403,6 +403,14 @@ keeps the language selection interface enabled.")
               ;; 更新因此是激活的（自带 updater + updater.ini）。DisableAppUpdate
               ;; 是 Mozilla 官方企业策略键（policy-templates），store 只读下更新
               ;; 本也装不进去，干脆在策略层关掉检查与下载。
+              ;;
+              ;; 遥测同层关掉，不再依赖首次启动的选项：
+              ;;   DisableTelemetry      Firefox 官方策略，关 datareporting 健康
+              ;;                         报告与 toolkit.telemetry 上传；
+              ;;   DisableFirefoxStudies 关 Normandy/shield 远程实验（会带数据上报）；
+              ;;   Preferences           策略层没有覆盖崩溃上报自动提交的键，用
+              ;;                         pref 关掉未提交崩溃的自动上传（用户仍可手动
+              ;;                         在 about:crashes 里提交）。
               (let ((dir (string-append #$output
                                         "/lib/zen/distribution")))
                 (mkdir-p dir)
@@ -412,7 +420,15 @@ keeps the language selection interface enabled.")
                      (string-append
                       "{\n"
                       "  \"policies\": {\n"
-                      "    \"DisableAppUpdate\": true\n"
+                      "    \"DisableAppUpdate\": true,\n"
+                      "    \"DisableTelemetry\": true,\n"
+                      "    \"DisableFirefoxStudies\": true,\n"
+                      "    \"Preferences\": {\n"
+                      "      \"browser.crashReports.unsubmittedCheck.autoSubmit2\": {\n"
+                      "        \"Value\": false,\n"
+                      "        \"Status\": \"default\"\n"
+                      "      }\n"
+                      "    }\n"
                       "  }\n"
                       "}\n")
                      port))))))

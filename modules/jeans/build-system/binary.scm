@@ -18,6 +18,8 @@
 ;;; - #:patchelf-plan：((PATH [SPEC ...]) ...)，见 build-side。
 ;;; - #:preserve-rpath?（默认 #f）。
 ;;; - #:wrap?（默认 #t）/#:wrap-plan：直通 wrap-program。
+;;; - #:telemetry-opt-out?（默认 #t）：把通用遥测关闭 export 注入 $out/bin 下每个
+;;;   shell wrapper（build 侧 (jeans build telemetry)）；#f 整包跳过。
 ;;; - #:desktop-files：(DESKTOP [EXEC [ICON]]) 列表，简单版重写。
 ;;; - #:wayland?/#:disable-updater?/#:program/#:application-directory：
 ;;;   Electron 专属键，基座 dormant 透传（不校验不剥离，随 builder 参数直达 phases；
@@ -54,7 +56,9 @@
   ;; guile-for-build 自带，不经 imported-modules 拷贝；显式列入（此处或
   ;; 包的 #:imported-modules）会触发 Guix 的 "importing modules from
   ;; the host" 警告。包的 #:modules（use-modules 列表）不受此限。
-  `((jeans build binary)
+  `((jeans telemetry)
+    (jeans build telemetry)
+    (jeans build binary)
     ,@%default-gnu-imported-modules))
 
 (define (default-patchelf)
@@ -113,6 +117,7 @@
                              (preserve-rpath? #f)
                              (wrap? #t)
                              (wrap-plan ''())
+                             (telemetry-opt-out? #t)
                              (desktop-files ''())
                              ;; Electron 专属键：基座 dormant 透传给 phases，自身不消费。
                              (wayland? #f)
@@ -167,6 +172,7 @@
                               #:wrap-plan #$(if (pair? wrap-plan)
                                                 (sexp->gexp wrap-plan)
                                                 wrap-plan)
+                              #:telemetry-opt-out? #$telemetry-opt-out?
                               #:desktop-files #$(if (pair? desktop-files)
                                                     (sexp->gexp desktop-files)
                                                     desktop-files)
