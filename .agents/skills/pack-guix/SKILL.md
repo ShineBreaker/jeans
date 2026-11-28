@@ -1,6 +1,6 @@
 ---
 name: pack-guix
-description: "Use when creating, updating, or reviewing a Guix package in this channel: naming (-bin/-se/-next), license evidence, hashes, wrappers, precompiled binaries (.deb/AppImage/ELF/FHS), cargo inputs via import-crate, lint, build verification, refresh properties. Not for version-bump mechanics or CI failures — that's auto-update."
+description: "Use when creating, updating, or reviewing a Guix package in this channel: naming (-bin/-se/-next), license evidence, hashes, wrappers, precompiled binaries (.deb/AppImage/ELF/FHS), telemetry opt-out, cargo inputs via import-crate, lint, build verification, refresh properties. Not for version-bump mechanics or CI failures — that's auto-update."
 ---
 
 # Pack-Guix
@@ -126,7 +126,15 @@ fontconfig 变量的实际包名是 fontconfig-minimal，openjdk17 变量的实�
 - shell wrapper 使用 store 中的 bash-minimal，不写宿主 /bin/sh 或 /usr/bin/env。
 - Electron 包删除会触发 electron-updater 的 resources/package-type；Wayland 支持复用 agent.scm 的 prefer-electron-wayland-phase（注入 flag）或 prefer-electron-wayland-hint-phase（argv 解析严格的上游只认 ELECTRON_OZONE_PLATFORM_HINT env），见 conventions-prebuilt.md「Electron 包的 Wayland/Ozone 参数」。
 
-完成标准：构建阶段不依赖网络更新、不写入 store 外的源码目录；wrapper、desktop 文件、资源和可写数据路径都指向正确位置；所有输入 label 可由 guix show 证明。
+**遥测默认关闭**：探上游时（源码字符串、release 资产、配置项、环境变量）找到能停掉遥测的开关，就在包里默认关闭写进定义，不等用户提要求。
+
+- 变量表只有一个：`(jeans telemetry)` 的 `%telemetry-off-variables`（`DO_NOT_TRACK` / `DISABLE_TELEMETRY` / `OTEL_SDK_DISABLED` 等）。`jeans-binary` 与 `jeans-electron` 的 `telemetry-opt-out` phase 已自动注入到 `bin/` 下每个 shell wrapper，预编译包无需声明；`#:telemetry-opt-out? #f` 是例外，必须写明理由。
+- 不用这两个 build-system 的包（gnu-build-system 手写 wrapper、wrap-program 产物）用同一个 `telemetry-off-shell-snippet` 拼进 wrapper，不另写一张表。
+- 写成「默认关」而不是硬禁：`export VAR="${VAR:-默认值}"`，用户显式设置能覆盖。
+- 只认配置文件的软件在包内落默认值（Firefox 系写 `distribution/policies.json` 的企业策略），或只能靠用户配置（如 zed 系 settings.json、fresh-editor 的 `--no-upgrade-check`）时在包定义注释与交接汇报里写明。
+- 关不掉的（DSN/端点写死在二进制或 app.asar、只有服务端开关、改 bundle 会触发 asar 完整性校验）不硬改，列出来交用户决定。
+
+完成标准：构建阶段不依赖网络更新、不写入 store 外的源码目录；wrapper、desktop 文件、资源和可写数据路径都指向正确位置；所有输入 label 可由 guix show 证明；上游遥测开关已关闭或已列明为何关不了。
 
 ### 5. Load, build, and lint
 
@@ -185,6 +193,7 @@ synopsis,gnu-description <package-name>
 
 ## Hard guards
 
+- 不把能关的遥测原样打包：wrapper / 环境变量 / 配置项里找得到的开关必须默认关闭，除非在定义里写明为什么不能关。
 - 不把开源预编译包和闭源包统一命名；先看许可证。
 - 不用固定 /tmp 路径；每次运行使用唯一 WORK_DIR。
 - 不用手工 SHA256 转换替代 guix download/guix hash -rx。
