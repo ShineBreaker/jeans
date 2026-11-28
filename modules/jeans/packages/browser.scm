@@ -491,7 +491,7 @@ We care about your experience, not your data.")
 (define-public ardia-bin
   (package
     (name "ardia-bin")
-    (version "0.2.48")
+    (version "0.2.49")
     (source
      (origin
        (method url-fetch)
@@ -499,7 +499,7 @@ We care about your experience, not your data.")
              "https://github.com/ardia-browser/ardia/releases/download/v"
              version "/Ardia-" version "-linux-x64.deb"))
        (sha256
-        (base32 "0fp2jblzhccb0wa7q6xmwp17zz435ppi79d510nd9npfh5vk3qqn"))))
+        (base32 "0d1q7z7981k9xwnpd4vs21xdaskglqizyfaypvnzv538hmmhq6hz"))))
     (build-system binary-build-system)
     (arguments
      (list

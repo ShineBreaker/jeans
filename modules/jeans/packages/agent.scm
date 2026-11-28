@@ -175,7 +175,7 @@ release.")
 (define-public pi-bin
   (package
     (name "pi-bin")
-    (version "1.6.1")
+    (version "1.7.0")
     (source
      (origin
        (method url-fetch)
@@ -183,7 +183,7 @@ release.")
              "https://github.com/earendil-works/pi/releases/download/v"
              version "/pi-linux-x64.tar.gz"))
        (sha256
-        (base32 "0s3v6p48yqfw9az4hxxzsma3pj3k9lqsv36sq1jy24mmbrqh0zrw"))))
+        (base32 "0jlgqqm410m2js153aar85wd3is5vi86sx6j3pjpywizx1kyvxs2"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -1066,7 +1066,7 @@ coding experience with context awareness.")
 (define-public paseo-bin
   (package
     (name "paseo-bin")
-    (version "0.17.4")
+    (version "0.18.1")
     (source
      (origin
        (method url-fetch)
@@ -1074,7 +1074,7 @@ coding experience with context awareness.")
              "https://github.com/getpaseo/paseo/releases/download/"
              "v" version "/Paseo-" version "-amd64.deb"))
        (sha256
-        (base32 "1ygw50fx0fbwbr7a1w4rvl3zc2x4fpv6143yqra6rrmnh2yacbn7"))))
+        (base32 "0xgdq74a2yikv2hb527x90lm85s3addspvzw9cfg5dxjgw6njadc"))))
     (build-system electron-build-system)
     (arguments
      (list
@@ -1262,7 +1262,7 @@ telemetry or forced log-ins.")
 (define-public thinkrail-bin
   (package
     (name "thinkrail-bin")
-    (version "0.4.0")
+    (version "0.5.0")
     (source
      (origin
        (method url-fetch)
@@ -1270,7 +1270,7 @@ telemetry or forced log-ins.")
              "https://github.com/JetBrains/thinkrail/releases/download/"
              "v" version "/stable-linux-x64-ThinkRail-" version ".tar.zst"))
        (sha256
-        (base32 "1syv1khaqvxi42ca6vmac94ag665ad8cmcjglk3nkd5lqk68ym5q"))))
+        (base32 "16zwi28c95bb95anaqgqy2l5x4p3ib609zvjryd5hbg0qcsr4a29"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -1439,7 +1439,7 @@ configure.  This package provides the prebuilt desktop release.")
 (define-public zcode
   (package
     (name "zcode")
-    (version "4.0.0")
+    (version "4.1.0")
     (source
      (origin
        (method url-fetch)
@@ -1447,7 +1447,7 @@ configure.  This package provides the prebuilt desktop release.")
              "https://cdn-zcode.z.ai/zcode/electron/releases/"
              version "/linux-x64/ZCode-" version "-linux-x64.deb"))
        (sha256
-        (base32 "0si5md9prs5di1yfgfyxckniq47ls04aw9b52zij7yix1vm0wbs0"))))
+        (base32 "1bjj9cc1snhy9m73pkjagvcrnyyyrbcwjsvs22sfvi3sbsvq7cql"))))
     (build-system electron-build-system)
     (arguments
      (list
@@ -1686,7 +1686,7 @@ release and needs the @code{nix-ld} system service to run.")
 (define-public omo-bin
   (package
     (name "omo-bin")
-    (version "5.1.83")
+    (version "5.1.84")
     (source
      (origin
        (method url-fetch)
@@ -1695,7 +1695,7 @@ release and needs the @code{nix-ld} system service to run.")
              "v" version "/omo-linux-x64"))
        (sha256
         (base32
-         "08szvr9mv9dpml925shj50s45lv9yng82f5411k5fdhvp06ahabm"))))
+         "0fyk91i3m9s3aqq8hq4rb3hpd9z3kiq5wqkipv3xddps9gpdzf8l"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -1735,7 +1735,7 @@ run.")
 (define-public cua-driver-bin
   (package
     (name "cua-driver-bin")
-    (version "0.62.1")
+    (version "0.65.0")
     (source
      (origin
        (method url-fetch)
@@ -1744,7 +1744,7 @@ run.")
              "cua-driver-rs-v" version
              "/cua-driver-rs-" version "-linux-x86_64-binary.tar.gz"))
        (sha256
-        (base32 "1h1i6q11d36rlmf09ryi004973dhbxlnhgr4jicxksb21y3gj019"))))
+        (base32 "188vfi7f99didz5rrsak8sasvr8pfljqwrcyc96y3q0yfp038mdq"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -1866,7 +1866,7 @@ so the bundled self-updater should not be used.")
 (define-public magpie-bin
   (package
     (name "magpie-bin")
-    (version "0.1.4851")
+    (version "0.1.5003")
     (source
      (origin
        (method url-fetch)
@@ -1874,7 +1874,7 @@ so the bundled self-updater should not be used.")
              "https://github.com/yetone/magpie-releases/releases/download/"
              "v" version "/magpie-linux-amd64"))
        (sha256
-        (base32 "06fr5yzwbxr5nagb1vrkj3a2kzmpva6xnjdac6n6c48v995i1clb"))))
+        (base32 "10vh7f6iaw3dm936yl46v4qs4cfjdkqrmqfcykd9v9g2273l6yw7"))))
     (build-system binary-build-system)
     (arguments
      (list
@@ -2508,7 +2508,7 @@ distribution itself is downloaded on first launch.")
 (define-public eta-host-bin
   (package
     (name "eta-host-bin")
-    (version "0.4.0")
+    (version "0.5.0")
     (source
      (origin
        (method url-fetch)
@@ -2516,7 +2516,7 @@ distribution itself is downloaded on first launch.")
              "https://github.com/0xfe-project/eta/releases/download/"
              "v" version "/eta-host-linux-x64"))
        (sha256
-        (base32 "18dksar9gx0szw9whny82rn1jq7ils7qxa3v621kdqa20d8lzshs"))))
+        (base32 "0nj5ax1znlf8kgnhr3psa1xd8pgybibki8yqiqp33xsbj5qdmasz"))))
     (build-system binary-build-system)
     (arguments
      (list

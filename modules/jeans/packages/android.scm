@@ -124,7 +124,7 @@ wrappers used by the Sailfish OS middleware stack.")
 (define-public libgbinder
   (package
     (name "libgbinder")
-    (version "1.1.55")
+    (version "1.1.56")
     (source
      (origin
        (method git-fetch)
@@ -133,7 +133,7 @@ wrappers used by the Sailfish OS middleware stack.")
              (commit version)))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "00rbwmkh9jq7hp1a8g9nml43dymjfd4lsf9znvdi64ylamfxwhnn"))))
+        (base32 "0ifz8sx8bqpjs3kys0qcgf3blys37i3xryn8r1bj2jnp7wl9gy86"))))
     (build-system gnu-build-system)
     (arguments
      (list #:make-flags

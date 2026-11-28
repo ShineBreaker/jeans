@@ -69,8 +69,8 @@
 (define-public winapps
   ;; 上游不打 tag，追踪 main 分支 HEAD；由 guix refresh 的
   ;; latest-git-commit updater 自动更新 commit 和 revision。
-  (let ((commit "0b950dc4b823a759015c549a46c35aaaf31c77c0")
-        (revision "5"))
+  (let ((commit "a8daa9046bb41d5182cd6790df49e041d6c9fc63")
+        (revision "6"))
     (package
       (name "winapps")
       (version (git-version "0" revision commit))
@@ -82,7 +82,7 @@
                (commit commit)))
          (file-name (git-file-name name version))
          (sha256
-          (base32 "1i7zjga7vshvwys6jdx7a4ybpcjnqakw8rd1h3w2llq3v1i2z49w"))
+          (base32 "1zw5vi2l6k470phlv2f5b70iydjflqzf57acyh64mr1xyrw55dfv"))
          (patches
           (map canonicalize-path
                (search-patches
@@ -417,7 +417,7 @@ HTTP/HTTPS, FTP, SFTP, BitTorrent and Metalink.")
 (define-public rayburst-bin
   (package
     (name "rayburst-bin")
-    (version "4.1.2")
+    (version "4.1.3")
     (source
      (origin
        (method url-fetch)
@@ -425,7 +425,7 @@ HTTP/HTTPS, FTP, SFTP, BitTorrent and Metalink.")
              "https://github.com/AnInsomniacy/rayburst/releases/download/"
              "v" version "/Rayburst_" version "_amd64.deb"))
        (sha256
-        (base32 "1rgry6h0iiysv9pqhzlq6f76fk164zsqi17ayhprg9xzanv4q2p7"))))
+        (base32 "0zngp8fr9892yl8vi8v4yxh2jnd9qd8l25z7z1l05sgc2m2gxlyk"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -571,7 +571,7 @@ companion extension.  This package provides the prebuilt binary release.")
 (define-public cc-switch-bin
   (package
     (name "cc-switch-bin")
-    (version "4.0.42")
+    (version "4.0.44")
     (source
      (origin
        (method url-fetch)
@@ -579,7 +579,7 @@ companion extension.  This package provides the prebuilt binary release.")
              "https://github.com/farion1231/cc-switch/releases/download/"
              "v" version "/CC-Switch-v" version "-Linux-x86_64.deb"))
        (sha256
-        (base32 "0k2j7cgz0rd9mkfdgms6lsbzwpnxvhz544d2qch15x62w6hyzx37"))))
+        (base32 "0r8c10l44yz8izmwcwmi49yl0kmkhfappzpyx094n87574rb29l7"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -722,8 +722,8 @@ enables command-line applications to interact with @code{keepassxc} databases.")
 ;;; @file{/var/lib/apm}.
 
 (define-public amber-pm
-  (let ((commit "ade6a15781afe2d5786795580b1df22d1b8cc4e1")
-        (revision "4"))
+  (let ((commit "05c0cb4bf01b7201ae9c6a5a8a3559366584b02d")
+        (revision "5"))
     (package
       (name "amber-pm")
       (version (git-version "1.3.2" revision commit))
@@ -735,7 +735,7 @@ enables command-line applications to interact with @code{keepassxc} databases.")
                (commit commit)))
          (file-name (git-file-name name version))
          (sha256
-          (base32 "0cf45a713y54avcf6ssja9fi8f544yicisvxc46654q0q0s35n2q"))))
+          (base32 "1y16rf1hh7vsidhyxapagfbdwhvfrd765rcywdpizjzpiaisfd67"))))
       (build-system gnu-build-system)
       (arguments
        (list
@@ -1207,7 +1207,7 @@ prebuilt binary.")
 (define-public pnpm-bin
   (package
     (name "pnpm-bin")
-    (version "12.23.0")
+    (version "12.24.0")
     (source
       (origin
         (method url-fetch)
@@ -1215,7 +1215,7 @@ prebuilt binary.")
               "https://github.com/pnpm/pnpm/releases/download/v"
               version "/pnpm-linux-x64.tar.gz"))
         (sha256
-          (base32 "1b1nybg1p0kn6jnyf5sgyappp0l2cr542wriwvxw1bf15agy45dm"))))
+          (base32 "11a56yz5rf0m7qh1c0zgwscv45sl4bg4m6hxy6f4ryq3a8g04rqw"))))
     (build-system binary-build-system)
     (arguments
      (list

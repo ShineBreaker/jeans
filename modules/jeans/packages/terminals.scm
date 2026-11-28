@@ -134,7 +134,7 @@ Windows Terminal, Visual Studio, Alacritty, Vim, and more.")
     ;; guix refresh 的 GitHub updater 只认普通 tag，会把 docking 变体改写成
     ;; 不存在的 tag（v1.93.1-docking 上游就没发）。不能写
     ;; (package-version imgui)——docking 线与普通线的 release 不同步。
-    (version "1.93.0")
+    (version "1.93.1")
     (source
      (origin
        (inherit (package-source imgui))
@@ -145,7 +145,7 @@ Windows Terminal, Visual Studio, Alacritty, Vim, and more.")
        ;; 这个 hash 是 v<version>-docking 的，不是父包 v<version> 的；两
        ;; tag 指向不同提交。
        (sha256
-        (base32 "19s380j553mls9y803l9lh20s9ijjq27ld0mhs2z82045sbg881l"))))
+        (base32 "1cbyrqrgvrq0j2psblzvshd3vapz2i9bj126n2ycrzyvmi6agy7v"))))
     (home-page "https://github.com/ocornut/imgui/wiki/docking")
     (synopsis "Immediate-mode C++ GUI library with docking with minimal dependencies")
     (description "@code{dear imgui} (also know as ImGui) is a graphical user

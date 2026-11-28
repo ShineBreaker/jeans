@@ -420,7 +420,7 @@ XenceLabs, Gaomon, Veikk and others, configured through a graphical interface.")
 (define-public i915-sriov-linux-module
   (package
     (name "i915-sriov-linux-module")
-    (version "2026.11.05")
+    (version "2026.11.26")
     (source
       (origin
         (method git-fetch)
@@ -429,7 +429,7 @@ XenceLabs, Gaomon, Veikk and others, configured through a graphical interface.")
               (commit version)))
         (file-name (git-file-name name version))
         (sha256
-          (base32 "0azy55v6z6ap01xb1rnhj8imbqzakm18j6lqwn86770hmy8yamsq"))))
+          (base32 "0xizdzpad8b9s8136zvxprxz16rcggxwsc92pw9ph4ks18pvcnp5"))))
     (build-system linux-module-build-system)
     (arguments
      (list #:tests? #f
