@@ -451,7 +451,7 @@ On standard distributions, these are started via systemd user socket activation.
 
 ## Telemetry
 
-Packages built with `jeans-binary` / `jeans-electron` ship with telemetry off by default: the generated wrappers in `bin/` export a standard opt-out set before `exec`, and the session-wide `home-telemetry-service-type` covers everything a wrapper cannot reach.
+Packages built with `jeans-binary` / `jeans-electron` ship with telemetry off by default: the generated launcher wrappers (`bin/`, or `lib/`‑`share/` when the launcher lives there) export a standard opt-out set before `exec`, and the session-wide `home-telemetry-service-type` covers everything a wrapper cannot reach.
 
 ### Default Variables
 

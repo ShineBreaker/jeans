@@ -451,7 +451,7 @@ waydroid session start
 
 ## 遥测默认关闭
 
-本通道里用 `jeans-binary` / `jeans-electron` 构建的包默认关掉遥测：生成的 `bin/` wrapper 在 `exec` 之前导出下面这组开关；wrapper 覆盖不到的场合由会话级的 `home-telemetry-service-type` 负责。
+本通道里用 `jeans-binary` / `jeans-electron` 构建的包默认关掉遥测：生成的 launcher wrapper（`bin/` 下，或 launcher 实际住在 `lib/`、`share/` 时的那一层）在 `exec` 之前导出下面这组开关；wrapper 覆盖不到的场合由会话级的 `home-telemetry-service-type` 负责。
 
 ### 默认变量
 

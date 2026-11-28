@@ -28,21 +28,44 @@
 (define-module (jeans build telemetry)
   #:use-module (guix build utils)
   #:use-module (ice-9 binary-ports)
+  #:use-module (ice-9 ftw)
   #:use-module (ice-9 match)
   #:use-module (ice-9 rdelim)
+  #:use-module (rnrs bytevectors)
   #:use-module (srfi srfi-1)
   #:use-module (jeans telemetry)
   #:export (telemetry-opt-out-phase))
 
-(define (script-file? file)
-  "FILE 是否以 \"#!\" 开头的脚本（按字节读，不碰 ELF 的解码问题）。"
+(define (read-shebang file)
+  "读 FILE 头 128 字节里的第一行（shebang）；不是 \"#!\" 开头时返回 #f。
+按字节读并截断，避免把 ELF/大二进制整块读进内存。"
   (let* ((port (open-file file "rb"))
-         (first (get-u8 port))
-         (second (get-u8 port)))
+         (bv (get-bytevector-n port 128)))
     (close-port port)
-    (and first second
-         (= first (char->integer #\#))
-         (= second (char->integer #\!)))))
+    (and bv
+         (>= (bytevector-length bv) 2)
+         (= (bytevector-u8-ref bv 0) (char->integer #\#))
+         (= (bytevector-u8-ref bv 1) (char->integer #\!))
+         (let* ((len (bytevector-length bv))
+                (end (or (list-index (lambda (i)
+                                       (= (bytevector-u8-ref bv i) 10))
+                                     (iota len))
+                         len)))
+           ;; shebang 恒为 ASCII：逐字节转 char，避开 utf8->string 的签名差异。
+           (list->string
+            (map (lambda (i) (integer->char (bytevector-u8-ref bv i)))
+                 (iota end)))))))
+
+(define (script-file? file)
+  "FILE 是否为 shell 脚本（shebang 指向 sh/bash）。
+只动 shell wrapper：wrap-program 生成的 wrapper 恒为 bash，而 bin/ 下上游自带
+的 python/node/perl 脚本一旦被塞进 export 行就会坏。"
+  (let ((line (read-shebang file)))
+    (and line
+         (if (or (string-contains line "bash")
+                 (string-suffix? "/sh" line))
+             #t
+             #f))))
 
 (define (exec-line? line)
   "LINE 是否顶层 exec 调用（`exec '、`exec\t' 或整行 `exec'）。"
@@ -91,25 +114,79 @@
                                     (drop lines anchor)))
           #t))))
 
+(define (to-abs out path)
+  "PATH 是输出内相对路径时拼成绝对路径，绝对路径原样返回。"
+  (if (string-prefix? "/" path)
+      path
+      (string-append out "/" path)))
+
+(define (resolve-symlink file)
+  "跟随 FILE 的符号链接链（相对目标按链所在目录解析），超过 10 层或链断时
+返回最后到达的路径。"
+  (let loop ((file file) (depth 0))
+    (let ((st (false-if-exception (lstat file))))
+      (cond ((not st) file)
+            ((not (eq? 'symlink (stat:type st))) file)
+            ((> depth 10) file)
+            (else
+             (let ((target (readlink file)))
+               (loop (if (string-prefix? "/" target)
+                         target
+                         (string-append (dirname file) "/" target))
+                     (1+ depth))))))))
+
+(define (directory-entries dir)
+  "DIR 下的顶层条目名；DIR 不存在时返回 '()。"
+  (if (file-exists? dir)
+      (scandir dir (lambda (entry)
+                     (not (member entry '("." "..")))))
+      '()))
+
+(define (wrap-plan-targets out plan)
+  "把 #:wrap-plan 里每个 PROG 解成输出内绝对路径；PLAN 非列表时返回 '()。"
+  (if (list? plan)
+      (filter-map (match-lambda
+                    ((? string? prog) (to-abs out prog))
+                    ((prog . _) (to-abs out prog))
+                    (_ #f))
+                  plan)
+      '()))
+
 (define* (telemetry-opt-out-phase
-          #:key outputs
+          #:key outputs wrap-plan
           (telemetry-opt-out? #t)
           (telemetry-variables %telemetry-off-variables)
           #:allow-other-keys)
-  "给 $out/bin 下每个 shell wrapper 注入默认关闭遥测的环境变量。"
+  "给 $out/bin 下与 #:wrap-plan 指向的每个 shell wrapper 注入默认关闭遥测的
+环境变量。只看这两处：整目录扫 lib/、share/ 会把 node_modules 与上游自带
+脚本一并改写，代价远大于收益。
+
+#:wrap-plan 的目标要单独收：部分包把 launcher 装在 lib/<app>/bin 或
+share/<app>/bin（wu-bin、jdtls-bin、prettier-bin 实证），bin/ 下只是指向它的
+符号链接，只扫 bin/ 会静默漏掉整个包装。"
   (when telemetry-opt-out?
     (let* ((out (assoc-ref outputs "out"))
-           (bin (string-append out "/bin")))
-      (when (file-exists? bin)
-        (for-each (lambda (file)
-                    (when (and (script-file? file)
-                               (inject-telemetry-opt-out
-                                file #:variables telemetry-variables))
-                      (format #t "telemetry: opt-out injected into ~a~%"
-                              (basename file))))
-                  (find-files bin
-                              (lambda (_file stat)
-                                (eq? 'regular (stat:type stat))))))))
+           (candidates
+            (delete-duplicates
+             (append
+              (map (lambda (base) (string-append out "/bin/" base))
+                   (directory-entries (string-append out "/bin")))
+              (wrap-plan-targets out wrap-plan))
+             string=?)))
+      (for-each
+       (lambda (candidate)
+         (let ((file (resolve-symlink candidate)))
+           ;; 符号链接可能指向别的 store item（共享 launcher）：只在输出内部
+           ;; 动手，跨包改写会被 store 的只读权限挡住，也不该改。
+           (when (and (string-prefix? (string-append out "/") file)
+                      (file-exists? file)
+                      (eq? 'regular (stat:type (stat file)))
+                      (script-file? file)
+                      (inject-telemetry-opt-out
+                       file #:variables telemetry-variables))
+             (format #t "telemetry: opt-out injected into ~a~%"
+                     (substring file (1+ (string-length out)))))))
+       candidates)))
   #t)
 
 ;;; telemetry.scm ends here
