@@ -36,6 +36,7 @@ parent_linux.go 里把父进程可执行文件白名单写死成 /usr/lib、/opt
 
 import hashlib
 import json
+import re
 import struct
 import sys
 
@@ -148,9 +149,13 @@ SPECS = {
     ("function iG(e){const t=[", "function iG(e){const t=[...gxDesktopEntryPaths(e),", 1),
     ]},
     # Qoder：重启脚本、ELECTRON_RUN_AS_NODE 包装、进程清理、硬件探测。
+    #
+    # 重启辅助进程那条锚点里的变量名是压缩后的别名（0.5.20 是 xli、0.5.21
+    # 变成 gli），写死字面量每次上游发版都会断，故用正则只锁结构与
+    # "qoder-relaunch" 标记；其余锚点仍是字面量（跨版本稳定，实证）。
     "qoder-cn": {"prefixes": ["out/main/"], "edits": [
-        ('("/bin/bash",["-c",xli,"qoder-relaunch"',
-         '(gxResolveBin("bash"),["-c",xli,"qoder-relaunch"', 1),
+        (re.compile(r'\(\"/bin/bash\",\["-c\",([A-Za-z_$][\w$]*),"qoder-relaunch"'),
+         r'(gxResolveBin("bash"),["-c",\1,"qoder-relaunch"', 1),
         ('[r==="win32"?"env":"/usr/bin/env","ELECTRON_RUN_AS_NODE=1"]',
          '[r==="win32"?"env":gxResolveBin("env"),"ELECTRON_RUN_AS_NODE=1"]', 1),
         ('("/usr/bin/pkill",["-f","esa-agent"]',
@@ -255,15 +260,24 @@ def patch_chunks(asar, app_id, prefixes, edits):
     for item in edits:
         anchor, replacement = item[0], item[1]
         expected = item[2] if len(item) > 2 else 1
-        hits = [m for m, text in sources.items() if anchor in text]
-        found = sum(sources[m].count(anchor) for m in hits)
+        # 字面量锚点直接 in/count；正则锚点用于含压缩别名的结构，替换串里的
+        # \1 回填捕获到的别名（别名本身不动，只改调用形态）。
+        if isinstance(anchor, re.Pattern):
+            hits = [m for m, text in sources.items() if anchor.search(text)]
+            found = sum(len(anchor.findall(sources[m])) for m in hits)
+        else:
+            hits = [m for m, text in sources.items() if anchor in text]
+            found = sum(sources[m].count(anchor) for m in hits)
         if found != expected:
             where = ", ".join(hits) or "无"
             raise SystemExit(
                 f"asar: 锚点命中 {found} 次（期望 {expected}，位于 {where}）："
                 f"{anchor[:120]!r}")
         for member in hits:
-            sources[member] = sources[member].replace(anchor, replacement)
+            if isinstance(anchor, re.Pattern):
+                sources[member] = anchor.sub(replacement, sources[member])
+            else:
+                sources[member] = sources[member].replace(anchor, replacement)
             touched.add(member)
 
     updates = {}

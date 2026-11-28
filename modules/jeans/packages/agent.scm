@@ -2146,7 +2146,7 @@ Tencent account.")
 (define-public qoder-cn
   (package
     (name "qoder-cn")
-    (version "0.5.20")
+    (version "0.5.21")
     (source
      (origin
        (method url-fetch)
@@ -2154,7 +2154,7 @@ Tencent account.")
              "https://static.qoder.com.cn/qoder-app/releases/"
              version "/Qoder-CN-linux-amd64.deb"))
        (sha256
-        (base32 "03ssha5ih0dacrqpsjgpprd0nrnk63qg2jc4xzh3m35dnnw3spmc"))))
+        (base32 "18jyks9kmamszi7kgbgg0jwbgsing7mil1mmf65ci4afd487x9hj"))))
     (build-system electron-build-system)
     (arguments
      (list
