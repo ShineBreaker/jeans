@@ -9,8 +9,9 @@
 ;;;   install -> disable-electron-updater -> patch-elf -> install-bin
 ;;;     -> desktop -> icons -> wrap -> wrap-electron
 ;;;     -> prefer-wayland / prefer-wayland-hint -> ensure-secret-service
-;;;     -> telemetry-opt-out（基座 (jeans build telemetry) 的 phase，在所有
-;;;        wrapper 改写之后注入遥测关闭变量）
+;;     -> telemetry-opt-out / auto-update-opt-out（基座 (jeans build
+;;;        telemetry) 的两个 phase，在所有 wrapper 改写之后注入遥测与应用内
+;;;        更新关闭变量）
 ;;;
 ;;; ensure-secret-service 以 inputs 为开关：包依赖 glib:bin / gnome-keyring /
 ;;; gcr-3（能定位到对应文件）才注入，不设 build-system 关键字（详见 phase

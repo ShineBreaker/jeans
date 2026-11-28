@@ -26,6 +26,7 @@ This document provides installation instructions and complete service usage guid
   - [nosDshell](#nosdshell)
   - [MSIME Providers](#msime-providers)
 - [Telemetry](#telemetry)
+- [In-App Updates](#in-app-updates)
 
 ---
 
@@ -502,3 +503,21 @@ A few applications only read configuration files or command-line flags, so they 
 | `zed-bin`, `wu-bin` | Set `telemetry.diagnostics` and `telemetry.metrics` to `false` in the editor's `settings.json`                 |
 | `fresh-editor-bin`  | Launch with `--no-upgrade-check`, or set the update check to off in its config                                 |
 | `jdtls-bin`         | Telemetry is opt-in: it stays off unless the editor client sends `java.telemetry.enabled`                     |
+
+---
+
+## In-App Updates
+
+Every package built with `jeans-binary` / `jeans-electron` ships with its own updater disabled. Version bumps come from this channel's auto-update CI (`scripts/check-updates/` + `.github/workflows/auto-update.yml`, weekly), so `guix pull` is the only update path: nothing dials home to replace itself, and nothing writes into the read-only store.
+
+| Kind | How the in-app updater is off |
+| --- | --- |
+| Electron apps | `electron-build-system` removes `resources/package-type` and `app-update.yml`, so `electron-updater` falls back to an inert `AppImageUpdater`. Wrappers also export `DISABLE_AUTOUPDATER`, `DISABLE_UPDATES`, `NO_UPDATE_NOTIFIER` |
+| Claude Code–derived CLIs (cindy-cn-bin, omo-bin, eta-host-bin, …) | `DISABLE_AUTOUPDATER=1` / `DISABLE_UPDATES=1` from the same wrapper layer |
+| npm-ecosystem tools (pnpm-bin, …) | `NO_UPDATE_NOTIFIER=1` |
+| `zen-browser-bin` | `DisableAppUpdate` policy plus `updater` / `updater.ini` removed from the package |
+| `librewolf-nongnu` | Update policy already shipped upstream |
+| `zed-bin`, `wu-bin` | Set `auto_update` to `false` in the editor's `settings.json`; the wrapper only prints where updates come from |
+| `fresh-editor-bin` | Launch with `--no-upgrade-check`, or turn the update check off in its config |
+
+The same variables are documented in the [Telemetry](#telemetry) section: packages that cannot be wrapped pick them up from the session environment via `home-telemetry-service-type`.

@@ -34,7 +34,8 @@
   #:use-module (rnrs bytevectors)
   #:use-module (srfi srfi-1)
   #:use-module (jeans telemetry)
-  #:export (telemetry-opt-out-phase))
+  #:export (telemetry-opt-out-phase
+            auto-update-opt-out-phase))
 
 (define (read-shebang file)
   "读 FILE 头 128 字节里的第一行（shebang）；不是 \"#!\" 开头时返回 #f。
@@ -97,17 +98,23 @@
                   (newline port))
                 lines))))
 
-(define* (inject-telemetry-opt-out file #:key (variables %telemetry-off-variables))
-  "把遥测关闭 export 块插进 script FILE；已有同名块时返回 #f（幂等）。"
+(define (idempotency-marker variables)
+  "第一条变量的 export 形态；文件里已有它就说明这张表注入过。"
+  (let ((name (caar variables)))
+    (format #f "~a=\"${~a:-" name name)))
+
+(define* (inject-opt-out file #:key (variables %telemetry-off-variables))
+  "把 VARIABLES 的 export 块插进 script FILE；已注入过时返回 #f（幂等）。"
   (let ((lines (read-lines file)))
     (if (any (lambda (line)
-               (string-contains line "DO_NOT_TRACK=\"${DO_NOT_TRACK:-"))
+               (string-contains line (idempotency-marker variables)))
              lines)
         #f
         (let* ((anchor (or (last-exec-index lines) (length lines)))
                (block (remove string-null?
                               (string-split
-                               (telemetry-off-shell-snippet #:variables variables)
+                               (telemetry-off-shell-snippet
+                                #:variables variables)
                                #\newline))))
           (write-lines file (append (take lines anchor)
                                     block
@@ -152,19 +159,15 @@
                   plan)
       '()))
 
-(define* (telemetry-opt-out-phase
-          #:key outputs wrap-plan
-          (telemetry-opt-out? #t)
-          (telemetry-variables %telemetry-off-variables)
+(define* (inject-opt-out-phase
+          #:key outputs wrap-plan variables label
+          (enabled #t)
           #:allow-other-keys)
-  "给 $out/bin 下与 #:wrap-plan 指向的每个 shell wrapper 注入默认关闭遥测的
-环境变量。只看这两处：整目录扫 lib/、share/ 会把 node_modules 与上游自带
-脚本一并改写，代价远大于收益。
+  "把 VARIABLES 注入输出里每个 shell wrapper；LABEL 只用于日志。
 
-#:wrap-plan 的目标要单独收：部分包把 launcher 装在 lib/<app>/bin 或
-share/<app>/bin（wu-bin、jdtls-bin、prettier-bin 实证），bin/ 下只是指向它的
-符号链接，只扫 bin/ 会静默漏掉整个包装。"
-  (when telemetry-opt-out?
+只看 bin/ 与 #:wrap-plan 的目标：整目录扫 lib/、share/ 会把 node_modules
+与上游自带脚本一并改写，代价远大于收益。"
+  (when enabled
     (let* ((out (assoc-ref outputs "out"))
            (candidates
             (delete-duplicates
@@ -182,11 +185,37 @@ share/<app>/bin（wu-bin、jdtls-bin、prettier-bin 实证），bin/ 下只是�
                       (file-exists? file)
                       (eq? 'regular (stat:type (stat file)))
                       (script-file? file)
-                      (inject-telemetry-opt-out
-                       file #:variables telemetry-variables))
-             (format #t "telemetry: opt-out injected into ~a~%"
+                      (inject-opt-out file #:variables variables))
+             (format #t "~a: opt-out injected into ~a~%"
+                     label
                      (substring file (1+ (string-length out)))))))
        candidates)))
   #t)
+
+(define* (telemetry-opt-out-phase
+          #:key outputs wrap-plan
+          (telemetry-opt-out? #t)
+          (telemetry-variables %telemetry-off-variables)
+          #:allow-other-keys)
+  "给 wrapper 注入默认关闭遥测的 export 块（变量表见 (jeans telemetry)）。"
+  (inject-opt-out-phase #:label "telemetry"
+                        #:enabled telemetry-opt-out?
+                        #:variables telemetry-variables
+                        #:outputs outputs
+                        #:wrap-plan wrap-plan))
+
+(define* (auto-update-opt-out-phase
+          #:key outputs wrap-plan
+          (auto-update-opt-out? #t)
+          (update-variables %update-optout-variables)
+          #:allow-other-keys)
+  "给 wrapper 注入默认关闭应用内自更新的 export 块。
+
+store 只读，自更新必然失败，还会先联网检查一遍；升级由 Guix 拥有。"
+  (inject-opt-out-phase #:label "auto-update"
+                        #:enabled auto-update-opt-out?
+                        #:variables update-variables
+                        #:outputs outputs
+                        #:wrap-plan wrap-plan))
 
 ;;; telemetry.scm ends here

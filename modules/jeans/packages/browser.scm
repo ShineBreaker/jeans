@@ -402,7 +402,9 @@ keeps the language selection interface enabled.")
               ;; Zen 的 tarball 不带 distribution/policies.json，Firefox 的应用内
               ;; 更新因此是激活的（自带 updater + updater.ini）。DisableAppUpdate
               ;; 是 Mozilla 官方企业策略键（policy-templates），store 只读下更新
-              ;; 本也装不进去，干脆在策略层关掉检查与下载。
+              ;; 本也装不进去，干脆在策略层关掉检查与下载；updater 与它的 ini 一并
+              ;; 删掉，免得界面或命令行直接把它拉起来。版本统一由本通道的
+              ;; auto-update CI 推进。
               ;;
               ;; 遥测同层关掉，不再依赖首次启动的选项：
               ;;   DisableTelemetry      Firefox 官方策略，关 datareporting 健康
@@ -411,6 +413,12 @@ keeps the language selection interface enabled.")
               ;;   Preferences           策略层没有覆盖崩溃上报自动提交的键，用
               ;;                         pref 关掉未提交崩溃的自动上传（用户仍可手动
               ;;                         在 about:crashes 里提交）。
+              (for-each (lambda (name)
+                          (let ((file (string-append #$output
+                                                     "/lib/zen/" name)))
+                            (when (file-exists? file)
+                              (delete-file file))))
+                        '("updater" "updater.ini"))
               (let ((dir (string-append #$output
                                         "/lib/zen/distribution")))
                 (mkdir-p dir)

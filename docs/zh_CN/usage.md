@@ -26,6 +26,7 @@
   - [nosDshell](#nosdshell)
   - [水杉输入法辅助服务](#水杉输入法辅助服务)
 - [遥测默认关闭](#遥测默认关闭)
+- [应用内更新](#应用内更新)
 
 ---
 
@@ -502,3 +503,21 @@ waydroid session start
 | `zed-bin`、`wu-bin` | 在编辑器 `settings.json` 里把 `telemetry.diagnostics`、`telemetry.metrics` 置 `false` |
 | `fresh-editor-bin`  | 用 `--no-upgrade-check` 启动，或在配置里关掉更新检查                             |
 | `jdtls-bin`         | 遥测是 opt-in：编辑器不发送 `java.telemetry.enabled` 时保持关闭                  |
+
+---
+
+## 应用内更新
+
+本通道里用 `jeans-binary` / `jeans-electron` 构建的包都关掉了自带的 updater。版本推进由通道的 auto-update CI（`scripts/check-updates/` 与 `.github/workflows/auto-update.yml`，每周跑）负责，`guix pull` 是唯一的升级路径：不会有软件自己联网下新版本，也不会往只读的 store 里写东西。
+
+| 类型 | 应用内更新怎么关的 |
+| --- | --- |
+| Electron 应用 | `electron-build-system` 删掉 `resources/package-type` 与 `app-update.yml`，`electron-updater` 退回惰性的 `AppImageUpdater`；wrapper 另外导出 `DISABLE_AUTOUPDATER`、`DISABLE_UPDATES`、`NO_UPDATE_NOTIFIER` |
+| Claude Code 衍生 CLI（cindy-cn-bin、omo-bin、eta-host-bin 等） | 同一层 wrapper 注入 `DISABLE_AUTOUPDATER=1` / `DISABLE_UPDATES=1` |
+| npm 生态工具（pnpm-bin 等） | `NO_UPDATE_NOTIFIER=1` |
+| `zen-browser-bin` | `DisableAppUpdate` 企业策略，并从包里删掉 `updater` / `updater.ini` |
+| `librewolf-nongnu` | 上游自带更新策略，未改动 |
+| `zed-bin`、`wu-bin` | 在编辑器 `settings.json` 里把 `auto_update` 置 `false`；wrapper 只负责提示修改来源 |
+| `fresh-editor-bin` | 用 `--no-upgrade-check` 启动，或在配置里关掉更新检查 |
+
+这些变量与[遥测默认关闭](#遥测默认关闭)共用同一层：无法 wrap 的包通过 `home-telemetry-service-type` 从会话环境拿到。

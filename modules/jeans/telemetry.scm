@@ -47,6 +47,7 @@
 
 (define-module (jeans telemetry)
   #:export (%telemetry-off-variables
+            %update-optout-variables
             telemetry-off-shell-snippet))
 
 ;; 通用遥测关闭变量：((NAME . VALUE) ...)。顺序即 wrapper 里的出现顺序。
@@ -57,6 +58,22 @@
     ("OTEL_SDK_DISABLED" . "true")
     ("NEXT_TELEMETRY_DISABLED" . "1")
     ("DOTNET_CLI_TELEMETRY_OPTOUT" . "1")))
+
+;; 自动更新默认关闭变量：store 只读，自更新必然失败，还会先联网检查一遍；
+;; 升级由 Guix 拥有。只收跨厂商或已在本通道软件里实证的键。
+;;
+;;   DISABLE_AUTOUPDATER  Claude Code 官方开关（cindy-cn-bin 内置 cc-manager 3 处、
+;;                        omo-bin 5 处读取）。
+;;   DISABLE_UPDATES      同族的全量开关；eta-host-bin 直接读
+;;                        `process.env.DISABLE_UPDATES'。
+;;   NO_UPDATE_NOTIFIER   update-notifier npm 包认的开关，pnpm-bin 内置该包。
+;;
+;; 只认配置文件或命令行的（fresh-editor 的 --no-upgrade-check、zed/wu 的
+;; auto_update 设置）在包定义与文档里说明，不进这张表。
+(define %update-optout-variables
+  '(("DISABLE_AUTOUPDATER" . "1")
+    ("DISABLE_UPDATES" . "1")
+    ("NO_UPDATE_NOTIFIER" . "1")))
 
 (define* (telemetry-off-shell-snippet
           #:key (variables %telemetry-off-variables) (indent ""))

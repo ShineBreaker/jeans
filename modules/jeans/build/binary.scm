@@ -6,7 +6,8 @@
 ;;;
 ;;; 配合 (jeans build-system binary) 使用。%standard-phases：
 ;;;
-;;;   unpack → install → patchelf → wrap → telemetry-opt-out → desktop-files
+;;;   unpack → install → patchelf → wrap → telemetry-opt-out → auto-update-opt-out
+;;;     → desktop-files
 ;;;
 ;;; 其余阶段（set-paths、patch-shebangs 等）沿用 gnu-build-system。
 ;;;
@@ -58,6 +59,8 @@
 ;;; - #:telemetry-opt-out?（默认 #t）：把通用遥测关闭 export 注入 $out/bin 下每个
 ;;;   shell wrapper，见 (jeans build telemetry)；#f 整包跳过。变量表不可从包定义
 ;;;   覆盖，需要厂商私有键的包自己写 wrapper。
+;;; - #:auto-update-opt-out?（默认 #t）：同一位置再注入一组关闭应用内自更新的
+;;;   变量（store 只读，自更新必然失败且先联网检查）。
 ;;; - #:desktop-files：((DESKTOP [EXEC [ICON]]) ...)，只重写 [Desktop Entry]
 ;;;   组内的 Exec=/Icon= 为绝对路径（Action 组不动）；相对路径按输出内解析，
 ;;;   EXEC 省略时按 basename 自动到 bin/、lib/<pkg>/ 下找，找不到则告警保留原值。
@@ -703,7 +706,8 @@ strace 无任何 openat）。正常二进制 .dynamic 本就在 RW 段，此处 
     (add-after 'install 'patchelf patchelf)
     (add-after 'patchelf 'wrap wrap)
     (add-after 'wrap 'telemetry-opt-out telemetry-opt-out-phase)
-    (add-after 'telemetry-opt-out 'desktop-files desktop-files)))
+    (add-after 'telemetry-opt-out 'auto-update-opt-out auto-update-opt-out-phase)
+    (add-after 'auto-update-opt-out 'desktop-files desktop-files)))
 
 (define* (binary-build #:key source system outputs inputs
                        (package-name #f)
@@ -716,6 +720,7 @@ strace 无任何 openat）。正常二进制 .dynamic 本就在 RW 段，此处 
                        (wrap? #t)
                        (wrap-plan '())
                        (telemetry-opt-out? #t)
+                       (auto-update-opt-out? #t)
                        (desktop-files '())
                        (phases %standard-phases)
                        #:allow-other-keys #:rest args)
@@ -735,7 +740,8 @@ PACKAGE-NAME 为 host 传来的 derivation 全名。"
                                      #:package-name #:app-dir #:unpack-method #:install-plan
                                      #:patchelf? #:patchelf-plan #:preserve-rpath?
                                      #:lib-dir #:wrap? #:wrap-plan
-                                     #:telemetry-opt-out? #:desktop-files))))
+                                     #:telemetry-opt-out? #:auto-update-opt-out?
+                                     #:desktop-files))))
     (apply gnu:gnu-build
            #:source source
            #:system system
@@ -755,5 +761,6 @@ PACKAGE-NAME 为 host 传来的 derivation 全名。"
            #:wrap? wrap?
            #:wrap-plan wrap-plan
            #:telemetry-opt-out? telemetry-opt-out?
+           #:auto-update-opt-out? auto-update-opt-out?
            #:desktop-files desktop-files
            rest)))
