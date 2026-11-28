@@ -1,6 +1,6 @@
 ---
 name: pack-guix
-description: "Use when creating, updating, or reviewing a Guix package in this channel: naming (-bin/-se/-next), license evidence, hashes, wrappers, precompiled binaries (.deb/AppImage/ELF/FHS), telemetry opt-out, cargo inputs via import-crate, lint, build verification, refresh properties. Not for version-bump mechanics or CI failures — that's auto-update."
+description: "Use when creating, updating, or reviewing a Guix package in this channel: naming (-bin/-se/-next), license evidence, hashes, wrappers, precompiled binaries (.deb/AppImage/ELF/FHS), telemetry opt-out, in-app auto-update off, cargo inputs via import-crate, lint, build verification, refresh properties. Not for version-bump mechanics or CI failures — that's auto-update."
 ---
 
 # Pack-Guix
@@ -134,7 +134,15 @@ fontconfig 变量的实际包名是 fontconfig-minimal，openjdk17 变量的实�
 - 只认配置文件的软件在包内落默认值（Firefox 系写 `distribution/policies.json` 的企业策略），或只能靠用户配置（如 zed 系 settings.json、fresh-editor 的 `--no-upgrade-check`）时在包定义注释与交接汇报里写明。
 - 关不掉的（DSN/端点写死在二进制或 app.asar、只有服务端开关、改 bundle 会触发 asar 完整性校验）不硬改，列出来交用户决定。
 
-完成标准：构建阶段不依赖网络更新、不写入 store 外的源码目录；wrapper、desktop 文件、资源和可写数据路径都指向正确位置；所有输入 label 可由 guix show 证明；上游遥测开关已关闭或已列明为何关不了。
+**应用内自动更新默认关闭**：打包的软件统一由本仓库的 auto-update CI 推进版本（`scripts/check-updates/` 与 `.github/workflows/auto-update.yml`，见 `../auto-update/SKILL.md`），应用自带的 updater 一律关掉——store 只读，自更新必然失败，还会先联网检查一遍。
+
+- Electron：`electron-build-system` 的 `#:disable-updater?`（默认 #t）删掉 `resources/package-type` 与 `app-update.yml`，electron-updater 随即退回 AppImageUpdater，无 `$APPIMAGE` 时惰性。自定义 `#:phases` 的包从 `(@ (jeans build electron) %standard-phases)` 出发，别自己重写阶段表，否则这两个 phase 一起丢。
+- 环境变量型（Claude Code 系 `DISABLE_AUTOUPDATER`、`DISABLE_UPDATES`，npm 生态 `NO_UPDATE_NOTIFIER`）：`jeans-binary`/`jeans-electron` 的 `auto-update-opt-out` phase 已默认注入，预编译包无需声明；`#:auto-update-opt-out? #f` 是例外。
+- 自带 updater 二进制的（Firefox 系 `updater` + `updater.ini`、Tauri updater、JetBrains updater）在包内删掉，能用官方策略键关掉检查的一并加上（zen 的 `DisableAppUpdate`）。
+- 只认配置或命令行的（fresh-editor 的 `--no-upgrade-check`、zed/wu 的 `auto_update` 设置）在包定义注释与交接汇报里写明，不代改用户配置。
+- 关的是应用内更新，不是本仓库的自动更新：每个包仍要配好 refresh properties，`guix refresh` dry-run 必须认得出它。
+
+完成标准：构建阶段不依赖网络更新、不写入 store 外的源码目录；wrapper、desktop 文件、资源和可写数据路径都指向正确位置；所有输入 label 可由 guix show 证明；上游遥测开关已关闭或已列明为何关不了；应用内 updater 已关闭、版本交给本仓库 auto-update CI。
 
 ### 5. Load, build, and lint
 
@@ -193,6 +201,7 @@ synopsis,gnu-description <package-name>
 
 ## Hard guards
 
+- 不交付还能自更新的包：应用内 updater（electron-updater、Firefox updater、Tauri/JetBrains updater、自带 self-update）必须关掉，版本升级由本仓库 auto-update CI 负责。
 - 不把能关的遥测原样打包：wrapper / 环境变量 / 配置项里找得到的开关必须默认关闭，除非在定义里写明为什么不能关。
 - 不把开源预编译包和闭源包统一命名；先看许可证。
 - 不用固定 /tmp 路径；每次运行使用唯一 WORK_DIR。

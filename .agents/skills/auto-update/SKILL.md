@@ -5,6 +5,8 @@ description: "Use when checking a channel package's latest upstream version, a r
 
 # Auto-Update
 
+应用内的自更新（electron-updater、Firefox updater、Tauri/JetBrains updater、各种 self-update）由 `../pack-guix/SKILL.md` 的「应用内自动更新默认关闭」负责关掉；本层只管频道这一侧的版本推进。
+
 回答两个问题：**这个包现在该是哪个版本？** **改完怎么验证它下一次会被自动更新？** 结论带证据（dry-run 输出、`report.json`、真实构建退出码），不用"看起来没问题"代替验证。
 
 完成标准：给出目标版本及其发现依据（release 资产 / tag / commit / 特殊源信号）；哈希来自 `guix download` 或 `guix hash -rx`；改过的包真实构建退出码 0；包已确认落在 refresh 覆盖范围内（默认全通道；被 `refresh_exclude` 排除时写明理由）；state 文件与提交状态说清；确实无法自动更新的包说明了原因落点。
